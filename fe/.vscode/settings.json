@@ -1,0 +1,8 @@
+{
+  "files.eol": "\n", // 줄바꿈 lf
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit" // eslint 자동 수정
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}

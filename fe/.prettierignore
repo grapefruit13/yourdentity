@@ -1,0 +1,9 @@
+node_modules
+.next
+.turbo
+out
+build
+dist
+coverage
+public/**/*.svg
+*.mjs

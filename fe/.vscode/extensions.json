@@ -1,0 +1,9 @@
+// vscode extension 필수 설치 목록
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint", // eslint
+    "esbenp.prettier-vscode", // prettier
+    "bradlc.vscode-tailwindcss" // tailwindcss intellisense
+  ],
+  "unwantedRecommendations": []
+}
