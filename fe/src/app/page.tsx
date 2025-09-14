@@ -1,9 +1,8 @@
-"use client";
+/**
+ * @description 홈페이지
+ */
+const HomePage = () => {
+  return <h1>HomePage</h1>;
+};
 
-export default function Home() {
-  return (
-    <main>
-      <h1>HOME PAGE</h1>
-    </main>
-  );
-}
+export default HomePage;
