@@ -9,7 +9,8 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "prepare": "husky"
   },
   "lint-staged": {
     "**/*.{tsx,ts}": [
@@ -24,6 +25,7 @@
     "clsx": "^2.1.1",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",
+    "husky": "^9.1.7",
     "lucide-react": "^0.539.0",
     "next": "15.4.6",
     "react": "19.1.0",
