@@ -4,15 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https",
+    "dev:emulator": "concurrently \"firebase emulators:start\" \"next dev --experimental-https\"",
     "build": "next build",
+    "build:export": "next build",
     "start": "next start",
+    "emulators": "firebase emulators:start",
     "deploy": "pnpm build:export && firebase deploy",
     "deploy:hosting": "pnpm build:export && firebase deploy --only hosting",
+    "deploy:functions": "firebase deploy --only functions",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "prepare": "husky"
+    "prepare": "cd .. && husky fe/.husky"
   },
   "lint-staged": {
     "**/*.{tsx,ts}": [
@@ -44,6 +48,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^8.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "eslint-config-prettier": "^9.1.0",
