@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { CommunityModalProps, CommunityPost } from '../types';
+import ShareModal from './ShareModal';
 
 const CommunityModal: React.FC<CommunityModalProps> = ({ 
   isOpen, 
@@ -10,6 +11,9 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
   children 
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // 메뉴 외부 클릭 시 닫기
@@ -156,12 +160,26 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
             {/* 하단 액션 바 */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-100">
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button 
+                  onClick={() => setIsLiked(!isLiked)}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
+                  <svg 
+                    className={`w-5 h-5 transition-colors ${
+                      isLiked ? 'text-red-500 fill-red-500' : 'text-gray-600'
+                    }`} 
+                    fill={isLiked ? 'currentColor' : 'none'} 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <span className="text-sm text-gray-600">{post?.stats.likes || 0}</span>
-                </div>
+                  <span className={`text-sm transition-colors ${
+                    isLiked ? 'text-red-500' : 'text-gray-600'
+                  }`}>
+                    {(post?.stats.likes || 0) + (isLiked ? 1 : 0)}
+                  </span>
+                </button>
                 <div className="flex items-center gap-2">
                   <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -170,12 +188,29 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                </svg>
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
+                <button 
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => setIsBookmarked(!isBookmarked)}
+                  className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <svg 
+                    className={`w-5 h-5 transition-colors ${
+                      isBookmarked ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'
+                    }`} 
+                    fill={isBookmarked ? 'currentColor' : 'none'} 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                </button>
                 
                 {/* 점 3개 메뉴 */}
                 <div className="relative" ref={menuRef}>
@@ -283,6 +318,14 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
           </div>
         ))}
       </div>
+
+      {/* 공유 모달 */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        postTitle={post?.title}
+        postUrl={`https://youthvoice.vake.io/sharing/${post?.id || '1'}`}
+      />
     </div>
   );
 };
