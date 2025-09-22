@@ -46,6 +46,8 @@ next-env.d.ts
 
 certificates
 
+/.firebase
+
 # PWA files
 /public/sw.js
 /public/workbox-*.js
