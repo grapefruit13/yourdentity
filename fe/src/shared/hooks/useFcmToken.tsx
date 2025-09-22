@@ -2,10 +2,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { onMessage, Unsubscribe } from "firebase/messaging";
-import { fetchToken, messaging } from "@/shared/lib/firebase";
 import { useRouter } from "next/navigation";
+import { onMessage, Unsubscribe } from "firebase/messaging";
 import { toast } from "sonner";
+import { fetchToken, messaging } from "@/shared/lib/firebase";
 import { debug } from "../utils/debugger";
 
 async function getNotificationPermissionAndToken() {
