@@ -1,5 +1,6 @@
 import BottomNavigation from "@/shared/components/layouts/bottom-navigation";
 import TopBar from "@/shared/components/layouts/top-bar";
+import PWAInstall from "@/shared/components/pwa-install";
 
 /**
  * @description 하단 네브바 포함 레이아웃
@@ -14,6 +15,7 @@ export default function MainLayout({
       <TopBar />
       <main className="h-full">{children}</main>
       <BottomNavigation />
+      <PWAInstall />
     </div>
   );
 }
