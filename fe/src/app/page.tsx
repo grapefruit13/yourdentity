@@ -1,5 +1,6 @@
 "use client";
 
+import PWAGuide from "@/shared/components/pwa-guide";
 import { Button } from "@/shared/components/ui/button";
 import useFcmToken from "@/shared/hooks/useFcmToken";
 import { debug } from "@/shared/utils/debugger";
@@ -29,28 +30,31 @@ const HomePage = () => {
   };
 
   return (
-    <main className="flex h-screen flex-col items-center justify-center gap-20 p-10">
-      <h1 className="mb-4 text-4xl font-bold">FCM 테스트</h1>
+    <>
+      <PWAGuide />
+      <main className="flex h-screen flex-col items-center justify-center gap-20 p-10">
+        <h1 className="mb-4 text-4xl font-bold">FCM 테스트</h1>
 
-      {notificationPermissionStatus === "granted" ? (
-        <h2 className="font-bold">알림 수신 권한이 부여되었습니다.</h2>
-      ) : notificationPermissionStatus !== null ? (
-        <h2>
-          알림 수신 권한이 부여되지 않았습니다. 브라우저 설정에서 알림을
-          활성화해주세요.
-        </h2>
-      ) : null}
+        {notificationPermissionStatus === "granted" ? (
+          <h2 className="font-bold">알림 수신 권한이 부여되었습니다.</h2>
+        ) : notificationPermissionStatus !== null ? (
+          <h2>
+            알림 수신 권한이 부여되지 않았습니다. 브라우저 설정에서 알림을
+            활성화해주세요.
+          </h2>
+        ) : null}
 
-      <div>
-        <Button
-          variant="outline"
-          disabled={!token}
-          onClick={handleTestNotification}
-        >
-          테스트 알림 전송
-        </Button>
-      </div>
-    </main>
+        <div>
+          <Button
+            variant="outline"
+            disabled={!token}
+            onClick={handleTestNotification}
+          >
+            테스트 알림 전송
+          </Button>
+        </div>
+      </main>
+    </>
   );
 };
 
