@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
+  output: "export",
+
   images: {
     formats: ["image/webp", "image/avif"],
   },
