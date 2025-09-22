@@ -1,7 +1,7 @@
-import { debug } from "@/shared/utils/debugger";
+import { NextRequest, NextResponse } from "next/server";
 import admin, { ServiceAccount } from "firebase-admin";
 import { Message } from "firebase-admin/messaging";
-import { NextRequest, NextResponse } from "next/server";
+import { debug } from "@/shared/utils/debugger";
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
