@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https",
-    "dev:emulator": "concurrently \"firebase emulators:start\" \"next dev --experimental-https\"",
+    "dev:emulator": "concurrently \"cd functions && pnpm run build && cd .. && firebase emulators:start\" \"next dev --experimental-https\"",
     "build": "next build",
     "build:export": "next build",
     "start": "next start",
