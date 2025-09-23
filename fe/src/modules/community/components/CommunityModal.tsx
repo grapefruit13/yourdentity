@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CommunityModalProps, CommunityPost } from '../types';
 import ShareModal from './ShareModal';
+import { cn } from '@/shared/utils/cn';
 
 const CommunityModal: React.FC<CommunityModalProps> = ({ 
   isOpen, 
@@ -69,7 +70,9 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-xl px-24 py-8 max-w-4xl w-full mx-4 max-h-[90vh] h-full overflow-y-auto shadow-2xl border border-gray-100"
+        className={cn(
+          "bg-white rounded-xl px-24 py-8 max-w-4xl w-full mx-4 max-h-[90vh] h-full overflow-y-auto shadow-2xl border border-gray-100"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {children || (post && (
@@ -162,21 +165,25 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
               <div className="flex items-center gap-6">
                 <button 
                   onClick={() => setIsLiked(!isLiked)}
-                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  className={cn(
+                    "flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  )}
                 >
                   <svg 
-                    className={`w-5 h-5 transition-colors ${
+                    className={cn(
+                      "w-5 h-5 transition-colors",
                       isLiked ? 'text-red-500 fill-red-500' : 'text-gray-600'
-                    }`} 
+                    )} 
                     fill={isLiked ? 'currentColor' : 'none'} 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <span className={`text-sm transition-colors ${
+                  <span className={cn(
+                    "text-sm transition-colors",
                     isLiked ? 'text-red-500' : 'text-gray-600'
-                  }`}>
+                  )}>
                     {(post?.stats.likes || 0) + (isLiked ? 1 : 0)}
                   </span>
                 </button>
@@ -188,22 +195,27 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setIsShareModalOpen(true)}
-                  className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
-                >
+                  <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    className={cn(
+                      "p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                    )}
+                  >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                   </svg>
                 </button>
                 <button 
                   onClick={() => setIsBookmarked(!isBookmarked)}
-                  className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                  className={cn(
+                    "p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                  )}
                 >
                   <svg 
-                    className={`w-5 h-5 transition-colors ${
+                    className={cn(
+                      "w-5 h-5 transition-colors",
                       isBookmarked ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'
-                    }`} 
+                    )} 
                     fill={isBookmarked ? 'currentColor' : 'none'} 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -216,7 +228,9 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
                 <div className="relative" ref={menuRef}>
                   <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                    className={cn(
+                      "p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                    )}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -225,41 +239,55 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
                   
                   {/* 드롭다운 메뉴 */}
                   {isMenuOpen && (
-                    <div className="absolute right-0 top-8 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    <div className={cn(
+                      "absolute right-0 top-8 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10"
+                    )}>
                       <div className="py-1">
                         <button 
                           onClick={() => handleMenuAction('수정')}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          )}
                         >
                           수정
                         </button>
                         <button 
                           onClick={() => handleMenuAction('상단 고정')}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          )}
                         >
                           상단 고정
                         </button>
                         <button 
                           onClick={() => handleMenuAction('삭제')}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          )}
                         >
                           삭제
                         </button>
                         <button 
                           onClick={() => handleMenuAction('신고')}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          )}
                         >
                           신고
                         </button>
                         <button 
                           onClick={() => handleMenuAction('게시글 복사')}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          )}
                         >
                           게시글 복사
                         </button>
                         <button 
                           onClick={() => handleMenuAction('게시글 이동')}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          )}
                         >
                           게시글 이동
                         </button>

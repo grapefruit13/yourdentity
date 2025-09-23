@@ -10,7 +10,7 @@
     "lint:fix": "next lint --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "prepare": "husky && git config core.hooksPath fe/.husky"
+    "prepare": "husky"
   },
   "lint-staged": {
     "**/*.{tsx,ts}": [

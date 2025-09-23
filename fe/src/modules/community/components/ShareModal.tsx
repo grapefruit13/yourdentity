@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { cn } from '@/shared/utils/cn';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -95,14 +96,18 @@ const ShareModal: React.FC<ShareModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+        className={cn(
+          "bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-700"
+            className={cn(
+              "p-1 text-gray-500 hover:text-gray-700"
+            )}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -118,7 +123,9 @@ const ShareModal: React.FC<ShareModalProps> = ({
             <button
               key={index}
               onClick={option.action}
-              className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
+              className={cn(
+                "flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
+              )}
             >
               {option.icon}
               <span className="text-xs text-gray-600">{option.name}</span>
@@ -137,11 +144,12 @@ const ShareModal: React.FC<ShareModalProps> = ({
             />
             <button
               onClick={handleCopyLink}
-              className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+              className={cn(
+                "px-3 py-1 text-sm font-medium rounded transition-colors",
                 isCopied 
                   ? 'bg-green-100 text-green-600' 
                   : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-              }`}
+              )}
             >
               {isCopied ? '복사됨' : '복사'}
             </button>
@@ -158,7 +166,9 @@ const ShareModal: React.FC<ShareModalProps> = ({
           {additionalShareOptions.map((option, index) => (
             <button
               key={index}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+              className={cn(
+                "w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+              )}
               title={option.name}
             >
               <span className="text-lg">{option.icon}</span>
