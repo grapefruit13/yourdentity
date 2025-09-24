@@ -1,7 +1,7 @@
 {
   "functions": [
     {
-      "source": "be/functions",
+      "source": "fe/functions",
       "codebase": "default",
       "ignore": [
         "node_modules",
@@ -10,18 +10,29 @@
         "firebase-debug.*.log",
         "*.local"
       ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint"
-      ]
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run lint"]
     }
   ],
   "emulators": {
     "functions": {
       "port": 5001
     },
+    "hosting": {
+      "port": 5000
+    },
     "ui": {
       "enabled": true
     },
     "singleProjectMode": true
+  },
+  "hosting": {
+    "public": "fe/out",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
