@@ -1,4 +1,4 @@
-import { CommunityPost } from '../types';
+import { CommunityPost } from "../types";
 
 /**
  * @description 커뮤니티 샘플 데이터
@@ -6,14 +6,14 @@ import { CommunityPost } from '../types';
  */
 export const samplePosts: CommunityPost[] = [
   {
-    id: '1',
-    title: '[6월 월간] 청소년 소모임 후기',
+    id: "1",
+    title: "[6월 월간] 청소년 소모임 후기",
     author: {
-      name: '새싹',
-      badge: '한끗',
-      avatar: undefined // 프로필 이미지가 있다면 URL 추가
+      name: "새싹",
+      badge: "한끗",
+      avatar: undefined, // 프로필 이미지가 있다면 URL 추가
     },
-    date: '2025. 6. 15',
+    date: "2025. 6. 15",
     content: `학교 밖 생활을 시작한 지 얼마 되지 않아 마음이 복잡했지만, 이번 달 '유스보이스'라는 커뮤니티의 월간 소모임에 처음 참여하면서 생각이 조금 정리되었다. 모임에서 만난 사람들은 각자 다른 이유로 학교 밖을 선택했지만, 공통점은 자기 자리에서 최선을 다하려고 애쓴다는 점이었다.
 
 누군가는 일을 병행하며 자격증을 준비하고, 누군가는 창작을 꾸준히 이어가고, 또 다른 누군가는 새로운 진로를 탐색 중이었다. "나만 낯선 길을 걷는 게 아니구나"라는 안도감이 들었다.
@@ -27,12 +27,12 @@ export const samplePosts: CommunityPost[] = [
 다음 달에는 그냥 참여자에 머무르지 말고, 내가 겪는 시행착오와 작은 성취들을 짧은 글로 나눠 보기로 했다. 시작선에 서 있는 마음은 여전히 떨리지만, 오늘 만난 사람들과 문장 덕분에 한 발 더 나아갈 용기가 생겼다. 다음 소모임에도 꼭 참여할 것이다.
 
 + 책 선물 진짜 너무너무 좋아요..`,
-    category: '활동 후기',
-    tags: ['월간'],
+    category: "활동 후기",
+    tags: ["월간"],
     stats: {
       likes: 0,
-      comments: 0
-    }
+      comments: 0,
+    },
   },
   // 향후 더 많은 샘플 데이터 추가 가능
 ];
