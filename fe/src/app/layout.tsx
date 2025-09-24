@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Yourdentity",
+    title: "유스잇",
   },
 };
 
@@ -43,10 +43,57 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Yourdentity" />
+        <meta name="apple-mobile-web-app-title" content="유스잇" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-tap-highlight" content="no" />
+
+        {/* Apple Touch 스플래시 화면 메타 태그 */}
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-2048x2732.png"
+          media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-1536x2048.png"
+          media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-1242x2688.png"
+          media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-1125x2436.png"
+          media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-828x1792.png"
+          media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-750x1334.png"
+          media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-414x896.png"
+          media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-360x640.png"
+          media="(device-width: 360px) and (device-height: 640px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/imgs/splash/splash-320x568.png"
+          media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
+        />
       </head>
       <body>
         <Toaster />
