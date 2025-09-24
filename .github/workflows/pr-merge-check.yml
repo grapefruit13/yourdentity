@@ -1,0 +1,147 @@
+name: 🔨 Frontend Build Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  frontend-build-check:
+    name: 🔨 프론트엔드 빌드 체크
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 📦 pnpm 설치
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: 🔧 Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: "fe/pnpm-lock.yaml"
+
+      - name: 🗑️ functions 디렉토리 완전 제거
+        run: |
+          cd fe
+          # functions 디렉토리가 있으면 완전히 삭제 (빌드 방해 방지)
+          if [ -d "functions" ]; then
+            echo "🗑️ functions 디렉토리를 완전히 제거합니다..."
+            rm -rf functions
+            echo "✅ functions 디렉토리 제거 완료"
+          fi
+
+      - name: 📦 의존성 설치
+        run: |
+          cd fe
+          pnpm install --frozen-lockfile
+
+      - name: 🔨 빌드 체크
+        run: |
+          cd fe
+          echo "🔨 프론트엔드 빌드 시작..."
+          pnpm run build
+          echo "✅ 빌드 성공!"
+
+      - name: ✅ 빌드 성공 알림
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('🔨 빌드 상태')
+            );
+
+            const body = `## 🔨 빌드 상태: 성공! ✅
+
+            프론트엔드 빌드가 **성공적으로 완료**되었습니다! 🎉
+
+            ### ✅ 체크 완료
+            - 🔨 **Frontend Build**: 성공
+
+            ### 📊 상세 정보
+            - **Commit**: ${context.sha.substring(0, 7)}
+            - **Branch**: ${context.payload.pull_request.head.ref}
+            - **빌드 완료 시간**: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+
+            > 🚀 **빌드에 문제가 없습니다. 머지 가능합니다!**`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: ❌ 빌드 실패 알림
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('🔨 빌드 상태')
+            );
+
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const body = `## 🔨 빌드 상태: 실패! ❌
+
+            **프론트엔드 빌드가 실패했습니다.** 
+
+            ### ❌ 실패한 항목
+            - 🔨 **Frontend Build**: 실패
+
+            ### 📊 상세 정보
+            - **Commit**: ${context.sha.substring(0, 7)}
+            - **Branch**: ${context.payload.pull_request.head.ref}
+            - **실패 시간**: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+            - **상세 로그**: [워크플로우 실행 결과 보기](${runUrl})
+
+            > ⚠️ **빌드 문제를 해결한 후 다시 푸시하면 자동으로 재검사됩니다.**`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
