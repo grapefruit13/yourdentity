@@ -71,7 +71,7 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
     >
       <div
         className={cn(
-          "mx-4 h-full max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-gray-100 bg-white px-24 py-8 shadow-2xl"
+          "mx-4 h-full max-h-[90vh] w-full overflow-y-auto rounded-xl border border-gray-100 bg-white px-4 py-8 shadow-2xl"
         )}
         onClick={(e) => e.stopPropagation()}
       >
