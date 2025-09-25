@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import localFont from "next/font/local";
+import BottomNavigation from "@/shared/components/layouts/bottom-navigation";
+import TopBar from "@/shared/components/layouts/top-bar";
 import { Toaster } from "@/shared/components/ui/sonner";
+import { cn } from "@/shared/utils/cn";
 
 export const metadata: Metadata = {
   title: "유스-잇",
@@ -32,6 +36,12 @@ export const viewport: Viewport = {
   userScalable: false,
   themeColor: "#000000",
 };
+
+const pretendard = localFont({
+  src: "../../public/fonts/PretendardVariable.woff2",
+  display: "swap",
+  variable: "--font-pretendard",
+});
 
 export default function RootLayout({
   children,
@@ -95,9 +105,14 @@ export default function RootLayout({
           media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
         />
       </head>
-      <body>
+      <body className={cn(pretendard.className)}>
         <Toaster />
-        {children}
+        <div className="flex h-screen w-full flex-col">
+          {/* 데모 위해 임시로 탑바/바텀 네비게이션 적용 */}
+          <TopBar />
+          {children}
+          <BottomNavigation />
+        </div>
       </body>
     </html>
   );
