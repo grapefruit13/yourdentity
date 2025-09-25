@@ -1,8 +1,8 @@
 /**
  * @description 스토어 페이지
  */
-const StorePage = () => {
-  return <h1>StorePage</h1>;
+const Page = () => {
+  return <h1>Page</h1>;
 };
 
-export default StorePage;
+export default Page;
