@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debug } from "@/shared/utils/debugger";
 import { samplePosts } from "../constants/sampleData";
 import { CommunityPost } from "../types";
 
@@ -28,7 +29,7 @@ export const useCommunityPosts = () => {
       setPosts(samplePosts);
     } catch (err) {
       setError("포스트를 불러오는데 실패했습니다.");
-      console.error("Failed to fetch posts:", err);
+      debug.error("Failed to fetch posts:", err);
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/shared/utils/cn";
+import { debug } from "@/shared/utils/debugger";
 import { CommunityModalProps } from "../types";
 import ShareModal from "./ShareModal";
 
@@ -36,7 +37,7 @@ const CommunityModal: React.FC<CommunityModalProps> = ({
 
   // 메뉴 아이템 클릭 핸들러
   const handleMenuAction = (action: string) => {
-    console.log(`${action} 클릭됨`);
+    debug.log(`${action} 클릭됨`);
     setIsMenuOpen(false);
 
     // 향후 각 액션에 따른 로직 구현

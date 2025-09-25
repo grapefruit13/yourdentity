@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { cn } from "@/shared/utils/cn";
+import { debug } from "@/shared/utils/debugger";
 import {
   mainShareOptionsConfig,
   additionalShareOptions,
@@ -31,7 +32,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      console.error("링크 복사 실패:", err);
+      debug.error("링크 복사 실패:", err);
     }
   };
 

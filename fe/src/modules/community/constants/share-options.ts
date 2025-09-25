@@ -2,6 +2,8 @@
  * @description 공유 옵션 상수 정의
  */
 
+import { debug } from "@/shared/utils/debugger";
+
 export interface ShareOptionConfig {
   name: string;
   iconType: "facebook" | "twitter" | "whatsapp" | "line" | "email";
@@ -20,27 +22,27 @@ export const mainShareOptionsConfig: ShareOptionConfig[] = [
   {
     name: "Facebook",
     iconType: "facebook",
-    action: () => console.log("Facebook 공유"),
+    action: () => debug.log("Facebook 공유"),
   },
   {
     name: "X (Twitter)",
     iconType: "twitter",
-    action: () => console.log("X 공유"),
+    action: () => debug.log("X 공유"),
   },
   {
     name: "WhatsApp",
     iconType: "whatsapp",
-    action: () => console.log("WhatsApp 공유"),
+    action: () => debug.log("WhatsApp 공유"),
   },
   {
     name: "Line",
     iconType: "line",
-    action: () => console.log("Line 공유"),
+    action: () => debug.log("Line 공유"),
   },
   {
     name: "Email",
     iconType: "email",
-    action: () => console.log("Email 공유"),
+    action: () => debug.log("Email 공유"),
   },
 ];
 
