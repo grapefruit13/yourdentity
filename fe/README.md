@@ -52,11 +52,22 @@ pnpm start
 - Hosting: `fe/firebase.json` 기준 `out/` 디렉터리를 정적 호스팅하며, 모든 경로를 `/index.html`로 리라이트합니다.
 - Functions: 소스는 `fe/functions`를 사용하며, 예시로 `sendNotificationHttp`(us-central1)가 등록되어 있습니다. CORS 허용 도메인은 `functions:config:set cors.origins="https://example.com,https://example2.com"` 형태로 설정합니다.
 
-### 추가 스크립트(package.json)
+### 자주 쓰는 명령어
 
-- `dev:emulator`: Functions 에뮬레이터와 Next 개발 서버 동시 실행
-- `emulators`: Firebase 에뮬레이터만 실행
-- `deploy` / `deploy:hosting` / `deploy:functions`: 전체·호스팅만·함수만 배포
+```shell
+# 정적 + 동적(functions) 전체 배포
+pnpm run deploy
+
+# 정적 파일만 배포
+pnpm run deploy:hosting
+
+# 동적(functions)만 배포
+pnpm run deploy:functions
+
+# 로컬 functions 에뮬레이터 + pwa 실행
+pnpm dev:emulator
+
+```
 
 ### git 전략
 
