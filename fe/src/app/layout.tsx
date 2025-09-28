@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
-import BottomNavigation from "@/shared/components/layouts/bottom-navigation";
-import TopBar from "@/shared/components/layouts/top-bar";
-import { Toaster } from "@/shared/components/ui/sonner";
-import { cn } from "@/shared/utils/cn";
+import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
+import TopBar from "@/components/shared/layouts/top-bar";
+import { Toaster } from "@/components/shared/ui/sonner";
+import { cn } from "@/utils/shared/cn";
 
 export const metadata: Metadata = {
   title: "유스-잇",
