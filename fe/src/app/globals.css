@@ -1,2 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+@theme {
+  --color-primary-50: #ffeff2;
+  --color-primary-100: #ffe0e9;
+  --color-primary-200: #ffc6da;
+  --color-primary-300: #ff97ba;
+  --color-primary-400: #ff5d97;
+  --color-primary-500: #ff2479;
+  --color-primary-600: #ff006c;
+  --color-primary-700: #d7005b;
+  --color-primary-800: #b40055;
+  --color-primary-900: #99024f;
+}
