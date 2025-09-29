@@ -3,6 +3,11 @@
 
 /* tailwind color 변수 정의 */
 @theme {
+  /* font families */
+  --font-noto: var(--font-noto-sans-kr), system-ui, sans-serif;
+  /* Gill Sans는 시스템(맥) 기준 + 대체 스택 */
+  --font-gill: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+
   /* primary */
   --color-primary-50: #ffeff2;
   --color-primary-100: #ffe0e9;

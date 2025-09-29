@@ -1,10 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import localFont from "next/font/local";
+import { Noto_Sans_KR } from "next/font/google";
 import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
 import TopBar from "@/components/shared/layouts/top-bar";
 import { Toaster } from "@/components/shared/ui/sonner";
 import { cn } from "@/utils/shared/cn";
+
+const notoSansKr = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700", "900"],
+  variable: "--font-noto-sans-kr",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "유스-잇",
@@ -36,12 +43,6 @@ export const viewport: Viewport = {
   userScalable: false,
   themeColor: "#000000",
 };
-
-const pretendard = localFont({
-  src: "../../public/fonts/PretendardVariable.woff2",
-  display: "swap",
-  variable: "--font-pretendard",
-});
 
 export default function RootLayout({
   children,
@@ -105,7 +106,7 @@ export default function RootLayout({
           media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
         />
       </head>
-      <body className={cn(pretendard.className)}>
+      <body className={notoSansKr.variable}>
         <Toaster />
         <div className="flex h-screen w-full flex-col">
           {/* 데모 위해 임시로 탑바/바텀 네비게이션 적용 */}
