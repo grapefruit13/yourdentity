@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onMessage, Unsubscribe } from "firebase/messaging";
 import { toast } from "sonner";
-import { fetchToken, messaging } from "@/lib/firebase";
+import { fetchToken, getClientMessaging } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
 
 async function getNotificationPermissionAndToken() {
@@ -96,7 +96,7 @@ const useFcmToken = () => {
       if (!token) return; // Exit if no token is available.
 
       debug.log(`onMessage registered with token ${token}`);
-      const m = await messaging();
+      const m = await getClientMessaging();
       if (!m) return;
 
       // Step 9: Register a listener for incoming FCM messages.
