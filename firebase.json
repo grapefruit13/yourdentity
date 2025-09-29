@@ -1,7 +1,7 @@
 {
   "functions": [
     {
-      "source": "fe/functions",
+      "source": "be/functions",
       "codebase": "default",
       "ignore": [
         "node_modules",
@@ -17,22 +17,9 @@
     "functions": {
       "port": 5001
     },
-    "hosting": {
-      "port": 5000
-    },
     "ui": {
       "enabled": true
     },
     "singleProjectMode": true
-  },
-  "hosting": {
-    "public": "fe/out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
   }
 }
