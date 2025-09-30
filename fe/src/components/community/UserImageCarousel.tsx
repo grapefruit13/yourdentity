@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { UserImage } from "../types";
+import { UserImage } from "@/types/community";
 
 interface UserImageCarouselProps {
   images: UserImage[];
@@ -12,7 +12,7 @@ const UserImageCarousel: React.FC<UserImageCarouselProps> = ({ images }) => {
     <div className="flex gap-3 overflow-x-auto pb-2">
       {images.map((imageData) => (
         <div key={imageData.id} className="flex-shrink-0">
-          <div className="relative h-20 w-20 rounded-lg overflow-hidden bg-gray-100">
+          <div className="relative h-20 w-20 rounded-lg overflow-hidden bg-gray-100" style={{ width: '80px', height: '100px' }}>
             <img
               src={imageData.image}
               alt={`${imageData.user}의 이미지`}

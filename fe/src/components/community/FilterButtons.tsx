@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { cn } from "@/shared/utils/cn";
+import { cn } from "@/utils/shared/cn";
 
 interface FilterButtonsProps {
   activeFilter: string;
@@ -11,7 +11,7 @@ interface FilterButtonsProps {
 const filters = [
   { id: "전체", label: "전체" },
   { id: "TMI", label: "TMI" },
-  { id: "한끗 루틴", label: "한끗 루틴" },
+  { id: "한끗루틴", label: "한끗 루틴" },
   { id: "월간 소모임", label: "월간 소모임" },
 ];
 
@@ -26,7 +26,7 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({ activeFilter, onFilterCha
             "flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors",
             activeFilter === filter.id
               ? "bg-black text-white"
-              : "bg-gray-100 text-black hover:bg-gray-200"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           )}
         >
           {filter.label}

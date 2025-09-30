@@ -16,8 +16,8 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "TMI":
-        return "bg-pink-100 text-pink-600";
-      case "한끗 루틴":
+        return "bg-[#EAEDFF] text-blue-500";
+      case "한끗루틴":
         return "bg-pink-100 text-pink-600";
       case "월간 소모임":
         return "bg-green-100 text-green-600";
@@ -49,7 +49,7 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
               <div className="mb-2">
                 <span
                   className={cn(
-                    "inline-block rounded-full px-2 py-1 text-xs font-medium",
+                    "inline-block rounded px-2 py-1 text-xs font-medium",
                     getCategoryColor(post.category)
                   )}
                 >
@@ -113,7 +113,7 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
 
             {/* 썸네일 이미지 */}
             {post.thumbnail && (
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 mt-2">
                 <div className="h-20 w-20 rounded-lg overflow-hidden bg-gray-100">
                   <img
                     src={post.thumbnail}
@@ -124,30 +124,22 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
               </div>
             )}
           </div>
-
-          {/* 더보기 메뉴 */}
-          <div className="absolute top-4 right-4">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // TODO: 더보기 메뉴 구현
-              }}
-              className="p-1 text-gray-400 hover:text-gray-600"
+          
+          {/* 점 3개 메뉴 - 썸네일 오른쪽과 정렬 */}
+          <div className="absolute bottom-4 right-4">
+            <svg
+              className="h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                />
-              </svg>
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+              />
+            </svg>
           </div>
         </div>
       ))}

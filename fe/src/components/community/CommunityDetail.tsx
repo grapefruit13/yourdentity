@@ -237,7 +237,7 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
       </div>
 
       {/* 메인 콘텐츠 */}
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 pb-26">
         {/* 활동 후기 헤더 */}
         <div className="mb-2 text-sm text-gray-500">
           {post?.category || "활동 후기"}
