@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import CommunityModal from "../components/CommunityModal";
 import UserImageCarousel from "../components/UserImageCarousel";
 import FilterButtons from "../components/FilterButtons";
 import PostFeed from "../components/PostFeed";
@@ -13,22 +12,10 @@ import { userImages } from "../constants/sampleData";
  * @description 커뮤니티 페이지
  */
 const CommunityPage: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<CommunityPost | undefined>();
   const [activeFilter, setActiveFilter] = useState("전체");
 
   // 커뮤니티 포스트 데이터 관리
   const { posts, loading, error, refetch } = useCommunityPosts();
-
-  const handlePostClick = (post: CommunityPost) => {
-    setSelectedPost(post);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedPost(undefined);
-  };
 
   const handleFilterChange = (filter: string) => {
     setActiveFilter(filter);
@@ -102,17 +89,10 @@ const CommunityPage: React.FC = () => {
               해당 카테고리에 포스트가 없습니다.
             </div>
           ) : (
-            <PostFeed posts={filteredPosts} onPostClick={handlePostClick} />
+            <PostFeed posts={filteredPosts} />
           )}
         </div>
       </div>
-
-      {/* 모달 */}
-      <CommunityModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        post={selectedPost}
-      />
     </div>
   );
 };
