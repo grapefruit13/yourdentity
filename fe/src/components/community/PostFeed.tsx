@@ -1,15 +1,18 @@
 "use client";
 
 import React from "react";
-import { cn } from "@/shared/utils/cn";
-import { CommunityPost } from "../types";
+import { useRouter } from "next/navigation";
+import { cn } from "@/utils/shared/cn";
+import { CommunityPost } from "@/types/community";
 
 interface PostFeedProps {
   posts: CommunityPost[];
-  onPostClick: (post: CommunityPost) => void;
+  onPostClick?: (post: CommunityPost) => void;
 }
 
 const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
+  const router = useRouter();
+
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "TMI":
@@ -23,13 +26,21 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
     }
   };
 
+  const handlePostClick = (post: CommunityPost) => {
+    if (onPostClick) {
+      onPostClick(post);
+    } else {
+      router.push(`/community/${post.id}`);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {posts.map((post) => (
         <div
           key={post.id}
           className="relative cursor-pointer rounded-lg bg-white p-4 shadow-sm transition-colors hover:bg-gray-50"
-          onClick={() => onPostClick(post)}
+          onClick={() => handlePostClick(post)}
         >
           <div className="flex gap-3">
             {/* 텍스트 컨텐츠 */}

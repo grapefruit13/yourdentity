@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import CommunityModal from "@/components/community/CommunityModal";
+import { useRouter } from "next/navigation";
 import { useCommunityPosts } from "@/hooks/community/useCommunityPosts";
 import { CommunityPost } from "@/types/community";
 
@@ -9,20 +8,13 @@ import { CommunityPost } from "@/types/community";
  * @description 커뮤니티 페이지
  */
 const Page = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<CommunityPost | undefined>();
+  const router = useRouter();
 
   // 커뮤니티 포스트 데이터 관리
   const { posts, loading, error, refetch } = useCommunityPosts();
 
   const handlePostClick = (post: CommunityPost) => {
-    setSelectedPost(post);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedPost(undefined);
+    router.push(`/community/${post.id}`);
   };
 
   // Early Return 패턴으로 조건부 렌더링 처리
@@ -85,12 +77,6 @@ const Page = () => {
         )}
       </div>
 
-      {/* 모달 */}
-      <CommunityModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        post={selectedPost}
-      />
     </div>
   );
 };
