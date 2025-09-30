@@ -22,6 +22,13 @@ export interface CommunityPost {
   category: string;
   tags: string[];
   stats: PostStats;
+  thumbnail?: string;
+}
+
+export interface UserImage {
+  id: string;
+  image: string;
+  user: string;
 }
 
 export interface CommunityModalProps {
