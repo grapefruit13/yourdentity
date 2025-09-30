@@ -15,7 +15,10 @@ const filters = [
   { id: "월간 소모임", label: "월간 소모임" },
 ];
 
-const FilterButtons: React.FC<FilterButtonsProps> = ({ activeFilter, onFilterChange }) => {
+const FilterButtons: React.FC<FilterButtonsProps> = ({
+  activeFilter,
+  onFilterChange,
+}) => {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2">
       {filters.map((filter) => (

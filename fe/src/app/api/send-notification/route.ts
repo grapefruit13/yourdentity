@@ -5,54 +5,52 @@ import { debug } from "@/utils/shared/debugger";
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
-  try {
-    const serviceKeyString = process.env.FCM_SERVICE_KEY_STRINGIFIED;
+  const serviceKeyString = process.env.FCM_SERVICE_KEY_STRINGIFIED;
 
-    debug.log("Environment variable exists:", !!serviceKeyString);
-    debug.log("Service key string length:", serviceKeyString?.length || 0);
+  debug.log("Environment variable exists:", !!serviceKeyString);
+  debug.log("Service key string length:", serviceKeyString?.length || 0);
 
-    if (!serviceKeyString || serviceKeyString.trim() === "") {
-      throw new Error(
-        "FCM_SERVICE_KEY_STRINGIFIED environment variable is not set or empty"
-      );
-    }
-
-    let serviceAccount: ServiceAccount;
-
+  if (serviceKeyString && serviceKeyString.trim() !== "") {
     try {
-      serviceAccount = JSON.parse(serviceKeyString);
-    } catch (parseError) {
-      debug.error("JSON parsing failed:", parseError);
-      throw new Error(
-        `Failed to parse FCM_SERVICE_KEY_STRINGIFIED: ${parseError instanceof Error ? parseError.message : "Invalid JSON format"}`
+      let serviceAccount: ServiceAccount;
+
+      try {
+        serviceAccount = JSON.parse(serviceKeyString);
+      } catch (parseError) {
+        debug.error("JSON parsing failed:", parseError);
+        throw new Error(
+          `Failed to parse FCM_SERVICE_KEY_STRINGIFIED: ${parseError instanceof Error ? parseError.message : "Invalid JSON format"}`
+        );
+      }
+
+      // 필수 속성들 검증
+      const requiredFields = ["project_id", "private_key", "client_email"];
+      const missingFields = requiredFields.filter(
+        (field) => !serviceAccount[field as keyof ServiceAccount]
       );
-    }
 
-    // 필수 속성들 검증
-    const requiredFields = ["project_id", "private_key", "client_email"];
-    const missingFields = requiredFields.filter(
-      (field) => !serviceAccount[field as keyof ServiceAccount]
-    );
+      if (missingFields.length > 0) {
+        debug.error("Missing required fields:", missingFields);
+        debug.error("Service account keys:", Object.keys(serviceAccount));
+        throw new Error(
+          `Service account is missing required properties: ${missingFields.join(", ")}`
+        );
+      }
 
-    if (missingFields.length > 0) {
-      debug.error("Missing required fields:", missingFields);
-      debug.error("Service account keys:", Object.keys(serviceAccount));
-      throw new Error(
-        `Service account is missing required properties: ${missingFields.join(", ")}`
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+
+      debug.log(
+        "Firebase Admin SDK initialized successfully with project:",
+        serviceAccount.projectId
       );
+    } catch (error) {
+      debug.error("Firebase Admin SDK initialization error:", error);
+      throw error;
     }
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-
-    debug.log(
-      "Firebase Admin SDK initialized successfully with project:",
-      serviceAccount.projectId
-    );
-  } catch (error) {
-    debug.error("Firebase Admin SDK initialization error:", error);
-    throw error;
+  } else {
+    debug.warn("FCM_SERVICE_KEY_STRINGIFIED environment variable is not set or empty - FCM functionality will be disabled");
   }
 }
 
@@ -61,6 +59,17 @@ if (!admin.apps.length) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Firebase가 초기화되지 않은 경우
+    if (!admin.apps.length) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "FCM service is not configured. Please set FCM_SERVICE_KEY_STRINGIFIED environment variable."
+        },
+        { status: 503 }
+      );
+    }
+
     const { token, title, message, link } = await request.json();
 
     debug.log("Received notification request::", {

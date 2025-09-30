@@ -1,10 +1,10 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import CommunityDetail from "@/components/community/CommunityDetail";
-import { CommunityPost } from "@/types/community";
 import { samplePosts } from "@/constants/community/sampleData";
+import { CommunityPost } from "@/types/community";
 
 /**
  * @description 커뮤니티 상세 페이지
@@ -17,17 +17,17 @@ const CommunityDetailPage = () => {
 
   useEffect(() => {
     const postId = params.id as string;
-    
+
     // 실제 환경에서는 API 호출로 데이터를 가져올 것
-    const foundPost = samplePosts.find(p => p.id === postId);
-    
+    const foundPost = samplePosts.find((p) => p.id === postId);
+
     if (foundPost) {
       setPost(foundPost);
     } else {
       // 포스트를 찾을 수 없는 경우 커뮤니티 목록으로 리다이렉트
       router.push("/community");
     }
-    
+
     setLoading(false);
   }, [params.id, router]);
 

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import FilterButtons from "@/components/community/FilterButtons";
+import PostFeed from "@/components/community/PostFeed";
+import UserImageCarousel from "@/components/community/UserImageCarousel";
+import { userImages } from "@/constants/community/sampleData";
 import { useCommunityPosts } from "@/hooks/community/useCommunityPosts";
 import { CommunityPost } from "@/types/community";
-import FilterButtons from "@/components/community/FilterButtons";
-import UserImageCarousel from "@/components/community/UserImageCarousel";
-import PostFeed from "@/components/community/PostFeed";
-import { userImages } from "@/constants/community/sampleData";
 
 /**
  * @description 커뮤니티 페이지
@@ -28,9 +28,10 @@ const Page = () => {
   };
 
   // 필터링된 포스트
-  const filteredPosts = activeFilter === "전체" 
-    ? posts 
-    : posts.filter(post => post.category === activeFilter);
+  const filteredPosts =
+    activeFilter === "전체"
+      ? posts
+      : posts.filter((post) => post.category === activeFilter);
 
   // Early Return 패턴으로 조건부 렌더링 처리
   if (loading) {
@@ -88,7 +89,7 @@ const Page = () => {
       <div className="px-4 pb-20">
         {/* 미션 프로그램 섹션 */}
         <div className="mb-5">
-          <div className="flex items-center gap-4 mb-5">
+          <div className="mb-5 flex items-center gap-4">
             <span className="text-lg font-bold text-gray-500">미션</span>
             <span className="text-lg font-bold text-black">프로그램</span>
           </div>
@@ -102,9 +103,9 @@ const Page = () => {
 
         {/* 필터 버튼들 - 스티키 */}
         <div className="sticky top-0 z-40 mb-6 bg-white py-2">
-          <FilterButtons 
-            activeFilter={activeFilter} 
-            onFilterChange={handleFilterChange} 
+          <FilterButtons
+            activeFilter={activeFilter}
+            onFilterChange={handleFilterChange}
           />
         </div>
 

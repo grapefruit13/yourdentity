@@ -69,13 +69,13 @@ export const userImages = [
     user: "유어123",
   },
   {
-    id: "2", 
+    id: "2",
     image: "/imgs/mockup2.jpg",
     user: "유어456",
   },
   {
     id: "3",
-    image: "/imgs/mockup3.jpg", 
+    image: "/imgs/mockup3.jpg",
     user: "유어789",
   },
   {
