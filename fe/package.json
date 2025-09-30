@@ -4,13 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https",
-    "dev:emulator": "concurrently \"cd functions && pnpm run build && cd .. && firebase emulators:start\" \"next dev --experimental-https\"",
     "build": "next build",
     "start": "next start",
-    "emulators": "firebase emulators:start",
-    "deploy": "pnpm build && firebase deploy",
-    "deploy:hosting": "pnpm build && firebase deploy --only hosting",
-    "deploy:functions": "firebase deploy --only functions",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier . --write",
@@ -26,6 +21,8 @@
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-toast": "^1.2.15",
+    "@tanstack/react-query": "^5.90.2",
+    "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.2.1",
@@ -39,7 +36,8 @@
     "react-dom": "19.1.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
-    "workbox-webpack-plugin": "^7.3.0"
+    "workbox-webpack-plugin": "^7.3.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
