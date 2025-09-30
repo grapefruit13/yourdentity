@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import FilterButtons from "@/components/community/FilterButtons";
+import PostFeed from "@/components/community/PostFeed";
+import UserImageCarousel from "@/components/community/UserImageCarousel";
+import { userImages } from "@/constants/community/sampleData";
 import { useCommunityPosts } from "@/hooks/community/useCommunityPosts";
 import { CommunityPost } from "@/types/community";
-import FilterButtons from "@/components/community/FilterButtons";
-import UserImageCarousel from "@/components/community/UserImageCarousel";
-import PostFeed from "@/components/community/PostFeed";
-import { userImages } from "@/constants/community/sampleData";
 
 /**
  * @description 커뮤니티 페이지
