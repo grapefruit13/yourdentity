@@ -36,6 +36,16 @@ const ICON = {
       alt: "왼쪽 화살표",
     },
   },
+  mission: {
+    active: {
+      url: "/icons/ic-mission-active.svg",
+      alt: "미션",
+    },
+    inactive: {
+      url: "/icons/ic-mission-inactive.svg",
+      alt: "미션",
+    },
+  },
 };
 
 export const IMAGE_URL = {
