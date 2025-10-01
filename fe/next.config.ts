@@ -11,7 +11,8 @@ export default withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  disable: false,
+  disable: false, // 프로덕션에서도 PWA 활성화
+  reloadOnOnline: true,
   runtimeCaching: [
     {
       urlPattern: /^https?.*/,

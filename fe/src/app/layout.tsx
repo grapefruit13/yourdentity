@@ -52,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* <meta name="apple-mobile-web-app-capable" content="yes" /> */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="유스잇" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -104,6 +104,25 @@ export default function RootLayout({
           rel="apple-touch-startup-image"
           href="/imgs/splash/splash-320x568.png"
           media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
+        />
+
+        {/* Service Worker 등록 스크립트 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                      console.log('SW registration failed: ', registrationError);
+                    });
+                });
+              }
+            `,
+          }}
         />
       </head>
       <body
