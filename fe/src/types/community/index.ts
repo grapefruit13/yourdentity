@@ -30,10 +30,3 @@ export interface UserImage {
   image: string;
   user: string;
 }
-
-export interface CommunityModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  post?: CommunityPost;
-  children?: React.ReactNode;
-}
