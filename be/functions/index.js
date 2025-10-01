@@ -21,6 +21,7 @@ const gatheringRoutes = require("./src/routes/gatherings");
 const tmiRoutes = require("./src/routes/tmi");
 const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
+const storeRoutes = require("./src/routes/store");
 
 // 서울 리전 설정
 setGlobalOptions({ region: "asia-northeast3" });
@@ -248,13 +249,14 @@ app.post("/echo", (req, res) => {
 });
 
 // API 라우트 등록
-app.use("/users", userRoutes);
-app.use("/missions", missionRoutes);
-app.use("/images", imageRoutes);
-app.use("/routines", routineRoutes);
-app.use("/gatherings", gatheringRoutes);
-app.use("/tmi", tmiRoutes);
-app.use("/communities", communityRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/missions", missionRoutes);
+app.use("/api/images", imageRoutes);
+app.use("/api/routines", routineRoutes);
+app.use("/api/gatherings", gatheringRoutes);
+app.use("/api/tmi", tmiRoutes);
+app.use("/api/communities", communityRoutes);
+app.use("/api/store", storeRoutes);
 app.use("/", commentRoutes);
 
 // 에러 핸들러 (마지막에 등록)
