@@ -11,6 +11,7 @@ import { cn } from "@/utils/shared/cn";
  */
 const BottomNavigation = () => {
   const pathname = usePathname();
+  const isMissionActive = pathname?.startsWith("/mission") === true;
   const isCommunityActive = pathname?.startsWith("/community") === true;
   const isMyPageActive = pathname?.startsWith("/my-page") === true;
 
@@ -20,12 +21,12 @@ const BottomNavigation = () => {
         <button className="flex flex-col items-center justify-center gap-1 hover:cursor-pointer">
           <Image
             src={
-              isMyPageActive
+              isMissionActive
                 ? IMAGE_URL.ICON.mission.active.url
                 : IMAGE_URL.ICON.mission.inactive.url
             }
             alt={
-              isMyPageActive
+              isMissionActive
                 ? IMAGE_URL.ICON.mission.active.alt
                 : IMAGE_URL.ICON.mission.inactive.alt
             }
@@ -35,7 +36,7 @@ const BottomNavigation = () => {
           <span
             className={cn(
               "text-xs leading-none font-semibold text-gray-400",
-              isMyPageActive && "text-[#FF006C]"
+              isMissionActive && "text-[#FF006C]"
             )}
           >
             미션
