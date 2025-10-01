@@ -5,6 +5,7 @@ import useFcmToken from "@/hooks/shared/useFcmToken";
 import { useNotification } from "@/hooks/shared/useNotification";
 import { debug } from "@/utils/shared/debugger";
 
+// TODO: 레이아웃맞추기.
 /**
  * @description 미션 페이지
  */
@@ -25,7 +26,7 @@ const Page = () => {
     }
   };
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-20 p-10">
+    <div className="flex h-full flex-col items-center justify-center gap-20 p-10">
       <h1 className="mb-4 text-4xl font-bold">FCM 테스트</h1>
 
       {notificationPermissionStatus === "granted" ? (

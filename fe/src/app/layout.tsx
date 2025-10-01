@@ -52,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        {/* <meta name="apple-mobile-web-app-capable" content="yes" /> */}
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="유스잇" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -106,7 +106,9 @@ export default function RootLayout({
           media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 1) and (orientation: portrait)"
         />
       </head>
-      <body className={notoSansKr.variable}>
+      <body
+        className={cn(notoSansKr.variable, "flex h-screen w-full flex-col")}
+      >
         <Toaster />
         <div className="flex h-screen w-full flex-col">
           {/* 데모 위해 임시로 탑바/바텀 네비게이션 적용 */}

@@ -7,9 +7,9 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex h-screen w-full flex-col">
+    <div className="flex h-full w-full flex-col">
       {/* <TopBar /> */}
-      <main className="h-full">{children}</main>
+      <main className="flex h-full w-full flex-col">{children}</main>
       {/* <BottomNavigation /> */}
       {/* <PWAInstall /> */}
     </div>
