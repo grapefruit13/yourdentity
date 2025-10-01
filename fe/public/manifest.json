@@ -2,12 +2,16 @@
   "name": "유스잇",
   "short_name": "유스잇",
   "description": "유스잇 앱",
-  "theme_color": "#000000",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
   "start_url": "/",
+  "lang": "ko",
+  "dir": "ltr",
+  "categories": ["lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/favicon/16x16.png",
@@ -36,5 +40,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": []
 }
