@@ -1,12 +1,22 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("../../../../youthvoice-2025-firebase.json"); // 상대경로 확인
+const serviceAccount = require("../../../../youthvoice-2025-firebase.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  projectId: "youthvoice-2025", // 생략 가능 (키 파일 안에 이미 있음)
 });
 
 const db = admin.firestore();
+
+// const admin = require("firebase-admin");
+
+// process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8081";
+
+// // Firebase Admin SDK 초기화
+// admin.initializeApp({
+//   projectId: "", // 로컬에서는 projectId만 주면 됨
+// });
+
+// const db = admin.firestore();
 
 // 랜덤 ID 생성 함수
 const generateRandomId = () => {
