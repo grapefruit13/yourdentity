@@ -1778,11 +1778,346 @@ const createFirestoreCollections = async () => {
     }
     console.log("✅ TMI 프로젝트 컬렉션 생성 완료");
 
+    // 스토어 컬렉션 생성
+    await createStoreCollections();
+
     console.log("🎉 모든 Firestore 컬렉션 생성 완료!");
     process.exit(0);
   } catch (error) {
     console.error("❌ 컬렉션 생성 중 오류 발생:", error);
     process.exit(1);
+  }
+};
+
+// 스토어 컬렉션 생성 함수
+const createStoreCollections = async () => {
+  try {
+    console.log("🏪 스토어 컬렉션 생성을 시작합니다...");
+
+    // 샘플 상품 데이터
+    const sampleProduct = {
+      id: "CP:45HBVVFPYEFOI",
+      name: "[모어포모레] 에브리 립밤",
+      description:
+        "건조한 입술을 촉촉하게 지키고, 도심 속 가로수도 지키는 종이 케이스에 담긴 비건 립밤입니다.\n(*퓨어/레드 옵션이 있습니다. )",
+      price: 0,
+      currency: "KRW",
+      additionalFees: [
+        {
+          type: "coin",
+          resourceId: "COIN-43TOZ4S9867",
+          amount: 150,
+        },
+      ],
+      options: [
+        {
+          items: [
+            {
+              title: {
+                ko: "퓨어",
+              },
+              value: "value_e88ea371-b50e-4671-8956-de497ad8d838",
+              imageUrl:
+                "https://youthvoice.vake.io/files/G0IZUDWCL/FD3MXBDP4/file",
+            },
+            {
+              title: {
+                ko: "레드",
+              },
+              value: "value_f6c68132-2435-48f0-8dee-cf2bffbbdce3",
+              imageUrl:
+                "https://youthvoice.vake.io/files/G0IZUDWCL/FZ0K9UVTF/file",
+            },
+          ],
+          key: "key_f89d9c57-b9e8-47c7-b152-9cd99b28f7a2",
+          label: {
+            ko: "색상을 선택해주세요.",
+          },
+        },
+      ],
+      productVariants: [
+        {
+          id: "H6POQ92WZK",
+          productId: "CP:45HBVVFPYEFOI",
+          values: {
+            "key_f89d9c57-b9e8-47c7-b152-9cd99b28f7a2":
+              "value_e88ea371-b50e-4671-8956-de497ad8d838",
+          },
+          soldCount: 1,
+          stockCount: 29,
+          price: 150,
+          additionalFees: [
+            {
+              type: "coin",
+              amount: 150,
+              resourceId: "COIN-43TOZ4S9867",
+            },
+          ],
+          estimatedDeliveryAt: 0,
+          status: "onSale",
+          currency: "KRW",
+          createdAt: 1745458857059,
+          updatedAt: 1745458857059,
+          buyable: true,
+        },
+        {
+          id: "H6POQ92XEJ",
+          productId: "CP:45HBVVFPYEFOI",
+          values: {
+            "key_f89d9c57-b9e8-47c7-b152-9cd99b28f7a2":
+              "value_f6c68132-2435-48f0-8dee-cf2bffbbdce3",
+          },
+          soldCount: 1,
+          stockCount: 29,
+          price: 150,
+          additionalFees: [
+            {
+              type: "coin",
+              amount: 150,
+              resourceId: "COIN-43TOZ4S9867",
+            },
+          ],
+          estimatedDeliveryAt: 0,
+          status: "onSale",
+          currency: "KRW",
+          createdAt: 1745458857059,
+          updatedAt: 1745458857059,
+          buyable: true,
+        },
+      ],
+      view_count: 176,
+      view_count_member: 41,
+      soldCount: 2,
+      soldAmount: 0,
+      buyersCount: 2,
+      status: "onSale",
+      sellerId: "CS:NOZU0HZP",
+      sellerName: "유스-잇",
+      content: [
+        {
+          src: "https://youthvoice.vake.io/files/G0IZUDWCL/FDUYDPKWN/___________2025-04-24_______10.32.05.png",
+          type: "image",
+          width: 548,
+          height: 548,
+        },
+        {
+          type: "text",
+          content:
+            '<attr fw="600" fs="24">건조한 입술도 촉촉하게 지키고,</attr>',
+        },
+        {
+          type: "text",
+          content:
+            '<attr fw="600" fs="24">도심 속 가로수도 지키는 모어포모레 에브리 립밤</attr>',
+        },
+        {
+          type: "text",
+          content: "",
+        },
+        {
+          type: "text",
+          content:
+            '<attr fw="600" fc="#ffffff" bc="#ffcd28" fs="24"><https://morestore.co.kr/product/detail.html?product_no=876&cate_no=1&display_group=1#none|제품 자세히 살펴보기|false></attr>',
+        },
+        {
+          type: "text",
+          content: "",
+        },
+        {
+          type: "text",
+          content: "유스-잇에 함께해주셔서 진심으로 감사합니다.🩵",
+        },
+        {
+          type: "text",
+          content:
+            "여러분이 쌓아온 소중한 '나다움'을, 원하는 선물로 바꿔보세요!",
+        },
+        {
+          type: "text",
+          content: "",
+        },
+        {
+          type: "text",
+          content: "&#42;상품은 영업일 중 5일 내로 전송될 예정입니다.",
+        },
+      ],
+      media: [
+        {
+          src: "https://youthvoice.vake.io/files/G0IZUDWCL/FDUYDPKWN/___________2025-04-24_______10.32.05.png",
+          type: "image",
+          width: 548,
+          height: 548,
+        },
+      ],
+      buyable: true,
+      createdAt: 1745458855909,
+      updatedAt: 1755326139550,
+      type: "normal",
+    };
+
+    // 상품 컬렉션에 샘플 데이터 추가
+    await db.collection("products").doc(sampleProduct.id).set(sampleProduct);
+    console.log("✅ 상품 데이터가 생성되었습니다:", sampleProduct.id);
+
+    // 추가 샘플 상품들
+    const additionalProducts = [
+      {
+        id: "CP:ONLINE_GIFT_20K",
+        name: "온라인 상품권 2만원 권",
+        description:
+          "다양한 온라인 쇼핑몰에서 사용할 수 있는 2만원 상품권입니다.",
+        price: 0,
+        originalPrice: 0,
+        normalPrice: 0,
+        currency: "KRW",
+        additionalFees: [
+          {
+            type: "coin",
+            resourceId: "COIN-43TOZ4S9867",
+            amount: 250,
+          },
+        ],
+        content: [
+          {
+            src: "https://example.com/gift-card-20k.jpg",
+            type: "image",
+            width: 400,
+            height: 300,
+          },
+          {
+            type: "text",
+            content: "온라인 상품권 2만원 권",
+          },
+        ],
+        media: [
+          {
+            src: "https://example.com/gift-card-20k.jpg",
+            type: "image",
+            width: 400,
+            height: 300,
+          },
+        ],
+        options: [],
+        productVariants: [],
+        view_count: 267,
+        view_count_member: 50,
+        soldCount: 5,
+        soldAmount: 0,
+        buyersCount: 5,
+        status: "onSale",
+        shippingRequired: false,
+        sellerId: "CS:NOZU0HZP",
+        sellerName: "유스-잇",
+        shippingFee: 0,
+        customFields: [],
+        completeMessage: {
+          title: {
+            ko: "상품권이 이메일로 발송됩니다!",
+          },
+          description: {},
+        },
+        primaryDetails: [],
+        repliesCount: 0,
+        reviewsCount: 0,
+        ratingsCount: 0,
+        commentsCount: 0,
+        avgRate: 0,
+        deliveryType: "online",
+        isDisplayed: true,
+        variantSkus: [],
+        creditAmount: 0,
+        buyable: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        type: "normal",
+      },
+      {
+        id: "CP:ONLINE_GIFT_30K",
+        name: "온라인 상품권 3만원 권",
+        description:
+          "다양한 온라인 쇼핑몰에서 사용할 수 있는 3만원 상품권입니다.",
+        price: 0,
+        originalPrice: 0,
+        normalPrice: 0,
+        currency: "KRW",
+        additionalFees: [
+          {
+            type: "coin",
+            resourceId: "COIN-43TOZ4S9867",
+            amount: 350,
+          },
+        ],
+        content: [
+          {
+            src: "https://example.com/gift-card-30k.jpg",
+            type: "image",
+            width: 400,
+            height: 300,
+          },
+          {
+            type: "text",
+            content: "온라인 상품권 3만원 권",
+          },
+        ],
+        media: [
+          {
+            src: "https://example.com/gift-card-30k.jpg",
+            type: "image",
+            width: 400,
+            height: 300,
+          },
+        ],
+        options: [],
+        productVariants: [],
+        view_count: 202,
+        view_count_member: 30,
+        soldCount: 3,
+        soldAmount: 0,
+        buyersCount: 3,
+        status: "onSale",
+        shippingRequired: false,
+        sellerId: "CS:NOZU0HZP",
+        sellerName: "유스-잇",
+        shippingFee: 0,
+        customFields: [],
+        completeMessage: {
+          title: {
+            ko: "상품권이 이메일로 발송됩니다!",
+          },
+          description: {},
+        },
+        primaryDetails: [],
+        repliesCount: 0,
+        reviewsCount: 0,
+        ratingsCount: 0,
+        commentsCount: 0,
+        avgRate: 0,
+        deliveryType: "online",
+        isDisplayed: true,
+        variantSkus: [],
+        creditAmount: 0,
+        buyable: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        type: "normal",
+      },
+    ];
+
+    // 추가 상품들 생성
+    for (const product of additionalProducts) {
+      await db.collection("products").doc(product.id).set(product);
+      console.log("✅ 추가 상품 데이터가 생성되었습니다:", product.id);
+    }
+
+    console.log("🎉 스토어 컬렉션 생성이 완료되었습니다!");
+    console.log("📊 생성된 컬렉션:");
+    console.log("  - products: 상품 정보");
+    console.log("  - purchases: 구매 신청 정보 (자동 생성)");
+    console.log("  - likes: 상품 좋아요 정보 (자동 생성)");
+    console.log("  - qnas: 상품 Q&A 정보 (자동 생성)");
+  } catch (error) {
+    console.error("❌ 스토어 컬렉션 생성 중 오류 발생:", error);
+    throw error;
   }
 };
 
