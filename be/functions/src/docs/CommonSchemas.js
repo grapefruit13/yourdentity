@@ -1101,6 +1101,325 @@ class CommonSchemas {
  *           format: date-time
  *           description: 수정일시
  *           example: "2025-09-29T02:04:38.610Z"
+ *
+ *     # 스토어 상품 요약 스키마
+ *     ProductSummary:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 상품 ID
+ *           example: "CP:45HBVVFPYEFOI"
+ *         name:
+ *           type: string
+ *           description: 상품명
+ *           example: "[모어포모레] 에브리 립밤"
+ *         description:
+ *           type: string
+ *           description: 상품 설명
+ *           example: "건조한 입술을 촉촉하게 지키고..."
+ *         status:
+ *           type: string
+ *           description: 상품 상태
+ *           enum: ["onSale", "soldOut", "discontinued"]
+ *           example: "onSale"
+ *         price:
+ *           type: number
+ *           description: 상품 가격
+ *           example: 150
+ *         currency:
+ *           type: string
+ *           description: 통화
+ *           example: "KRW"
+ *         stockCount:
+ *           type: integer
+ *           description: 재고 수량
+ *           example: 100
+ *         soldCount:
+ *           type: integer
+ *           description: 판매 수량
+ *           example: 2
+ *         viewCount:
+ *           type: integer
+ *           description: 조회수
+ *           example: 41
+ *         buyable:
+ *           type: boolean
+ *           description: 구매 가능 여부
+ *           example: true
+ *         sellerId:
+ *           type: string
+ *           description: 판매자 ID
+ *           example: "CS:NOZU0HZP"
+ *         sellerName:
+ *           type: string
+ *           description: 판매자명
+ *           example: "유스-잇"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: 생성일시
+ *           example: "2025-01-24T10:30:55.909Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 수정일시
+ *           example: "2025-01-24T10:30:55.909Z"
+ *
+ *     # 스토어 상품 상세 스키마
+ *     ProductDetail:
+ *       allOf:
+ *         - $ref: "#/components/schemas/ProductSummary"
+ *         - type: object
+ *           properties:
+ *             productVariants:
+ *               type: array
+ *               description: 상품 옵션 목록
+ *               items:
+ *                 $ref: "#/components/schemas/ProductVariant"
+ *             additionalFees:
+ *               type: array
+ *               description: 추가 수수료 목록
+ *               items:
+ *                 $ref: "#/components/schemas/AdditionalFee"
+ *             content:
+ *               type: array
+ *               description: 콘텐츠 배열
+ *               items:
+ *                 $ref: "#/components/schemas/ContentItem"
+ *             media:
+ *               type: array
+ *               description: 미디어 배열
+ *               items:
+ *                 $ref: "#/components/schemas/MediaItem"
+ *             qna:
+ *               type: array
+ *               description: QnA 목록
+ *               items:
+ *                 $ref: "#/components/schemas/QnA"
+ *
+ *     # 상품 옵션 스키마
+ *     ProductVariant:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 옵션 ID
+ *           example: "H6POQ92WZK"
+ *         name:
+ *           type: string
+ *           description: 옵션명
+ *           example: "퓨어"
+ *         price:
+ *           type: number
+ *           description: 옵션 가격
+ *           example: 150
+ *         stockCount:
+ *           type: integer
+ *           description: 옵션 재고 수량
+ *           example: 50
+ *         soldCount:
+ *           type: integer
+ *           description: 옵션 판매 수량
+ *           example: 1
+ *
+ *     # 추가 수수료 스키마
+ *     AdditionalFee:
+ *       type: object
+ *       properties:
+ *         type:
+ *           type: string
+ *           description: 수수료 타입
+ *           example: "coin"
+ *         amount:
+ *           type: number
+ *           description: 수수료 금액
+ *           example: 150
+ *         resourceId:
+ *           type: string
+ *           description: 리소스 ID
+ *           example: "COIN-43TOZ4S9867"
+ *
+ *     # 콘텐츠 아이템 스키마
+ *     ContentItem:
+ *       type: object
+ *       properties:
+ *         type:
+ *           type: string
+ *           description: 콘텐츠 타입
+ *           enum: ["text", "image", "video"]
+ *           example: "text"
+ *         content:
+ *           type: string
+ *           description: 텍스트 콘텐츠 (type이 text인 경우)
+ *           example: "건조한 입술도 촉촉하게 지키고..."
+ *         src:
+ *           type: string
+ *           description: 미디어 URL (type이 image/video인 경우)
+ *           example: "https://youthvoice.vake.io/files/..."
+ *         width:
+ *           type: integer
+ *           description: 너비 (이미지/비디오인 경우)
+ *           example: 548
+ *         height:
+ *           type: integer
+ *           description: 높이 (이미지/비디오인 경우)
+ *           example: 548
+ *
+ *     # 미디어 아이템 스키마
+ *     MediaItem:
+ *       type: object
+ *       properties:
+ *         url:
+ *           type: string
+ *           description: 미디어 URL
+ *           example: "https://youthvoice.vake.io/files/..."
+ *         type:
+ *           type: string
+ *           description: 미디어 타입
+ *           enum: ["image", "video"]
+ *           example: "image"
+ *         order:
+ *           type: integer
+ *           description: 순서
+ *           example: 1
+ *         width:
+ *           type: integer
+ *           description: 너비
+ *           example: 548
+ *         height:
+ *           type: integer
+ *           description: 높이
+ *           example: 548
+ *
+ *     # 구매 신청 스키마
+ *     PurchaseApplication:
+ *       type: object
+ *       properties:
+ *         applicationId:
+ *           type: string
+ *           description: 신청 ID
+ *           example: "generated_application_id"
+ *         type:
+ *           type: string
+ *           description: 신청 타입
+ *           example: "PRODUCT"
+ *         targetId:
+ *           type: string
+ *           description: 대상 ID (상품 ID)
+ *           example: "CP:45HBVVFPYEFOI"
+ *         variantId:
+ *           type: string
+ *           description: 옵션 ID
+ *           example: "H6POQ92WZK"
+ *         userId:
+ *           type: string
+ *           description: 사용자 ID
+ *           example: "user123"
+ *         status:
+ *           type: string
+ *           description: 신청 상태
+ *           enum: ["PENDING", "COMPLETED", "CANCELLED"]
+ *           example: "PENDING"
+ *         quantity:
+ *           type: integer
+ *           description: 수량
+ *           example: 2
+ *         totalPrice:
+ *           type: number
+ *           description: 총 가격
+ *           example: 300
+ *         requiredPoints:
+ *           type: number
+ *           description: 필요 포인트
+ *           example: 600
+ *         remainingBalance:
+ *           type: number
+ *           description: 잔여 잔액
+ *           example: -100
+ *         customFieldsResponse:
+ *           type: object
+ *           description: 커스텀 필드 응답
+ *           example: {
+ *             "custom_1": "서울시 강남구 테헤란로 123"
+ *           }
+ *         shippingAddress:
+ *           type: string
+ *           description: 배송 주소
+ *           example: "서울시 강남구 테헤란로 123"
+ *         phoneNumber:
+ *           type: string
+ *           description: 전화번호
+ *           example: "010-1234-5678"
+ *         appliedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 신청일시
+ *           example: "2025-01-24T10:30:55.909Z"
+ *         targetName:
+ *           type: string
+ *           description: 대상명 (상품명)
+ *           example: "[모어포모레] 에브리 립밤"
+ *         additionalFees:
+ *           type: array
+ *           description: 추가 수수료 목록
+ *           items:
+ *             $ref: "#/components/schemas/AdditionalFee"
+ *
+ *     # QnA 스키마
+ *     QnA:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: QnA ID
+ *           example: "qna_123"
+ *         content:
+ *           type: array
+ *           description: 질문 콘텐츠
+ *           items:
+ *             $ref: "#/components/schemas/ContentItem"
+ *         media:
+ *           type: array
+ *           description: 질문 미디어
+ *           items:
+ *             $ref: "#/components/schemas/MediaItem"
+ *         answerContent:
+ *           type: array
+ *           description: 답변 콘텐츠
+ *           items:
+ *             $ref: "#/components/schemas/ContentItem"
+ *         answerMedia:
+ *           type: array
+ *           description: 답변 미디어
+ *           items:
+ *             $ref: "#/components/schemas/MediaItem"
+ *         answerUserId:
+ *           type: string
+ *           description: 답변자 ID
+ *           example: "admin123"
+ *         askedBy:
+ *           type: string
+ *           description: 질문자 ID
+ *           example: "user123"
+ *         answeredBy:
+ *           type: string
+ *           description: 답변자 ID
+ *           example: "admin123"
+ *         askedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 질문일시
+ *           example: "2025-01-24T10:30:55.909Z"
+ *         answeredAt:
+ *           type: string
+ *           format: date-time
+ *           description: 답변일시
+ *           example: "2025-01-24T11:30:55.909Z"
+ *         likesCount:
+ *           type: integer
+ *           description: 좋아요 수
+ *           example: 3
  */
 
 module.exports = CommonSchemas;
