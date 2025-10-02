@@ -47,12 +47,12 @@ const options = {
     ],
     servers: [
       {
-        url: process.env.FUNCTIONS_EMULATOR 
-          ? "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api"
-          : "/api",
-        description: process.env.FUNCTIONS_EMULATOR 
-          ? "로컬 개발 서버" 
-          : "프로덕션 서버",
+        url: process.env.FUNCTIONS_EMULATOR ?
+          "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api" :
+          "/api",
+        description: process.env.FUNCTIONS_EMULATOR ?
+          "로컬 개발 서버" :
+          "프로덕션 서버",
       },
     ],
     components: {
