@@ -343,64 +343,6 @@ class TmiControllerDocs {
    */
   static getAllTmiProjects() {}
 
-  /**
-   * @swagger
-   * /tmi:
-   *   post:
-   *     summary: 새 TMI 프로젝트 생성
-   *     description: 새로운 TMI 프로젝트를 생성합니다.
-   *     tags: [TMI]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/CreateTmiProjectRequest'
-   *           examples:
-   *             나다운게:
-   *               summary: 나다운게 TMI 프로젝트 생성 예시
-   *               value:
-   *                 name: "나다운게"
-   *                 description: "학교 밖 청소년의 나다움을 찾는 12주 자아탐색 창작 프로젝트"
-   *                 status: "OPEN"
-   *                 price: 0
-   *                 currency: "KRW"
-   *                 stockCount: 15
-   *                 deadline: "2025-09-30T09:00:00Z"
-   *                 sellerId: "CS:NOZU0HZP"
-   *                 sellerName: "유스보이스"
-   *                 images: []
-   *                 content: []
-   *                 options: []
-   *                 details: []
-   *                 variants: []
-   *     responses:
-   *       201:
-   *         description: TMI 프로젝트가 성공적으로 생성됨
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/TmiProjectResponse'
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/CommonErrorResponse'
-   *       401:
-   *         description: 인증 실패
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/CommonErrorResponse'
-   *       500:
-   *         description: 서버 에러
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/CommonErrorResponse'
-   */
-  static createTmiProject() {}
 
   /**
    * @swagger

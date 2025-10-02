@@ -13,7 +13,7 @@ class CommunityControllerDocs {
      *   get:
      *     tags: [Communities]
      *     summary: 커뮤니티 목록 조회
-     *     description: 모든 커뮤니티 목록을 조회합니다
+     *     description: 한끗루틴(66일 한끗루틴, 플래너 인증 루틴,...), 월간 소모임(9월,10월 소모임...),TMI(25년 상반기, 25년 하반기..) 등 모든 프로그램 활동 조회
      *     parameters:
      *       - in: query
      *         name: type
@@ -62,7 +62,7 @@ class CommunityControllerDocs {
      * /communities/posts:
      *   get:
      *     tags: [Communities]
-     *     summary: 전체 커뮤니티 포스트 조회
+     *     summary: 전체 커뮤니티(66일투틴 ,월간소모임, TMI 등) 게시글 조회
      *     description: 모든 커뮤니티의 포스트를 한번에 조회합니다 (필터링 및 페이지네이션 지원)
      *     parameters:
      *       - in: query

@@ -183,69 +183,6 @@ const getTmiProjectById = async (req, res) => {
   }
 };
 
-// 새 TMI 프로젝트 생성
-const createTmiProject = async (req, res) => {
-  try {
-    const {
-      name,
-      description,
-      status = "OPEN",
-      price = 0,
-      currency = "KRW",
-      stockCount = 0,
-      deadline,
-      sellerId,
-      sellerName,
-      content = [],
-      media = [],
-      options = [],
-      details = [],
-      variants = [],
-      customFields = [],
-    } = req.body;
-
-    if (!name || !description) {
-      return res
-          .status(400)
-          .json({error: "name and description are required"});
-    }
-
-    const now = Date.now();
-
-    const projectData = {
-      name,
-      description,
-      status,
-      price,
-      currency,
-      stockCount,
-      deadline,
-      soldCount: 0,
-      viewCount: 0,
-      buyable: status === "OPEN" && stockCount > 0,
-      sellerId: sellerId || "anonymous",
-      sellerName: sellerName || "Unknown",
-      content,
-      media,
-      options,
-      details,
-      variants,
-      customFields,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const projectId = await firestoreService.addDocument("tmis", projectData);
-
-    res.status(201).json({
-      id: projectId,
-      ...projectData,
-    });
-  } catch (error) {
-    console.error("Error creating TMI project:", error);
-    res.status(500).json({error: "Failed to create TMI project"});
-  }
-};
 
 // TMI 프로젝트 신청하기
 const applyToTmiProject = async (req, res) => {
@@ -692,7 +629,6 @@ const toggleTmiProjectLike = async (req, res) => {
 
 module.exports = {
   getAllTmiProjects,
-  createTmiProject,
   getTmiProjectById,
   applyToTmiProject,
   createQnA,

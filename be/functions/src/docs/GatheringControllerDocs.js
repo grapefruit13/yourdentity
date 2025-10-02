@@ -155,58 +155,6 @@ class GatheringControllerDocs {
      */
   }
 
-  static createGathering() {
-    /**
-     * @swagger
-     * /gatherings:
-     *   post:
-     *     summary: 새 소모임 생성
-     *     tags: [Gatherings]
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - title
-     *               - description
-     *             properties:
-     *               title:
-     *                 type: string
-     *                 description: 소모임 제목
-     *                 example: "매주 독서 모임"
-     *               description:
-     *                 type: string
-     *                 description: 소모임 설명
-     *                 example: "매주 책을 읽고 토론하는 모임입니다"
-     *               status:
-     *                 type: string
-     *                 enum: [OPEN, CLOSED, CANCELLED]
-     *                 default: "OPEN"
-     *                 description: 소모임 상태
-     *                 example: "OPEN"
-     *               deadline:
-     *                 type: string
-     *                 format: date-time
-     *                 nullable: true
-     *                 description: 마감일
-     *                 example: "2024-12-31T23:59:59Z"
-     *               images:
-     *                 type: array
-     *                 items:
-     *                   type: string
-     *                 description: 이미지 URL 목록
-     *                 example: ["https://example.com/image1.jpg"]
-     *     responses:
-     *       201:
-     *         description: 소모임 생성 성공
-     *       400:
-     *         description: 잘못된 요청
-     *       500:
-     *         description: 서버 오류
-     */
-  }
 
   static createQnA() {
     /**

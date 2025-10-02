@@ -51,71 +51,6 @@ const getAllGatherings = async (req, res) => {
   }
 };
 
-// 새 소모임 생성
-const createGathering = async (req, res) => {
-  try {
-    const {
-      name,
-      description,
-      status = "OPEN",
-      price = 0,
-      currency = "KRW",
-      stockCount = 0,
-      deadline,
-      sellerId,
-      sellerName,
-      content = [],
-      media = [],
-      options = [],
-      details = [],
-      variants = [],
-      customFields = [],
-    } = req.body;
-
-    if (!name || !description) {
-      return res
-          .status(400)
-          .json({error: "name and description are required"});
-    }
-
-    const now = Date.now();
-    const gatheringData = {
-      name,
-      description,
-      status,
-      price,
-      currency,
-      stockCount,
-      deadline: deadline ? new Date(deadline) : null,
-      soldCount: 0,
-      viewCount: 0,
-      buyable: status === "OPEN" && stockCount > 0,
-      sellerId: sellerId || "anonymous",
-      sellerName: sellerName || "Unknown",
-      content,
-      media,
-      options,
-      details,
-      variants,
-      customFields,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const gatheringId = await firestoreService.addDocument(
-        "gatherings",
-        gatheringData,
-    );
-
-    res.status(201).json({
-      id: gatheringId,
-      ...gatheringData,
-    });
-  } catch (error) {
-    console.error("Error creating gathering:", error);
-    res.status(500).json({error: "Failed to create gathering"});
-  }
-};
 
 // 소모임 상세 조회 (신청페이지 전용)
 const getGatheringById = async (req, res) => {
@@ -709,7 +644,6 @@ const toggleGatheringLike = async (req, res) => {
 
 module.exports = {
   getAllGatherings,
-  createGathering,
   getGatheringById,
   applyToGathering,
   createQnA,
