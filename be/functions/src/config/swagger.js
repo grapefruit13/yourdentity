@@ -41,21 +41,8 @@ const options = {
       },
       {
         name: "Communities",
-        description: "커뮤니티 통합 관리 API (전체 포스트 조회, 루틴 인증글, 소모임 후기글, TMI 소개글)",
-      },
-    ],
-    servers: [
-      {
-        url: "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api",
-        description: "개발 서버 (localhost)",
-      },
-      {
-        url: "http://192.168.0.12:5001/youthvoice-2025/asia-northeast3/api",
-        description: "개발 서버 (WiFi 네트워크)",
-      },
-      {
-        url: "https://youthvoice-2025-asia-northeast3-xxxxx.cloudfunctions.net/api",
-        description: "프로덕션 서버",
+        description:
+          "커뮤니티 통합 관리 API (전체 포스트 조회, 루틴 인증글, 소모임 후기글, TMI 소개글)",
       },
     ],
     components: {
@@ -153,7 +140,8 @@ const options = {
             url: {
               type: "string",
               description: "이미지 URL",
-              example: "https://youthvoice.vake.io/files/G0IZUDWCL/FKGRWXUG8/file",
+              example:
+                "https://youthvoice.vake.io/files/G0IZUDWCL/FKGRWXUG8/file",
             },
             order: {
               type: "number",
@@ -623,7 +611,13 @@ const options = {
             },
             type: {
               type: "string",
-              enum: ["tmi", "review", "routine_cert", "gathering", "community_post"],
+              enum: [
+                "tmi",
+                "review",
+                "routine_cert",
+                "gathering",
+                "community_post",
+              ],
               description: "댓글 타입",
             },
             targetId: {
