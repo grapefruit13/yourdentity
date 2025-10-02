@@ -898,14 +898,7 @@ const deletePost = async (req, res) => {
 const togglePostLike = async (req, res) => {
   try {
     const {communityId, postId} = req.params;
-    const {userId} = req.body;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "userId는 필수입니다.",
-      });
-    }
+    const userId = "user123"; // 하드코딩
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(

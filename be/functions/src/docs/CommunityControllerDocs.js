@@ -718,7 +718,7 @@ class CommunityControllerDocs {
      *   post:
      *     tags: [Communities]
      *     summary: 커뮤니티 게시글 좋아요 토글
-     *     description: 특정 커뮤니티의 게시글에 좋아요를 토글합니다
+     *     description: 특정 커뮤니티의 게시글에 좋아요를 토글합니다 (현재 userId는 "user123"으로 하드코딩됨)
      *     parameters:
      *       - in: path
      *         name: communityId
@@ -734,19 +734,6 @@ class CommunityControllerDocs {
      *           type: string
      *         description: 게시글 ID
      *         example: "CERT_1234567890"
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - userId
-     *             properties:
-     *               userId:
-     *                 type: string
-     *                 description: 사용자 ID
-     *                 example: "user123"
      *     responses:
      *       200:
      *         description: 좋아요 토글 성공
