@@ -278,23 +278,17 @@ class FirestoreService {
       });
     });
 
-    // 전체 개수 조회 (총 페이지 수 계산을 위해)
-    let totalCount = 0;
-    if (where.length > 0) {
-      let countQuery = db.collection(collectionName);
-      where.forEach((condition) => {
-        countQuery = countQuery.where(
-            condition.field,
-            condition.operator,
-            condition.value,
-        );
-      });
-      const countSnapshot = await countQuery.get();
-      totalCount = countSnapshot.size;
-    } else {
-      const countSnapshot = await db.collection(collectionName).get();
-      totalCount = countSnapshot.size;
-    }
+    // 전체 개수 조회 (총 페이지 수 계산을 위해) - count() 사용으로 성능 최적화
+    let countQuery = db.collection(collectionName);
+    where.forEach((condition) => {
+      countQuery = countQuery.where(
+          condition.field,
+          condition.operator,
+          condition.value,
+      );
+    });
+    const countSnapshot = await countQuery.count().get();
+    const totalCount = countSnapshot.data().count;
 
     const totalPages = Math.ceil(totalCount / size);
     const hasNext = page < totalPages - 1;

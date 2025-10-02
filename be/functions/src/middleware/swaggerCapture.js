@@ -21,16 +21,20 @@ const capture = () => {
         // API 엔드포인트 정보 캡처
         const endpoint = {
           method: req.method,
+          baseUrl: req.baseUrl || "",
           path: req.route ? req.route.path : req.path,
           originalUrl: req.originalUrl,
           statusCode: res.statusCode,
           response: body,
           timestamp: new Date().toISOString(),
-          headers: req.headers,
         };
 
-        // 엔드포인트 키 생성 (method + path)
-        const key = `${req.method} ${req.route ? req.route.path : req.path}`;
+        // 경로 정규화 (baseUrl + path)
+        const normalizedPath = (endpoint.baseUrl || "") + (endpoint.path || "");
+        endpoint.normalizedPath = normalizedPath || endpoint.originalUrl;
+
+        // 엔드포인트 키 생성 (method + normalizedPath)
+        const key = `${endpoint.method} ${endpoint.normalizedPath}`;
 
         // 캡처된 데이터 저장
         capturedData.set(key, endpoint);
@@ -71,8 +75,8 @@ const toOpenAPISpec = () => {
     paths: {},
   };
 
-  capturedData.forEach((endpoint, key) => {
-    const path = endpoint.path || endpoint.originalUrl;
+  capturedData.forEach((endpoint) => {
+    const path = endpoint.normalizedPath || endpoint.originalUrl;
     const method = endpoint.method.toLowerCase();
 
     if (!spec.paths[path]) {

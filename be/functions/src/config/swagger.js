@@ -174,7 +174,7 @@ const options = {
               description: "순서",
               example: 1,
             },
-            text: {
+            content: {
               type: "string",
               description: "텍스트 내용 (text 타입일 때)",
               example: "오늘도 화이팅!",

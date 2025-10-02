@@ -1,8 +1,7 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("../../../../youthvoice-2025-firebase.json");
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.applicationDefault(),
 });
 
 const db = admin.firestore();
@@ -1115,11 +1114,7 @@ const createFirestoreCollections = async () => {
         .doc(postId)
         .set({
           id: postId,
-          type: community.id.startsWith("routine")
-            ? "ROUTINE_CERT"
-            : community.id.startsWith("gathering")
-            ? "GATHERING_REVIEW"
-            : "TMI",
+          type: community.postType,
           refId: refId,
           authorId: "user123",
           author: "관리자",
@@ -1202,11 +1197,12 @@ const createFirestoreCollections = async () => {
           ],
           channel: community.name,
           category: community.name, // 카테고리 (커뮤니티명으로 설정)
-          tags: community.id.startsWith("routine")
-            ? ["한끗루틴", "66일 루틴"]
-            : community.id.startsWith("gathering")
-            ? ["소모임", "후기"]
-            : ["TMI", "자아탐색"], // 태그 배열
+          tags:
+            community.postType === "ROUTINE_CERT"
+              ? ["한끗루틴", "66일 루틴"]
+              : community.postType === "GATHERING_REVIEW"
+              ? ["소모임", "후기"]
+              : ["TMI", "자아탐색"], // 태그 배열
           scheduledDate: null, // 예약 날짜 (기본값: null)
           isLocked: false,
           visibility: "public",

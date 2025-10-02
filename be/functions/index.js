@@ -67,7 +67,7 @@ app.use("/api-docs", swaggerUi.serve, async (req, res, next) => {
       customCss: ".swagger-ui .topbar { display: none }",
       customSiteTitle: "Yourdentity API Documentation (자동 업데이트)",
       swaggerOptions: {
-        url: "/youthvoice-2025/asia-northeast3/api/api-docs.json",
+        url: "/api-docs.json",
         validatorUrl: null,
         tryItOutEnabled: true,
         supportedSubmitMethods: ["get", "post", "put", "patch", "delete"],

@@ -1,4 +1,5 @@
 const firestoreService = require("../services/firestoreService");
+const admin = require("firebase-admin");
 
 // 댓글 생성 API
 const createComment = async (req, res) => {
@@ -151,13 +152,12 @@ const createComment = async (req, res) => {
         commentData,
     );
 
-    // 게시글의 댓글 수 증가
-    const newCommentsCount = (post.commentsCount || 0) + 1;
+    // 게시글의 댓글 수 증가 (atomic increment)
     await firestoreService.updateDocument(
         `communities/${communityId}/posts`,
         postId,
         {
-          commentsCount: newCommentsCount,
+          commentsCount: admin.firestore.FieldValue.increment(1),
         },
     );
 
@@ -509,7 +509,13 @@ const deleteComment = async (req, res) => {
     await firestoreService.updateDocument("comments", commentId, {
       deleted: true,
       deletedAt: new Date(),
-      content: "삭제된 댓글입니다.",
+      content: [
+        {
+          type: "text",
+          order: 1,
+          content: "삭제된 댓글입니다.",
+        },
+      ],
       mediaBlocks: [],
       updatedAt: new Date(),
     });
@@ -525,12 +531,12 @@ const deleteComment = async (req, res) => {
         postId,
     );
     if (post) {
-      const newCommentsCount = Math.max(0, (post.commentsCount || 0) - 1);
+      // 게시글의 댓글 수 감소 (atomic decrement)
       await firestoreService.updateDocument(
           `communities/${communityId}/posts`,
           postId,
           {
-            commentsCount: newCommentsCount,
+            commentsCount: admin.firestore.FieldValue.increment(-1),
           },
       );
     }
@@ -593,10 +599,9 @@ const toggleCommentLike = async (req, res) => {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
 
-      // 댓글의 좋아요 수 감소
-      const newLikesCount = Math.max(0, (comment.likesCount || 0) - 1);
+      // 댓글의 좋아요 수 감소 (atomic decrement)
       await firestoreService.updateDocument("comments", commentId, {
-        likesCount: newLikesCount,
+        likesCount: admin.firestore.FieldValue.increment(-1),
         updatedAt: new Date(),
       });
 
@@ -617,10 +622,9 @@ const toggleCommentLike = async (req, res) => {
 
       await firestoreService.addDocument("likes", likeData);
 
-      // 댓글의 좋아요 수 증가
-      const newLikesCount = (comment.likesCount || 0) + 1;
+      // 댓글의 좋아요 수 증가 (atomic increment)
       await firestoreService.updateDocument("comments", commentId, {
-        likesCount: newLikesCount,
+        likesCount: admin.firestore.FieldValue.increment(1),
         updatedAt: new Date(),
       });
 
