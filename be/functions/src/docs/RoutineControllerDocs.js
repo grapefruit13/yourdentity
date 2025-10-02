@@ -490,7 +490,10 @@
  *         values:
  *           type: object
  *           description: 변형 값들
- *           example: {"key_b397a11b-1b96-48e3-85d5-aaab2667cf4f": "value_abb24d8d-26dd-4b16-b116-3c5b95c8042c"}
+ *           example: {
+ *             "key_b397a11b-1b96-48e3-85d5-aaab2667cf4f":
+ *               "value_abb24d8d-26dd-4b16-b116-3c5b95c8042c"
+ *           }
  *         soldCount:
  *           type: number
  *           description: 판매 수량
@@ -888,7 +891,7 @@ class RoutineControllerDocs {
    *               summary: 66일 한끗루틴 생성 예시
    *               value:
    *                 name: "66일 한끗루틴"
-   *                 description: "66일 동안 나만의 루틴을 지속하면 정말 나의 습관이 된다고 해요!\n스스로 설정한 목표를 꾸준히 실천하여 장기적으로 자신만의 루틴을 만들어보아요!"
+   *                 description: "66일 동안 나만의 루틴을 지속하면 정말 나의 습관이 된다고 해요! 스스로 설정한 목표를 꾸준히 실천하여 장기적으로 자신만의 루틴을 만들어보아요!"
    *                 type: "normal"
    *                 status: "OPEN"
    *                 price: 0

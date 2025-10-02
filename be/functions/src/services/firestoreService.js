@@ -1,5 +1,5 @@
-const { db, admin } = require("../config/database");
-const { FieldValue } = admin.firestore;
+const {db, admin} = require("../config/database");
+const {FieldValue} = admin.firestore;
 
 class FirestoreService {
   async createUser(nickname, profileImageUrl = "") {
@@ -11,7 +11,7 @@ class FirestoreService {
     };
 
     await userRef.set(userData);
-    return { userId: userRef.id, ...userData };
+    return {userId: userRef.id, ...userData};
   }
 
   async getAllUsers() {
@@ -45,15 +45,15 @@ class FirestoreService {
 
   async updateUser(userId, updateData) {
     await db.collection("users").doc(userId).update(updateData);
-    return { userId, ...updateData };
+    return {userId, ...updateData};
   }
 
   async deleteUser(userId) {
     const missionsSnapshot = await db
-      .collection("users")
-      .doc(userId)
-      .collection("missions")
-      .get();
+        .collection("users")
+        .doc(userId)
+        .collection("missions")
+        .get();
     const batch = db.batch();
 
     missionsSnapshot.forEach((doc) => {
@@ -77,12 +77,12 @@ class FirestoreService {
     }
 
     await db
-      .collection("users")
-      .doc(userId)
-      .collection("missions")
-      .doc(missionId)
-      .set(missionData);
-    return { userId, missionId, ...missionData };
+        .collection("users")
+        .doc(userId)
+        .collection("missions")
+        .doc(missionId)
+        .set(missionData);
+    return {userId, missionId, ...missionData};
   }
 
   async getUserMissions(userId, statusFilter = null) {
@@ -110,11 +110,11 @@ class FirestoreService {
 
   async getMissionById(userId, missionId) {
     const doc = await db
-      .collection("users")
-      .doc(userId)
-      .collection("missions")
-      .doc(missionId)
-      .get();
+        .collection("users")
+        .doc(userId)
+        .collection("missions")
+        .doc(missionId)
+        .get();
 
     if (!doc.exists) {
       return null;
@@ -135,26 +135,26 @@ class FirestoreService {
     }
 
     await db
-      .collection("users")
-      .doc(userId)
-      .collection("missions")
-      .doc(missionId)
-      .update(updateData);
-    return { userId, missionId, ...updateData };
+        .collection("users")
+        .doc(userId)
+        .collection("missions")
+        .doc(missionId)
+        .update(updateData);
+    return {userId, missionId, ...updateData};
   }
 
   async deleteMission(userId, missionId) {
     await db
-      .collection("users")
-      .doc(userId)
-      .collection("missions")
-      .doc(missionId)
-      .delete();
+        .collection("users")
+        .doc(userId)
+        .collection("missions")
+        .doc(missionId)
+        .delete();
   }
 
   async updateUserProfileImage(userId, profileImageUrl) {
-    await db.collection("users").doc(userId).update({ profileImageUrl });
-    return { userId, profileImageUrl };
+    await db.collection("users").doc(userId).update({profileImageUrl});
+    return {userId, profileImageUrl};
   }
 
   // 일반적인 컬렉션 조회 메서드들
@@ -205,12 +205,12 @@ class FirestoreService {
 
   async updateDocument(collectionName, docId, data) {
     await db
-      .collection(collectionName)
-      .doc(docId)
-      .update({
-        ...data,
-        updatedAt: new Date(),
-      });
+        .collection(collectionName)
+        .doc(docId)
+        .update({
+          ...data,
+          updatedAt: new Date(),
+        });
   }
 
   async deleteDocument(collectionName, docId) {
@@ -219,9 +219,9 @@ class FirestoreService {
 
   async getCollectionWhere(collectionName, field, operator, value) {
     const snapshot = await db
-      .collection(collectionName)
-      .where(field, operator, value)
-      .get();
+        .collection(collectionName)
+        .where(field, operator, value)
+        .get();
     const items = [];
 
     snapshot.forEach((doc) => {
@@ -284,9 +284,9 @@ class FirestoreService {
       let countQuery = db.collection(collectionName);
       where.forEach((condition) => {
         countQuery = countQuery.where(
-          condition.field,
-          condition.operator,
-          condition.value
+            condition.field,
+            condition.operator,
+            condition.value,
         );
       });
       const countSnapshot = await countQuery.get();

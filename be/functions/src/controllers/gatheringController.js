@@ -7,13 +7,13 @@ const getAllGatherings = async (req, res) => {
     const size = parseInt(req.query.size) || 10;
 
     const result = await firestoreService.getCollectionWithPagination(
-      "gatherings",
-      {
-        page,
-        size,
-        orderBy: "createdAt",
-        orderDirection: "desc",
-      }
+        "gatherings",
+        {
+          page,
+          size,
+          orderBy: "createdAt",
+          orderDirection: "desc",
+        },
     );
 
     // 목록에서는 간소화된 정보만 반환 (새로운 BaseItem 구조)
@@ -74,8 +74,8 @@ const createGathering = async (req, res) => {
 
     if (!name || !description) {
       return res
-        .status(400)
-        .json({ error: "name and description are required" });
+          .status(400)
+          .json({error: "name and description are required"});
     }
 
     const now = Date.now();
@@ -103,8 +103,8 @@ const createGathering = async (req, res) => {
     };
 
     const gatheringId = await firestoreService.addDocument(
-      "gatherings",
-      gatheringData
+        "gatherings",
+        gatheringData,
     );
 
     res.status(201).json({
@@ -113,17 +113,17 @@ const createGathering = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating gathering:", error);
-    res.status(500).json({ error: "Failed to create gathering" });
+    res.status(500).json({error: "Failed to create gathering"});
   }
 };
 
 // 소모임 상세 조회 (신청페이지 전용)
 const getGatheringById = async (req, res) => {
   try {
-    const { gatheringId } = req.params;
+    const {gatheringId} = req.params;
     const gathering = await firestoreService.getDocument(
-      "gatherings",
-      gatheringId
+        "gatherings",
+        gatheringId,
     );
 
     if (!gathering) {
@@ -142,10 +142,10 @@ const getGatheringById = async (req, res) => {
 
     // Q&A 조회
     const qnas = await firestoreService.getCollectionWhere(
-      "qnas",
-      "targetId",
-      "==",
-      gatheringId
+        "qnas",
+        "targetId",
+        "==",
+        gatheringId,
     );
     const formattedQnas = qnas.map((qna) => ({
       id: qna.id,
@@ -173,17 +173,17 @@ const getGatheringById = async (req, res) => {
 
       for (const communityId of communityIds) {
         const posts = await firestoreService.getCollectionWithPagination(
-          `communities/${communityId}/posts`,
-          {
-            page: 0,
-            size: 5,
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            where: [
-              { field: "type", operator: "==", value: "GATHERING_REVIEW" },
-              { field: "refId", operator: "==", value: gatheringId },
-            ],
-          }
+            `communities/${communityId}/posts`,
+            {
+              page: 0,
+              size: 5,
+              orderBy: "createdAt",
+              orderDirection: "desc",
+              where: [
+                {field: "type", operator: "==", value: "GATHERING_REVIEW"},
+                {field: "refId", operator: "==", value: gatheringId},
+              ],
+            },
         );
 
         const postsWithCommunity = (posts.content || []).map((post) => ({
@@ -211,7 +211,7 @@ const getGatheringById = async (req, res) => {
 
       // 최신순으로 정렬하고 최대 10개만 반환
       communityPosts.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
       );
       communityPosts = communityPosts.slice(0, 10);
     } catch (error) {
@@ -262,7 +262,7 @@ const getGatheringById = async (req, res) => {
 // 소모임 신청하기
 const applyToGathering = async (req, res) => {
   try {
-    const { gatheringId } = req.params;
+    const {gatheringId} = req.params;
     const {
       userId,
       selectedVariant = null,
@@ -279,8 +279,8 @@ const applyToGathering = async (req, res) => {
 
     // 소모임 정보 조회
     const gathering = await firestoreService.getDocument(
-      "gatherings",
-      gatheringId
+        "gatherings",
+        gatheringId,
     );
     if (!gathering) {
       return res.status(404).json({
@@ -312,8 +312,8 @@ const applyToGathering = async (req, res) => {
     };
 
     const applicationId = await firestoreService.addDocument(
-      "applications",
-      applicationData
+        "applications",
+        applicationData,
     );
 
     // 소모임 카운트 업데이트 (신청 시 즉시 반영)
@@ -352,16 +352,16 @@ const applyToGathering = async (req, res) => {
 // QnA 질문 작성
 const createQnA = async (req, res) => {
   try {
-    const { gatheringId } = req.params;
-    const { content = [] } = req.body;
+    const {gatheringId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환 (url 필드 추가, undefined 값 제거)
@@ -377,14 +377,16 @@ const createQnA = async (req, res) => {
       // undefined가 아닌 값만 추가
       if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
       if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-      if (item.videoSource !== undefined)
+      if (item.videoSource !== undefined) {
         mediaItem.videoSource = item.videoSource;
+      }
       if (item.provider !== undefined) mediaItem.provider = item.provider;
       if (item.duration !== undefined) mediaItem.duration = item.duration;
       if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
       if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-      if (item.processingStatus !== undefined)
+      if (item.processingStatus !== undefined) {
         mediaItem.processingStatus = item.processingStatus;
+      }
 
       return mediaItem;
     });
@@ -416,29 +418,29 @@ const createQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA:", error);
-    res.status(500).json({ error: "Failed to create QnA" });
+    res.status(500).json({error: "Failed to create QnA"});
   }
 };
 
 // QnA 질문 수정
 const updateQnA = async (req, res) => {
   try {
-    const { gatheringId, qnaId } = req.params;
-    const { content = [] } = req.body;
+    const {gatheringId, qnaId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환 (url 필드 추가, undefined 값 제거)
@@ -454,14 +456,16 @@ const updateQnA = async (req, res) => {
       // undefined가 아닌 값만 추가
       if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
       if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-      if (item.videoSource !== undefined)
+      if (item.videoSource !== undefined) {
         mediaItem.videoSource = item.videoSource;
+      }
       if (item.provider !== undefined) mediaItem.provider = item.provider;
       if (item.duration !== undefined) mediaItem.duration = item.duration;
       if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
       if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-      if (item.processingStatus !== undefined)
+      if (item.processingStatus !== undefined) {
         mediaItem.processingStatus = item.processingStatus;
+      }
 
       return mediaItem;
     });
@@ -487,24 +491,24 @@ const updateQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating QnA:", error);
-    res.status(500).json({ error: "Failed to update QnA" });
+    res.status(500).json({error: "Failed to update QnA"});
   }
 };
 
 // QnA 답변 작성
 const createQnAAnswer = async (req, res) => {
   try {
-    const { qnaId } = req.params;
-    const { content = [], media = [] } = req.body;
+    const {qnaId} = req.params;
+    const {content = [], media = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     const updatedData = {
@@ -530,14 +534,14 @@ const createQnAAnswer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA answer:", error);
-    res.status(500).json({ error: "Failed to create QnA answer" });
+    res.status(500).json({error: "Failed to create QnA answer"});
   }
 };
 
 // QnA 좋아요 토글
 const toggleQnALike = async (req, res) => {
   try {
-    const { qnaId } = req.params;
+    const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
@@ -554,9 +558,9 @@ const toggleQnALike = async (req, res) => {
         page: 0,
         size: 1,
         where: [
-          { field: "type", operator: "==", value: "QNA" },
-          { field: "targetId", operator: "==", value: qnaId },
-          { field: "userId", operator: "==", value: "user123" },
+          {field: "type", operator: "==", value: "QNA"},
+          {field: "targetId", operator: "==", value: qnaId},
+          {field: "userId", operator: "==", value: "user123"},
         ],
       });
 
@@ -609,32 +613,32 @@ const toggleQnALike = async (req, res) => {
 // QnA 삭제
 const deleteQnA = async (req, res) => {
   try {
-    const { qnaId } = req.params;
+    const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({ message: "QnA가 성공적으로 삭제되었습니다" });
+    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
   } catch (error) {
     console.error("Error deleting QnA:", error);
-    res.status(500).json({ error: "Failed to delete QnA" });
+    res.status(500).json({error: "Failed to delete QnA"});
   }
 };
 
 // 소모임 좋아요 토글
 const toggleGatheringLike = async (req, res) => {
   try {
-    const { gatheringId } = req.params;
+    const {gatheringId} = req.params;
 
     // 소모임 조회
     const gathering = await firestoreService.getDocument(
-      "gatherings",
-      gatheringId
+        "gatherings",
+        gatheringId,
     );
     if (!gathering) {
       return res.status(404).json({
@@ -649,9 +653,9 @@ const toggleGatheringLike = async (req, res) => {
         page: 0,
         size: 1,
         where: [
-          { field: "type", operator: "==", value: "GATHERING" },
-          { field: "targetId", operator: "==", value: gatheringId },
-          { field: "userId", operator: "==", value: "user123" },
+          {field: "type", operator: "==", value: "GATHERING"},
+          {field: "targetId", operator: "==", value: gatheringId},
+          {field: "userId", operator: "==", value: "user123"},
         ],
       });
     const existingLikes = existingLikesResult.content;

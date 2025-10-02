@@ -42,8 +42,8 @@ router.delete("/:communityId/posts/:postId", communityController.deletePost);
 // 커뮤니티 게시글 좋아요 토글
 CommunityControllerDocs.togglePostLike();
 router.post(
-  "/:communityId/posts/:postId/like",
-  communityController.togglePostLike
+    "/:communityId/posts/:postId/like",
+    communityController.togglePostLike,
 );
 
 module.exports = router;

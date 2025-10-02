@@ -1,27 +1,26 @@
 const firestoreService = require("../services/firestoreService");
-const StoreControllerDocs = require("../docs/StoreControllerDocs");
 
 const getProducts = async (req, res) => {
   try {
-    const { page = 0, size = 10, status = "onSale" } = req.query;
+    const {page = 0, size = 10, status = "onSale"} = req.query;
 
     // 인덱스 없이 작동하도록 쿼리 단순화
     // 먼저 모든 상품을 가져온 후 메모리에서 필터링
     const result = await firestoreService.getCollectionWithPagination(
-      "products",
-      {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "desc",
-        where: [], // where 조건 제거
-      }
+        "products",
+        {
+          page: parseInt(page),
+          size: parseInt(size),
+          orderBy: "createdAt",
+          orderDirection: "desc",
+          where: [], // where 조건 제거
+        },
     );
 
     // 메모리에서 상태 필터링
     if (result.content && status) {
       result.content = result.content.filter(
-        (product) => product.status === status
+          (product) => product.status === status,
       );
     }
 
@@ -61,7 +60,7 @@ const getProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
   try {
-    const { productId } = req.params;
+    const {productId} = req.params;
 
     const product = await firestoreService.getDocument("products", productId);
 
@@ -81,10 +80,10 @@ const getProductById = async (req, res) => {
 
     // Q&A 조회
     const qnas = await firestoreService.getCollectionWhere(
-      "qnas",
-      "targetId",
-      "==",
-      productId
+        "qnas",
+        "targetId",
+        "==",
+        productId,
     );
     const formattedQnas = qnas.map((qna) => ({
       id: qna.id,
@@ -159,7 +158,7 @@ const purchaseProduct = async (req, res) => {
 
     if (variantId && product.productVariants) {
       selectedVariant = product.productVariants.find(
-        (variant) => variant.id === variantId
+          (variant) => variant.id === variantId,
       );
       if (!selectedVariant) {
         return res.status(400).json({
@@ -228,8 +227,8 @@ const purchaseProduct = async (req, res) => {
     };
 
     const applicationId = await firestoreService.addDocument(
-      "applications",
-      purchaseData
+        "applications",
+        purchaseData,
     );
 
     // 동시성 문제 해결을 위한 재고 업데이트 (트랜잭션 사용)
@@ -296,7 +295,7 @@ const purchaseProduct = async (req, res) => {
 
 const toggleProductLike = async (req, res) => {
   try {
-    const { productId } = req.params;
+    const {productId} = req.params;
     const userId = "user123"; // 하드코딩
 
     // 상품 존재 확인
@@ -310,13 +309,13 @@ const toggleProductLike = async (req, res) => {
 
     // 기존 좋아요 확인
     const existingLikes = await firestoreService.getCollectionWhere(
-      "likes",
-      "targetId",
-      "==",
-      productId
+        "likes",
+        "targetId",
+        "==",
+        productId,
     );
     const userLike = existingLikes.find(
-      (like) => like.userId === userId && like.type === "PRODUCT"
+        (like) => like.userId === userId && like.type === "PRODUCT",
     );
 
     if (userLike) {
@@ -372,11 +371,11 @@ const toggleProductLike = async (req, res) => {
 
 const createProductQnA = async (req, res) => {
   try {
-    const { productId } = req.params;
-    const { content = [] } = req.body;
+    const {productId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     // 상품 존재 확인
@@ -390,7 +389,7 @@ const createProductQnA = async (req, res) => {
 
     // content 배열에서 미디어만 분리 (자동으로 처리)
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환
@@ -406,14 +405,16 @@ const createProductQnA = async (req, res) => {
       // undefined가 아닌 값만 추가
       if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
       if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-      if (item.videoSource !== undefined)
+      if (item.videoSource !== undefined) {
         mediaItem.videoSource = item.videoSource;
+      }
       if (item.provider !== undefined) mediaItem.provider = item.provider;
       if (item.duration !== undefined) mediaItem.duration = item.duration;
       if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
       if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-      if (item.processingStatus !== undefined)
+      if (item.processingStatus !== undefined) {
         mediaItem.processingStatus = item.processingStatus;
+      }
 
       return mediaItem;
     });
@@ -445,29 +446,29 @@ const createProductQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating product QnA:", error);
-    res.status(500).json({ error: "Failed to create QnA" });
+    res.status(500).json({error: "Failed to create QnA"});
   }
 };
 
 // 상품 QnA 질문 수정
 const updateProductQnA = async (req, res) => {
   try {
-    const { productId, qnaId } = req.params;
-    const { content = [] } = req.body;
+    const {productId, qnaId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     // content 배열에서 미디어만 분리
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환
@@ -483,14 +484,16 @@ const updateProductQnA = async (req, res) => {
       // undefined가 아닌 값만 추가
       if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
       if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-      if (item.videoSource !== undefined)
+      if (item.videoSource !== undefined) {
         mediaItem.videoSource = item.videoSource;
+      }
       if (item.provider !== undefined) mediaItem.provider = item.provider;
       if (item.duration !== undefined) mediaItem.duration = item.duration;
       if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
       if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-      if (item.processingStatus !== undefined)
+      if (item.processingStatus !== undefined) {
         mediaItem.processingStatus = item.processingStatus;
+      }
 
       return mediaItem;
     });
@@ -516,23 +519,23 @@ const updateProductQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating product QnA:", error);
-    res.status(500).json({ error: "Failed to update QnA" });
+    res.status(500).json({error: "Failed to update QnA"});
   }
 };
 
 // 상품 QnA 답변 작성
 const createProductQnAAnswer = async (req, res) => {
   try {
-    const { qnaId } = req.params;
-    const { content = [] } = req.body;
+    const {qnaId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     // content 배열에서 미디어만 분리 (자동으로 처리)
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환
@@ -548,14 +551,16 @@ const createProductQnAAnswer = async (req, res) => {
       // undefined가 아닌 값만 추가
       if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
       if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-      if (item.videoSource !== undefined)
+      if (item.videoSource !== undefined) {
         mediaItem.videoSource = item.videoSource;
+      }
       if (item.provider !== undefined) mediaItem.provider = item.provider;
       if (item.duration !== undefined) mediaItem.duration = item.duration;
       if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
       if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-      if (item.processingStatus !== undefined)
+      if (item.processingStatus !== undefined) {
         mediaItem.processingStatus = item.processingStatus;
+      }
 
       return mediaItem;
     });
@@ -563,7 +568,7 @@ const createProductQnAAnswer = async (req, res) => {
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     const updatedData = {
@@ -589,14 +594,14 @@ const createProductQnAAnswer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating product QnA answer:", error);
-    res.status(500).json({ error: "Failed to create QnA answer" });
+    res.status(500).json({error: "Failed to create QnA answer"});
   }
 };
 
 // 상품 QnA 좋아요 토글
 const toggleProductQnALike = async (req, res) => {
   try {
-    const { qnaId } = req.params;
+    const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
@@ -613,9 +618,9 @@ const toggleProductQnALike = async (req, res) => {
         page: 0,
         size: 1,
         where: [
-          { field: "type", operator: "==", value: "QNA" },
-          { field: "targetId", operator: "==", value: qnaId },
-          { field: "userId", operator: "==", value: "user123" },
+          {field: "type", operator: "==", value: "QNA"},
+          {field: "targetId", operator: "==", value: qnaId},
+          {field: "userId", operator: "==", value: "user123"},
         ],
       });
 
@@ -668,20 +673,20 @@ const toggleProductQnALike = async (req, res) => {
 // 상품 QnA 삭제
 const deleteProductQnA = async (req, res) => {
   try {
-    const { qnaId } = req.params;
+    const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({ message: "QnA가 성공적으로 삭제되었습니다" });
+    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
   } catch (error) {
     console.error("Error deleting product QnA:", error);
-    res.status(500).json({ error: "Failed to delete QnA" });
+    res.status(500).json({error: "Failed to delete QnA"});
   }
 };
 

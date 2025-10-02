@@ -537,11 +537,11 @@ class CommonSchemas {
    * 공통 성공 응답 생성
    * @param {Object} data - 응답 데이터
    * @param {string} message - 응답 메시지
-   * @returns {Object} 성공 응답 객체
+   * @return {Object} 성공 응답 객체
    */
   static createSuccessResponse(
-    data = null,
-    message = "요청이 성공적으로 처리되었습니다."
+      data = null,
+      message = "요청이 성공적으로 처리되었습니다.",
   ) {
     return {
       success: true,
@@ -554,7 +554,7 @@ class CommonSchemas {
    * 공통 에러 응답 생성
    * @param {string} code - 에러 코드
    * @param {string} message - 에러 메시지
-   * @returns {Object} 에러 응답 객체
+   * @return {Object} 에러 응답 객체
    */
   static createErrorResponse(code, message) {
     return {
@@ -571,7 +571,7 @@ class CommonSchemas {
    * @param {number} page - 현재 페이지
    * @param {number} limit - 페이지당 항목 수
    * @param {number} total - 전체 항목 수
-   * @returns {Object} 페이지네이션 응답 객체
+   * @return {Object} 페이지네이션 응답 객체
    */
   static createPaginationResponse(data, page, limit, total) {
     const totalPages = Math.ceil(total / limit);

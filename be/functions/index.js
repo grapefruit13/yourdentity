@@ -1,9 +1,9 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const { setGlobalOptions } = require("firebase-functions/v2");
+const {onRequest} = require("firebase-functions/v2/https");
+const {setGlobalOptions} = require("firebase-functions/v2");
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
-const { admin } = require("./src/config/database");
+const {admin} = require("./src/config/database");
 
 // Swagger 설정 (자동 업데이트 포함)
 const swaggerConfig = require("./src/config/swagger");
@@ -25,29 +25,29 @@ const commentRoutes = require("./src/routes/comments");
 const storeRoutes = require("./src/routes/store");
 
 // 리전 설정
-setGlobalOptions({ region: "asia-northeast3" });
+setGlobalOptions({region: "asia-northeast3"});
 
 // Express 앱 생성
 const app = express();
 
 // ✅ 전역 CORS 설정 (OPTIONS 자동 처리 포함)
 app.use(
-  cors({
-    origin: [
-      "http://127.0.0.1:5001",
-      "http://localhost:5001",
-      "http://127.0.0.1:4000",
-      "http://localhost:4000",
-      "http://127.0.0.1:3000",
-      "http://localhost:3000",
-      "http://127.0.0.1:8080",
-      "http://localhost:8080",
-      "https://yourdentity.vercel.app",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
+    cors({
+      origin: [
+        "http://127.0.0.1:5001",
+        "http://localhost:5001",
+        "http://127.0.0.1:4000",
+        "http://localhost:4000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:8080",
+        "http://localhost:8080",
+        "https://yourdentity.vercel.app",
+      ],
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    }),
 );
 
 app.use(express.json());
@@ -112,8 +112,8 @@ if (process.env.NODE_ENV === "development") {
       });
     } catch (error) {
       res
-        .status(500)
-        .json({ success: false, message: "Swagger 업데이트 실패" });
+          .status(500)
+          .json({success: false, message: "Swagger 업데이트 실패"});
     }
   });
 
@@ -181,21 +181,21 @@ app.use("/", commentRoutes);
 // 알림 전송 라우트
 app.post("/send-notification", async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({error: "Method not allowed"});
   }
 
   try {
-    const { token, title, message, link } = req.body;
+    const {token, title, message, link} = req.body;
     if (!token || !title || !message) {
       return res
-        .status(400)
-        .json({ error: "Token, title, and message are required" });
+          .status(400)
+          .json({error: "Token, title, and message are required"});
     }
 
     const payload = {
       token,
-      notification: { title, body: message },
-      ...(link && { webpush: { fcmOptions: { link } } }),
+      notification: {title, body: message},
+      ...(link && {webpush: {fcmOptions: {link}}}),
     };
 
     const result = await admin.messaging().send(payload);

@@ -1,11 +1,11 @@
 const firestoreService = require("../services/firestoreService");
-const { db } = require("../config/database");
+const {db} = require("../config/database");
 
 // 커뮤니티 매핑 정보를 DB에서 조회하는 함수
 const getCommunityMapping = async (communityId) => {
   const community = await firestoreService.getDocument(
-    "communities",
-    communityId
+      "communities",
+      communityId,
   );
   if (!community) {
     return null;
@@ -22,9 +22,9 @@ const getCommunityMapping = async (communityId) => {
 // 커뮤니티 목록 조회 API
 const getCommunities = async (req, res) => {
   try {
-    const { type, page = 0, size = 10 } = req.query;
+    const {type, page = 0, size = 10} = req.query;
 
-    let whereConditions = [];
+    const whereConditions = [];
 
     // 타입 필터링 (interest | anonymous)
     if (type && ["interest", "anonymous"].includes(type)) {
@@ -36,14 +36,14 @@ const getCommunities = async (req, res) => {
     }
 
     const result = await firestoreService.getCollectionWithPagination(
-      "communities",
-      {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "desc",
-        where: whereConditions,
-      }
+        "communities",
+        {
+          page: parseInt(page),
+          size: parseInt(size),
+          orderBy: "createdAt",
+          orderDirection: "desc",
+          where: whereConditions,
+        },
     );
 
     res.json({
@@ -63,11 +63,11 @@ const getCommunities = async (req, res) => {
 // 커뮤니티 상세 조회 API
 const getCommunityById = async (req, res) => {
   try {
-    const { communityId } = req.params;
+    const {communityId} = req.params;
 
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
 
     if (!community) {
@@ -79,18 +79,18 @@ const getCommunityById = async (req, res) => {
 
     // 멤버 수 조회
     const membersSnapshot = await db
-      .collection("communities")
-      .doc(communityId)
-      .collection("members")
-      .get();
+        .collection("communities")
+        .doc(communityId)
+        .collection("members")
+        .get();
     community.membersCount = membersSnapshot.size;
 
     // 게시글 수 조회
     const postsSnapshot = await db
-      .collection("communities")
-      .doc(communityId)
-      .collection("posts")
-      .get();
+        .collection("communities")
+        .doc(communityId)
+        .collection("posts")
+        .get();
     community.postsCount = postsSnapshot.size;
 
     res.json({
@@ -109,13 +109,13 @@ const getCommunityById = async (req, res) => {
 // 커뮤니티 멤버 목록 조회 API
 const getCommunityMembers = async (req, res) => {
   try {
-    const { communityId } = req.params;
-    const { page = 0, size = 20 } = req.query;
+    const {communityId} = req.params;
+    const {page = 0, size = 20} = req.query;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -125,13 +125,13 @@ const getCommunityMembers = async (req, res) => {
     }
 
     const result = await firestoreService.getCollectionWithPagination(
-      `communities/${communityId}/members`,
-      {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "joinedAt",
-        orderDirection: "desc",
-      }
+        `communities/${communityId}/members`,
+        {
+          page: parseInt(page),
+          size: parseInt(size),
+          orderBy: "joinedAt",
+          orderDirection: "desc",
+        },
     );
 
     res.json({
@@ -174,31 +174,31 @@ const getTimeAgo = (date) => {
 const createPreview = (post) => {
   // 텍스트 content에서 첫 2줄 추출
   const textContents = post.content.filter(
-    (item) => item.type === "text" && item.text && item.text.trim()
+      (item) => item.type === "text" && item.text && item.text.trim(),
   );
   const description =
-    textContents.length > 0
-      ? textContents[0].text.substring(0, 100) +
-        (textContents[0].text.length > 100 ? "..." : "")
-      : "";
+    textContents.length > 0 ?
+      textContents[0].text.substring(0, 100) +
+        (textContents[0].text.length > 100 ? "..." : "") :
+      "";
 
   // 첫 번째 이미지 미디어 찾기
   const firstImage =
     post.media.find((item) => item.type === "image") ||
     post.content.find((item) => item.type === "image");
 
-  const thumbnail = firstImage
-    ? {
-        url: firstImage.url || firstImage.src,
-        blurHash: firstImage.blurHash,
-        width: firstImage.width,
-        height: firstImage.height,
-        ratio:
-          firstImage.width && firstImage.height
-            ? `${firstImage.width}:${firstImage.height}`
-            : "1:1",
-      }
-    : null;
+  const thumbnail = firstImage ?
+    {
+      url: firstImage.url || firstImage.src,
+      blurHash: firstImage.blurHash,
+      width: firstImage.width,
+      height: firstImage.height,
+      ratio:
+          firstImage.width && firstImage.height ?
+            `${firstImage.width}:${firstImage.height}` :
+            "1:1",
+    } :
+    null;
 
   // 미디어 타입 체크
   const hasImage =
@@ -220,7 +220,7 @@ const createPreview = (post) => {
 // 전체 커뮤니티 포스트 조회 API (모든 커뮤니티의 게시글을 통합 조회)
 const getAllCommunityPosts = async (req, res) => {
   try {
-    const { page = 0, size = 10, filter } = req.query;
+    const {page = 0, size = 10, filter} = req.query;
 
     // filter에 따른 게시글 타입 매핑
     const postTypeMapping = {
@@ -231,11 +231,11 @@ const getAllCommunityPosts = async (req, res) => {
 
     // 모든 커뮤니티 조회
     const communities = await firestoreService.getCollectionWithPagination(
-      "communities",
-      {
-        page: 0,
-        size: 1000, // 모든 커뮤니티 조회
-      }
+        "communities",
+        {
+          page: 0,
+          size: 1000, // 모든 커뮤니티 조회
+        },
     );
 
     let allPosts = [];
@@ -243,20 +243,20 @@ const getAllCommunityPosts = async (req, res) => {
     for (const community of communities.content || []) {
       // 인덱스 문제를 피하기 위해 먼저 모든 게시글을 가져온 후 필터링
       const posts = await firestoreService.getCollectionWithPagination(
-        `communities/${community.id}/posts`,
-        {
-          page: 0,
-          size: 100, // 각 커뮤니티에서 최대 100개씩 가져오기
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        }
+          `communities/${community.id}/posts`,
+          {
+            page: 0,
+            size: 100, // 각 커뮤니티에서 최대 100개씩 가져오기
+            orderBy: "createdAt",
+            orderDirection: "desc",
+          },
       );
 
       // 메모리에서 필터링
       let filteredPosts = posts.content || [];
       if (filter && postTypeMapping[filter]) {
         filteredPosts = filteredPosts.filter(
-          (post) => post.type === postTypeMapping[filter]
+            (post) => post.type === postTypeMapping[filter],
         );
       }
 
@@ -323,13 +323,13 @@ const getAllCommunityPosts = async (req, res) => {
 // 커뮤니티 게시글 목록 조회 API
 const getCommunityPosts = async (req, res) => {
   try {
-    const { communityId } = req.params;
-    const { page = 0, size = 10 } = req.query;
+    const {communityId} = req.params;
+    const {page = 0, size = 10} = req.query;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -339,13 +339,13 @@ const getCommunityPosts = async (req, res) => {
     }
 
     const result = await firestoreService.getCollectionWithPagination(
-      `communities/${communityId}/posts`,
-      {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "desc",
-      }
+        `communities/${communityId}/posts`,
+        {
+          page: parseInt(page),
+          size: parseInt(size),
+          orderBy: "createdAt",
+          orderDirection: "desc",
+        },
     );
 
     // 간소화된 응답으로 변환
@@ -385,7 +385,7 @@ const getCommunityPosts = async (req, res) => {
 // 커뮤니티 게시글 작성 API (새로운 구조)
 const createPost = async (req, res) => {
   try {
-    const { communityId } = req.params;
+    const {communityId} = req.params;
     const {
       title,
       content = [],
@@ -413,8 +413,8 @@ const createPost = async (req, res) => {
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -440,9 +440,9 @@ const createPost = async (req, res) => {
 
     // 게시글 ID 생성
     const postId =
-      mapping.postType === "ROUTINE_CERT"
-        ? `CERT_${Date.now()}`
-        : `POST_${Date.now()}`;
+      mapping.postType === "ROUTINE_CERT" ?
+        `CERT_${Date.now()}` :
+        `POST_${Date.now()}`;
 
     // content에서 미디어 추출하여 별도 media 배열 생성
     const extractedMedia = [];
@@ -520,8 +520,8 @@ const createPost = async (req, res) => {
 
     // 커뮤니티 서브컬렉션에 저장
     const savedPost = await firestoreService.addDocument(
-      `communities/${communityId}/posts`,
-      postData
+        `communities/${communityId}/posts`,
+        postData,
     );
 
     res.status(201).json({
@@ -544,12 +544,12 @@ const createPost = async (req, res) => {
 // 커뮤니티 게시글 상세 조회 API
 const getPostById = async (req, res) => {
   try {
-    const { communityId, postId } = req.params;
+    const {communityId, postId} = req.params;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -559,8 +559,8 @@ const getPostById = async (req, res) => {
     }
 
     const post = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
 
     if (!post) {
@@ -572,20 +572,20 @@ const getPostById = async (req, res) => {
 
     // 댓글 조회 (부모 댓글만 먼저 조회)
     const whereConditions = [
-      { field: "targetId", operator: "==", value: postId },
-      { field: "parentId", operator: "==", value: null },
-      { field: "deleted", operator: "==", value: false },
+      {field: "targetId", operator: "==", value: postId},
+      {field: "parentId", operator: "==", value: null},
+      {field: "deleted", operator: "==", value: false},
     ];
 
     const commentsResult = await firestoreService.getCollectionWithPagination(
-      "comments",
-      {
-        page: 0,
-        size: 50, // 최대 50개 댓글
-        orderBy: "createdAt",
-        orderDirection: "asc",
-        where: whereConditions,
-      }
+        "comments",
+        {
+          page: 0,
+          size: 50, // 최대 50개 댓글
+          orderBy: "createdAt",
+          orderDirection: "asc",
+          where: whereConditions,
+        },
     );
 
     // 모든 댓글을 평면적으로 조회 (부모 댓글 + 대댓글)
@@ -611,12 +611,12 @@ const getPostById = async (req, res) => {
         up_vote_score: comment.likesCount || 0,
         deleted: comment.deleted,
         replies_count: 0, // 나중에 계산
-        created_at: comment.createdAt?.toDate
-          ? comment.createdAt.toDate().getTime()
-          : new Date(comment.createdAt).getTime(),
-        updated_at: comment.updatedAt?.toDate
-          ? comment.updatedAt.toDate().getTime()
-          : new Date(comment.updatedAt).getTime(),
+        created_at: comment.createdAt?.toDate ?
+          comment.createdAt.toDate().getTime() :
+          new Date(comment.createdAt).getTime(),
+        updated_at: comment.updatedAt?.toDate ?
+          comment.updatedAt.toDate().getTime() :
+          new Date(comment.updatedAt).getTime(),
         isMine: false, // TODO: 실제 사용자 ID와 비교
         hasVideo: hasVideo,
         hasImage: hasImage,
@@ -627,10 +627,10 @@ const getPostById = async (req, res) => {
 
       // 각 부모 댓글의 대댓글들 조회하여 추가
       const replies = await firestoreService.getCollectionWhere(
-        "comments",
-        "parentId",
-        "==",
-        comment.id
+          "comments",
+          "parentId",
+          "==",
+          comment.id,
       );
 
       const filteredReplies = replies.filter((reply) => !reply.deleted);
@@ -655,12 +655,12 @@ const getPostById = async (req, res) => {
           up_vote_score: reply.likesCount || 0,
           deleted: reply.deleted,
           replies_count: 0, // 대댓글은 더 이상의 대댓글을 가질 수 없음
-          created_at: reply.createdAt?.toDate
-            ? reply.createdAt.toDate().getTime()
-            : new Date(reply.createdAt).getTime(),
-          updated_at: reply.updatedAt?.toDate
-            ? reply.updatedAt.toDate().getTime()
-            : new Date(reply.updatedAt).getTime(),
+          created_at: reply.createdAt?.toDate ?
+            reply.createdAt.toDate().getTime() :
+            new Date(reply.createdAt).getTime(),
+          updated_at: reply.updatedAt?.toDate ?
+            reply.updatedAt.toDate().getTime() :
+            new Date(reply.updatedAt).getTime(),
           isMine: false, // TODO: 실제 사용자 ID와 비교
           hasVideo: hasVideo,
           hasImage: hasImage,
@@ -676,7 +676,7 @@ const getPostById = async (req, res) => {
       if (comment.parent_id === null) {
         // 부모 댓글인 경우, 해당 댓글의 대댓글 수 계산
         const repliesCount = allComments.filter(
-          (c) => c.parent_id === comment.id
+            (c) => c.parent_id === comment.id,
         ).length;
         return {
           ...comment,
@@ -708,16 +708,16 @@ const getPostById = async (req, res) => {
 // 커뮤니티 게시글 수정 API
 const updatePost = async (req, res) => {
   try {
-    const { communityId, postId } = req.params;
-    const { title, content = [], refId } = req.body;
+    const {communityId, postId} = req.params;
+    const {title, content = [], refId} = req.body;
 
     // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
     const authorId = "user123"; // req.user.id 또는 JWT에서 추출
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -728,8 +728,8 @@ const updatePost = async (req, res) => {
 
     // 기존 게시글 조회
     const existingPost = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
     if (!existingPost) {
       return res.status(404).json({
@@ -780,29 +780,29 @@ const updatePost = async (req, res) => {
     const updateData = {
       title: title || existingPost.title,
       content:
-        content.length > 0
-          ? content.map((item, index) => ({
-              type: item.type || "text",
-              order: item.order || index + 1,
-              text: item.text || item.content || "",
-              content: item.content || item.text || "",
-              url: item.url || item.src || null,
-              src: item.src || item.url || null,
-              width: item.width || null,
-              height: item.height || null,
-              blurHash: item.blurHash || null,
-              thumbUrl: item.thumbUrl || null,
-              videoSource: item.videoSource || null,
-              provider: item.provider || null,
-              providerVideoId: item.providerVideoId || null,
-              duration: item.duration || null,
-              sizeBytes: item.sizeBytes || null,
-              mimeType: item.mimeType || null,
-              processingStatus: item.processingStatus || "ready",
-              transcodedVariants: item.transcodedVariants || [],
-              fileName: item.fileName || null,
-            }))
-          : existingPost.content,
+        content.length > 0 ?
+          content.map((item, index) => ({
+            type: item.type || "text",
+            order: item.order || index + 1,
+            text: item.text || item.content || "",
+            content: item.content || item.text || "",
+            url: item.url || item.src || null,
+            src: item.src || item.url || null,
+            width: item.width || null,
+            height: item.height || null,
+            blurHash: item.blurHash || null,
+            thumbUrl: item.thumbUrl || null,
+            videoSource: item.videoSource || null,
+            provider: item.provider || null,
+            providerVideoId: item.providerVideoId || null,
+            duration: item.duration || null,
+            sizeBytes: item.sizeBytes || null,
+            mimeType: item.mimeType || null,
+            processingStatus: item.processingStatus || "ready",
+            transcodedVariants: item.transcodedVariants || [],
+            fileName: item.fileName || null,
+          })) :
+          existingPost.content,
       media: content.length > 0 ? extractedMedia : existingPost.media,
       refId: refId || existingPost.refId,
       updatedAt: new Date(),
@@ -810,15 +810,15 @@ const updatePost = async (req, res) => {
 
     // Firestore 업데이트
     await firestoreService.updateDocument(
-      `communities/${communityId}/posts`,
-      postId,
-      updateData
+        `communities/${communityId}/posts`,
+        postId,
+        updateData,
     );
 
     // 업데이트된 게시글 조회
     const updatedPost = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
 
     res.json({
@@ -838,15 +838,15 @@ const updatePost = async (req, res) => {
 // 커뮤니티 게시글 삭제 API
 const deletePost = async (req, res) => {
   try {
-    const { communityId, postId } = req.params;
+    const {communityId, postId} = req.params;
 
     // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
     const authorId = "user123"; // req.user.id 또는 JWT에서 추출
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -857,8 +857,8 @@ const deletePost = async (req, res) => {
 
     // 기존 게시글 조회
     const existingPost = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
     if (!existingPost) {
       return res.status(404).json({
@@ -877,8 +877,8 @@ const deletePost = async (req, res) => {
 
     // Firestore에서 삭제
     await firestoreService.deleteDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
 
     res.json({
@@ -897,8 +897,8 @@ const deletePost = async (req, res) => {
 // 커뮤니티 게시글 좋아요 토글 API
 const togglePostLike = async (req, res) => {
   try {
-    const { communityId, postId } = req.params;
-    const { userId } = req.body;
+    const {communityId, postId} = req.params;
+    const {userId} = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -909,8 +909,8 @@ const togglePostLike = async (req, res) => {
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -921,8 +921,8 @@ const togglePostLike = async (req, res) => {
 
     // 게시글 조회
     const post = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
     if (!post) {
       return res.status(404).json({
@@ -933,13 +933,13 @@ const togglePostLike = async (req, res) => {
 
     // 기존 좋아요 확인
     const existingLikes = await firestoreService.getCollectionWhere(
-      "likes",
-      "targetId",
-      "==",
-      postId
+        "likes",
+        "targetId",
+        "==",
+        postId,
     );
     const userLike = existingLikes.find(
-      (like) => like.userId === userId && like.type === post.type
+        (like) => like.userId === userId && like.type === post.type,
     );
 
     if (userLike) {
@@ -949,11 +949,11 @@ const togglePostLike = async (req, res) => {
       // 게시글의 좋아요 수 감소
       const newLikesCount = Math.max(0, (post.likesCount || 0) - 1);
       await firestoreService.updateDocument(
-        `communities/${communityId}/posts`,
-        postId,
-        {
-          likesCount: newLikesCount,
-        }
+          `communities/${communityId}/posts`,
+          postId,
+          {
+            likesCount: newLikesCount,
+          },
       );
 
       res.json({
@@ -976,11 +976,11 @@ const togglePostLike = async (req, res) => {
       // 게시글의 좋아요 수 증가
       const newLikesCount = (post.likesCount || 0) + 1;
       await firestoreService.updateDocument(
-        `communities/${communityId}/posts`,
-        postId,
-        {
-          likesCount: newLikesCount,
-        }
+          `communities/${communityId}/posts`,
+          postId,
+          {
+            likesCount: newLikesCount,
+          },
       );
 
       res.json({

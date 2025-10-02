@@ -1,15 +1,15 @@
 const formatResponse = (success, data = null, error = null, message = null) => {
-  const response = { success };
-  
+  const response = {success};
+
   if (data) response.data = data;
   if (error) response.error = error;
   if (message) response.message = message;
-  
+
   return response;
 };
 
 const validateMissionStatus = (status) => {
-  const validStatuses = ['ONGOING', 'COMPLETED', 'EXPIRED', 'RETRY'];
+  const validStatuses = ["ONGOING", "COMPLETED", "EXPIRED", "RETRY"];
   return validStatuses.includes(status);
 };
 
@@ -26,5 +26,5 @@ module.exports = {
   formatResponse,
   validateMissionStatus,
   isValidEmail,
-  generateId
+  generateId,
 };

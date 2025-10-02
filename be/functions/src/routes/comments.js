@@ -6,15 +6,15 @@ const CommentControllerDocs = require("../docs/CommentControllerDocs");
 // 댓글 목록 조회
 CommentControllerDocs.getComments();
 router.get(
-  "/communities/:communityId/posts/:postId/comments",
-  commentController.getComments
+    "/communities/:communityId/posts/:postId/comments",
+    commentController.getComments,
 );
 
 // 댓글 작성
 CommentControllerDocs.createComment();
 router.post(
-  "/communities/:communityId/posts/:postId/comments",
-  commentController.createComment
+    "/communities/:communityId/posts/:postId/comments",
+    commentController.createComment,
 );
 
 // 댓글 수정

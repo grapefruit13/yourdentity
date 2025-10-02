@@ -1,11 +1,10 @@
 const firestoreService = require("../services/firestoreService");
-const { db } = require("../config/database");
 
 // 댓글 생성 API
 const createComment = async (req, res) => {
   try {
-    const { communityId, postId } = req.params;
-    const { content = [], parentId = null } = req.body;
+    const {communityId, postId} = req.params;
+    const {content = [], parentId = null} = req.body;
 
     // 필수 필드 검증
     if (!content || content.length === 0) {
@@ -17,8 +16,8 @@ const createComment = async (req, res) => {
 
     // content 배열 검증
     const hasTextContent = content.some(
-      (item) =>
-        item.type === "text" && item.content && item.content.trim().length > 0
+        (item) =>
+          item.type === "text" && item.content && item.content.trim().length > 0,
     );
     if (!hasTextContent) {
       return res.status(400).json({
@@ -33,8 +32,8 @@ const createComment = async (req, res) => {
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -45,8 +44,8 @@ const createComment = async (req, res) => {
 
     // 게시글 존재 확인
     const post = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
     if (!post) {
       return res.status(404).json({
@@ -60,8 +59,8 @@ const createComment = async (req, res) => {
     let isReply = false;
     if (parentId) {
       const parentComment = await firestoreService.getDocument(
-        "comments",
-        parentId
+          "comments",
+          parentId,
       );
       if (!parentComment) {
         return res.status(404).json({
@@ -148,18 +147,18 @@ const createComment = async (req, res) => {
 
     // 댓글 저장
     const commentId = await firestoreService.addDocument(
-      "comments",
-      commentData
+        "comments",
+        commentData,
     );
 
     // 게시글의 댓글 수 증가
     const newCommentsCount = (post.commentsCount || 0) + 1;
     await firestoreService.updateDocument(
-      `communities/${communityId}/posts`,
-      postId,
-      {
-        commentsCount: newCommentsCount,
-      }
+        `communities/${communityId}/posts`,
+        postId,
+        {
+          commentsCount: newCommentsCount,
+        },
     );
 
     res.status(201).json({
@@ -182,13 +181,13 @@ const createComment = async (req, res) => {
 // 댓글 목록 조회 API
 const getComments = async (req, res) => {
   try {
-    const { communityId, postId } = req.params;
-    const { page = 0, size = 20 } = req.query;
+    const {communityId, postId} = req.params;
+    const {page = 0, size = 20} = req.query;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
-      "communities",
-      communityId
+        "communities",
+        communityId,
     );
     if (!community) {
       return res.status(404).json({
@@ -199,8 +198,8 @@ const getComments = async (req, res) => {
 
     // 게시글 존재 확인
     const post = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
     if (!post) {
       return res.status(404).json({
@@ -211,20 +210,20 @@ const getComments = async (req, res) => {
 
     // 댓글 조회 (부모 댓글만 먼저 조회)
     const whereConditions = [
-      { field: "targetId", operator: "==", value: postId },
-      { field: "parentId", operator: "==", value: null },
-      { field: "deleted", operator: "==", value: false },
+      {field: "targetId", operator: "==", value: postId},
+      {field: "parentId", operator: "==", value: null},
+      {field: "deleted", operator: "==", value: false},
     ];
 
     const result = await firestoreService.getCollectionWithPagination(
-      "comments",
-      {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "asc",
-        where: whereConditions,
-      }
+        "comments",
+        {
+          page: parseInt(page),
+          size: parseInt(size),
+          orderBy: "createdAt",
+          orderDirection: "asc",
+          where: whereConditions,
+        },
     );
 
     // 모든 댓글을 평면적으로 조회 (부모 댓글 + 대댓글)
@@ -250,12 +249,12 @@ const getComments = async (req, res) => {
         up_vote_score: comment.likesCount || 0,
         deleted: comment.deleted,
         replies_count: 0, // 나중에 계산
-        created_at: comment.createdAt?.toDate
-          ? comment.createdAt.toDate().getTime()
-          : new Date(comment.createdAt).getTime(),
-        updated_at: comment.updatedAt?.toDate
-          ? comment.updatedAt.toDate().getTime()
-          : new Date(comment.updatedAt).getTime(),
+        created_at: comment.createdAt?.toDate ?
+          comment.createdAt.toDate().getTime() :
+          new Date(comment.createdAt).getTime(),
+        updated_at: comment.updatedAt?.toDate ?
+          comment.updatedAt.toDate().getTime() :
+          new Date(comment.updatedAt).getTime(),
         isMine: false, // TODO: 실제 사용자 ID와 비교
         hasVideo: hasVideo,
         hasImage: hasImage,
@@ -266,10 +265,10 @@ const getComments = async (req, res) => {
 
       // 각 부모 댓글의 대댓글들 조회하여 추가
       const replies = await firestoreService.getCollectionWhere(
-        "comments",
-        "parentId",
-        "==",
-        comment.id
+          "comments",
+          "parentId",
+          "==",
+          comment.id,
       );
 
       const filteredReplies = replies.filter((reply) => !reply.deleted);
@@ -294,12 +293,12 @@ const getComments = async (req, res) => {
           up_vote_score: reply.likesCount || 0,
           deleted: reply.deleted,
           replies_count: 0, // 대댓글은 더 이상의 대댓글을 가질 수 없음
-          created_at: reply.createdAt?.toDate
-            ? reply.createdAt.toDate().getTime()
-            : new Date(reply.createdAt).getTime(),
-          updated_at: reply.updatedAt?.toDate
-            ? reply.updatedAt.toDate().getTime()
-            : new Date(reply.updatedAt).getTime(),
+          created_at: reply.createdAt?.toDate ?
+            reply.createdAt.toDate().getTime() :
+            new Date(reply.createdAt).getTime(),
+          updated_at: reply.updatedAt?.toDate ?
+            reply.updatedAt.toDate().getTime() :
+            new Date(reply.updatedAt).getTime(),
           isMine: false, // TODO: 실제 사용자 ID와 비교
           hasVideo: hasVideoReply,
           hasImage: hasImageReply,
@@ -315,7 +314,7 @@ const getComments = async (req, res) => {
       if (comment.parent_id === null) {
         // 부모 댓글인 경우, 해당 댓글의 대댓글 수 계산
         const repliesCount = allComments.filter(
-          (c) => c.parent_id === comment.id
+            (c) => c.parent_id === comment.id,
         ).length;
         return {
           ...comment,
@@ -342,8 +341,8 @@ const getComments = async (req, res) => {
 // 댓글 수정 API
 const updateComment = async (req, res) => {
   try {
-    const { commentId } = req.params;
-    const { content = [] } = req.body;
+    const {commentId} = req.params;
+    const {content = []} = req.body;
 
     // 필수 필드 검증
     if (!content || content.length === 0) {
@@ -355,8 +354,8 @@ const updateComment = async (req, res) => {
 
     // content 배열 검증
     const hasTextContent = content.some(
-      (item) =>
-        item.type === "text" && item.content && item.content.trim().length > 0
+        (item) =>
+          item.type === "text" && item.content && item.content.trim().length > 0,
     );
     if (!hasTextContent) {
       return res.status(400).json({
@@ -370,8 +369,8 @@ const updateComment = async (req, res) => {
 
     // 기존 댓글 조회
     const existingComment = await firestoreService.getDocument(
-      "comments",
-      commentId
+        "comments",
+        commentId,
     );
     if (!existingComment) {
       return res.status(404).json({
@@ -452,8 +451,8 @@ const updateComment = async (req, res) => {
 
     // 업데이트된 댓글 조회
     const updatedComment = await firestoreService.getDocument(
-      "comments",
-      commentId
+        "comments",
+        commentId,
     );
 
     res.json({
@@ -473,15 +472,15 @@ const updateComment = async (req, res) => {
 // 댓글 삭제 API
 const deleteComment = async (req, res) => {
   try {
-    const { commentId } = req.params;
+    const {commentId} = req.params;
 
     // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
     const userId = "user123"; // 고정값
 
     // 기존 댓글 조회
     const existingComment = await firestoreService.getDocument(
-      "comments",
-      commentId
+        "comments",
+        commentId,
     );
     if (!existingComment) {
       return res.status(404).json({
@@ -522,17 +521,17 @@ const deleteComment = async (req, res) => {
     const postId = pathParts[3];
 
     const post = await firestoreService.getDocument(
-      `communities/${communityId}/posts`,
-      postId
+        `communities/${communityId}/posts`,
+        postId,
     );
     if (post) {
       const newCommentsCount = Math.max(0, (post.commentsCount || 0) - 1);
       await firestoreService.updateDocument(
-        `communities/${communityId}/posts`,
-        postId,
-        {
-          commentsCount: newCommentsCount,
-        }
+          `communities/${communityId}/posts`,
+          postId,
+          {
+            commentsCount: newCommentsCount,
+          },
       );
     }
 
@@ -552,8 +551,8 @@ const deleteComment = async (req, res) => {
 // 댓글 좋아요 토글 API
 const toggleCommentLike = async (req, res) => {
   try {
-    const { commentId } = req.params;
-    const { userId } = req.body;
+    const {commentId} = req.params;
+    const {userId} = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -581,13 +580,13 @@ const toggleCommentLike = async (req, res) => {
 
     // 기존 좋아요 확인
     const existingLikes = await firestoreService.getCollectionWhere(
-      "likes",
-      "targetId",
-      "==",
-      commentId
+        "likes",
+        "targetId",
+        "==",
+        commentId,
     );
     const userLike = existingLikes.find(
-      (like) => like.userId === userId && like.type === "COMMENT"
+        (like) => like.userId === userId && like.type === "COMMENT",
     );
 
     if (userLike) {
