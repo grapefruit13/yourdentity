@@ -14,6 +14,7 @@
   },
   "main": "index.js",
   "dependencies": {
+    "@google-cloud/functions-framework": "^4.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "firebase-admin": "^12.6.0",
