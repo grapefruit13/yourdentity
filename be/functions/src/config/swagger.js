@@ -45,6 +45,16 @@ const options = {
           "커뮤니티 통합 관리 API (전체 포스트 조회, 루틴 인증글, 소모임 후기글, TMI 소개글)",
       },
     ],
+    servers: [
+      {
+        url: process.env.FUNCTIONS_EMULATOR 
+          ? "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api"
+          : "/api",
+        description: process.env.FUNCTIONS_EMULATOR 
+          ? "로컬 개발 서버" 
+          : "프로덕션 서버",
+      },
+    ],
     components: {
       schemas: {
         User: {
