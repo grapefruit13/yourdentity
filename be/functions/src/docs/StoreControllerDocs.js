@@ -232,7 +232,7 @@
 
 /**
  * @swagger
- * /api/store/products:
+ * /store/products:
  *   get:
  *     summary: 스토어 상품 목록 조회
  *     description: 페이지네이션을 지원하는 상품 목록을 조회합니다.
@@ -283,7 +283,7 @@
 
 /**
  * @swagger
- * /api/store/products/{productId}:
+ * /store/products/{productId}:
  *   get:
  *     summary: 스토어 상품 상세 조회
  *     description: 상품 ID로 상세 정보를 조회합니다. 조회 시 자동으로 조회수가 증가합니다.
@@ -325,7 +325,7 @@
 
 /**
  * @swagger
- * /api/store/purchase:
+ * /store/purchase:
  *   post:
  *     summary: 상품 구매 신청
  *     description: 상품을 구매 신청합니다. 포인트 시스템과 재고 관리를 포함합니다.
@@ -404,7 +404,7 @@
 
 /**
  * @swagger
- * /api/store/products/{productId}/like:
+ * /store/products/{productId}/like:
  *   post:
  *     summary: 상품 좋아요 토글
  *     description: 상품에 좋아요를 등록하거나 취소합니다.
@@ -453,7 +453,7 @@
 
 /**
  * @swagger
- * /api/store/products/{productId}/qna:
+ * /store/products/{productId}/qna:
  *   post:
  *     summary: 상품 QnA 질문 작성
  *     description: 상품에 대한 QnA 질문을 작성합니다.
@@ -525,7 +525,7 @@
 
 /**
  * @swagger
- * /api/store/products/{productId}/qna/{qnaId}:
+ * /store/products/{productId}/qna/{qnaId}:
  *   put:
  *     summary: 상품 QnA 질문 수정
  *     description: 기존 QnA 질문을 수정합니다.
@@ -591,7 +591,7 @@
 
 /**
  * @swagger
- * /api/store/qna/{qnaId}/answer:
+ * /store/qna/{qnaId}/answer:
  *   post:
  *     summary: 상품 QnA 답변 작성
  *     description: QnA 질문에 답변을 작성합니다.
@@ -653,7 +653,7 @@
 
 /**
  * @swagger
- * /api/store/qna/{qnaId}/like:
+ * /store/qna/{qnaId}/like:
  *   post:
  *     summary: 상품 QnA 좋아요 토글
  *     description: QnA에 좋아요를 등록하거나 취소합니다.
@@ -702,7 +702,7 @@
 
 /**
  * @swagger
- * /api/store/qna/{qnaId}:
+ * /store/qna/{qnaId}:
  *   delete:
  *     summary: 상품 QnA 삭제
  *     description: QnA를 삭제합니다.
