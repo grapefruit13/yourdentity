@@ -7,13 +7,13 @@ const getAllGatherings = async (req, res) => {
     const size = parseInt(req.query.size) || 10;
 
     const result = await firestoreService.getCollectionWithPagination(
-        "gatherings",
-        {
-          page,
-          size,
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        },
+      "gatherings",
+      {
+        page,
+        size,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+      }
     );
 
     // 목록에서는 간소화된 정보만 반환 (새로운 BaseItem 구조)
@@ -51,14 +51,13 @@ const getAllGatherings = async (req, res) => {
   }
 };
 
-
 // 소모임 상세 조회 (신청페이지 전용)
 const getGatheringById = async (req, res) => {
   try {
-    const {gatheringId} = req.params;
+    const { gatheringId } = req.params;
     const gathering = await firestoreService.getDocument(
-        "gatherings",
-        gatheringId,
+      "gatherings",
+      gatheringId
     );
 
     if (!gathering) {
@@ -77,10 +76,10 @@ const getGatheringById = async (req, res) => {
 
     // Q&A 조회
     const qnas = await firestoreService.getCollectionWhere(
-        "qnas",
-        "targetId",
-        "==",
-        gatheringId,
+      "qnas",
+      "targetId",
+      "==",
+      gatheringId
     );
     const formattedQnas = qnas.map((qna) => ({
       id: qna.id,
@@ -99,56 +98,41 @@ const getGatheringById = async (req, res) => {
     // 커뮤니티 게시글 조회 (소모임 후기글)
     let communityPosts = [];
     try {
-      // gathering-book-club, gathering-study-group, gathering-hobby 커뮤니티에서 해당 소모임과 관련된 게시글 조회
-      const communityIds = [
-        "gathering-book-club",
-        "gathering-study-group",
-        "gathering-hobby",
-      ];
-
-      for (const communityId of communityIds) {
-        const posts = await firestoreService.getCollectionWithPagination(
-            `communities/${communityId}/posts`,
-            {
-              page: 0,
-              size: 5,
-              orderBy: "createdAt",
-              orderDirection: "desc",
-              where: [
-                {field: "type", operator: "==", value: "GATHERING_REVIEW"},
-                {field: "refId", operator: "==", value: gatheringId},
-              ],
-            },
-        );
-
-        const postsWithCommunity = (posts.content || []).map((post) => ({
-          id: post.id,
-          type: post.type,
-          author: post.author,
-          title: post.title,
-          content: post.content,
-          media: post.media,
-          channel: post.channel,
-          isLocked: post.isLocked,
-          visibility: post.visibility,
-          likesCount: post.likesCount || 0,
-          commentsCount: post.commentsCount || 0,
-          createdAt: post.createdAt,
-          updatedAt: post.updatedAt,
-          community: {
-            id: communityId,
-            name: communityId.replace("gathering-", "").replace("-", " "),
-          },
-        }));
-
-        communityPosts = communityPosts.concat(postsWithCommunity);
-      }
-
-      // 최신순으로 정렬하고 최대 10개만 반환
-      communityPosts.sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      // 소모임 ID와 동일한 커뮤니티 ID에서 해당 소모임과 관련된 게시글 조회
+      // gatheringId와 동일한 커뮤니티 ID를 사용하여 검색 가능하도록 함
+      const posts = await firestoreService.getCollectionWithPagination(
+        `communities/${gatheringId}/posts`,
+        {
+          page: 0,
+          size: 10,
+          orderBy: "createdAt",
+          orderDirection: "desc",
+          where: [
+            { field: "type", operator: "==", value: "GATHERING_REVIEW" },
+            { field: "refId", operator: "==", value: gatheringId },
+          ],
+        }
       );
-      communityPosts = communityPosts.slice(0, 10);
+
+      communityPosts = (posts.content || []).map((post) => ({
+        id: post.id,
+        type: post.type,
+        author: post.author,
+        title: post.title,
+        content: post.content,
+        media: post.media,
+        channel: post.channel,
+        isLocked: post.isLocked,
+        visibility: post.visibility,
+        likesCount: post.likesCount || 0,
+        commentsCount: post.commentsCount || 0,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+        community: {
+          id: gatheringId,
+          name: "소모임 커뮤니티",
+        },
+      }));
     } catch (error) {
       console.warn("커뮤니티 게시글 조회 실패:", error.message);
       // 커뮤니티 게시글 조회 실패해도 소모임 정보는 정상 반환
@@ -197,7 +181,7 @@ const getGatheringById = async (req, res) => {
 // 소모임 신청하기
 const applyToGathering = async (req, res) => {
   try {
-    const {gatheringId} = req.params;
+    const { gatheringId } = req.params;
     const {
       userId,
       selectedVariant = null,
@@ -214,8 +198,8 @@ const applyToGathering = async (req, res) => {
 
     // 소모임 정보 조회
     const gathering = await firestoreService.getDocument(
-        "gatherings",
-        gatheringId,
+      "gatherings",
+      gatheringId
     );
     if (!gathering) {
       return res.status(404).json({
@@ -247,8 +231,8 @@ const applyToGathering = async (req, res) => {
     };
 
     const applicationId = await firestoreService.addDocument(
-        "applications",
-        applicationData,
+      "applications",
+      applicationData
     );
 
     // 소모임 카운트 업데이트 (신청 시 즉시 반영)
@@ -287,16 +271,16 @@ const applyToGathering = async (req, res) => {
 // QnA 질문 작성
 const createQnA = async (req, res) => {
   try {
-    const {gatheringId} = req.params;
-    const {content = []} = req.body;
+    const { gatheringId } = req.params;
+    const { content = [] } = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      return res.status(400).json({ error: "content is required" });
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
     const mediaItems = content.filter(
-        (item) => item.type === "image" || item.type === "video",
+      (item) => item.type === "image" || item.type === "video"
     );
 
     // media 배열 형식으로 변환 (url 필드 추가, undefined 값 제거)
@@ -353,29 +337,29 @@ const createQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA:", error);
-    res.status(500).json({error: "Failed to create QnA"});
+    res.status(500).json({ error: "Failed to create QnA" });
   }
 };
 
 // QnA 질문 수정
 const updateQnA = async (req, res) => {
   try {
-    const {gatheringId, qnaId} = req.params;
-    const {content = []} = req.body;
+    const { gatheringId, qnaId } = req.params;
+    const { content = [] } = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      return res.status(400).json({ error: "content is required" });
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      return res.status(404).json({ error: "QnA not found" });
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
     const mediaItems = content.filter(
-        (item) => item.type === "image" || item.type === "video",
+      (item) => item.type === "image" || item.type === "video"
     );
 
     // media 배열 형식으로 변환 (url 필드 추가, undefined 값 제거)
@@ -426,24 +410,24 @@ const updateQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating QnA:", error);
-    res.status(500).json({error: "Failed to update QnA"});
+    res.status(500).json({ error: "Failed to update QnA" });
   }
 };
 
 // QnA 답변 작성
 const createQnAAnswer = async (req, res) => {
   try {
-    const {qnaId} = req.params;
-    const {content = [], media = []} = req.body;
+    const { qnaId } = req.params;
+    const { content = [], media = [] } = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      return res.status(400).json({ error: "content is required" });
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      return res.status(404).json({ error: "QnA not found" });
     }
 
     const updatedData = {
@@ -469,14 +453,14 @@ const createQnAAnswer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA answer:", error);
-    res.status(500).json({error: "Failed to create QnA answer"});
+    res.status(500).json({ error: "Failed to create QnA answer" });
   }
 };
 
 // QnA 좋아요 토글
 const toggleQnALike = async (req, res) => {
   try {
-    const {qnaId} = req.params;
+    const { qnaId } = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
@@ -493,9 +477,9 @@ const toggleQnALike = async (req, res) => {
         page: 0,
         size: 1,
         where: [
-          {field: "type", operator: "==", value: "QNA"},
-          {field: "targetId", operator: "==", value: qnaId},
-          {field: "userId", operator: "==", value: "user123"},
+          { field: "type", operator: "==", value: "QNA" },
+          { field: "targetId", operator: "==", value: qnaId },
+          { field: "userId", operator: "==", value: "user123" },
         ],
       });
 
@@ -548,32 +532,32 @@ const toggleQnALike = async (req, res) => {
 // QnA 삭제
 const deleteQnA = async (req, res) => {
   try {
-    const {qnaId} = req.params;
+    const { qnaId } = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      return res.status(404).json({ error: "QnA not found" });
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+    res.json({ message: "QnA가 성공적으로 삭제되었습니다" });
   } catch (error) {
     console.error("Error deleting QnA:", error);
-    res.status(500).json({error: "Failed to delete QnA"});
+    res.status(500).json({ error: "Failed to delete QnA" });
   }
 };
 
 // 소모임 좋아요 토글
 const toggleGatheringLike = async (req, res) => {
   try {
-    const {gatheringId} = req.params;
+    const { gatheringId } = req.params;
 
     // 소모임 조회
     const gathering = await firestoreService.getDocument(
-        "gatherings",
-        gatheringId,
+      "gatherings",
+      gatheringId
     );
     if (!gathering) {
       return res.status(404).json({
@@ -588,9 +572,9 @@ const toggleGatheringLike = async (req, res) => {
         page: 0,
         size: 1,
         where: [
-          {field: "type", operator: "==", value: "GATHERING"},
-          {field: "targetId", operator: "==", value: gatheringId},
-          {field: "userId", operator: "==", value: "user123"},
+          { field: "type", operator: "==", value: "GATHERING" },
+          { field: "targetId", operator: "==", value: gatheringId },
+          { field: "userId", operator: "==", value: "user123" },
         ],
       });
     const existingLikes = existingLikesResult.content;
