@@ -22,11 +22,11 @@ export interface CommunityPost {
   category: string;
   tags: string[];
   stats: PostStats;
+  thumbnail?: string;
 }
 
-export interface CommunityModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  post?: CommunityPost;
-  children?: React.ReactNode;
+export interface UserImage {
+  id: string;
+  image: string;
+  user: string;
 }
