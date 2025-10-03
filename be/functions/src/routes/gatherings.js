@@ -1,42 +1,495 @@
 const express = require("express");
 const router = express.Router();
 const gatheringController = require("../controllers/gatheringController");
-const GatheringControllerDocs = require("../docs/GatheringControllerDocs");
+
 
 // 소모임 목록 조회
-GatheringControllerDocs.getGatherings();
+/**
+ * @swagger
+ * /gatherings:
+ *   get:
+ *     tags: [Gatherings]
+ *     summary: 소모임 목록 조회
+ *     description: 모든 소모임 목록을 페이지네이션으로 조회
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 소모임 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/GatheringListItem'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     size:
+ *                       type: integer
+ *                     totalElements:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrevious:
+ *                       type: boolean
+ *       500:
+ *         description: 서버 오류
+ */
 router.get("/", gatheringController.getAllGatherings);
 
 // 소모임 상세 조회
-GatheringControllerDocs.getGatheringById();
+/**
+ * @swagger
+ * /gatherings/{gatheringId}:
+ *   get:
+ *     tags: [Gatherings]
+ *     summary: 소모임 상세 조회
+ *     description: 특정 소모임의 상세 정보와 Q&A, 커뮤니티 게시글 조회
+ *     parameters:
+ *       - in: path
+ *         name: gatheringId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 소모임 ID
+ *     responses:
+ *       200:
+ *         description: 소모임 상세 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/GatheringDetail'
+ *       404:
+ *         description: 소모임을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.get("/:gatheringId", gatheringController.getGatheringById);
 
 // 소모임 신청
-GatheringControllerDocs.applyToGathering();
+/**
+ * @swagger
+ * /gatherings/{gatheringId}/apply:
+ *   post:
+ *     tags: [Gatherings]
+ *     summary: 소모임 신청
+ *     description: 특정 소모임에 신청
+ *     parameters:
+ *       - in: path
+ *         name: gatheringId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 소모임 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: 사용자 ID
+ *                 example: "user123"
+ *               selectedVariant:
+ *                 type: string
+ *                 description: 선택된 옵션
+ *               quantity:
+ *                 type: integer
+ *                 default: 1
+ *                 description: 신청 수량
+ *               customFieldsResponse:
+ *                 type: object
+ *                 description: 커스텀 필드 응답
+ *                 example:
+ *                   custom_1: "홍길동"
+ *                   custom_2: "한끗러버"
+ *                   custom_3: "20070712"
+ *                   custom_4: "서울시 성동구"
+ *                   custom_5: "5"
+ *                   custom_6: "인스타그램"
+ *                   custom_7: "네, 확인했습니다"
+ *     responses:
+ *       201:
+ *         description: 소모임 신청 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     applicationId:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                       example: "GATHERING"
+ *                     targetId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: "PENDING"
+ *                 message:
+ *                   type: string
+ *                   example: "소모임 신청이 완료되었습니다."
+ *       400:
+ *         description: 잘못된 요청 또는 품절
+ *       404:
+ *         description: 소모임을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.post("/:gatheringId/apply", gatheringController.applyToGathering);
 
 // 소모임 좋아요 토글
-GatheringControllerDocs.toggleGatheringLike();
+/**
+ * @swagger
+ * /gatherings/{gatheringId}/like:
+ *   post:
+ *     tags: [Gatherings]
+ *     summary: 소모임 좋아요 토글
+ *     description: 특정 소모임의 좋아요 토글
+ *     parameters:
+ *       - in: path
+ *         name: gatheringId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 소모임 ID
+ *     responses:
+ *       200:
+ *         description: 좋아요 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     gatheringId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     isLiked:
+ *                       type: boolean
+ *                       example: true
+ *                     likeCount:
+ *                       type: integer
+ *                       example: 5
+ *                 message:
+ *                   type: string
+ *                   example: "좋아요를 추가했습니다."
+ *       404:
+ *         description: 소모임을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.post("/:gatheringId/like", gatheringController.toggleGatheringLike);
 
 // 소모임 QnA 작성
-GatheringControllerDocs.createQnA();
+/**
+ * @swagger
+ * /gatherings/{gatheringId}/qna:
+ *   post:
+ *     tags: [Gatherings]
+ *     summary: 소모임 Q&A 질문 작성
+ *     description: 특정 소모임에 Q&A 질문 작성
+ *     parameters:
+ *       - in: path
+ *         name: gatheringId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 소모임 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: array
+ *                 description: 질문 내용
+ *                 example:
+ *                   - type: "text"
+ *                     text: "소모임 참여비는 어떻게 결제하나요?"
+ *                   - type: "text"
+ *                     text: "모임 장소는 어디인가요?"
+ *                   - type: "image"
+ *                     src: "https://example.com/gathering-question.jpg"
+ *                     width: 1080
+ *                     height: 1080
+ *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                   - type: "video"
+ *                     src: "https://example.com/gathering-video.mp4"
+ *                     width: 1920
+ *                     height: 1080
+ *                     duration: 45
+ *                     thumbUrl: "https://example.com/gathering-thumb.jpg"
+ *                     videoSource: "uploaded"
+ *                     provider: "self"
+ *                     sizeBytes: 2097152
+ *                     mimeType: "video/mp4"
+ *                     processingStatus: "ready"
+ *     responses:
+ *       201:
+ *         description: Q&A 질문 작성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 qnaId:
+ *                   type: string
+ *                 gatheringId:
+ *                   type: string
+ *                 userId:
+ *                   type: string
+ *                 content:
+ *                   type: array
+ *                 media:
+ *                   type: array
+ *                 likesCount:
+ *                   type: integer
+ *                   example: 0
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: 잘못된 요청
+ *       500:
+ *         description: 서버 오류
+ */
 router.post("/:gatheringId/qna", gatheringController.createQnA);
 
 // 소모임 QnA 수정
-GatheringControllerDocs.updateQnA();
+/**
+ * @swagger
+ * /gatherings/{gatheringId}/qna/{qnaId}:
+ *   put:
+ *     tags: [Gatherings]
+ *     summary: 소모임 Q&A 질문 수정
+ *     description: 특정 소모임의 Q&A 질문 수정
+ *     parameters:
+ *       - in: path
+ *         name: gatheringId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 소모임 ID
+ *       - in: path
+ *         name: qnaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Q&A ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: array
+ *                 description: 수정된 질문 내용
+ *                 example:
+ *                   - type: "text"
+ *                     text: "소모임 참여비는 어떻게 결제하나요? (수정됨)"
+ *                   - type: "text"
+ *                     text: "모임 장소는 어디인가요?"
+ *                   - type: "image"
+ *                     src: "https://example.com/updated-gathering-question.jpg"
+ *                     width: 1080
+ *                     height: 1080
+ *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                   - type: "video"
+ *                     src: "https://example.com/updated-gathering-video.mp4"
+ *                     width: 1920
+ *                     height: 1080
+ *                     duration: 45
+ *                     thumbUrl: "https://example.com/updated-gathering-thumb.jpg"
+ *                     videoSource: "uploaded"
+ *                     provider: "self"
+ *                     sizeBytes: 2097152
+ *                     mimeType: "video/mp4"
+ *                     processingStatus: "ready"
+ *     responses:
+ *       200:
+ *         description: Q&A 질문 수정 성공
+ *       404:
+ *         description: Q&A를 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.put("/:gatheringId/qna/:qnaId", gatheringController.updateQnA);
 
 // 소모임 QnA 답변 작성
-GatheringControllerDocs.createQnAAnswer();
+/**
+ * @swagger
+ * /gatherings/qna/{qnaId}/answer:
+ *   post:
+ *     tags: [Gatherings]
+ *     summary: 소모임 Q&A 답변 작성
+ *     description: 특정 Q&A에 답변 작성
+ *     parameters:
+ *       - in: path
+ *         name: qnaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Q&A ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: array
+ *                 description: 답변 내용
+ *               media:
+ *                 type: array
+ *                 description: 답변 미디어
+ *     responses:
+ *       200:
+ *         description: Q&A 답변 작성 성공
+ *       404:
+ *         description: Q&A를 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.post("/qna/:qnaId/answer", gatheringController.createQnAAnswer);
 
 // 소모임 QnA 좋아요 토글
-GatheringControllerDocs.toggleQnALike();
+/**
+ * @swagger
+ * /gatherings/qna/{qnaId}/like:
+ *   post:
+ *     tags: [Gatherings]
+ *     summary: 소모임 Q&A 좋아요 토글
+ *     description: 특정 Q&A의 좋아요 토글
+ *     parameters:
+ *       - in: path
+ *         name: qnaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Q&A ID
+ *     responses:
+ *       200:
+ *         description: Q&A 좋아요 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     isLiked:
+ *                       type: boolean
+ *                       example: true
+ *                     likeCount:
+ *                       type: integer
+ *                       example: 3
+ *                 message:
+ *                   type: string
+ *                   example: "좋아요를 추가했습니다."
+ *       404:
+ *         description: Q&A를 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.post("/qna/:qnaId/like", gatheringController.toggleQnALike);
 
 // 소모임 QnA 삭제
-GatheringControllerDocs.deleteQnA();
+/**
+ * @swagger
+ * /gatherings/qna/{qnaId}:
+ *   delete:
+ *     tags: [Gatherings]
+ *     summary: 소모임 Q&A 삭제
+ *     description: 특정 Q&A 삭제
+ *     parameters:
+ *       - in: path
+ *         name: qnaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Q&A ID
+ *     responses:
+ *       200:
+ *         description: Q&A 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "QnA가 성공적으로 삭제되었습니다"
+ *       404:
+ *         description: Q&A를 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
 router.delete("/qna/:qnaId", gatheringController.deleteQnA);
 
 module.exports = router;

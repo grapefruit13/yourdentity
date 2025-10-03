@@ -1,6 +1,5 @@
 const firestoreService = require("../services/firestoreService");
 const admin = require("firebase-admin");
-const {db} = require("../config/database");
 
 // 댓글 생성 API
 const createComment = async (req, res) => {
@@ -585,7 +584,7 @@ const toggleCommentLike = async (req, res) => {
         "==",
         commentId,
     );
-    
+
     const userLike = existingLikes.find(
         (like) => like.userId === userId && like.type === "COMMENT",
     );

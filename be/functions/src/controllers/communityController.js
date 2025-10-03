@@ -704,7 +704,15 @@ const getPostById = async (req, res) => {
 const updatePost = async (req, res) => {
   try {
     const {communityId, postId} = req.params;
-    const {title, content = [], refId} = req.body;
+    const {
+      title,
+      content = [],
+      refId,
+      visibility,
+      category,
+      tags,
+      scheduledDate,
+    } = req.body;
 
     // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
     const authorId = "user123"; // req.user.id 또는 JWT에서 추출
@@ -799,7 +807,11 @@ const updatePost = async (req, res) => {
           })) :
           existingPost.content,
       media: content.length > 0 ? extractedMedia : existingPost.media,
-      refId: refId || existingPost.refId,
+      refId: refId !== undefined ? refId : existingPost.refId,
+      visibility: visibility || existingPost.visibility,
+      category: category || existingPost.category,
+      tags: tags || existingPost.tags,
+      scheduledDate: scheduledDate !== undefined ? scheduledDate : existingPost.scheduledDate,
       updatedAt: new Date(),
     };
 

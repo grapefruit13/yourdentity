@@ -572,7 +572,7 @@ const createProductQnAAnswer = async (req, res) => {
     const updatedData = {
       answerContent: content,
       answerMedia: media,
-      answerUserId: req.body.userId || "anonymous",
+      answerUserId: "user123", // 하드코딩된 사용자 ID
       answerCreatedAt: new Date(),
       updatedAt: new Date(),
     };

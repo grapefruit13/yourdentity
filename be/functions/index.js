@@ -11,7 +11,6 @@ const swaggerConfig = require("./src/config/swagger");
 // 미들웨어
 const logger = require("./src/middleware/logger");
 const errorHandler = require("./src/middleware/errorHandler");
-const swaggerCapture = require("./src/middleware/swaggerCapture");
 
 // 라우터
 const userRoutes = require("./src/routes/users");
@@ -56,7 +55,6 @@ app.use(logger);
 // 자동 Swagger 업데이트 (개발 모드에서만)
 if (process.env.NODE_ENV === "development") {
   app.use(swaggerConfig.autoUpdateMiddleware);
-  app.use(swaggerCapture.capture());
 }
 
 // Swagger UI
@@ -116,26 +114,6 @@ if (process.env.NODE_ENV === "development") {
           .json({success: false, message: "Swagger 업데이트 실패"});
     }
   });
-
-  app.get("/api-docs/captured", (req, res) => {
-    res.json({
-      success: true,
-      data: {
-        capturedCount: swaggerCapture.getCapturedData().size,
-        capturedEndpoints: Array.from(swaggerCapture.getCapturedData().keys()),
-        openAPISpec: swaggerCapture.toOpenAPISpec(),
-      },
-    });
-  });
-
-  app.post("/api-docs/captured/clear", (req, res) => {
-    swaggerCapture.clearCapturedData();
-    res.json({
-      success: true,
-      message: "캡처된 데이터가 초기화되었습니다.",
-      timestamp: new Date().toISOString(),
-    });
-  });
 }
 
 // 기본 라우트
@@ -173,10 +151,10 @@ app.use("/missions", missionRoutes);
 app.use("/images", imageRoutes);
 app.use("/routines", routineRoutes);
 app.use("/gatherings", gatheringRoutes);
-app.use("/tmi", tmiRoutes);
+app.use("/tmis", tmiRoutes);
 app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
-app.use("/", commentRoutes);
+app.use("/comments", commentRoutes);
 
 // 알림 전송 라우트
 app.post("/send-notification", async (req, res) => {

@@ -456,73 +456,287 @@ const options = {
             },
           },
         },
-        Routine: {
+        RoutineListItem: {
           type: "object",
           properties: {
             id: {
               type: "string",
               description: "루틴 고유 ID",
+              example: "routine_123",
             },
-            title: {
+            name: {
               type: "string",
-              description: "루틴 제목",
+              description: "루틴 이름",
+              example: "매일 운동하기",
             },
             description: {
               type: "string",
               description: "루틴 설명",
+              example: "하루 30분씩 운동하는 루틴입니다",
             },
             status: {
               type: "string",
-              enum: ["OPEN", "ACTIVE", "CLOSED"],
+              enum: ["RECRUITING", "IN_PROGRESS", "COMPLETED"],
               description: "루틴 상태",
+              example: "RECRUITING",
+            },
+            price: {
+              type: "number",
+              description: "가격",
+              example: 10000,
+            },
+            currency: {
+              type: "string",
+              description: "통화",
+              example: "KRW",
+            },
+            stockCount: {
+              type: "integer",
+              description: "재고 수량",
+              example: 50,
+            },
+            soldCount: {
+              type: "integer",
+              description: "판매 수량",
+              example: 10,
+            },
+            viewCount: {
+              type: "integer",
+              description: "조회수",
+              example: 150,
+            },
+            buyable: {
+              type: "boolean",
+              description: "구매 가능 여부",
+              example: true,
+            },
+            sellerId: {
+              type: "string",
+              description: "판매자 ID",
+              example: "seller_123",
+            },
+            sellerName: {
+              type: "string",
+              description: "판매자 이름",
+              example: "유스보이스",
             },
             deadline: {
               type: "string",
               format: "date-time",
-              description: "루틴 마감일",
-            },
-            likesCount: {
-              type: "number",
-              description: "좋아요 수",
-            },
-            images: {
-              type: "array",
-              items: {
-                type: "string",
-                description: "이미지 URL",
-              },
+              description: "마감일",
+              example: "2024-12-31T23:59:59.000Z",
             },
             createdAt: {
               type: "string",
               format: "date-time",
-              description: "생성일시",
+              description: "생성일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "수정일",
+              example: "2024-01-01T00:00:00.000Z",
             },
           },
         },
-        Application: {
+        RoutineDetail: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "루틴 고유 ID",
+              example: "routine_123",
+            },
+            name: {
+              type: "string",
+              description: "루틴 이름",
+              example: "매일 운동하기",
+            },
+            description: {
+              type: "string",
+              description: "루틴 설명",
+              example: "하루 30분씩 운동하는 루틴입니다",
+            },
+            status: {
+              type: "string",
+              enum: ["RECRUITING", "IN_PROGRESS", "COMPLETED"],
+              description: "루틴 상태",
+              example: "RECRUITING",
+            },
+            price: {
+              type: "number",
+              description: "가격",
+              example: 10000,
+            },
+            currency: {
+              type: "string",
+              description: "통화",
+              example: "KRW",
+            },
+            stockCount: {
+              type: "integer",
+              description: "재고 수량",
+              example: 50,
+            },
+            soldCount: {
+              type: "integer",
+              description: "판매 수량",
+              example: 10,
+            },
+            viewCount: {
+              type: "integer",
+              description: "조회수",
+              example: 151,
+            },
+            buyable: {
+              type: "boolean",
+              description: "구매 가능 여부",
+              example: true,
+            },
+            sellerId: {
+              type: "string",
+              description: "판매자 ID",
+              example: "seller_123",
+            },
+            sellerName: {
+              type: "string",
+              description: "판매자 이름",
+              example: "유스보이스",
+            },
+            content: {
+              type: "array",
+              description: "루틴 상세 내용",
+              items: {
+                type: "object",
+              },
+            },
+            media: {
+              type: "array",
+              description: "미디어 파일",
+              items: {
+                type: "object",
+              },
+            },
+            options: {
+              type: "array",
+              description: "옵션 목록",
+              items: {
+                type: "object",
+              },
+            },
+            primaryDetails: {
+              type: "array",
+              description: "주요 상세 정보",
+              items: {
+                type: "object",
+              },
+            },
+            variants: {
+              type: "array",
+              description: "변형 옵션",
+              items: {
+                type: "object",
+              },
+            },
+            customFields: {
+              type: "array",
+              description: "커스텀 필드",
+              items: {
+                type: "object",
+              },
+            },
+            deadline: {
+              type: "string",
+              format: "date-time",
+              description: "마감일",
+              example: "2024-12-31T23:59:59.000Z",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "생성일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "수정일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            qna: {
+              type: "array",
+              description: "Q&A 목록",
+              items: {
+                $ref: "#/components/schemas/QnAItem",
+              },
+            },
+            communityPosts: {
+              type: "array",
+              description: "커뮤니티 게시글 목록",
+              items: {
+                $ref: "#/components/schemas/CommunityPost",
+              },
+            },
+          },
+        },
+        ApplicationResponse: {
           type: "object",
           properties: {
             applicationId: {
               type: "string",
-              description: "신청 고유 ID",
+              description: "신청 ID",
+              example: "app_123",
             },
-            routineId: {
+            type: {
               type: "string",
-              description: "루틴 ID",
+              description: "신청 타입",
+              example: "ROUTINE",
+            },
+            targetId: {
+              type: "string",
+              description: "대상 ID",
+              example: "routine_123",
             },
             userId: {
               type: "string",
               description: "사용자 ID",
+              example: "user_123",
             },
             status: {
               type: "string",
-              enum: ["PENDING", "APPROVED", "REJECTED", "CANCELLED"],
               description: "신청 상태",
+              example: "PENDING",
+            },
+            selectedVariant: {
+              type: "string",
+              nullable: true,
+              description: "선택된 옵션",
+            },
+            quantity: {
+              type: "integer",
+              description: "수량",
+              example: 1,
+            },
+            customFieldsResponse: {
+              type: "object",
+              description: "커스텀 필드 응답",
             },
             appliedAt: {
               type: "string",
               format: "date-time",
-              description: "신청일시",
+              description: "신청일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            targetName: {
+              type: "string",
+              description: "대상 이름",
+              example: "매일 운동하기",
+            },
+            targetPrice: {
+              type: "number",
+              description: "대상 가격",
+              example: 10000,
             },
           },
         },
@@ -569,46 +783,298 @@ const options = {
             },
           },
         },
-        QnA: {
+        QnAItem: {
           type: "object",
           properties: {
-            qnaId: {
+            id: {
               type: "string",
-              description: "QnA 고유 ID",
+              description: "Q&A ID",
+              example: "qna_123",
             },
-            routineId: {
-              type: "string",
-              description: "루틴 ID",
-            },
-            userId: {
-              type: "string",
-              description: "사용자 ID",
-            },
-            question: {
-              type: "string",
+            content: {
+              type: "array",
               description: "질문 내용",
+              items: {
+                type: "object",
+              },
             },
-            answer: {
-              type: "string",
+            media: {
+              type: "array",
+              description: "미디어 파일",
+              items: {
+                type: "object",
+              },
+            },
+            answerContent: {
+              type: "array",
               nullable: true,
               description: "답변 내용",
+              items: {
+                type: "object",
+              },
             },
-            images: {
+            answerMedia: {
               type: "array",
+              description: "답변 미디어",
+              items: {
+                type: "object",
+              },
+            },
+            answerUserId: {
+              type: "string",
+              nullable: true,
+              description: "답변자 ID",
+              example: "user_456",
+            },
+            askedBy: {
+              type: "string",
+              description: "질문자 ID",
+              example: "user_123",
+            },
+            answeredBy: {
+              type: "string",
+              nullable: true,
+              description: "답변자 ID",
+              example: "user_456",
+            },
+            askedAt: {
+              type: "string",
+              format: "date-time",
+              description: "질문일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            answeredAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "답변일",
+              example: "2024-01-02T00:00:00.000Z",
+            },
+            likesCount: {
+              type: "integer",
+              description: "좋아요 수",
+              example: 5,
+            },
+          },
+        },
+        CommunityPostListItem: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "게시글 ID",
+              example: "AMrsQRg9tBY0ZGJMbKG2",
+            },
+            type: {
+              type: "string",
+              description: "게시글 타입",
+              example: "TMI",
+            },
+            author: {
+              type: "string",
+              description: "작성자",
+              example: "사용자닉네임",
+            },
+            title: {
+              type: "string",
+              description: "제목",
+              example: "오늘의 루틴 인증!",
+            },
+            preview: {
+              type: "object",
+              description: "미리보기 정보",
+              properties: {
+                description: {
+                  type: "string",
+                  description: "미리보기 설명",
+                  example: "string",
+                },
+                thumbnail: {
+                  type: "object",
+                  nullable: true,
+                  description: "썸네일 정보 (null 가능)",
+                  properties: {
+                    url: {
+                      type: "string",
+                      description: "썸네일 URL",
+                      example: "https://example.com/updated-image.jpg",
+                    },
+                    blurHash: {
+                      type: "string",
+                      description: "블러 해시",
+                      example: "L6PZfSi_.AyE_3t7t7R**0o#DgR4",
+                    },
+                    width: {
+                      type: "integer",
+                      description: "너비",
+                      example: 1080,
+                    },
+                    height: {
+                      type: "integer",
+                      description: "높이",
+                      example: 1080,
+                    },
+                    ratio: {
+                      type: "string",
+                      description: "비율",
+                      example: "1080:1080",
+                    },
+                  },
+                },
+                isVideo: {
+                  type: "boolean",
+                  description: "비디오 여부",
+                  example: false,
+                },
+                hasImage: {
+                  type: "boolean",
+                  description: "이미지 포함 여부",
+                  example: false,
+                },
+                hasVideo: {
+                  type: "boolean",
+                  description: "동영상 포함 여부",
+                  example: false,
+                },
+              },
+            },
+            mediaCount: {
+              type: "integer",
+              description: "미디어 개수",
+              example: 0,
+            },
+            channel: {
+              type: "string",
+              description: "채널명",
+              example: "TMI 자아탐색",
+            },
+            category: {
+              type: "string",
+              nullable: true,
+              description: "카테고리",
+              example: "string",
+            },
+            tags: {
+              type: "array",
+              description: "태그 목록",
               items: {
                 type: "string",
-                description: "이미지 URL",
               },
+              example: ["string"],
+            },
+            scheduledDate: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "예약 발행 날짜",
+              example: "2025-10-03T17:15:04.882Z",
+            },
+            isLocked: {
+              type: "boolean",
+              description: "잠금 여부",
+              example: false,
+            },
+            visibility: {
+              type: "string",
+              description: "공개 범위",
+              example: "public",
+            },
+            likesCount: {
+              type: "integer",
+              description: "좋아요 수",
+              example: 0,
+            },
+            commentsCount: {
+              type: "integer",
+              description: "댓글 수",
+              example: 0,
             },
             createdAt: {
               type: "string",
               format: "date-time",
-              description: "생성일시",
+              description: "생성일",
+              example: "2025-10-03T17:15:07.862Z",
+            },
+            timeAgo: {
+              type: "string",
+              description: "상대적 시간",
+              example: "2분 전",
+            },
+          },
+        },
+        CommunityPost: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "게시글 ID",
+              example: "post_123",
+            },
+            type: {
+              type: "string",
+              description: "게시글 타입",
+              example: "ROUTINE_CERT",
+            },
+            author: {
+              type: "string",
+              description: "작성자",
+              example: "사용자닉네임",
+            },
+            title: {
+              type: "string",
+              description: "제목",
+              example: "오늘의 루틴 인증!",
+            },
+            content: {
+              type: "array",
+              description: "내용",
+              items: {
+                type: "object",
+              },
+            },
+            media: {
+              type: "array",
+              description: "미디어",
+              items: {
+                type: "object",
+              },
+            },
+            channel: {
+              type: "string",
+              description: "채널명",
+              example: "플래너 인증 루틴",
+            },
+            isLocked: {
+              type: "boolean",
+              description: "잠금 여부",
+              example: false,
+            },
+            visibility: {
+              type: "string",
+              description: "공개 범위",
+              example: "public",
+            },
+            likesCount: {
+              type: "integer",
+              description: "좋아요 수",
+              example: 10,
+            },
+            commentsCount: {
+              type: "integer",
+              description: "댓글 수",
+              example: 3,
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "생성일",
+              example: "2024-01-01T00:00:00.000Z",
             },
             updatedAt: {
               type: "string",
               format: "date-time",
-              description: "수정일시",
+              description: "수정일",
+              example: "2024-01-01T00:00:00.000Z",
             },
           },
         },
@@ -701,55 +1167,227 @@ const options = {
             },
           },
         },
-        Gathering: {
+        GatheringListItem: {
           type: "object",
           properties: {
             id: {
               type: "string",
               description: "소모임 고유 ID",
+              example: "gathering_123",
             },
-            title: {
+            name: {
               type: "string",
-              description: "소모임 제목",
+              description: "소모임 이름",
+              example: "월간 독서 모임",
             },
             description: {
               type: "string",
               description: "소모임 설명",
+              example: "매월 한 권씩 책을 읽고 토론하는 모임입니다",
             },
             status: {
               type: "string",
-              enum: ["OPEN", "CLOSED"],
+              enum: ["RECRUITING", "IN_PROGRESS", "COMPLETED"],
               description: "소모임 상태",
+              example: "RECRUITING",
+            },
+            price: {
+              type: "number",
+              description: "가격",
+              example: 5000,
+            },
+            currency: {
+              type: "string",
+              description: "통화",
+              example: "KRW",
+            },
+            stockCount: {
+              type: "integer",
+              description: "재고 수량",
+              example: 20,
+            },
+            soldCount: {
+              type: "integer",
+              description: "판매 수량",
+              example: 5,
+            },
+            viewCount: {
+              type: "integer",
+              description: "조회수",
+              example: 80,
+            },
+            buyable: {
+              type: "boolean",
+              description: "구매 가능 여부",
+              example: true,
+            },
+            sellerId: {
+              type: "string",
+              description: "판매자 ID",
+              example: "seller_123",
+            },
+            sellerName: {
+              type: "string",
+              description: "판매자 이름",
+              example: "독서 코치",
             },
             deadline: {
               type: "string",
               format: "date-time",
-              description: "소모임 마감일",
-            },
-            likesCount: {
-              type: "number",
-              description: "좋아요 수",
-            },
-            images: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  url: {
-                    type: "string",
-                    description: "이미지 URL",
-                  },
-                  order: {
-                    type: "number",
-                    description: "이미지 순서",
-                  },
-                },
-              },
+              description: "마감일",
+              example: "2024-12-31T23:59:59.000Z",
             },
             createdAt: {
               type: "string",
               format: "date-time",
-              description: "생성일시",
+              description: "생성일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "수정일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+          },
+        },
+        GatheringDetail: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "소모임 고유 ID",
+              example: "gathering_123",
+            },
+            name: {
+              type: "string",
+              description: "소모임 이름",
+              example: "월간 독서 모임",
+            },
+            description: {
+              type: "string",
+              description: "소모임 설명",
+              example: "매월 한 권씩 책을 읽고 토론하는 모임입니다",
+            },
+            status: {
+              type: "string",
+              enum: ["RECRUITING", "IN_PROGRESS", "COMPLETED"],
+              description: "소모임 상태",
+              example: "RECRUITING",
+            },
+            price: {
+              type: "number",
+              description: "가격",
+              example: 5000,
+            },
+            currency: {
+              type: "string",
+              description: "통화",
+              example: "KRW",
+            },
+            stockCount: {
+              type: "integer",
+              description: "재고 수량",
+              example: 20,
+            },
+            soldCount: {
+              type: "integer",
+              description: "판매 수량",
+              example: 5,
+            },
+            viewCount: {
+              type: "integer",
+              description: "조회수",
+              example: 81,
+            },
+            buyable: {
+              type: "boolean",
+              description: "구매 가능 여부",
+              example: true,
+            },
+            sellerId: {
+              type: "string",
+              description: "판매자 ID",
+              example: "seller_123",
+            },
+            sellerName: {
+              type: "string",
+              description: "판매자 이름",
+              example: "독서 코치",
+            },
+            content: {
+              type: "array",
+              description: "소모임 상세 내용",
+              items: {
+                type: "object",
+              },
+            },
+            media: {
+              type: "array",
+              description: "미디어 파일",
+              items: {
+                type: "object",
+              },
+            },
+            options: {
+              type: "array",
+              description: "옵션 목록",
+              items: {
+                type: "object",
+              },
+            },
+            primaryDetails: {
+              type: "array",
+              description: "주요 상세 정보",
+              items: {
+                type: "object",
+              },
+            },
+            variants: {
+              type: "array",
+              description: "변형 옵션",
+              items: {
+                type: "object",
+              },
+            },
+            customFields: {
+              type: "array",
+              description: "커스텀 필드",
+              items: {
+                type: "object",
+              },
+            },
+            deadline: {
+              type: "string",
+              format: "date-time",
+              description: "마감일",
+              example: "2024-12-31T23:59:59.000Z",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "생성일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "수정일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            qna: {
+              type: "array",
+              description: "Q&A 목록",
+              items: {
+                $ref: "#/components/schemas/QnAItem",
+              },
+            },
+            communityPosts: {
+              type: "array",
+              description: "커뮤니티 게시글 목록",
+              items: {
+                $ref: "#/components/schemas/CommunityPost",
+              },
             },
           },
         },
@@ -804,7 +1442,7 @@ const options = {
             },
             refId: {
               type: "string",
-              description: "외부 참조 ID (루틴 ID 등)",
+              description: "외부 참조 ID (루틴/소모임/TMI 프로젝트 ID)",
               example: "routine_123",
             },
             authorId: {
@@ -960,6 +1598,56 @@ const options = {
             },
           },
         },
+        LikeToggleResponse: {
+          type: "object",
+          properties: {
+            routineId: {
+              type: "string",
+              description: "루틴 ID",
+              example: "routine_123",
+            },
+            userId: {
+              type: "string",
+              description: "사용자 ID",
+              example: "user_123",
+            },
+            isLiked: {
+              type: "boolean",
+              description: "좋아요 여부",
+              example: true,
+            },
+            likeCount: {
+              type: "integer",
+              description: "좋아요 수",
+              example: 5,
+            },
+          },
+        },
+        QnALikeToggleResponse: {
+          type: "object",
+          properties: {
+            qnaId: {
+              type: "string",
+              description: "Q&A ID",
+              example: "qna_123",
+            },
+            userId: {
+              type: "string",
+              description: "사용자 ID",
+              example: "user_123",
+            },
+            isLiked: {
+              type: "boolean",
+              description: "좋아요 여부",
+              example: true,
+            },
+            likeCount: {
+              type: "integer",
+              description: "좋아요 수",
+              example: 3,
+            },
+          },
+        },
       },
     },
   },
@@ -977,10 +1665,16 @@ async function getMergedSwaggerSpecs() {
   try {
     // const autoGenerated = await swaggerGenerator.mergeWithExistingSwagger();
     // return autoGenerated;
-    return specs;
+
+    // require 캐시 삭제로 파일 변경사항 반영
+    const swaggerConfigPath = require.resolve("./swagger.js");
+    delete require.cache[swaggerConfigPath];
+
+    // 매번 새로운 스펙을 생성해서 변경사항이 반영되도록 함
+    return swaggerJSDoc(options);
   } catch (error) {
     console.warn("⚠️  자동 Swagger 병합 실패, 기본 스펙 사용:", error.message);
-    return specs;
+    return swaggerJSDoc(options);
   }
 }
 

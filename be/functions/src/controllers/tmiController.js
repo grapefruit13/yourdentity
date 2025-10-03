@@ -51,7 +51,7 @@ const getAllTmiProjects = async (req, res) => {
 // TMI 프로젝트 상세 조회 (신청페이지 전용)
 const getTmiProjectById = async (req, res) => {
   try {
-    const { projectId } = req.params;
+    const {projectId} = req.params;
     const project = await firestoreService.getDocument("tmis", projectId);
 
     if (!project) {
@@ -70,10 +70,10 @@ const getTmiProjectById = async (req, res) => {
 
     // Q&A 조회
     const qnas = await firestoreService.getCollectionWhere(
-      "qnas",
-      "targetId",
-      "==",
-      projectId
+        "qnas",
+        "targetId",
+        "==",
+        projectId,
     );
     const formattedQnas = qnas.map((qna) => ({
       id: qna.id,
@@ -94,16 +94,16 @@ const getTmiProjectById = async (req, res) => {
     try {
       // TMI 프로젝트 ID와 동일한 커뮤니티 ID에서 해당 TMI 프로젝트와 관련된 게시글 조회
       const posts = await firestoreService.getCollectionWithPagination(
-        `communities/${projectId}/posts`,
-        {
-          page: 0,
-          size: 10,
-          orderBy: "createdAt",
-          orderDirection: "desc",
-          where: [
-            { field: "type", operator: "==", value: "TMI" },
-          ],
-        }
+          `communities/${projectId}/posts`,
+          {
+            page: 0,
+            size: 10,
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            where: [
+              {field: "type", operator: "==", value: "TMI"},
+            ],
+          },
       );
 
       communityPosts = (posts.content || []).map((post) => ({
@@ -173,7 +173,7 @@ const getTmiProjectById = async (req, res) => {
 // TMI 프로젝트 신청하기
 const applyToTmiProject = async (req, res) => {
   try {
-    const { projectId } = req.params;
+    const {projectId} = req.params;
     const {
       userId,
       selectedVariant = null,
@@ -220,8 +220,8 @@ const applyToTmiProject = async (req, res) => {
     };
 
     const applicationId = await firestoreService.addDocument(
-      "applications",
-      applicationData
+        "applications",
+        applicationData,
     );
 
     // TMI 프로젝트 카운트 업데이트 (신청 시 즉시 반영)
@@ -260,16 +260,16 @@ const applyToTmiProject = async (req, res) => {
 // QnA 질문 작성
 const createQnA = async (req, res) => {
   try {
-    const { projectId } = req.params;
-    const { content = [] } = req.body;
+    const {projectId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환 (url 필드 추가, undefined 값 제거)
@@ -326,29 +326,29 @@ const createQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA:", error);
-    res.status(500).json({ error: "Failed to create QnA" });
+    res.status(500).json({error: "Failed to create QnA"});
   }
 };
 
 // QnA 질문 수정
 const updateQnA = async (req, res) => {
   try {
-    const { projectId, qnaId } = req.params;
-    const { content = [] } = req.body;
+    const {projectId, qnaId} = req.params;
+    const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
     const mediaItems = content.filter(
-      (item) => item.type === "image" || item.type === "video"
+        (item) => item.type === "image" || item.type === "video",
     );
 
     // media 배열 형식으로 변환 (url 필드 추가, undefined 값 제거)
@@ -399,30 +399,30 @@ const updateQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating QnA:", error);
-    res.status(500).json({ error: "Failed to update QnA" });
+    res.status(500).json({error: "Failed to update QnA"});
   }
 };
 
 // QnA 답변 작성
 const createQnAAnswer = async (req, res) => {
   try {
-    const { qnaId } = req.params;
-    const { content = [], media = [] } = req.body;
+    const {qnaId} = req.params;
+    const {content = [], media = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({ error: "content is required" });
+      return res.status(400).json({error: "content is required"});
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     const updatedData = {
       answerContent: content,
       answerMedia: media,
-      answerUserId: req.body.userId || "anonymous",
+      answerUserId: "user123", // 하드코딩된 사용자 ID
       answerCreatedAt: new Date(),
       updatedAt: new Date(),
     };
@@ -442,14 +442,14 @@ const createQnAAnswer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA answer:", error);
-    res.status(500).json({ error: "Failed to create QnA answer" });
+    res.status(500).json({error: "Failed to create QnA answer"});
   }
 };
 
 // QnA 좋아요 토글
 const toggleQnALike = async (req, res) => {
   try {
-    const { qnaId } = req.params;
+    const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
@@ -518,27 +518,27 @@ const toggleQnALike = async (req, res) => {
 // QnA 삭제
 const deleteQnA = async (req, res) => {
   try {
-    const { qnaId } = req.params;
+    const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({ error: "QnA not found" });
+      return res.status(404).json({error: "QnA not found"});
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({ message: "QnA가 성공적으로 삭제되었습니다" });
+    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
   } catch (error) {
     console.error("Error deleting QnA:", error);
-    res.status(500).json({ error: "Failed to delete QnA" });
+    res.status(500).json({error: "Failed to delete QnA"});
   }
 };
 
 // TMI 프로젝트 좋아요 토글
 const toggleTmiProjectLike = async (req, res) => {
   try {
-    const { projectId } = req.params;
+    const {projectId} = req.params;
 
     // TMI 프로젝트 존재 확인
     const project = await firestoreService.getDocument("tmis", projectId);
