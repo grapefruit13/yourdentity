@@ -15,10 +15,10 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "TMI":
-        return "bg-[#EAEDFF] text-blue-500";
-      case "한끗루틴":
-        return "bg-pink-100 text-pink-600";
+      case "일상 공유":
+        return "bg-blue-100 text-blue-600";
+      case "질문과 답변":
+        return "bg-purple-100 text-purple-600";
       case "월간 소모임":
         return "bg-green-100 text-green-600";
       default:
