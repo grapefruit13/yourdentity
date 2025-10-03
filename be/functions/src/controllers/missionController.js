@@ -1,148 +1,60 @@
-const firestoreService = require('../services/firestoreService');
+// 미션 관련 기능은 추후 구현 예정
+// 현재는 사용자 관리에 집중
 
-class MissionController {
-  async createMission(req, res) {
-    try {
-      const { userId } = req.params;
-      const { missionId, status = 'ONGOING' } = req.body;
+/**
+ * 미션 생성 (더미 함수)
+ */
+const createMission = (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: "미션 기능은 추후 구현 예정입니다"
+  });
+};
 
-      if (!missionId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'missionId is required' 
-        });
-      }
+/**
+ * 사용자 미션 목록 조회 (더미 함수)
+ */
+const getUserMissions = (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: "미션 기능은 추후 구현 예정입니다"
+  });
+};
 
-      const validStatuses = ['ONGOING', 'COMPLETED', 'EXPIRED', 'RETRY'];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
-        });
-      }
+/**
+ * 미션 상세 조회 (더미 함수)
+ */
+const getMissionById = (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: "미션 기능은 추후 구현 예정입니다"
+  });
+};
 
-      const result = await firestoreService.createMission(userId, missionId, status);
+/**
+ * 미션 업데이트 (더미 함수)
+ */
+const updateMission = (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: "미션 기능은 추후 구현 예정입니다"
+  });
+};
 
-      res.json({
-        success: true,
-        data: {
-          ...result,
-          startedAt: new Date().toISOString(),
-          completedAt: status === 'COMPLETED' ? new Date().toISOString() : null
-        }
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-  }
+/**
+ * 미션 삭제 (더미 함수)
+ */
+const deleteMission = (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: "미션 기능은 추후 구현 예정입니다"
+  });
+};
 
-  async getUserMissions(req, res) {
-    try {
-      const { userId } = req.params;
-      const { status } = req.query;
-
-      const missions = await firestoreService.getUserMissions(userId, status);
-
-      res.json({
-        success: true,
-        data: missions,
-        count: missions.length
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-  }
-
-  async getMissionById(req, res) {
-    try {
-      const { userId, missionId } = req.params;
-      
-      const mission = await firestoreService.getMissionById(userId, missionId);
-
-      if (!mission) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Mission not found' 
-        });
-      }
-
-      res.json({
-        success: true,
-        data: mission
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-  }
-
-  async updateMission(req, res) {
-    try {
-      const { userId, missionId } = req.params;
-      const { status, certified, review } = req.body;
-
-      const updateData = {};
-      
-      if (status) {
-        const validStatuses = ['ONGOING', 'COMPLETED', 'EXPIRED', 'RETRY'];
-        if (!validStatuses.includes(status)) {
-          return res.status(400).json({ 
-            success: false, 
-            error: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
-          });
-        }
-        updateData.status = status;
-      }
-
-      if (certified !== undefined) updateData.certified = certified;
-      if (review !== undefined) updateData.review = review;
-
-      if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'No valid fields to update' 
-        });
-      }
-
-      const result = await firestoreService.updateMission(userId, missionId, updateData);
-
-      res.json({
-        success: true,
-        data: result
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-  }
-
-  async deleteMission(req, res) {
-    try {
-      const { userId, missionId } = req.params;
-      
-      await firestoreService.deleteMission(userId, missionId);
-
-      res.json({
-        success: true,
-        message: 'Mission deleted successfully'
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
-    }
-  }
-}
-
-module.exports = new MissionController();
+module.exports = {
+  createMission,
+  getUserMissions,
+  getMissionById,
+  updateMission,
+  deleteMission
+};
