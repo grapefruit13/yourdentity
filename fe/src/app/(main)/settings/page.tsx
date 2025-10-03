@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import SettingsSection from "@/components/my-page/SettingsSection";
 import LogoutModal from "@/components/my-page/LogoutModal";
+import SettingsSection from "@/components/my-page/SettingsSection";
 
 /**
  * @description 설정 페이지
@@ -25,21 +25,21 @@ const SettingsPage = () => {
       // 1. 로컬 스토리지 정리
       localStorage.clear();
       sessionStorage.clear();
-      
+
       // 2. 쿠키 정리 (필요한 경우)
       // document.cookie.split(";").forEach((c) => {
       //   document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       // });
-      
+
       // 3. 모달 닫기
       setIsLogoutModalOpen(false);
-      
+
       // 4. 로그인 페이지로 리다이렉트
       router.push("/login");
-      
+
       // 5. 페이지 새로고침으로 완전한 상태 초기화
       window.location.reload();
-      
+
       console.log("로그아웃 완료");
     } catch (error) {
       console.error("로그아웃 중 오류 발생:", error);
@@ -56,41 +56,63 @@ const SettingsPage = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteConfirmText !== "DELETE") {
       alert("정확히 'DELETE'를 입력해주세요.");
       return;
     }
 
     try {
-      // 1. 사용자 데이터 삭제 확인
       console.log("계정 삭제 진행 중...");
-      
-      // 2. 로컬 스토리지 완전 정리
+
+      // 1. 서버에 계정 삭제 요청 전송
+      const response = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // 쿠키 포함
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `서버 오류: ${response.status}`);
+      }
+
+      // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
       localStorage.clear();
       sessionStorage.clear();
-      
+
       // 3. 쿠키 정리
       document.cookie.split(";").forEach((c) => {
         document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
-      
+
       // 4. 모달 닫기
       setIsDeleteModalOpen(false);
-      
-      // 5. TODO: 서버에 계정 삭제 요청 전송
-      // await fetch('/api/user/delete', { method: 'DELETE' });
-      
+
+      // 5. 성공 메시지 표시
+      alert("계정이 성공적으로 삭제되었습니다.");
+
       // 6. 로그인 페이지로 리다이렉트
       router.push("/login");
-      
+
       // 7. 완전한 페이지 새로고침
       window.location.reload();
-      
+
       console.log("계정 삭제 완료");
     } catch (error) {
       console.error("계정 삭제 중 오류 발생:", error);
-      alert("계정 삭제 중 오류가 발생했습니다. 다시 시도해주세요.");
+      
+      // 사용자에게 구체적인 오류 메시지 표시
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "계정 삭제 중 알 수 없는 오류가 발생했습니다.";
+      
+      alert(`계정 삭제 실패: ${errorMessage}`);
+      
+      // 오류 발생 시 모달은 열어두어 사용자가 재시도할 수 있도록 함
+      // setIsDeleteModalOpen(false); // 주석 처리
     }
   };
 
@@ -174,7 +196,12 @@ const SettingsPage = () => {
       {/* 계정 삭제 모달 */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+          {/* 배경 오버레이 */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={handleDeleteCancel}
+          />
+          <div className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-center text-lg font-medium text-black">
               계정을 삭제하시겠습니까?
             </h2>
