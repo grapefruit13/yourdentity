@@ -1,8 +1,8 @@
 /**
  * Firebase Auth - 카카오 소셜 로그인 (OpenID Connect)
  */
-import { 
-  OAuthProvider, 
+import {
+  OAuthProvider,
   signInWithPopup,
   UserCredential,
   onAuthStateChanged,
@@ -30,9 +30,11 @@ export const signInWithKakao = async (): Promise<UserCredential> => {
   
   try {
     const result = await signInWithPopup(auth, provider);
+    // eslint-disable-next-line no-console
     console.log('카카오 로그인 성공:', result.user);
     return result;
-  } catch (error: any) {
+  } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('카카오 로그인 실패:', error);
     throw error;
   }
@@ -51,8 +53,10 @@ export const getCurrentUser = (): User | null => {
 export const signOut = async (): Promise<void> => {
   try {
     await auth.signOut();
+    // eslint-disable-next-line no-console
     console.log('로그아웃 성공');
-  } catch (error: any) {
+  } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('로그아웃 실패:', error);
     throw error;
   }

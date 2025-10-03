@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getMessaging, getToken, isSupported, Messaging } from "firebase/messaging";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getMessaging, getToken, isSupported, Messaging } from "firebase/messaging";
 import { debug } from "@/utils/shared/debugger";
 
 const firebaseConfig = {
@@ -54,9 +54,7 @@ export const fetchToken = async () => {
     const fcmMessaging = await getClientMessaging();
     if (!fcmMessaging) return null;
 
-    const token = await getToken(fcmMessaging, {
-      vapidKey: process.env.FCM_VAPID_KEY,
-    });
+    const token = await getToken(fcmMessaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_FCM_VAPID_KEY });
     return token;
   } catch (error) {
     debug.error("An error occurred while fetching the token::", error);

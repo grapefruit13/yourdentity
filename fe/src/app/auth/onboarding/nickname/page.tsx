@@ -9,7 +9,7 @@ export default function NicknamePage() {
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<import('firebase/auth').User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -63,15 +63,16 @@ export default function NicknamePage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({} as any));
+        const data = await res.json().catch(() => ({} as Record<string, unknown>));
         throw new Error(data?.error || `닉네임 업데이트 실패 (${res.status})`);
       }
 
       // 다음 단계로 이동
       router.push('/auth/onboarding/phone');
-    } catch (error: any) {
+    } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('닉네임 설정 실패:', error);
-      setError(error.message || '닉네임 설정에 실패했습니다.');
+      setError(error instanceof Error ? error.message : '닉네임 설정에 실패했습니다.');
     } finally {
       setLoading(false);
     }

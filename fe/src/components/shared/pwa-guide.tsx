@@ -16,7 +16,8 @@ const PWAGuide = () => {
     if (typeof window === "undefined") return;
 
     const inStandalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
-    const iosStandalone = typeof navigator !== "undefined" && (navigator as any).standalone === true;
+    const navWithStandalone = typeof navigator !== "undefined" ? (navigator as Navigator & { standalone?: boolean }) : undefined;
+    const iosStandalone = navWithStandalone?.standalone === true;
     setIsStandalone(inStandalone || iosStandalone);
 
     const handler = (e: Event) => {
@@ -63,8 +64,8 @@ const PWAGuide = () => {
         <div className="space-y-1 text-sm text-gray-600">
           <p>홈 화면에 추가하여 더 편리하게 이용해보세요.</p>
           <ul className="list-inside list-disc">
-            <li>iOS: 공유 버튼 → "홈 화면에 추가"</li>
-            <li>Android: 브라우저 메뉴 → "앱 설치" 또는 "홈 화면에 추가"</li>
+            <li>iOS: 공유 버튼 → &quot;홈 화면에 추가&quot;</li>
+            <li>Android: 브라우저 메뉴 → &quot;앱 설치&quot; 또는 &quot;홈 화면에 추가&quot;</li>
           </ul>
         </div>
       )}

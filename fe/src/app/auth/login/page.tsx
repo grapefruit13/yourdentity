@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  signInWithKakao, 
-  onAuthStateChange
-} from '@/lib/auth';
+import { signInWithKakao, onAuthStateChange } from '@/lib/auth';
 
 /**
  * @description 로그인 페이지
@@ -28,12 +25,13 @@ const LoginPage = () => {
   }, [router]);
 
   // 카카오 로그인 핸들러
-  const handleKakaoLogin = async () => {
+  const handleKakaoLogin = async (): Promise<void> => {
     setLoading(true);
 
     try {
       await signInWithKakao();
-    } catch (error: any) {
+    } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('카카오 로그인 실패:', error);
       setLoading(false);
     }
