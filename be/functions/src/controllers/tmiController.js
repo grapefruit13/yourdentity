@@ -93,7 +93,6 @@ const getTmiProjectById = async (req, res) => {
     let communityPosts = [];
     try {
       // TMI 프로젝트 ID와 동일한 커뮤니티 ID에서 해당 TMI 프로젝트와 관련된 게시글 조회
-      // projectId와 동일한 커뮤니티 ID를 사용하여 검색 가능하도록 함
       const posts = await firestoreService.getCollectionWithPagination(
         `communities/${projectId}/posts`,
         {
@@ -103,7 +102,6 @@ const getTmiProjectById = async (req, res) => {
           orderDirection: "desc",
           where: [
             { field: "type", operator: "==", value: "TMI" },
-            { field: "refId", operator: "==", value: projectId },
           ],
         }
       );

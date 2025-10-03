@@ -95,7 +95,7 @@ const getRoutineById = async (req, res) => {
     // 커뮤니티 게시글 조회 (루틴 인증글)
     let communityPosts = [];
     try {
-      // routine-planner 커뮤니티에서 해당 루틴과 관련된 게시글 조회
+      // 루틴 ID와 동일한 커뮤니티 ID에서 해당 루틴과 관련된 게시글 조회
       const posts = await firestoreService.getCollectionWithPagination(
           `communities/${routineId}/posts`,
           {
@@ -105,7 +105,6 @@ const getRoutineById = async (req, res) => {
             orderDirection: "desc",
             where: [
               {field: "type", operator: "==", value: "ROUTINE_CERT"},
-              {field: "refId", operator: "==", value: routineId},
             ],
           },
       );

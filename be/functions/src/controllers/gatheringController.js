@@ -99,7 +99,6 @@ const getGatheringById = async (req, res) => {
     let communityPosts = [];
     try {
       // 소모임 ID와 동일한 커뮤니티 ID에서 해당 소모임과 관련된 게시글 조회
-      // gatheringId와 동일한 커뮤니티 ID를 사용하여 검색 가능하도록 함
       const posts = await firestoreService.getCollectionWithPagination(
         `communities/${gatheringId}/posts`,
         {
@@ -109,7 +108,6 @@ const getGatheringById = async (req, res) => {
           orderDirection: "desc",
           where: [
             { field: "type", operator: "==", value: "GATHERING_REVIEW" },
-            { field: "refId", operator: "==", value: gatheringId },
           ],
         }
       );
