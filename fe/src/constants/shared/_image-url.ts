@@ -46,6 +46,32 @@ const ICON = {
       alt: "미션",
     },
   },
+  login: {
+    email: {
+      url: "/icons/ic-email.svg",
+      alt: "이메일",
+    },
+  },
+  logo: {
+    youthVoice: {
+      url: "/icons/logo/lg-youth-voice.svg",
+      alt: "유스보이스 로고",
+    },
+    kakao: {
+      url: "/icons/logo/lg-kakao.svg",
+      alt: "카카오 로고",
+    },
+  },
+  eye: {
+    on: {
+      url: "/icons/ic-eye-on.svg",
+      alt: "눈 열림",
+    },
+    off: {
+      url: "/icons/ic-eye-off.svg",
+      alt: "눈 닫힘",
+    },
+  },
 };
 
 export const IMAGE_URL = {
