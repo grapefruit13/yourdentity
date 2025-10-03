@@ -16,9 +16,8 @@ import { auth } from './firebase';
 export const createKakaoProvider = () => {
   const provider = new OAuthProvider('oidc.kakao');
   
-  // Kakao OpenID Connect 표준 스코프
+  // Kakao OpenID Connect 표준 스코프 (추후 이름, 출생년도 추가 예정)
   provider.addScope('openid');
-  provider.addScope('email');    // 'account_email'에 포함됨
   
   return provider;
 };
