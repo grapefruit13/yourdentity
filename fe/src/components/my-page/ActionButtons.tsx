@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { RotateCcw, MessageSquare, ClipboardCheck } from "lucide-react";
 
 /**

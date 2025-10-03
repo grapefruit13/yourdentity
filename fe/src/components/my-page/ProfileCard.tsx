@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight, Settings } from "lucide-react";
+import React from "react";
+import { ChevronRight } from "lucide-react";
 
 /**
  * @description 프로필 정보 카드 컴포넌트
