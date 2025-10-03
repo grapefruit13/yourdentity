@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Noto_Sans_KR } from "next/font/google";
-import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
-import TopBar from "@/components/shared/layouts/top-bar";
 import { Toaster } from "@/components/shared/ui/sonner";
 import { cn } from "@/utils/shared/cn";
 
@@ -277,12 +275,7 @@ export default function RootLayout({
         className={cn(notoSansKr.variable, "flex h-screen w-full flex-col")}
       >
         <Toaster />
-        <div className="flex h-screen w-full flex-col">
-          {/* 데모 위해 임시로 탑바/바텀 네비게이션 적용 */}
-          <TopBar />
-          {children}
-          <BottomNavigation />
-        </div>
+        <div className="flex h-screen w-full flex-col bg-white">{children}</div>
       </body>
     </html>
   );
