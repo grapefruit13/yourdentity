@@ -67,7 +67,7 @@ const SettingsPage = () => {
     <div className="flex h-full w-full flex-col bg-gray-50">
       {/* 헤더 */}
       <header className="flex w-full items-center gap-4 p-4 pb-6">
-        <button 
+        <button
           onClick={() => router.back()}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
         >
@@ -79,13 +79,13 @@ const SettingsPage = () => {
       {/* 메인 컨텐츠 */}
       <main className="flex flex-1 flex-col px-4 gap-6">
         {/* 로그인/회원정보 섹션 */}
-        <SettingsSection 
+        <SettingsSection
           title="로그인/회원정보"
           items={loginSectionItems}
         />
-        
+
         {/* 정책 및 약관 섹션 */}
-        <SettingsSection 
+        <SettingsSection
           title="정책 및 약관"
           items={policySectionItems}
         />

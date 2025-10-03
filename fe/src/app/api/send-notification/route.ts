@@ -23,27 +23,33 @@ if (!admin.apps.length) {
         );
       }
 
-      // 필수 속성들 검증
-      const requiredFields = ["project_id", "private_key", "client_email"];
-      const missingFields = requiredFields.filter(
-        (field) => !serviceAccount[field as keyof ServiceAccount]
-      );
+      // 서비스 계정 키 정규화 (camelCase와 snake_case 모두 지원)
+      const accountRecord = serviceAccount as Record<string, unknown>;
+      const normalizedAccount: ServiceAccount = {
+        projectId: (accountRecord.project_id ?? accountRecord.projectId) as string,
+        privateKey: (accountRecord.private_key ?? accountRecord.privateKey) as string,
+        clientEmail: (accountRecord.client_email ?? accountRecord.clientEmail) as string,
+      };
+
+      const missingFields = Object.entries(normalizedAccount)
+        .filter(([, value]) => !value)
+        .map(([key]) => key);
 
       if (missingFields.length > 0) {
         debug.error("Missing required fields:", missingFields);
-        debug.error("Service account keys:", Object.keys(serviceAccount));
+        debug.error("Service account keys:", Object.keys(accountRecord));
         throw new Error(
           `Service account is missing required properties: ${missingFields.join(", ")}`
         );
       }
 
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+        credential: admin.credential.cert(normalizedAccount),
       });
 
       debug.log(
         "Firebase Admin SDK initialized successfully with project:",
-        serviceAccount.projectId
+        normalizedAccount.projectId
       );
     } catch (error) {
       debug.error("Firebase Admin SDK initialization error:", error);

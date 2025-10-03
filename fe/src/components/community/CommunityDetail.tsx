@@ -273,11 +273,9 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
         {/* 내용 */}
         <div className="mb-6 text-base leading-relaxed text-gray-700">
           {post?.content ? (
-            <div
-              dangerouslySetInnerHTML={{
-                __html: post.content.replace(/\n/g, "<br>"),
-              }}
-            />
+            <div className="whitespace-pre-line">
+              {post.content}
+            </div>
           ) : (
             <>
               <p className="mb-3">
