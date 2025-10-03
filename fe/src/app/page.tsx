@@ -8,45 +8,6 @@ import { LINK_URL } from "@/constants/shared/_link-url";
  * @description 홈페이지 - 로그인 화면
  */
 const HomePage = () => {
-  const { token, notificationPermissionStatus } = useFcmToken();
-  const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const effectiveUser = currentUser ?? auth.currentUser;
-
-  useEffect(() => {
-    // Popup 방식만 사용: 현재 사용자 구독으로 상태 동기화
-    setCurrentUser(getCurrentUser());
-    const unsub = onAuthStateChanged(auth, (user) => setCurrentUser(user));
-    return () => unsub();
-  }, []);
-
-  const handleTestNotification = async () => {
-    const response = await fetch("/send-notification", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: token,
-        title: "테스트 알림",
-        message: "store로 링크되는 테스트 알림입니다.",
-        link: "/store",
-      }),
-    });
-
-    const data = await response.json();
-    debug.log(data);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      router.push('/auth/login');
-    } catch (error) {
-      console.error('로그아웃 실패:', error);
-    }
-  };
-
   return (
     <main className="relative flex h-screen flex-col items-center justify-center bg-white px-4 pb-8">
       <div className="relative top-1/4 aspect-[210/80] w-[60vw] max-w-[280px] min-w-[160px]">
