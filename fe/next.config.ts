@@ -11,8 +11,7 @@ export default withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  // disable: process.env.NODE_ENV === "development",
-  disable: false,
+  disable: false, // 프로덕션에서도 PWA 활성화
   runtimeCaching: [
     {
       urlPattern: /^https?.*/,

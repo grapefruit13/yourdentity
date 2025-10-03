@@ -1,8 +1,35 @@
 {
-  "files.eol": "\n", // 줄바꿈 lf
+  "files.eol": "\n",
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit" // eslint 자동 수정
+    "source.fixAll.eslint": "explicit"
   },
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "(?:'|\\\")([^'\\\"]*)(?:'|\\\")"],
+    ["tv\\(([^)]*)\\)", "(?:'|\\\")([^'\\\"]*)(?:'|\\\")"],
+    ["clsx\\(([^)]*)\\)", "(?:'|\\\")([^'\\\"]*)(?:'|\\\")"],
+    ["cn\\(([^)]*)\\)", "(?:'|\\\")([^'\\\"]*)(?:'|\\\")"]
+  ],
+  "tailwindCSS.root": ["."],
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  "tailwindCSS.files.exclude": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**"
+  ]
 }

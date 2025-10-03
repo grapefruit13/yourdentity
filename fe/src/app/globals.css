@@ -1,2 +1,40 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+/* tailwind color 변수 정의 */
+@theme {
+  /* font families */
+  --font-noto: var(--font-noto-sans-kr), system-ui, sans-serif;
+  /* Gill Sans는 시스템(맥) 기준 + 대체 스택 */
+  --font-gill: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+
+  /* primary */
+  --color-primary-50: #ffeff2;
+  --color-primary-100: #ffe0e9;
+  --color-primary-200: #ffc6da;
+  --color-primary-300: #ff97ba;
+  --color-primary-400: #ff5d97;
+  --color-primary-500: #ff2479;
+  --color-primary-600: #ff006c;
+  --color-primary-700: #d7005b;
+  --color-primary-800: #b40055;
+  --color-primary-900: #99024f;
+
+  /* gray */
+  /* tailwind의 slate300 사용 */
+  --color-gray-300: oklch(92.9% 0.013 255.508);
+  /* tailwind의 slate400 사용 */
+  --color-gray-400: oklch(70.4% 0.04 256.788);
+
+  /* sementic */
+  /* blue500 */
+  --color-progress: oklch(0.623 0.214 259.815);
+  /* green500 */
+  --color-success: oklch(0.723 0.219 149.579);
+  /* red500 */
+  --color-warning-high: oklch(0.637 0.237 25.331);
+  /* yellow400 */
+  --color-warning-low: oklch(0.852 0.199 91.936);
+  /* green500 */
+  --color-warning-success: oklch(0.723 0.219 149.579);
+}

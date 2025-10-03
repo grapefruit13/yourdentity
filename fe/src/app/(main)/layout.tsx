@@ -1,6 +1,4 @@
-import BottomNavigation from "@/shared/components/layouts/bottom-navigation";
-import TopBar from "@/shared/components/layouts/top-bar";
-import PWAInstall from "@/shared/components/pwa-install";
+import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
 
 /**
  * @description 하단 네브바 포함 레이아웃
@@ -11,11 +9,11 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex h-screen w-full flex-col">
-      <TopBar />
-      <main className="h-full">{children}</main>
-      <BottomNavigation />
-      <PWAInstall />
+    <div className="flex h-full w-full flex-col">
+      {/* <TopBar /> */}
+      <main className="flex h-full w-full flex-col">{children}</main>
+      {/* <BottomNavigation /> */}
+      {/* <PWAInstall /> */}
     </div>
   );
 }
