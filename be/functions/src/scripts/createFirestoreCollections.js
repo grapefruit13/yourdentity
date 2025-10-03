@@ -1,7 +1,12 @@
+
 const admin = require("firebase-admin");
 
+// 🔑 Firestore 에뮬레이터 호스트 지정
+process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8081";
+
+// Firebase Admin SDK 초기화
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
+  projectId: "youthvoice-2025", // 로컬에서는 projectId만 주면 됨
 });
 
 const db = admin.firestore();

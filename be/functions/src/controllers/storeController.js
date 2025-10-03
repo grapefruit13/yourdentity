@@ -326,7 +326,6 @@ const toggleProductLike = async (req, res) => {
       const newLikesCount = Math.max(0, (product.likesCount || 0) - 1);
       await firestoreService.updateDocument("products", productId, {
         likesCount: newLikesCount,
-        updatedAt: Date.now(),
       });
 
       res.json({
@@ -350,7 +349,6 @@ const toggleProductLike = async (req, res) => {
       const newLikesCount = (product.likesCount || 0) + 1;
       await firestoreService.updateDocument("products", productId, {
         likesCount: newLikesCount,
-        updatedAt: Date.now(),
       });
 
       res.json({
@@ -613,23 +611,25 @@ const toggleProductQnALike = async (req, res) => {
     }
 
     // 기존 좋아요 확인
-    const existingLikesResult =
-      await firestoreService.getCollectionWithPagination("likes", {
-        page: 0,
-        size: 1,
-        where: [
-          {field: "type", operator: "==", value: "QNA"},
-          {field: "targetId", operator: "==", value: qnaId},
-          {field: "userId", operator: "==", value: "user123"},
-        ],
-      });
-
-    const existingLikes = existingLikesResult.content || [];
+    const existingLikes = await firestoreService.getCollectionWhere(
+        "likes",
+        "targetId",
+        "==",
+        qnaId,
+    );
+    const userLike = existingLikes.find(
+        (like) => like.userId === "user123" && like.type === "QNA",
+    );
     let isLiked = false;
     let likeCount = qna.likesCount || 0;
 
-    if (existingLikes.length === 0) {
-      // 좋아요 추가
+    if (userLike) {
+      // 좋아요 취소
+      await firestoreService.deleteDocument("likes", userLike.id);
+      likeCount = Math.max(0, likeCount - 1);
+      isLiked = false;
+    } else {
+      // 좋아요 등록
       await firestoreService.addDocument("likes", {
         type: "QNA",
         targetId: qnaId,
@@ -638,11 +638,6 @@ const toggleProductQnALike = async (req, res) => {
       });
       likeCount += 1;
       isLiked = true;
-    } else {
-      // 좋아요 제거
-      await firestoreService.deleteDocument("likes", existingLikes[0].id);
-      likeCount = Math.max(0, likeCount - 1);
-      isLiked = false;
     }
 
     // QnA 좋아요 수 업데이트

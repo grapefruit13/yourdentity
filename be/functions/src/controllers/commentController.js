@@ -1,5 +1,6 @@
 const firestoreService = require("../services/firestoreService");
 const admin = require("firebase-admin");
+const {db} = require("../config/database");
 
 // 댓글 생성 API
 const createComment = async (req, res) => {
@@ -558,14 +559,7 @@ const deleteComment = async (req, res) => {
 const toggleCommentLike = async (req, res) => {
   try {
     const {commentId} = req.params;
-    const {userId} = req.body;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "userId는 필수입니다.",
-      });
-    }
+    const userId = "user123"; // 하드코딩
 
     // 댓글 조회
     const comment = await firestoreService.getDocument("comments", commentId);
@@ -591,6 +585,7 @@ const toggleCommentLike = async (req, res) => {
         "==",
         commentId,
     );
+    
     const userLike = existingLikes.find(
         (like) => like.userId === userId && like.type === "COMMENT",
     );
@@ -599,10 +594,10 @@ const toggleCommentLike = async (req, res) => {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
 
-      // 댓글의 좋아요 수 감소 (atomic decrement)
+      // 댓글의 좋아요 수 감소
+      const newLikesCount = Math.max(0, (comment.likesCount || 0) - 1);
       await firestoreService.updateDocument("comments", commentId, {
-        likesCount: admin.firestore.FieldValue.increment(-1),
-        updatedAt: new Date(),
+        likesCount: newLikesCount,
       });
 
       res.json({
@@ -622,10 +617,10 @@ const toggleCommentLike = async (req, res) => {
 
       await firestoreService.addDocument("likes", likeData);
 
-      // 댓글의 좋아요 수 증가 (atomic increment)
+      // 댓글의 좋아요 수 증가
+      const newLikesCount = (comment.likesCount || 0) + 1;
       await firestoreService.updateDocument("comments", commentId, {
-        likesCount: admin.firestore.FieldValue.increment(1),
-        updatedAt: new Date(),
+        likesCount: newLikesCount,
       });
 
       res.json({

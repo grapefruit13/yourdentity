@@ -592,22 +592,22 @@ class TmiControllerDocs {
    *                 example:
    *                   - type: "text"
    *                     order: 1
-   *                     content: "TMI 프로젝트는 어떤 활동을 하나요?"
+   *                     content: "TMI 프로젝트 시작일은 언제인가요?"
    *                   - type: "text"
    *                     order: 2
-   *                     content: "창작 경험이 없어도 참여할 수 있나요?"
+   *                     content: "혹시 중간에 참여할 수 있나요?"
    *                   - type: "image"
    *                     order: 3
-   *                     src: "https://example.com/tmi-question-image.jpg"
+   *                     src: "https://example.com/question-image.jpg"
    *                     width: 800
    *                     height: 600
    *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
    *                   - type: "video"
    *                     order: 4
-   *                     src: "https://example.com/tmi-question-video.mp4"
+   *                     src: "https://example.com/question-video.mp4"
    *                     width: 1920
    *                     height: 1080
-   *                     thumbUrl: "https://example.com/tmi-question-video-thumb.jpg"
+   *                     thumbUrl: "https://example.com/question-video-thumb.jpg"
    *                     videoSource: "uploaded"
    *                     provider: "self"
    *                     duration: 30
@@ -679,22 +679,22 @@ class TmiControllerDocs {
    *                 example:
    *                   - type: "text"
    *                     order: 1
-   *                     content: "프로젝트 기간은 얼마나 되나요?"
+   *                     content: "수정된 질문: TMI 프로젝트 시작일은 언제인가요?"
    *                   - type: "text"
    *                     order: 2
-   *                     content: "참여 조건이 있나요?"
+   *                     content: "추가 질문: 혹시 중간에 참여할 수 있나요?"
    *                   - type: "image"
    *                     order: 3
-   *                     src: "https://example.com/tmi-question-image.jpg"
+   *                     src: "https://example.com/question-image.jpg"
    *                     width: 800
    *                     height: 600
    *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
    *                   - type: "video"
    *                     order: 4
-   *                     src: "https://example.com/tmi-question-video.mp4"
+   *                     src: "https://example.com/question-video.mp4"
    *                     width: 1920
    *                     height: 1080
-   *                     thumbUrl: "https://example.com/tmi-question-video-thumb.jpg"
+   *                     thumbUrl: "https://example.com/question-video-thumb.jpg"
    *                     videoSource: "uploaded"
    *                     provider: "self"
    *                     duration: 30

@@ -438,11 +438,7 @@ const createPost = async (req, res) => {
       finalRefId = refId;
     }
 
-    // 게시글 ID 생성
-    const postId =
-      mapping.postType === "ROUTINE_CERT" ?
-        `CERT_${Date.now()}` :
-        `POST_${Date.now()}`;
+    // 게시글 ID는 Firestore에서 자동 생성됨
 
     // content에서 미디어 추출하여 별도 media 배열 생성
     const extractedMedia = [];
@@ -474,7 +470,6 @@ const createPost = async (req, res) => {
 
     // 게시글 데이터 구성
     const postData = {
-      id: postId,
       type: mapping.postType,
       refId: finalRefId,
       authorId,

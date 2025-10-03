@@ -527,7 +527,7 @@ class CommentControllerDocs {
      *   post:
      *     tags: [Comments]
      *     summary: 댓글 좋아요 토글
-     *     description: 특정 댓글에 좋아요를 토글합니다
+     *     description: 특정 댓글에 좋아요를 토글합니다 (userId는 하드코딩됨)
      *     parameters:
      *       - in: path
      *         name: commentId
@@ -536,19 +536,6 @@ class CommentControllerDocs {
      *           type: string
      *         description: 댓글 ID
      *         example: "comment_123"
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             required:
-     *               - userId
-     *             properties:
-     *               userId:
-     *                 type: string
-     *                 description: 사용자 ID
-     *                 example: "user123"
      *     responses:
      *       200:
      *         description: 좋아요 토글 성공
