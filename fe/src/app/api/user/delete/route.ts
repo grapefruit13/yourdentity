@@ -6,6 +6,17 @@ import { debug } from "@/utils/shared/debugger";
  * DELETE /api/user/delete
  */
 export async function DELETE(request: NextRequest) {
+  // 보안 안전장치: 기능이 완전히 구현되기 전까지 비활성화
+  if (process.env.ENABLE_ACCOUNT_DELETION !== 'true') {
+    return NextResponse.json(
+      { 
+        success: false,
+        error: "이 기능은 현재 비활성화되어 있습니다. 관리자에게 문의하세요." 
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     // TODO: 실제 인증 시스템 구현 시 추가할 검증 로직
     // 1. 사용자 인증 확인

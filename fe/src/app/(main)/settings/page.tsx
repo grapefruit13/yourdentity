@@ -19,30 +19,41 @@ const SettingsPage = () => {
     setIsLogoutModalOpen(true);
   };
 
-  const handleLogoutConfirm = () => {
+  const handleLogoutConfirm = async () => {
     try {
-      // 클라이언트 사이드 정리
-      // 1. 로컬 스토리지 정리
+      // 1. 서버 세션 무효화
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.warn("서버 로그아웃 실패, 클라이언트 사이드 정리만 진행");
+      }
+
+      // 2. 로컬 스토리지 정리
       localStorage.clear();
       sessionStorage.clear();
 
-      // 2. 쿠키 정리 (필요한 경우)
-      // document.cookie.split(";").forEach((c) => {
-      //   document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      // });
+      // 3. 쿠키 정리
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
 
-      // 3. 모달 닫기
+      // 4. 모달 닫기
       setIsLogoutModalOpen(false);
 
-      // 4. 로그인 페이지로 리다이렉트
+      // 5. 로그인 페이지로 리다이렉트
       router.push("/login");
-
-      // 5. 페이지 새로고침으로 완전한 상태 초기화
-      window.location.reload();
 
       console.log("로그아웃 완료");
     } catch (error) {
       console.error("로그아웃 중 오류 발생:", error);
+      
+      // 오류 발생 시에도 클라이언트 사이드 정리
+      localStorage.clear();
+      sessionStorage.clear();
+      
       // 오류가 발생해도 로그인 페이지로 이동
       router.push("/login");
     }
@@ -76,7 +87,15 @@ const SettingsPage = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `서버 오류: ${response.status}`);
+        
+        // 503 상태 코드 (서비스 이용 불가) 처리
+        if (response.status === 503) {
+          alert("계정 삭제 기능이 현재 비활성화되어 있습니다. 관리자에게 문의해주세요.");
+          setIsDeleteModalOpen(false);
+          return;
+        }
+        
+        throw new Error(errorData.message || errorData.error || `서버 오류: ${response.status}`);
       }
 
       // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
