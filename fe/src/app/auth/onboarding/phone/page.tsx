@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../../../shared/lib/firebase';
+import { auth } from '../../../../lib/firebase';
 
 export default function PhonePage() {
   const [phoneNumber, setPhoneNumber] = useState('');

@@ -1,12 +1,12 @@
 "use client";
 
-import PWAGuide from "@/shared/components/pwa-guide";
-import { Button } from "@/shared/components/ui/button";
-import useFcmToken from "@/shared/hooks/useFcmToken";
-import { debug } from "@/shared/utils/debugger";
-import { signOut, getCurrentUser } from "@/shared/lib/auth";
+import PWAGuide from "../components/shared/pwa-guide";
+import { Button } from "@/components/shared/ui/button";
+import useFcmToken from "@/hooks/shared/useFcmToken";
+import { debug } from "@/utils/shared/debugger";
+import { signOut, getCurrentUser } from "@/lib/auth";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/shared/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 

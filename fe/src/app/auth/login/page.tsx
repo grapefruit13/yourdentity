@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   signInWithKakao, 
   onAuthStateChange
-} from '@/shared/lib/auth';
+} from '@/lib/auth';
 
 /**
  * @description 로그인 페이지

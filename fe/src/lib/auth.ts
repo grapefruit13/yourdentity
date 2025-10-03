@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth } from '@/lib/firebase';
 
 /**
  * 카카오 OAuth 제공업체 생성
