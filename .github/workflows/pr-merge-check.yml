@@ -3,6 +3,8 @@ name: 🔨 Frontend Build Check
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - "fe/**"
 
 permissions:
   contents: read
@@ -30,16 +32,6 @@ jobs:
           node-version: "20"
           cache: "pnpm"
           cache-dependency-path: "fe/pnpm-lock.yaml"
-
-      - name: 🗑️ functions 디렉토리 완전 제거
-        run: |
-          cd fe
-          # functions 디렉토리가 있으면 완전히 삭제 (빌드 방해 방지)
-          if [ -d "functions" ]; then
-            echo "🗑️ functions 디렉토리를 완전히 제거합니다..."
-            rm -rf functions
-            echo "✅ functions 디렉토리 제거 완료"
-          fi
 
       - name: 📦 의존성 설치
         run: |

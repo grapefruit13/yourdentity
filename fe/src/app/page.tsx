@@ -1,17 +1,11 @@
-"use client";
-
-import PWAGuide from "../components/shared/pwa-guide";
-import { Button } from "@/components/shared/ui/button";
-import useFcmToken from "@/hooks/shared/useFcmToken";
-import { debug } from "@/utils/shared/debugger";
-import { signOut, getCurrentUser } from "@/lib/auth";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { NBody2B, NLabel1M } from "@/components/shared/typography";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
 
 /**
- * @description 홈페이지
+ * @description 홈페이지 - 로그인 화면
  */
 const HomePage = () => {
   const { token, notificationPermissionStatus } = useFcmToken();
@@ -54,64 +48,53 @@ const HomePage = () => {
   };
 
   return (
-    <>
-      <PWAGuide />
-      <main className="flex h-screen flex-col items-center justify-center gap-20 p-10">
-        <h1 className="mb-4 text-4xl font-bold">FCM 테스트</h1>
-
-        {/* 현재 로그인 상태 표시 */}
-        {effectiveUser && (
-          <div className="rounded-lg bg-blue-50 p-4 text-sm">
-            <p className="font-semibold">로그인됨: {effectiveUser.displayName || effectiveUser.email || 'User'}</p>
-            <p className="text-xs text-gray-600">UID: {effectiveUser.uid}</p>
-          </div>
-        )}
-
-        {notificationPermissionStatus === "granted" ? (
-          <h2 className="font-bold">알림 수신 권한이 부여되었습니다.</h2>
-        ) : notificationPermissionStatus !== null ? (
-          <h2>
-            알림 수신 권한이 부여되지 않았습니다. 브라우저 설정에서 알림을
-            활성화해주세요.
-          </h2>
-        ) : null}
-
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            disabled={!token}
-            onClick={handleTestNotification}
+    <main className="relative flex h-screen flex-col items-center justify-center bg-white px-4 pb-8">
+      <div className="relative top-1/4 aspect-[210/80] w-[60vw] max-w-[280px] min-w-[160px]">
+        <Image
+          src={IMAGE_URL.ICON.logo.youthVoice.url}
+          alt={IMAGE_URL.ICON.logo.youthVoice.alt}
+          fill
+          sizes="(min-width: 768px) 30vw, 60vw"
+          className="object-contain"
+        />
+      </div>
+      <div className="mt-auto flex w-full flex-col gap-19">
+        <div className="flex w-full flex-col gap-3">
+          <Link
+            href={LINK_URL.KAKAO_LOGIN}
+            className="bg-kakao flex w-full items-center justify-center gap-2 rounded-lg py-3"
           >
-            테스트 알림 전송
-          </Button>
-          
-          {effectiveUser && (
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-            >
-              로그아웃
-            </Button>
-          )}
-
-          {!effectiveUser && (
-            <>
-              <Button
-                onClick={() => router.push('/auth/login')}
-              >
-                로그인
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => router.push('/auth/signup')}
-              >
-                이메일 회원가입
-              </Button>
-            </>
-          )}
+            <Image
+              src={IMAGE_URL.ICON.logo.kakao.url}
+              alt={IMAGE_URL.ICON.logo.kakao.alt}
+              width={18}
+              height={18}
+            />
+            <NBody2B>카카오로 시작하기</NBody2B>
+          </Link>
+          <Link
+            href={LINK_URL.EMAIL_LOGIN}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-3"
+          >
+            <Image
+              src={IMAGE_URL.ICON.login.email.url}
+              alt={IMAGE_URL.ICON.login.email.alt}
+              width={18}
+              height={18}
+            />
+            <NBody2B className="text-gray-900">이메일로 시작하기</NBody2B>
+          </Link>
         </div>
-      </main>
-    </>
+        <div className="flex items-center justify-center gap-4">
+          <Link href={LINK_URL.TERMS_OF_SERVICE}>
+            <NLabel1M className="text-gray-400">이용약관</NLabel1M>
+          </Link>
+          <Link href={LINK_URL.PRIVACY_POLICY}>
+            <NLabel1M className="text-gray-400">개인정보 처리방침</NLabel1M>
+          </Link>
+        </div>
+      </div>
+    </main>
   );
 };
 
