@@ -54,7 +54,7 @@ class UserService {
 
       const userDoc = {
         // 기본 정보
-        name: userData.name || "사용자",
+        name: userData.name || "사용자 이름",
         email: userData.email || null,
         profileImageUrl: userData.profileImageUrl || "",
         birthYear: userData.birthYear || null,
@@ -102,6 +102,62 @@ class UserService {
   }
 
   /**
+   * 사용자 생성 (Firebase Auth + Firestore)
+   * @param {Object} userData
+   * @return {Promise<Object>} 생성된 사용자 데이터
+   */
+  async createUser(userData) {
+    const {name, email, password, profileImageUrl, birthYear, authType = "email", snsProvider = null} = userData;
+    if (!name) { const e = new Error("name is required"); e.code = "BAD_REQUEST"; throw e; }
+    if (!email) { const e = new Error("email is required"); e.code = "BAD_REQUEST"; throw e; }
+    if (!password) { const e = new Error("password is required"); e.code = "BAD_REQUEST"; throw e; }
+
+    // Firebase Auth 사용자 생성
+    const authUser = await admin.auth().createUser({
+      email: email,
+      password: password,
+      displayName: name,
+      emailVerified: false,
+      photoURL: profileImageUrl || null,
+    });
+
+    // Firestore 사용자 문서 생성
+    const firestoreUser = {
+      name,
+      email: email,
+      profileImageUrl: profileImageUrl || "",
+      birthYear: birthYear || null,
+      authType,
+      snsProvider,
+      role: "user",
+      rewardPoints: 0,
+      level: 1,
+      badges: [],
+      points: "0",
+      mainProfileId: "",
+      onBoardingComplete: false,
+      uploadQuotaBytes: 1073741824, // 1GB
+      usedStorageBytes: 0,
+    };
+
+    const created = await this.firestoreService.create(firestoreUser, authUser.uid);
+    return {uid: authUser.uid, ...created};
+  }
+
+  /**
+   * 모든 사용자 조회
+   * @return {Promise<Array>} 사용자 목록
+   */
+    async getAllUsers() {
+      try {
+        return await this.firestoreService.getAll();
+      } catch (error) {
+        console.error("Get all users error:", error.message);
+        throw new Error("Failed to get users");
+      }
+    }
+
+  /**
    * 사용자 정보 조회
    * @param {string} uid - 사용자 ID
    * @return {Promise<Object|null>} 사용자 정보
@@ -111,12 +167,14 @@ class UserService {
       return await this.firestoreService.getById(uid);
     } catch (error) {
       console.error("Get user error:", error.message);
-      throw new Error("Failed to get user");
+      const e = new Error("Failed to get user");
+      e.code = "INTERNAL";
+      throw e;
     }
   }
 
   /**
-   * 사용자 정보 업데이트 (프로비저닝용)
+   * 온보딩 프로비저닝용 : 사용자 정보 업데이트 
    * Auth Trigger로 생성된 사용자 문서를 업데이트
    * @param {string} uid - 사용자 ID
    * @param {Object} userData - 업데이트할 사용자 데이터
@@ -124,7 +182,7 @@ class UserService {
    */
   async updateUserInfo(uid, userData) {
     try {
-      const userRef = db.collection("users").doc(uid);
+      const userRef = admin.firestore().collection("users").doc(uid);
       const userDoc = await userRef.get();
 
       if (!userDoc.exists) {
@@ -161,7 +219,7 @@ class UserService {
   }
 
   /**
-   * 사용자 정보 업데이트
+   * 일반 수정용 : 사용자 정보 업데이트
    * @param {string} uid - 사용자 ID
    * @param {Object} updateData - 업데이트할 데이터
    * @return {Promise<Object>} 업데이트된 사용자 정보
@@ -177,7 +235,26 @@ class UserService {
       return await this.firestoreService.update(uid, updatePayload);
     } catch (error) {
       console.error("Update user error:", error.message);
-      throw new Error("Failed to update user");
+      const e = new Error("Failed to update user");
+      e.code = "INTERNAL";
+      throw e;
+    }
+  }
+
+  /**
+   * 사용자 삭제 (Firebase Auth + Firestore)
+   * @param {string} uid
+   * @return {Promise<void>}
+   */
+  async deleteUser(uid) {
+    try {
+      await admin.auth().deleteUser(uid);
+      await this.firestoreService.delete(uid);
+    } catch (error) {
+      console.error("Delete user error:", error.message);
+      const e = new Error("Failed to delete user");
+      e.code = "INTERNAL";
+      throw e;
     }
   }
 }

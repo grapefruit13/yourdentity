@@ -1,5 +1,6 @@
 const FirestoreService = require("../services/firestoreService");
 const UserService = require("../services/userService");
+const {successResponse} = require("../utils/helpers");
 
 // 서비스 인스턴스 생성
 const firestoreService = new FirestoreService('users');
@@ -9,57 +10,6 @@ const userService = new UserService();
  * User Controller
  */
 class UserController {
-  /**
-   * 모든 사용자 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   */
-  async getAllUsers(req, res) {
-    try {
-      const users = await firestoreService.getAll();
-
-      res.json({
-        success: true,
-        data: users,
-        count: users.length,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-
-  /**
-   * 사용자 정보 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   */
-  async getUserById(req, res) {
-    try {
-      const {userId} = req.params;
-      const user = await firestoreService.getById(userId);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: "User not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        data: user,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-
   /**
    * 사용자 생성 API (Firebase Auth + Firestore 생성)
    * 
@@ -73,84 +23,48 @@ class UserController {
    */
   async createUser(req, res) {
     try {
-      const {
-        name,
-        email, 
-        password,
-        profileImageUrl, 
-        birthYear,
-        authType = 'email',
-        snsProvider = null
-      } = req.body;
-
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          error: "name is required",
-        });
-      }
-
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          error: "email is required",
-        });
-      }
-
-      if (!password) {
-        return res.status(400).json({
-          success: false,
-          error: "password is required",
-        });
-      }
-
-      // Firebase Auth 사용자 생성
-      const admin = require('firebase-admin');
-      const authUser = await admin.auth().createUser({
-        email: email,
-        password: password,
-        displayName: name,
-        emailVerified: false,
-        photoURL: profileImageUrl || null
-      });
-
-      // Firestore 사용자 문서 생성
-      const userData = {
-        name,
-        email: email,
-        profileImageUrl: profileImageUrl || '',
-        birthYear: birthYear || null,
-        authType,
-        snsProvider,
-        role: 'user',
-        rewardPoints: 0,
-        level: 1,
-        badges: [],
-        points: '0',
-        mainProfileId: '',
-        onBoardingComplete: false,
-        uploadQuotaBytes: 1073741824, // 1GB
-        usedStorageBytes: 0,
-      };
-
-      const result = await firestoreService.create(userData, authUser.uid);
-
-      res.json({
-        success: true,
-        data: {
-          uid: authUser.uid,
-          ...result,
-          createdAt: new Date().toISOString(),
-        },
-      });
+      const result = await userService.createUser(req.body);
+      res.json(successResponse(200, result));
     } catch (error) {
       console.error("Create user error:", error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      error.code = error.code || "BAD_REQUEST";
+      return req.next ? req.next(error) : res.status(400).json({ status: 400, error: error.message });
     }
   }
+
+    /**
+   * 모든 사용자 조회 API
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+    async getAllUsers(req, res) {
+      try {
+        const users = await userService.getAllUsers();
+        res.json(successResponse(200, { users, count: users.length }));
+      } catch (error) {
+        return req.next ? req.next(error) : res.status(500).json({ status: 500, error: error.message });
+      }
+    }
+  
+    /**
+     * 사용자 정보 조회 API
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+     */
+    async getUserById(req, res) {
+      try {
+        const {userId} = req.params;
+        const user = await userService.getUserById(userId);
+        if (!user) {
+          const err = new Error("User not found");
+          err.code = "NOT_FOUND";
+          throw err;
+        }
+        res.json(successResponse(200, user));
+      } catch (error) {
+        return req.next ? req.next(error) : res.status(500).json({ status: 500, error: error.message });
+      }
+    }
 
   /**
    * 온보딩 과정용 : 사용자 정보 수정 API
@@ -179,19 +93,10 @@ class UserController {
         authType,
         snsProvider,
       });
-
-      res.json({
-        success: true,
-        data: {
-          user: result.user,
-        },
-      });
+      res.json(successResponse(200, { user: result.user }));
     } catch (error) {
       console.error("Provision user error:", error);
-      res.status(500).json({
-        success: false,
-        error: error.message || "Failed to provision user",
-      });
+      return req.next ? req.next(error) : res.status(500).json({ status: 500, error: error.message || "Failed to provision user" });
     }
   }
 
@@ -247,23 +152,15 @@ class UserController {
       }
 
       if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: "No valid fields to update",
-        });
+        const err = new Error("No valid fields to update");
+        err.code = "BAD_REQUEST";
+        throw err;
       }
 
-      const result = await firestoreService.update(userId, updateData);
-
-      res.json({
-        success: true,
-        data: result,
-      });
+      const result = await userService.updateUser(userId, updateData);
+      res.json(successResponse(200, result));
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      return req.next ? req.next(error) : res.status(500).json({ status: 500, error: error.message });
     }
   }
 
@@ -275,24 +172,11 @@ class UserController {
   async deleteUser(req, res) {
     try {
       const {userId} = req.params;
-
-      // Firebase Admin SDK로 Firebase Auth 사용자 삭제
-      const admin = require('firebase-admin');
-      await admin.auth().deleteUser(userId);
-
-      // Firestore 사용자 문서 삭제
-      await firestoreService.delete(userId);
-
-      res.json({
-        success: true,
-        message: "User deleted successfully from both Firebase Auth and Firestore",
-      });
+      await userService.deleteUser(userId);
+      res.json(successResponse(200, { userId }, "User deleted successfully from both Firebase Auth and Firestore"));
     } catch (error) {
       console.error("Delete user error:", error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      return req.next ? req.next(error) : res.status(500).json({ status: 500, error: error.message });
     }
   }
 }

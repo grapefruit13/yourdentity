@@ -1,137 +1,97 @@
-const { db, admin } = require('../config/database');
-const { FieldValue } = admin.firestore;
+const admin = require("firebase-admin");
+const {FieldValue} = require("firebase-admin/firestore");
 
+// Admin 초기화
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
+
+/**
+ * Firestore Service (데이터 접근 계층)
+ * 컬렉션별 데이터 CRUD 작업 담당
+ */
 class FirestoreService {
-  async createUser(nickname, profileImageUrl = '') {
-    const userRef = db.collection('users').doc();
-    const userData = {
-      nickname,
-      profileImageUrl,
-      createdAt: FieldValue.serverTimestamp()
-    };
-
-    await userRef.set(userData);
-    return { userId: userRef.id, ...userData };
+  constructor(collectionName) {
+    this.collectionName = collectionName;
   }
-
-  async getAllUsers() {
-    const snapshot = await db.collection('users').get();
-    const users = [];
-
-    snapshot.forEach(doc => {
-      users.push({
-        userId: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate().toISOString()
-      });
-    });
-
-    return users;
-  }
-
-  async getUserById(userId) {
-    const doc = await db.collection('users').doc(userId).get();
+  /**
+   * 문서 생성
+   * @param {Object} data - 문서 데이터
+   * @param {string} docId - 문서 ID (선택사항)
+   * @return {Promise<Object>} 생성된 문서 데이터
+   */
+  async create(data, docId = null) {
+    const collectionRef = db.collection(this.collectionName);
+    const docRef = docId ? collectionRef.doc(docId) : collectionRef.doc();
     
-    if (!doc.exists) {
-      return null;
-    }
-
-    return {
-      userId: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate().toISOString()
-    };
-  }
-
-  async updateUser(userId, updateData) {
-    await db.collection('users').doc(userId).update(updateData);
-    return { userId, ...updateData };
-  }
-
-  async deleteUser(userId) {
-    const missionsSnapshot = await db.collection('users').doc(userId).collection('missions').get();
-    const batch = db.batch();
-    
-    missionsSnapshot.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-    
-    batch.delete(db.collection('users').doc(userId));
-    await batch.commit();
-  }
-
-  async createMission(userId, missionId, status = 'ONGOING') {
-    const missionData = {
-      status,
-      startedAt: FieldValue.serverTimestamp(),
-      certified: false
-    };
-
-    if (status === 'COMPLETED') {
-      missionData.completedAt = FieldValue.serverTimestamp();
-      missionData.certified = true;
-    }
-
-    await db.collection('users').doc(userId).collection('missions').doc(missionId).set(missionData);
-    return { userId, missionId, ...missionData };
-  }
-
-  async getUserMissions(userId, statusFilter = null) {
-    let query = db.collection('users').doc(userId).collection('missions');
-    
-    if (statusFilter) {
-      query = query.where('status', '==', statusFilter);
-    }
-
-    const snapshot = await query.get();
-    const missions = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      missions.push({
-        missionId: doc.id,
-        ...data,
-        startedAt: data.startedAt?.toDate().toISOString(),
-        completedAt: data.completedAt?.toDate().toISOString()
-      });
-    });
-
-    return missions;
-  }
-
-  async getMissionById(userId, missionId) {
-    const doc = await db.collection('users').doc(userId).collection('missions').doc(missionId).get();
-
-    if (!doc.exists) {
-      return null;
-    }
-
-    const data = doc.data();
-    return {
-      missionId: doc.id,
+    const newData = {
       ...data,
-      startedAt: data.startedAt?.toDate().toISOString(),
-      completedAt: data.completedAt?.toDate().toISOString()
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    await docRef.set(newData);
+    return {id: docRef.id, ...newData};
+  }
+
+  /**
+   * 모든 문서 조회
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getAll() {
+    const snapshot = await db.collection(this.collectionName).get();
+    const documents = [];
+
+    snapshot.forEach((doc) => {
+      documents.push({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate().toISOString(),
+      });
+    });
+
+    return documents;
+  }
+
+  /**
+   * 문서 ID로 조회
+   * @param {string} docId - 문서 ID
+   * @return {Promise<Object|null>} 문서 데이터
+   */
+  async getById(docId) {
+    const doc = await db.collection(this.collectionName).doc(docId).get();
+
+    if (!doc.exists) {
+      return null;
+    }
+
+    return {
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate().toISOString(),
     };
   }
 
-  async updateMission(userId, missionId, updateData) {
-    if (updateData.status === 'COMPLETED') {
-      updateData.completedAt = FieldValue.serverTimestamp();
-    }
-
-    await db.collection('users').doc(userId).collection('missions').doc(missionId).update(updateData);
-    return { userId, missionId, ...updateData };
+  /**
+   * 문서 업데이트
+   * @param {string} docId - 문서 ID
+   * @param {Object} updateData - 업데이트할 데이터
+   * @return {Promise<Object>} 업데이트된 문서 데이터
+   */
+  async update(docId, updateData) {
+    await db.collection(this.collectionName).doc(docId).update(updateData);
+    return {id: docId, ...updateData};
   }
 
-  async deleteMission(userId, missionId) {
-    await db.collection('users').doc(userId).collection('missions').doc(missionId).delete();
-  }
-
-  async updateUserProfileImage(userId, profileImageUrl) {
-    await db.collection('users').doc(userId).update({ profileImageUrl });
-    return { userId, profileImageUrl };
+  /**
+   * 문서 삭제
+   * @param {string} docId - 문서 ID
+   * @return {Promise<void>}
+   */
+  async delete(docId) {
+    await db.collection(this.collectionName).doc(docId).delete();
   }
 }
 
-module.exports = new FirestoreService();
+module.exports = FirestoreService;
