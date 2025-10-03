@@ -26,9 +26,9 @@ if (!admin.apps.length) {
       // 서비스 계정 키 정규화 (camelCase와 snake_case 모두 지원)
       const accountRecord = serviceAccount as Record<string, unknown>;
       const normalizedAccount: ServiceAccount = {
-        projectId: (accountRecord.project_id ?? accountRecord.projectId) as string,
-        privateKey: (accountRecord.private_key ?? accountRecord.privateKey) as string,
-        clientEmail: (accountRecord.client_email ?? accountRecord.clientEmail) as string,
+        projectId: (accountRecord["project_id"] ?? accountRecord["projectId"]) as string,
+        privateKey: (accountRecord["private_key"] ?? accountRecord["privateKey"]) as string,
+        clientEmail: (accountRecord["client_email"] ?? accountRecord["clientEmail"]) as string,
       };
 
       const missingFields = Object.entries(normalizedAccount)
