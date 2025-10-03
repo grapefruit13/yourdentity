@@ -1,4 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import {
   getMessaging,
   getToken,
@@ -18,6 +20,28 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// 기본 SDK 인스턴스
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// 로컬 개발 시 에뮬레이터 연결
+if (typeof window !== "undefined") {
+  const isLocalhost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+  if (isLocalhost) {
+    try {
+      connectAuthEmulator(auth, "http://127.0.0.1:9099");
+      connectFirestoreEmulator(db, "127.0.0.1", 8080);
+      // eslint-disable-next-line no-console
+      console.log("[Emu] Connected to Auth@9099 and Firestore@8080");
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[Emu] Emulator connect skipped or already connected:", e);
+    }
+  }
+}
 
 export const getClientMessaging = async (): Promise<Messaging | null> => {
   try {
