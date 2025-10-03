@@ -1,24 +1,30 @@
 const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+  console.error("Error:", err);
 
-  if (err.code === 'PERMISSION_DENIED') {
-    return res.status(403).json({
-      success: false,
-      error: 'Permission denied'
-    });
+  // 기본값
+  let status = 500;
+  let errorMessage = err.message || "Internal server error";
+
+  // 표준 에러 코드 매핑
+  switch (err.code) {
+    case "BAD_REQUEST":
+      status = 400;
+      if (!errorMessage) errorMessage = "Bad request";
+      break;
+    case "PERMISSION_DENIED":
+      status = 403;
+      if (!errorMessage) errorMessage = "Permission denied";
+      break;
+    case "NOT_FOUND":
+      status = 404;
+      if (!errorMessage) errorMessage = "Resource not found";
+      break;
+    default:
+      status = err.status || status;
+      break;
   }
 
-  if (err.code === 'NOT_FOUND') {
-    return res.status(404).json({
-      success: false,
-      error: 'Resource not found'
-    });
-  }
-
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error'
-  });
+  return res.status(status).json({ status, error: errorMessage });
 };
 
 module.exports = errorHandler;
