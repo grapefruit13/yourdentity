@@ -161,9 +161,15 @@ router.post("/", userController.createUser);
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/User'
+ *                       type: object
+ *                       properties:
+ *                         users:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/User'
+ *                         count:
+ *                           type: number
+ *                           example: 1
  *       500:
  *         description: 서버 오류
  *         content:
@@ -269,6 +275,54 @@ router.get("/:userId", userController.getUserById);
  *               $ref: '#/components/schemas/Error'
  */
 router.put("/:userId", userController.updateUser);
+
+/**
+ * @swagger
+ * /users/{userId}:
+ *   delete:
+ *     summary: 사용자 삭제
+ *     description: 특정 사용자를 삭제합니다 (Firebase Auth + Firestore)
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 사용자 ID
+ *         example: abc123def456
+ *     responses:
+ *       200:
+ *         description: 사용자 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/Success'
+ *                 - type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "User deleted successfully from both Firebase Auth and Firestore"
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         userId:
+ *                           type: string
+ *                           example: abc123def456
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete("/:userId", userController.deleteUser);
 
 module.exports = router;
