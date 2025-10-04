@@ -42,6 +42,13 @@ jobs:
         run: |
           cd be/functions
           pnpm install --frozen-lockfile
+      
+      - name: 🔍 린트 검사
+        run: |
+          cd be/functions
+          echo "🔍 ESLint 검사 시작..."
+          pnpm run lint
+          echo "✅ ESLint 검사 통과!"
 
       - name: 🔧 빌드 체크 (에뮬레이터 실행)
         run: |
