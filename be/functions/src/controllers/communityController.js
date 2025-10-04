@@ -1,5 +1,5 @@
 const firestoreService = require("../services/firestoreService");
-const {db, admin} = require("../config/database");
+const {db} = require("../config/database");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 커뮤니티 매핑 정보를 DB에서 조회하는 함수

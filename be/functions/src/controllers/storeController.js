@@ -1,5 +1,4 @@
 const firestoreService = require("../services/firestoreService");
-const {admin} = require("../config/database");
 const {FieldValue} = require("firebase-admin/firestore");
 
 const getProducts = async (req, res) => {

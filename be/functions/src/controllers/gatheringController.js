@@ -1,5 +1,4 @@
 const firestoreService = require("../services/firestoreService");
-const {admin} = require("../config/database");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 소모임 목록 조회 - 페이지네이션 지원 (간소화된 정보만 반환)

@@ -6,6 +6,81 @@ const tmiController = require("../controllers/tmiController");
  * @swagger
  * components:
  *   schemas:
+ *     TmiProjectListItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: TMI 프로젝트 ID
+ *           example: "CP:NX2YWH8MAH"
+ *         name:
+ *           type: string
+ *           description: TMI 프로젝트 이름
+ *           example: "자아탐색"
+ *         description:
+ *           type: string
+ *           description: TMI 프로젝트 설명
+ *           example: "내 안의 진짜 나를 찾는 6주 자아탐색 프로그램"
+ *         status:
+ *           type: string
+ *           enum: [OPEN, CLOSED, COMPLETED]
+ *           description: TMI 프로젝트 상태
+ *           example: "OPEN"
+ *         price:
+ *           type: number
+ *           description: 가격
+ *           example: 0
+ *         currency:
+ *           type: string
+ *           description: 통화
+ *           example: "KRW"
+ *         stockCount:
+ *           type: integer
+ *           description: 재고 수량
+ *           example: 14
+ *         soldCount:
+ *           type: integer
+ *           description: 판매 수량
+ *           example: 6
+ *         viewCount:
+ *           type: integer
+ *           description: 조회수
+ *           example: 124
+ *         buyable:
+ *           type: boolean
+ *           description: 구매 가능 여부
+ *           example: true
+ *         sellerId:
+ *           type: string
+ *           description: 판매자 ID
+ *           example: "CS:NOZU0HZP"
+ *         sellerName:
+ *           type: string
+ *           description: 판매자 이름
+ *           example: "유스보이스"
+ *         deadline:
+ *           type: object
+ *           description: 마감일 (Firestore timestamp)
+ *           properties:
+ *             _seconds:
+ *               type: integer
+ *               description: 초 단위 timestamp
+ *               example: 1762001210
+ *             _nanoseconds:
+ *               type: integer
+ *               description: 나노초 단위
+ *               example: 409000000
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: 생성일
+ *           example: "2025-10-02T12:46:50.409Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 수정일
+ *           example: "2025-10-03T17:45:34.831Z"
+ *
  *     TmiProject:
  *       type: object
  *       properties:
@@ -219,22 +294,34 @@ const tmiController = require("../controllers/tmiController");
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/TmiProject'
+ *                     $ref: '#/components/schemas/TmiProjectListItem'
  *                 pagination:
  *                   type: object
  *                   properties:
- *                     page:
+ *                     pageNumber:
  *                       type: integer
- *                     size:
+ *                       example: 0
+ *                     pageSize:
  *                       type: integer
+ *                       example: 10
  *                     totalElements:
  *                       type: integer
+ *                       example: 3
  *                     totalPages:
  *                       type: integer
+ *                       example: 1
  *                     hasNext:
  *                       type: boolean
+ *                       example: false
  *                     hasPrevious:
  *                       type: boolean
+ *                       example: false
+ *                     isFirst:
+ *                       type: boolean
+ *                       example: true
+ *                     isLast:
+ *                       type: boolean
+ *                       example: true
  *       500:
  *         description: 서버 오류
  */

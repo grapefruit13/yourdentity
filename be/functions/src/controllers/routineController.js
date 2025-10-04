@@ -1,5 +1,4 @@
 const firestoreService = require("../services/firestoreService");
-const {admin} = require("../config/database");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 루틴 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원

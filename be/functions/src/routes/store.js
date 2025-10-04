@@ -6,6 +6,71 @@ const storeController = require("../controllers/storeController");
  * @swagger
  * components:
  *   schemas:
+ *     ProductListItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 상품 ID
+ *           example: "CP:ONLINE_GIFT_30K"
+ *         name:
+ *           type: string
+ *           description: 상품 이름
+ *           example: "온라인 상품권 3만원 권"
+ *         description:
+ *           type: string
+ *           description: 상품 설명
+ *           example: "다양한 온라인 쇼핑몰에서 사용할 수 있는 3만원 상품권입니다."
+ *         status:
+ *           type: string
+ *           description: 상품 상태
+ *           example: "onSale"
+ *         price:
+ *           type: number
+ *           description: 가격
+ *           example: 0
+ *         currency:
+ *           type: string
+ *           description: 통화
+ *           example: "KRW"
+ *         stockCount:
+ *           type: integer
+ *           description: 재고 수량
+ *           example: 0
+ *         soldCount:
+ *           type: integer
+ *           description: 판매 수량
+ *           example: 4
+ *         viewCount:
+ *           type: integer
+ *           description: 조회수
+ *           example: 207
+ *         buyable:
+ *           type: boolean
+ *           description: 구매 가능 여부
+ *           example: true
+ *         sellerId:
+ *           type: string
+ *           description: 판매자 ID
+ *           example: "CS:NOZU0HZP"
+ *         sellerName:
+ *           type: string
+ *           description: 판매자 이름
+ *           example: "유스-잇"
+ *         createdAt:
+ *           type: number
+ *           description: 생성일 (timestamp)
+ *           example: 1759409210457
+ *         updatedAt:
+ *           oneOf:
+ *             - type: string
+ *               format: date-time
+ *               description: 수정일 (문자열)
+ *               example: "2025-10-03T17:38:07.609Z"
+ *             - type: number
+ *               description: 수정일 (timestamp)
+ *               example: 1759409210457
+ *
  *     Product:
  *       type: object
  *       properties:
@@ -251,11 +316,6 @@ const storeController = require("../controllers/storeController");
  *           type: integer
  *           default: 10
  *         description: 페이지 크기
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *         description: 카테고리 필터
  *     responses:
  *       200:
  *         description: 상품 목록 조회 성공
@@ -270,22 +330,34 @@ const storeController = require("../controllers/storeController");
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Product'
+ *                     $ref: '#/components/schemas/ProductListItem'
  *                 pagination:
  *                   type: object
  *                   properties:
- *                     page:
+ *                     pageNumber:
  *                       type: integer
- *                     size:
+ *                       example: 0
+ *                     pageSize:
  *                       type: integer
+ *                       example: 10
  *                     totalElements:
  *                       type: integer
+ *                       example: 3
  *                     totalPages:
  *                       type: integer
+ *                       example: 1
  *                     hasNext:
  *                       type: boolean
+ *                       example: false
  *                     hasPrevious:
  *                       type: boolean
+ *                       example: false
+ *                     isFirst:
+ *                       type: boolean
+ *                       example: true
+ *                     isLast:
+ *                       type: boolean
+ *                       example: true
  *       500:
  *         description: 서버 오류
  */
