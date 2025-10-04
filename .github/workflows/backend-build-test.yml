@@ -39,7 +39,7 @@ jobs:
           npm install -g firebase-tools
           firebase --version
 
-      - name: 📦 의존성 설치
+      - name: ⌛️ 의존성 설치
         run: |
           cd be/functions
           pnpm install --frozen-lockfile
