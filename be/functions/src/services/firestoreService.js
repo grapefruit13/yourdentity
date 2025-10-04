@@ -239,6 +239,57 @@ class FirestoreService {
     return items;
   }
 
+  // 여러 값으로 WHERE IN 쿼리를 수행하는 메서드 (N+1 쿼리 문제 해결용)
+  async getCollectionWhereIn(collectionName, field, values) {
+    if (!values || values.length === 0) return [];
+
+    // Firestore의 'in' 쿼리는 최대 10개 값만 지원
+    if (values.length > 10) {
+      // 10개씩 나누어서 처리
+      const chunks = [];
+      for (let i = 0; i < values.length; i += 10) {
+        chunks.push(values.slice(i, i + 10));
+      }
+
+      const allResults = [];
+      for (const chunk of chunks) {
+        const snapshot = await db
+            .collection(collectionName)
+            .where(field, "in", chunk)
+            .get();
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          allResults.push({
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+          });
+        });
+      }
+      return allResults;
+    }
+
+    const snapshot = await db
+        .collection(collectionName)
+        .where(field, "in", values)
+        .get();
+
+    const items = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    return items;
+  }
+
   // 페이지네이션을 지원하는 컬렉션 조회 (Spring Boot의 Pageable과 유사)
   async getCollectionWithPagination(collectionName, options = {}) {
     const {
