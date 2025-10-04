@@ -1,4 +1,6 @@
 const firestoreService = require("../services/firestoreService");
+const {admin} = require("../config/database");
+const {FieldValue} = require("firebase-admin/firestore");
 
 // 루틴 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원
 const getAllRoutines = async (req, res) => {
@@ -470,13 +472,17 @@ const toggleQnALike = async (req, res) => {
         (like) => like.userId === "user123" && like.type === "QNA",
     );
     let isLiked = false;
-    let likeCount = qna.likesCount || 0;
 
     if (userLike) {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
-      likeCount = Math.max(0, likeCount - 1);
       isLiked = false;
+
+      // QnA 좋아요 수 감소 (원자적 업데이트)
+      await firestoreService.updateDocument("qnas", qnaId, {
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
+      });
     } else {
       // 좋아요 등록
       await firestoreService.addDocument("likes", {
@@ -485,15 +491,17 @@ const toggleQnALike = async (req, res) => {
         userId: "user123",
         createdAt: new Date(),
       });
-      likeCount += 1;
       isLiked = true;
+
+      // QnA 좋아요 수 증가 (원자적 업데이트)
+      await firestoreService.updateDocument("qnas", qnaId, {
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
+      });
     }
 
-    // QnA 좋아요 수 업데이트
-    await firestoreService.updateDocument("qnas", qnaId, {
-      likesCount: likeCount,
-      updatedAt: new Date(),
-    });
+    // 업데이트된 QnA 정보 조회
+    const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
     res.json({
       success: true,
@@ -501,7 +509,7 @@ const toggleQnALike = async (req, res) => {
         qnaId,
         userId: "user123",
         isLiked,
-        likeCount,
+        likeCount: updatedQna.likesCount || 0,
       },
       message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
     });
@@ -561,14 +569,17 @@ const toggleRoutineLike = async (req, res) => {
     );
 
     let isLiked = false;
-    let likeCount = routine.likesCount || 0;
 
     if (userLike) {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
-
       isLiked = false;
-      likeCount = Math.max(0, likeCount - 1);
+
+      // 루틴 좋아요 수 감소 (원자적 업데이트)
+      await firestoreService.updateDocument("routines", routineId, {
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
+      });
     } else {
       // 좋아요 등록
       await firestoreService.addDocument("likes", {
@@ -577,16 +588,17 @@ const toggleRoutineLike = async (req, res) => {
         userId: "user123",
         createdAt: new Date(),
       });
-
       isLiked = true;
-      likeCount += 1;
+
+      // 루틴 좋아요 수 증가 (원자적 업데이트)
+      await firestoreService.updateDocument("routines", routineId, {
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
+      });
     }
 
-    // 루틴 좋아요 수 업데이트
-    await firestoreService.updateDocument("routines", routineId, {
-      likesCount: likeCount,
-      updatedAt: new Date(),
-    });
+    // 업데이트된 루틴 정보 조회
+    const updatedRoutine = await firestoreService.getDocument("routines", routineId);
 
     res.json({
       success: true,
@@ -594,7 +606,7 @@ const toggleRoutineLike = async (req, res) => {
         routineId,
         userId: "user123",
         isLiked,
-        likeCount,
+        likeCount: updatedRoutine.likesCount || 0,
       },
       message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
     });

@@ -1,4 +1,6 @@
 const firestoreService = require("../services/firestoreService");
+const {admin} = require("../config/database");
+const {FieldValue} = require("firebase-admin/firestore");
 
 // TMI 프로젝트 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원
 const getAllTmiProjects = async (req, res) => {
@@ -61,11 +63,10 @@ const getTmiProjectById = async (req, res) => {
       });
     }
 
-    // 조회수 증가
-    const newViewCount = (project.viewCount || 0) + 1;
+    // 조회수 증가 (원자적 업데이트)
     await firestoreService.updateDocument("tmis", projectId, {
-      viewCount: newViewCount,
-      updatedAt: Date.now(),
+      viewCount: FieldValue.increment(1),
+      updatedAt: new Date(),
     });
 
     // Q&A 조회
@@ -140,7 +141,7 @@ const getTmiProjectById = async (req, res) => {
       currency: project.currency,
       stockCount: project.stockCount,
       soldCount: project.soldCount,
-      viewCount: newViewCount,
+      viewCount: project.viewCount,
       buyable: project.buyable,
       sellerId: project.sellerId,
       sellerName: project.sellerName,
@@ -224,11 +225,11 @@ const applyToTmiProject = async (req, res) => {
         applicationData,
     );
 
-    // TMI 프로젝트 카운트 업데이트 (신청 시 즉시 반영)
+    // TMI 프로젝트 카운트 업데이트 (신청 시 즉시 반영) - 원자적 업데이트
     await firestoreService.updateDocument("tmis", projectId, {
-      soldCount: (project.soldCount || 0) + quantity,
-      stockCount: Math.max(0, (project.stockCount || 0) - quantity),
-      updatedAt: Date.now(),
+      soldCount: FieldValue.increment(quantity),
+      stockCount: FieldValue.increment(-quantity),
+      updatedAt: new Date(),
     });
 
     res.status(201).json({
@@ -471,13 +472,17 @@ const toggleQnALike = async (req, res) => {
         (like) => like.userId === "user123" && like.type === "QNA",
     );
     let isLiked = false;
-    let likeCount = qna.likesCount || 0;
 
     if (userLike) {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
-      likeCount = Math.max(0, likeCount - 1);
       isLiked = false;
+
+      // QnA 좋아요 수 감소 (원자적 업데이트)
+      await firestoreService.updateDocument("qnas", qnaId, {
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
+      });
     } else {
       // 좋아요 등록
       await firestoreService.addDocument("likes", {
@@ -486,15 +491,17 @@ const toggleQnALike = async (req, res) => {
         userId: "user123",
         createdAt: new Date(),
       });
-      likeCount += 1;
       isLiked = true;
+
+      // QnA 좋아요 수 증가 (원자적 업데이트)
+      await firestoreService.updateDocument("qnas", qnaId, {
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
+      });
     }
 
-    // QnA 좋아요 수 업데이트
-    await firestoreService.updateDocument("qnas", qnaId, {
-      likesCount: likeCount,
-      updatedAt: new Date(),
-    });
+    // 업데이트된 QnA 정보 조회
+    const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
     res.json({
       success: true,
@@ -502,7 +509,7 @@ const toggleQnALike = async (req, res) => {
         qnaId,
         userId: "user123",
         isLiked,
-        likeCount,
+        likeCount: updatedQna.likesCount || 0,
       },
       message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
     });
@@ -562,14 +569,17 @@ const toggleTmiProjectLike = async (req, res) => {
     );
 
     let isLiked = false;
-    let likeCount = project.likesCount || 0;
 
     if (userLike) {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
-
       isLiked = false;
-      likeCount = Math.max(0, likeCount - 1);
+
+      // TMI 프로젝트 좋아요 수 감소 (원자적 업데이트)
+      await firestoreService.updateDocument("tmis", projectId, {
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
+      });
     } else {
       // 좋아요 등록
       await firestoreService.addDocument("likes", {
@@ -578,16 +588,17 @@ const toggleTmiProjectLike = async (req, res) => {
         userId: "user123",
         createdAt: new Date(),
       });
-
       isLiked = true;
-      likeCount += 1;
+
+      // TMI 프로젝트 좋아요 수 증가 (원자적 업데이트)
+      await firestoreService.updateDocument("tmis", projectId, {
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
+      });
     }
 
-    // TMI 프로젝트 좋아요 수 업데이트
-    await firestoreService.updateDocument("tmis", projectId, {
-      likesCount: likeCount,
-      updatedAt: new Date(),
-    });
+    // 업데이트된 프로젝트 정보 조회
+    const updatedProject = await firestoreService.getDocument("tmis", projectId);
 
     res.json({
       success: true,
@@ -595,7 +606,7 @@ const toggleTmiProjectLike = async (req, res) => {
         projectId,
         userId: "user123",
         isLiked,
-        likeCount,
+        likeCount: updatedProject.likesCount || 0,
       },
       message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
     });

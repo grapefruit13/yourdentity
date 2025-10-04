@@ -1,5 +1,6 @@
 const firestoreService = require("../services/firestoreService");
-const admin = require("firebase-admin");
+const {admin} = require("../config/database");
+const {FieldValue} = require("firebase-admin/firestore");
 
 // 댓글 생성 API
 const createComment = async (req, res) => {
@@ -157,7 +158,7 @@ const createComment = async (req, res) => {
         `communities/${communityId}/posts`,
         postId,
         {
-          commentsCount: admin.firestore.FieldValue.increment(1),
+          commentsCount: FieldValue.increment(1),
         },
     );
 
@@ -229,6 +230,24 @@ const getComments = async (req, res) => {
     // 모든 댓글을 평면적으로 조회 (부모 댓글 + 대댓글)
     const allComments = [];
 
+    // 부모 댓글 ID들을 수집하여 배치로 대댓글 조회 (N+1 쿼리 문제 해결)
+    const parentIds = (result.content || []).map((comment) => comment.id);
+
+    // 한 번의 쿼리로 모든 대댓글 조회
+    const allReplies = parentIds.length > 0 ?
+      await firestoreService.getCollectionWhereIn("comments", "parentId", parentIds) : [];
+
+    // 대댓글을 부모별로 그룹핑
+    const repliesByParent = new Map();
+    allReplies.forEach((reply) => {
+      if (!reply.deleted) {
+        if (!repliesByParent.has(reply.parentId)) {
+          repliesByParent.set(reply.parentId, []);
+        }
+        repliesByParent.get(reply.parentId).push(reply);
+      }
+    });
+
     // 부모 댓글들 추가
     for (const comment of result.content || []) {
       // 미디어 타입 확인
@@ -263,15 +282,8 @@ const getComments = async (req, res) => {
         isOriginalAuthor: comment.userId === post.authorId,
       });
 
-      // 각 부모 댓글의 대댓글들 조회하여 추가
-      const replies = await firestoreService.getCollectionWhere(
-          "comments",
-          "parentId",
-          "==",
-          comment.id,
-      );
-
-      const filteredReplies = replies.filter((reply) => !reply.deleted);
+      // 해당 부모의 대댓글들 가져오기 (이미 배치로 조회된 것에서)
+      const filteredReplies = repliesByParent.get(comment.id) || [];
 
       // 대댓글들 추가
       for (const reply of filteredReplies) {
@@ -536,7 +548,7 @@ const deleteComment = async (req, res) => {
           `communities/${communityId}/posts`,
           postId,
           {
-            commentsCount: admin.firestore.FieldValue.increment(-1),
+            commentsCount: FieldValue.increment(-1),
           },
       );
     }
@@ -593,17 +605,20 @@ const toggleCommentLike = async (req, res) => {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
 
-      // 댓글의 좋아요 수 감소
-      const newLikesCount = Math.max(0, (comment.likesCount || 0) - 1);
+      // 댓글의 좋아요 수 감소 (원자적 업데이트)
       await firestoreService.updateDocument("comments", commentId, {
-        likesCount: newLikesCount,
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
       });
+
+      // 업데이트된 댓글 정보 조회
+      const updatedComment = await firestoreService.getDocument("comments", commentId);
 
       res.json({
         success: true,
         message: "좋아요가 취소되었습니다.",
         isLiked: false,
-        likesCount: newLikesCount,
+        likesCount: updatedComment.likesCount || 0,
       });
     } else {
       // 좋아요 등록
@@ -616,17 +631,20 @@ const toggleCommentLike = async (req, res) => {
 
       await firestoreService.addDocument("likes", likeData);
 
-      // 댓글의 좋아요 수 증가
-      const newLikesCount = (comment.likesCount || 0) + 1;
+      // 댓글의 좋아요 수 증가 (원자적 업데이트)
       await firestoreService.updateDocument("comments", commentId, {
-        likesCount: newLikesCount,
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
       });
+
+      // 업데이트된 댓글 정보 조회
+      const updatedComment = await firestoreService.getDocument("comments", commentId);
 
       res.json({
         success: true,
         message: "좋아요가 등록되었습니다.",
         isLiked: true,
-        likesCount: newLikesCount,
+        likesCount: updatedComment.likesCount || 0,
       });
     }
   } catch (error) {

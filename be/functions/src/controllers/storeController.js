@@ -1,4 +1,6 @@
 const firestoreService = require("../services/firestoreService");
+const {admin} = require("../config/database");
+const {FieldValue} = require("firebase-admin/firestore");
 
 const getProducts = async (req, res) => {
   try {
@@ -322,17 +324,20 @@ const toggleProductLike = async (req, res) => {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
 
-      // 상품의 좋아요 수 감소
-      const newLikesCount = Math.max(0, (product.likesCount || 0) - 1);
+      // 상품의 좋아요 수 감소 (원자적 업데이트)
       await firestoreService.updateDocument("products", productId, {
-        likesCount: newLikesCount,
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
       });
+
+      // 업데이트된 상품 정보 조회
+      const updatedProduct = await firestoreService.getDocument("products", productId);
 
       res.json({
         success: true,
         message: "좋아요가 취소되었습니다.",
         isLiked: false,
-        likesCount: newLikesCount,
+        likesCount: updatedProduct.likesCount || 0,
       });
     } else {
       // 좋아요 등록
@@ -345,17 +350,20 @@ const toggleProductLike = async (req, res) => {
 
       await firestoreService.addDocument("likes", likeData);
 
-      // 상품의 좋아요 수 증가
-      const newLikesCount = (product.likesCount || 0) + 1;
+      // 상품의 좋아요 수 증가 (원자적 업데이트)
       await firestoreService.updateDocument("products", productId, {
-        likesCount: newLikesCount,
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
       });
+
+      // 업데이트된 상품 정보 조회
+      const updatedProduct = await firestoreService.getDocument("products", productId);
 
       res.json({
         success: true,
         message: "좋아요가 등록되었습니다.",
         isLiked: true,
-        likesCount: newLikesCount,
+        likesCount: updatedProduct.likesCount || 0,
       });
     }
   } catch (error) {
@@ -621,13 +629,17 @@ const toggleProductQnALike = async (req, res) => {
         (like) => like.userId === "user123" && like.type === "QNA",
     );
     let isLiked = false;
-    let likeCount = qna.likesCount || 0;
 
     if (userLike) {
       // 좋아요 취소
       await firestoreService.deleteDocument("likes", userLike.id);
-      likeCount = Math.max(0, likeCount - 1);
       isLiked = false;
+
+      // QnA 좋아요 수 감소 (원자적 업데이트)
+      await firestoreService.updateDocument("qnas", qnaId, {
+        likesCount: FieldValue.increment(-1),
+        updatedAt: new Date(),
+      });
     } else {
       // 좋아요 등록
       await firestoreService.addDocument("likes", {
@@ -636,15 +648,17 @@ const toggleProductQnALike = async (req, res) => {
         userId: "user123",
         createdAt: new Date(),
       });
-      likeCount += 1;
       isLiked = true;
+
+      // QnA 좋아요 수 증가 (원자적 업데이트)
+      await firestoreService.updateDocument("qnas", qnaId, {
+        likesCount: FieldValue.increment(1),
+        updatedAt: new Date(),
+      });
     }
 
-    // QnA 좋아요 수 업데이트
-    await firestoreService.updateDocument("qnas", qnaId, {
-      likesCount: likeCount,
-      updatedAt: new Date(),
-    });
+    // 업데이트된 QnA 정보 조회
+    const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
     res.json({
       success: true,
@@ -652,7 +666,7 @@ const toggleProductQnALike = async (req, res) => {
         qnaId,
         userId: "user123",
         isLiked,
-        likeCount,
+        likeCount: updatedQna.likesCount || 0,
       },
       message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
     });
