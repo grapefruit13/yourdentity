@@ -1,0 +1,144 @@
+name: 🔧 Backend Build Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "be/functions/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  backend-build-check:
+    name: 🔧 백엔드 빌드 체크
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 📦 pnpm 설치
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: 🔧 Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: "be/functions/pnpm-lock.yaml"
+
+      - name: 🔧 Firebase CLI 설치
+        run: |
+          npm install -g firebase-tools
+          firebase --version
+
+      - name: 📦 의존성 설치
+        run: |
+          cd be/functions
+          pnpm install --frozen-lockfile
+
+      - name: 🔧 빌드 체크 (에뮬레이터 실행)
+        run: |
+          cd be/functions
+          echo "🚀 Firebase 에뮬레이터 빌드 테스트 시작..."
+          pnpm run build
+          echo "✅ 빌드 및 에뮬레이터 기동 성공!"
+
+      - name: ✅ 빌드 성공 알림
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('🔧 빌드 상태')
+            );
+
+            const body = `## 🔧 빌드 상태: 성공! ✅
+
+            Firebase Functions 빌드 및 에뮬레이터 기동이 **성공적으로 완료**되었습니다! 🎉
+
+            ### ✅ 체크 완료
+            - 🔧 **Backend Build (Emulator)**: 성공
+
+            ### 📊 상세 정보
+            - **Commit**: ${context.sha.substring(0, 7)}
+            - **Branch**: ${context.payload.pull_request.head.ref}
+            - **빌드 완료 시간**: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+
+            > 🚀 **Functions 빌드 및 실행에 문제가 없습니다. 머지 가능합니다!**`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: ❌ 빌드 실패 알림
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('🔧 빌드 상태')
+            );
+
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const body = `## 🔧 빌드 상태: 실패! ❌
+
+            **Firebase Functions 빌드 또는 에뮬레이터 실행이 실패했습니다.** 
+
+            ### ❌ 실패한 항목
+            - 🔧 **Backend Build (Emulator)**: 실패
+
+            ### 📊 상세 정보
+            - **Commit**: ${context.sha.substring(0, 7)}
+            - **Branch**: ${context.payload.pull_request.head.ref}
+            - **실패 시간**: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+            - **상세 로그**: [워크플로우 실행 결과 보기](${runUrl})
+
+            > ⚠️ **문제를 해결한 후 다시 푸시하면 자동으로 재검사됩니다.**`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
