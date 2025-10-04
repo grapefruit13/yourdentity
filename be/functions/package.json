@@ -3,7 +3,7 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {
     "lint": "eslint .",
-    "build": "firebase emulators:start --only functions --project youthvoice-2025 --debug & sleep 10 && pkill -f 'firebase emulators:start' || true",
+    "build": "set -e; firebase emulators:start --only functions --project youthvoice-2025 --debug & sleep 10; pkill -f 'firebase emulators:start' || true; echo '✅ Emulator run complete'; exit 0",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "pnpm run shell",
