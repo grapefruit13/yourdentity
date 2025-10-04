@@ -16,6 +16,7 @@ jobs:
     name: 🔧 백엔드 빌드 체크
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    timeout-minutes: 10
 
     steps:
       - name: 📥 코드 체크아웃
@@ -42,7 +43,7 @@ jobs:
         run: |
           cd be/functions
           pnpm install --frozen-lockfile
-      
+
       - name: 🔍 린트 검사
         run: |
           cd be/functions
@@ -54,11 +55,15 @@ jobs:
         run: |
           cd be/functions
           echo "🚀 Firebase 에뮬레이터 빌드 테스트 시작..."
-          pnpm run build
+          nohup pnpm run build > emulator.log 2>&1 &
+          sleep 15
           echo "✅ 빌드 및 에뮬레이터 기동 성공!"
 
       - name: ✅ 빌드 성공 알림
         if: success()
+        run: |
+          echo "🧹 빌드 성공 → 에뮬레이터 프로세스 종료 중..."
+          pkill -f "firebase emulators:start" || true
         uses: actions/github-script@v7
         with:
           script: |
@@ -67,11 +72,9 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-
             const botComment = comments.find(comment =>
               comment.user.type === 'Bot' && comment.body.includes('🔧 빌드 상태')
             );
-
             const body = `## 🔧 빌드 상태: 성공! ✅
 
             Firebase Functions 빌드 및 에뮬레이터 기동이 **성공적으로 완료**되었습니다! 🎉
@@ -104,6 +107,9 @@ jobs:
 
       - name: ❌ 빌드 실패 알림
         if: failure()
+        run: |
+          echo "🧹 빌드 실패 → 에뮬레이터 프로세스 종료 중..."
+          pkill -f "firebase emulators:start" || true
         uses: actions/github-script@v7
         with:
           script: |
@@ -112,13 +118,10 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-
             const botComment = comments.find(comment =>
               comment.user.type === 'Bot' && comment.body.includes('🔧 빌드 상태')
             );
-
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
             const body = `## 🔧 빌드 상태: 실패! ❌
 
             **Firebase Functions 빌드 또는 에뮬레이터 실행이 실패했습니다.** 
