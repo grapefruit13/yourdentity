@@ -85,7 +85,21 @@ class UserService {
       };
 
       // FirestoreService를 활용한 문서 생성/업데이트
-      await this.firestoreService.create(userDoc, uid);
+      if (isNewUser) {
+        // 신규 사용자: 전체 문서 생성
+        await this.firestoreService.create(userDoc, uid);
+      } else {
+        // 기존 사용자: 기본 필드만 업데이트 (기존 데이터 보존)
+        const updateData = {
+          name: userDoc.name,
+          email: userDoc.email,
+          profileImageUrl: userDoc.profileImageUrl,
+          authType: userDoc.authType,
+          snsProvider: userDoc.snsProvider,
+          lastLogin: userDoc.lastLogin,
+        };
+        await this.firestoreService.update(uid, updateData);
+      }
 
       return {
         isNewUser,

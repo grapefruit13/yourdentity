@@ -165,13 +165,6 @@ app.post("/echo", (req, res) => {
   });
 });
 
-// Swagger UI
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerConfig.default, {
-  explorer: true,
-  customCss: ".swagger-ui .topbar { display: none }",
-  customSiteTitle: "Yourdentity API Documentation",
-}));
-
 // API 라우트 등록
 app.use("/users", userRoutes);
 app.use("/missions", missionRoutes);
