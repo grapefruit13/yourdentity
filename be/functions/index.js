@@ -1,4 +1,4 @@
-const functions = require("firebase-functions");
+const {onRequest} = require("firebase-functions/v2/https");
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
@@ -27,6 +27,8 @@ if (!admin.apps.length) {
 }
 
 // 1세대 Auth Triggers
+// eslint-disable-next-line no-unused-vars
+const functions = require("firebase-functions");
 const {
   createUserDocument,
   deleteUserDocument,
@@ -139,9 +141,9 @@ if (process.env.NODE_ENV === "development") {
 // 기본 라우트들 (기존 호환성을 위해 유지)
 app.get("/", (req, res) => {
   res.json({
-    message: "Hello World from Firebase Functions v2!",
+    message: "Hello World from Firebase Functions!",
     timestamp: new Date().toISOString(),
-    service: "Express.js on Firebase Functions v6",
+    service: "Express.js on Firebase Functions v6 (Mixed Generation)",
     version: "2.0.0",
     documentation: "/api-docs",
   });
@@ -215,7 +217,10 @@ app.post("/send-notification", async (req, res) => {
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
 
-exports.api = functions.region("asia-northeast3").https.onRequest(app);
+exports.api = onRequest({
+  region: "asia-northeast3",
+  cors: true,
+}, app);
 
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
