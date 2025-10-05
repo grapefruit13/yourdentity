@@ -1775,23 +1775,23 @@ const specs = swaggerJSDoc(options);
 
 // 자동 생성된 Swagger와 병합
 async function getMergedSwaggerSpecs() {
-    try {
-      // require 캐시 삭제로 파일 변경사항 반영
-      const swaggerConfigPath = require.resolve("./swagger.js");
-      delete require.cache[swaggerConfigPath];
+  try {
+    // require 캐시 삭제로 파일 변경사항 반영
+    const swaggerConfigPath = require.resolve("./swagger.js");
+    delete require.cache[swaggerConfigPath];
 
-      // 매번 새로운 스펙을 생성해서 변경사항이 반영되도록 함
-      return swaggerJSDoc(options);
-    } catch (error) {
-      console.warn("⚠️  자동 Swagger 병합 실패, 기본 스펙 사용:", error.message);
-      return swaggerJSDoc(options);
-    }
+    // 매번 새로운 스펙을 생성해서 변경사항이 반영되도록 함
+    return swaggerJSDoc(options);
+  } catch (error) {
+    console.warn("⚠️  자동 Swagger 병합 실패, 기본 스펙 사용:", error.message);
+    return swaggerJSDoc(options);
   }
+}
 
-  module.exports = {
-    // 기본 스펙 (기존 호환성)
-    default: specs,
+module.exports = {
+  // 기본 스펙 (기존 호환성)
+  default: specs,
 
-    // 병합된 스펙 (자동 생성 포함)
-    getMerged: getMergedSwaggerSpecs,
+  // 병합된 스펙 (자동 생성 포함)
+  getMerged: getMergedSwaggerSpecs,
 };
