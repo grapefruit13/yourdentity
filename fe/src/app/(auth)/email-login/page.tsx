@@ -5,8 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ButtonBase from "@/components/shared/base/button-base";
-import Input from "@/components/shared/input";
-import { NBody1B, NBody2M, NLabel1M } from "@/components/shared/typography";
+import InputBase from "@/components/shared/base/input-base";
+import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import useToggle from "@/hooks/shared/useToggle";
@@ -34,26 +34,27 @@ const EmailLoginPage = () => {
   };
 
   return (
-    <form
-      className="flex h-full flex-col bg-white px-5 py-6"
-      onSubmit={handleSubmit}
-    >
+    <div className="flex h-full flex-col bg-white px-5 py-6">
       <div className="flex h-fit flex-col gap-6">
         <div className="flex flex-col gap-3">
-          <NBody2M>아이디 (이메일)</NBody2M>
-          <Input
+          <Typography font="noto" variant="body2M">
+            아이디 (이메일)
+          </Typography>
+          <InputBase
             type="email"
             placeholder="이메일을 입력하세요"
-            onChange={(e) => setEmail(e.target.value)}
+            className="font-noto rounded-md border border-gray-200 px-3 py-2 text-base leading-1.5 font-normal shadow-xs"
           />
         </div>
         <div className="flex flex-col gap-3">
-          <NBody2M>비밀번호</NBody2M>
+          <Typography font="noto" variant="body2M">
+            비밀번호
+          </Typography>
           <div className="relative">
-            <Input
+            <InputBase
               type={isOpen ? "text" : "password"}
-              onChange={(e) => setPassword(e.target.value)}
               placeholder="비밀번호를 입력하세요"
+              className="font-noto w-full rounded-md border border-gray-200 px-3 py-2 pr-10 text-base leading-1.5 font-normal shadow-xs"
             />
             <ButtonBase type={"button"} onClick={toggle}>
               <Image
@@ -77,10 +78,14 @@ const EmailLoginPage = () => {
       </div>
       <div className="flex items-center justify-center gap-4 pt-10">
         <Link href={LINK_URL.FIND_PASSWORD}>
-          <NLabel1M className="text-gray-400">비밀번호 찾기</NLabel1M>
+          <Typography font="noto" variant="label1M" className="text-gray-400">
+            비밀번호 찾기
+          </Typography>
         </Link>
         <Link href={LINK_URL.EMAIL_SIGNUP}>
-          <NLabel1M className="text-gray-400">이메일 회원가입</NLabel1M>
+          <Typography font="noto" variant="label1M" className="text-gray-400">
+            이메일 회원가입
+          </Typography>
         </Link>
       </div>
       <ButtonBase
@@ -91,9 +96,11 @@ const EmailLoginPage = () => {
           !isLoginValidate && "opacity-50"
         )}
       >
-        <NBody1B className="text-white">로그인</NBody1B>
+        <Typography font="noto" variant="body1B" className="text-white">
+          로그인
+        </Typography>
       </ButtonBase>
-    </form>
+    </div>
   );
 };
 
