@@ -24,22 +24,22 @@ export const createKakaoProvider = () => {
 };
 
 /**
- * 카카오 로그인 - Popup 방식
+ * 카카오 로그인 - Popup 방식(test)
  */
-export const signInWithKakao = async (): Promise<UserCredential> => {
-  const provider = createKakaoProvider();
+// export const signInWithKakao = async (): Promise<UserCredential> => {
+//   const provider = createKakaoProvider();
 
-  try {
-    const result = await signInWithPopup(auth, provider);
-    // eslint-disable-next-line no-console
-    console.log("카카오 로그인 성공:", result.user);
-    return result;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("카카오 로그인 실패:", error);
-    throw error;
-  }
-};
+//   try {
+//     const result = await signInWithPopup(auth, provider);
+//     // eslint-disable-next-line no-console
+//     console.log("카카오 로그인 성공:", result.user);
+//     return result;
+//   } catch (error) {
+//     // eslint-disable-next-line no-console
+//     console.error("카카오 로그인 실패:", error);
+//     throw error;
+//   }
+// };
 
 /**
  * 현재 로그인된 사용자 확인

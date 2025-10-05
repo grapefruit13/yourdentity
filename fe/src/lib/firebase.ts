@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { connectFirestoreEmulator } from "firebase/firestore";
 import {
   getMessaging,
   getToken,
@@ -23,7 +23,6 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // 기본 SDK 인스턴스
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 
 // // 로컬 개발 시 에뮬레이터 연결
 // if (typeof window !== "undefined") {

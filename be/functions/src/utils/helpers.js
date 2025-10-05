@@ -36,4 +36,6 @@ module.exports = {
   validateMissionStatus,
   isValidEmail,
   generateId,
+  generateId,
 };
+

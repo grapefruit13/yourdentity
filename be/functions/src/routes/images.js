@@ -132,3 +132,4 @@ router.post("/upload-image", imageController.uploadImage);
 router.put("/users/:userId/profile-image", imageController.updateProfileImage);
 
 module.exports = router;
+

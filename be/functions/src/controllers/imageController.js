@@ -1,5 +1,5 @@
-const imgbbService = require("../services/imgbbService");
-const FirestoreService = require("../services/firestoreService");
+const imgbbService = require('../services/imgbbService');
+const firestoreService = require("../services/firestoreService");
 
 /**
  * Image Controller
@@ -58,14 +58,14 @@ class ImageController {
       // 2. 반환된 URL을 Firestore의 사용자 profileImageUrl에 저장
 
       // 현재는 모의 응답
-      const mockImageUrl = imgbbService.generateMockImageUrl(userId, "profile");
+      const mockImageUrl = imgbbService.generateMockImageUrl(userId, 'profile');
 
       const users = new FirestoreService('users');
-      await users.update(userId, { profileImageUrl: mockImageUrl });
+      await firestoreService.updateUserProfileImage(userId, mockImageUrl);
 
       res.json({
         status: 200,
-        message: "Profile image updated (mock)",
+        message: 'Profile image updated (mock)',
         data: {
           userId,
           profileImageUrl: mockImageUrl,
@@ -73,7 +73,10 @@ class ImageController {
         note: "imgBB API 키 설정 후 실제 이미지 업로드가 가능합니다",
       });
     } catch (error) {
-      res.status(500).json({ status: 500, error: error.message });
+      res.status(500).json({ 
+        status: 500,
+        error: error.message 
+      });
     }
   }
 }
