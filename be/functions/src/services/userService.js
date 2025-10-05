@@ -89,15 +89,22 @@ class UserService {
         // 신규 사용자: 전체 문서 생성
         await this.firestoreService.create(userDoc, uid);
       } else {
-        // 기존 사용자: 기본 필드만 업데이트 (기존 데이터 보존)
+        // 기존 사용자: 명시적으로 제공된 필드만 업데이트 (기존 데이터 보존)
         const updateData = {
-          name: userDoc.name,
-          email: userDoc.email,
-          profileImageUrl: userDoc.profileImageUrl,
-          authType: userDoc.authType,
-          snsProvider: userDoc.snsProvider,
-          lastLogin: userDoc.lastLogin,
+          lastLogin: FieldValue.serverTimestamp(),
         };
+
+        if (userData.name !== undefined) updateData.name = userData.name;
+        if (userData.email !== undefined) updateData.email = userData.email;
+        if (userData.profileImageUrl !== undefined) {
+          updateData.profileImageUrl = userData.profileImageUrl;
+        }
+        if (userData.providerId !== undefined) {
+          const providerId = userData.providerId.replace("oidc.", "");
+          updateData.authType = providerId === "email" ? "email" : "sns";
+          updateData.snsProvider = providerId === "email" ? null : providerId;
+        }
+
         await this.firestoreService.update(uid, updateData);
       }
 

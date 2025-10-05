@@ -18,7 +18,7 @@ const authGuard = async (req, res, next) => {
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
-        success: false,
+        status: 401,
         error: "Authorization header with Bearer token required",
       });
     }
@@ -27,7 +27,7 @@ const authGuard = async (req, res, next) => {
 
     if (!idToken) {
       return res.status(401).json({
-        success: false,
+        status: 401,
         error: "Invalid authorization header format",
       });
     }
@@ -49,20 +49,20 @@ const authGuard = async (req, res, next) => {
 
     if (error.code === "auth/id-token-expired") {
       return res.status(401).json({
-        success: false,
+        status: 401,
         error: "Token expired",
       });
     }
 
     if (error.code === "auth/invalid-id-token") {
       return res.status(401).json({
-        success: false,
+        status: 401,
         error: "Invalid token",
       });
     }
 
     return res.status(401).json({
-      success: false,
+      status: 401,
       error: "Authentication failed",
     });
   }
