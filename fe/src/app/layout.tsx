@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Noto_Sans_KR } from "next/font/google";
+import PwaInstallPrompt from "@/components/shared/layouts/pwa-install-prompt";
 import { Toaster } from "@/components/shared/ui/sonner";
 import { cn } from "@/utils/shared/cn";
 
@@ -276,6 +277,7 @@ export default function RootLayout({
       >
         <Toaster />
         <div className="flex h-screen w-full flex-col bg-white">{children}</div>
+        <PwaInstallPrompt />
       </body>
     </html>
   );
