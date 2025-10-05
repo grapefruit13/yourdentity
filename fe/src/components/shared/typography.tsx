@@ -1,6 +1,34 @@
-import { ComponentPropsWithoutRef, ElementType } from "react";
-import { cva, VariantProps } from "class-variance-authority";
+import { ComponentPropsWithoutRef, ElementType, forwardRef } from "react";
+import { cva } from "class-variance-authority";
 import { cn } from "@/utils/shared/cn";
+
+const VARIANT_MAP = {
+  display1: { size: "40", weight: "bold" },
+  display2: { size: "32", weight: "bold" },
+  title1: { size: "34", weight: "bold" },
+  title2: { size: "30", weight: "bold" },
+  title3: { size: "26", weight: "bold" },
+  title4: { size: "22", weight: "bold" },
+  title5: { size: "20", weight: "bold" },
+  heading1B: { size: "22", weight: "bold" },
+  heading1M: { size: "22", weight: "medium" },
+  heading2B: { size: "18", weight: "bold" },
+  heading2M: { size: "18", weight: "medium" },
+  heading3B: { size: "16", weight: "bold" },
+  heading3M: { size: "16", weight: "medium" },
+  body1B: { size: "16", weight: "bold" },
+  body1M: { size: "16", weight: "medium" },
+  body1R: { size: "16", weight: "regular" },
+  body2B: { size: "14", weight: "bold" },
+  body2M: { size: "14", weight: "medium" },
+  body2R: { size: "14", weight: "regular" },
+  label1B: { size: "12", weight: "bold" },
+  label1M: { size: "12", weight: "medium" },
+  label1R: { size: "12", weight: "regular" },
+  label2B: { size: "11", weight: "bold" },
+  label2M: { size: "11", weight: "medium" },
+  label2R: { size: "11", weight: "regular" },
+} as const;
 
 const typographyVariants = cva("whitespace-pre-line text-wrap leading-[1.5]", {
   variants: {
@@ -32,353 +60,101 @@ const typographyVariants = cva("whitespace-pre-line text-wrap leading-[1.5]", {
       white: "text-white-100",
     },
   },
+  defaultVariants: {
+    font: "noto",
+    color: "black",
+    weight: "regular",
+  },
 });
 
-export type TypographyProps = VariantProps<typeof typographyVariants> &
-  ComponentPropsWithoutRef<ElementType>;
+export type TypographyVariant = keyof typeof VARIANT_MAP;
 
-const customTypography = (
-  element: ElementType,
-  variants: VariantProps<typeof typographyVariants>
-) => {
-  const Typography = ({ children, className, ...props }: TypographyProps) => {
-    const Tag = element;
+export type TypographyProps = {
+  variant?: TypographyVariant;
+  font?: "noto" | "gill";
+  size?:
+    | "11"
+    | "12"
+    | "14"
+    | "16"
+    | "18"
+    | "20"
+    | "22"
+    | "26"
+    | "30"
+    | "32"
+    | "34"
+    | "40";
+  weight?: "regular" | "medium" | "bold";
+  color?: "black" | "white";
+  as?: ElementType;
+} & ComponentPropsWithoutRef<ElementType>;
+
+const Typography = forwardRef<HTMLElement, TypographyProps>(
+  (
+    {
+      as: Component = "span",
+      className,
+      variant,
+      font,
+      size,
+      weight,
+      color,
+      ...props
+    },
+    ref
+  ) => {
+    // variant가 있으면 해당 스타일을 사용, 없으면 개별 props 사용
+    const variantStyle = variant
+      ? VARIANT_MAP[variant as keyof typeof VARIANT_MAP]
+      : { size: undefined, weight: undefined };
+
+    const finalFont = font ?? "noto";
+    const finalSize = size ?? variantStyle.size ?? "16";
+    const finalWeight = weight ?? variantStyle.weight ?? "regular";
+    const finalColor = color ?? "black";
+
     return (
-      <Tag className={cn(typographyVariants(variants), className)} {...props}>
-        {children}
-      </Tag>
+      <Component
+        ref={ref}
+        className={cn(
+          typographyVariants({
+            font: finalFont,
+            size: finalSize,
+            weight: finalWeight,
+            color: finalColor,
+          }),
+          className
+        )}
+        {...props}
+      />
     );
-  };
-  return Typography;
-};
+  }
+);
 
-export const NDisplay1 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "40",
-  weight: "bold",
-});
+Typography.displayName = "Typography";
 
-export const NDisplay2 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "32",
-  weight: "bold",
-});
+export { Typography };
 
-export const NTitle1 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "34",
-  weight: "bold",
-});
-
-export const NTitle2 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "30",
-  weight: "bold",
-});
-
-export const NTitle3 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "26",
-  weight: "bold",
-});
-
-export const NTitle4 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "22",
-  weight: "bold",
-});
-
-export const NTitle5 = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "20",
-  weight: "bold",
-});
-
-export const NHeading1B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "22",
-  weight: "bold",
-});
-
-export const NHeading1M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "22",
-  weight: "medium",
-});
-
-export const NHeading2B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "18",
-  weight: "bold",
-});
-
-export const NHeading2M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "18",
-  weight: "medium",
-});
-
-export const NHeading3B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "16",
-  weight: "bold",
-});
-
-export const NHeading3M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "16",
-  weight: "medium",
-});
-
-export const NBody1B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "16",
-  weight: "bold",
-});
-
-export const NBody1M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "16",
-  weight: "medium",
-});
-
-export const NBody1R = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "16",
-  weight: "regular",
-});
-
-export const NBody2B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "14",
-  weight: "bold",
-});
-
-export const NBody2M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "14",
-  weight: "medium",
-});
-
-export const NBody2R = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "14",
-  weight: "regular",
-});
-
-export const NLabel1B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "12",
-  weight: "bold",
-});
-
-export const NLabel1M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "12",
-  weight: "medium",
-});
-
-export const NLabel1R = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "12",
-  weight: "regular",
-});
-
-export const NLabel2B = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "11",
-  weight: "bold",
-});
-
-export const NLabel2M = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "11",
-  weight: "medium",
-});
-
-export const NLabel2R = customTypography("span", {
-  font: "noto",
-  color: "black",
-  size: "11",
-  weight: "regular",
-});
-
-// --- gill sans
-
-export const GDisplay1 = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "40",
-  weight: "bold",
-});
-
-export const GDisplay2 = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "32",
-  weight: "bold",
-});
-
-export const GTitle1 = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "34",
-  weight: "bold",
-});
-
-export const GTitle2 = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "30",
-  weight: "bold",
-});
-
-export const GTitle3 = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "26",
-  weight: "bold",
-});
-
-export const GTitle4 = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "22",
-  weight: "bold",
-});
-
-export const GHeading1B = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "22",
-  weight: "bold",
-});
-
-export const GHeading1M = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "22",
-  weight: "medium",
-});
-
-export const GHeading2B = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "18",
-  weight: "bold",
-});
-
-export const GHeading2M = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "18",
-  weight: "medium",
-});
-
-export const GBody1B = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "16",
-  weight: "bold",
-});
-
-export const GBody1M = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "16",
-  weight: "medium",
-});
-
-export const GBody1R = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "16",
-  weight: "regular",
-});
-
-export const GBody2B = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "14",
-  weight: "bold",
-});
-
-export const GBody2M = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "14",
-  weight: "medium",
-});
-
-export const GBody2R = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "14",
-  weight: "regular",
-});
-
-export const GLabel1B = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "12",
-  weight: "bold",
-});
-
-export const GLabel1M = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "12",
-  weight: "medium",
-});
-
-export const GLabel1R = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "12",
-  weight: "regular",
-});
-
-export const GLabel2B = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "11",
-  weight: "bold",
-});
-
-export const GLabel2M = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "11",
-  weight: "medium",
-});
-
-export const GLabel2R = customTypography("span", {
-  font: "gill",
-  color: "black",
-  size: "11",
-  weight: "regular",
-});
+/**
+ * Typography 컴포넌트 사용 예시:
+ *
+ * // Font와 Variant 조합 사용 (권장)
+ * <Typography font="noto" variant="display1">큰 제목</Typography>
+ * <Typography font="noto" variant="body2M">본문</Typography>
+ * <Typography font="gill" variant="title1">Gill 폰트 제목</Typography>
+ *
+ * // 개별 props 사용
+ * <Typography font="noto" size="16" weight="medium">텍스트</Typography>
+ *
+ * // HTML 태그 지정
+ * <Typography as="h1" font="noto" variant="title1">시맨틱 제목</Typography>
+ *
+ * // Variant와 개별 props 조합 (variant 우선)
+ * <Typography font="noto" variant="body1M" color="white">흰색 본문</Typography>
+ *
+ * // 커스텀 스타일과 조합
+ * <Typography font="noto" variant="body2B" className="text-blue-500">
+ *   커스텀 스타일
+ * </Typography>
+ */

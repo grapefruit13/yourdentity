@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { NBody2B, NLabel1M } from "@/components/shared/typography";
+import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 
@@ -31,7 +31,9 @@ const HomePage = () => {
               width={18}
               height={18}
             />
-            <NBody2B>카카오로 시작하기</NBody2B>
+            <Typography font="noto" variant="body2B">
+              카카오로 시작하기
+            </Typography>
           </Link>
           <Link
             href={LINK_URL.EMAIL_LOGIN}
@@ -43,15 +45,21 @@ const HomePage = () => {
               width={18}
               height={18}
             />
-            <NBody2B className="text-gray-900">이메일로 시작하기</NBody2B>
+            <Typography font="noto" variant="body2B" className="text-gray-900">
+              이메일로 시작하기
+            </Typography>
           </Link>
         </div>
         <div className="flex items-center justify-center gap-4">
           <Link href={LINK_URL.TERMS_OF_SERVICE}>
-            <NLabel1M className="text-gray-400">이용약관</NLabel1M>
+            <Typography font="noto" variant="label1M" className="text-gray-400">
+              이용약관
+            </Typography>
           </Link>
           <Link href={LINK_URL.PRIVACY_POLICY}>
-            <NLabel1M className="text-gray-400">개인정보 처리방침</NLabel1M>
+            <Typography font="noto" variant="label1M" className="text-gray-400">
+              개인정보 처리방침
+            </Typography>
           </Link>
         </div>
       </div>

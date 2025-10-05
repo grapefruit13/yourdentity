@@ -4,7 +4,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { TOPBAR_TITLE_MAP } from "@/constants/shared/_topbar-title-map";
-import { NBody1M } from "../typography";
+import { Typography } from "../typography";
 
 /**
  * @description 상단 고정바
@@ -33,7 +33,9 @@ const TopBar = () => {
           height={20}
         />
       </button>
-      <NBody1M>{currentTitle}</NBody1M>
+      <Typography font="noto" variant="body1M">
+        {currentTitle}
+      </Typography>
     </div>
   );
 };
