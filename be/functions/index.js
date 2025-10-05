@@ -1,5 +1,4 @@
-const {onRequest} = require("firebase-functions/v2/https");
-const {setGlobalOptions} = require("firebase-functions/v2");
+const functions = require("firebase-functions");
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
@@ -33,8 +32,7 @@ const {
   deleteUserDocument,
 } = require("./src/triggers/authTrigger");
 
-// 서울 리전 설정
-setGlobalOptions({region: "asia-northeast3"});
+// 서울 리전 설정 (1st generation에서는 functions.region 사용)
 
 // Express 앱 생성
 const app = express();
@@ -224,7 +222,7 @@ app.post("/send-notification", async (req, res) => {
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
 
-exports.api = onRequest(app);
+exports.api = functions.region("asia-northeast3").https.onRequest(app);
 
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
