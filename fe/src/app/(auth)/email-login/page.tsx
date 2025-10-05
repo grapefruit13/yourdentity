@@ -34,13 +34,17 @@ const EmailLoginPage = () => {
   };
 
   return (
-    <div className="flex h-full flex-col bg-white px-5 py-6">
+    <form
+      className="flex h-full flex-col bg-white px-5 py-6"
+      onSubmit={handleSubmit}
+    >
       <div className="flex h-fit flex-col gap-6">
         <div className="flex flex-col gap-3">
           <Typography font="noto" variant="body2M">
             아이디 (이메일)
           </Typography>
           <InputBase
+            onChange={(e) => setEmail(e.target.value)}
             type="email"
             placeholder="이메일을 입력하세요"
             className="font-noto rounded-md border border-gray-200 px-3 py-2 text-base leading-1.5 font-normal shadow-xs"
@@ -52,11 +56,12 @@ const EmailLoginPage = () => {
           </Typography>
           <div className="relative">
             <InputBase
+              onChange={(e) => setPassword(e.target.value)}
               type={isOpen ? "text" : "password"}
               placeholder="비밀번호를 입력하세요"
               className="font-noto w-full rounded-md border border-gray-200 px-3 py-2 pr-10 text-base leading-1.5 font-normal shadow-xs"
             />
-            <ButtonBase type={"button"} onClick={toggle}>
+            <ButtonBase type="button" onClick={toggle}>
               <Image
                 src={
                   isOpen
@@ -100,7 +105,7 @@ const EmailLoginPage = () => {
           로그인
         </Typography>
       </ButtonBase>
-    </div>
+    </form>
   );
 };
 
