@@ -6,4 +6,5 @@ export const LINK_URL = {
   FIND_PASSWORD: "/find-password",
   EMAIL_SIGNUP: "/signup/email",
   MISSION: "/mission",
+  DOWNLOAD: "/download",
 };
