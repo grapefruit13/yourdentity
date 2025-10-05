@@ -35,6 +35,12 @@ const ICON = {
       url: "/icons/ic-chevron-left.svg",
       alt: "왼쪽 화살표",
     },
+    double: {
+      down: {
+        url: "/icons/ic-chevron-double-down.svg",
+        alt: "아래쪽 화살표",
+      },
+    },
   },
   mission: {
     active: {
@@ -74,6 +80,24 @@ const ICON = {
   },
 };
 
+const IMG = {
+  download: {
+    home: {
+      url: "/imgs/download-home.png",
+      alt: "다운로드 홈",
+    },
+    excute: {
+      url: "/imgs/download-execute.png",
+      alt: "다운로드 실행",
+    },
+    share: {
+      url: "/imgs/download-share.png",
+      alt: "앱 공유",
+    },
+  },
+};
+
 export const IMAGE_URL = {
   ICON,
+  IMG,
 };
