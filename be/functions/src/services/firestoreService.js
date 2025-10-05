@@ -1,4 +1,4 @@
-const { db, FieldValue } = require('../config/database');
+const {db, FieldValue} = require("../config/database");
 
 /**
  * Firestore Service (데이터 접근 계층)
@@ -8,7 +8,7 @@ class FirestoreService {
   constructor(collectionName) {
     this.collectionName = collectionName;
   }
-  
+
   /**
    * 문서 생성
    * @param {Object} data - 문서 데이터
@@ -18,7 +18,7 @@ class FirestoreService {
   async create(data, docId = null) {
     const collectionRef = db.collection(this.collectionName);
     const docRef = docId ? collectionRef.doc(docId) : collectionRef.doc();
-    
+
     const newData = {
       ...data,
       createdAt: FieldValue.serverTimestamp(),
@@ -86,7 +86,6 @@ class FirestoreService {
   async delete(docId) {
     await db.collection(this.collectionName).doc(docId).delete();
   }
-
 
 
   /**

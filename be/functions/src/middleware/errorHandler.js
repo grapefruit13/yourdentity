@@ -24,7 +24,7 @@ const errorHandler = (err, req, res, next) => {
       break;
   }
 
-  return res.status(status).json({ status, error: errorMessage });
+  return res.status(status).json({status, error: errorMessage});
 };
 
 module.exports = errorHandler;

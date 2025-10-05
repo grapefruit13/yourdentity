@@ -25,7 +25,7 @@ exports.createUserDocument = functions
         // Provider ID 추출 및 정규화
         const providerId = user.providerData?.[0]?.providerId;
         let provider = "email"; // 기본값
-        
+
         if (providerId) {
           if (providerId.startsWith("oidc.")) {
             // OIDC 제공자 (카카오, 구글 등)

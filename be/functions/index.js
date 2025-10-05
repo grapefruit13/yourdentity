@@ -1,7 +1,7 @@
-const { onRequest } = require('firebase-functions/v2/https');
-const { setGlobalOptions } = require('firebase-functions/v2');
-const express = require('express');
-const cors = require('cors');
+const {onRequest} = require("firebase-functions/v2/https");
+const {setGlobalOptions} = require("firebase-functions/v2");
+const express = require("express");
+const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./src/config/swagger");
 
@@ -13,9 +13,9 @@ const logger = require("./src/middleware/logger");
 const errorHandler = require("./src/middleware/errorHandler");
 
 // 라우터
-const userRoutes = require('./src/routes/users');
-const missionRoutes = require('./src/routes/missions');
-const imageRoutes = require('./src/routes/images');
+const userRoutes = require("./src/routes/users");
+const missionRoutes = require("./src/routes/missions");
+const imageRoutes = require("./src/routes/images");
 const routineRoutes = require("./src/routes/routines");
 const gatheringRoutes = require("./src/routes/gatherings");
 const tmiRoutes = require("./src/routes/tmi");
@@ -34,7 +34,7 @@ const {
 } = require("./src/triggers/authTrigger");
 
 // 서울 리전 설정
-setGlobalOptions({ region: 'asia-northeast3' });
+setGlobalOptions({region: "asia-northeast3"});
 
 // Express 앱 생성
 const app = express();
@@ -139,12 +139,12 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // 기본 라우트들 (기존 호환성을 위해 유지)
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     message: "Hello World from Firebase Functions v2!",
     timestamp: new Date().toISOString(),
-    service: 'Express.js on Firebase Functions v6',
-    version: '2.0.0',
+    service: "Express.js on Firebase Functions v6",
+    version: "2.0.0",
     documentation: "/api-docs",
   });
 });
@@ -175,9 +175,9 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerConfig.default, {
 }));
 
 // API 라우트 등록
-app.use('/users', userRoutes);
-app.use('/missions', missionRoutes);
-app.use('/images', imageRoutes);
+app.use("/users", userRoutes);
+app.use("/missions", missionRoutes);
+app.use("/images", imageRoutes);
 app.use("/routines", routineRoutes);
 app.use("/gatherings", gatheringRoutes);
 app.use("/tmis", tmiRoutes);

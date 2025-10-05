@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
 
 try {
@@ -16,5 +16,5 @@ const db = admin.firestore();
 module.exports = {
   admin,
   db,
-  FieldValue
+  FieldValue,
 };

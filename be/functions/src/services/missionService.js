@@ -1,4 +1,4 @@
-const { db, FieldValue } = require('../config/database');
+const {db, FieldValue} = require("../config/database");
 
 /**
  * Mission Service - 미션 관련 비즈니스 로직
@@ -11,20 +11,20 @@ class MissionService {
    * @param {string} status - 미션 상태
    * @return {Promise<Object>} 생성된 미션 데이터
    */
-  async createMission(userId, missionId, status = 'ONGOING') {
+  async createMission(userId, missionId, status = "ONGOING") {
     const missionData = {
       status,
       startedAt: FieldValue.serverTimestamp(),
-      certified: false
+      certified: false,
     };
 
-    if (status === 'COMPLETED') {
+    if (status === "COMPLETED") {
       missionData.completedAt = FieldValue.serverTimestamp();
       missionData.certified = true;
     }
 
-    await db.collection('users').doc(userId).collection('missions').doc(missionId).set(missionData);
-    return { userId, missionId, ...missionData };
+    await db.collection("users").doc(userId).collection("missions").doc(missionId).set(missionData);
+    return {userId, missionId, ...missionData};
   }
 
   /**
@@ -34,22 +34,22 @@ class MissionService {
    * @return {Promise<Array>} 미션 목록
    */
   async getUserMissions(userId, statusFilter = null) {
-    let query = db.collection('users').doc(userId).collection('missions');
-    
+    let query = db.collection("users").doc(userId).collection("missions");
+
     if (statusFilter) {
-      query = query.where('status', '==', statusFilter);
+      query = query.where("status", "==", statusFilter);
     }
 
     const snapshot = await query.get();
     const missions = [];
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
       missions.push({
         missionId: doc.id,
         ...data,
         startedAt: data.startedAt?.toDate().toISOString(),
-        completedAt: data.completedAt?.toDate().toISOString()
+        completedAt: data.completedAt?.toDate().toISOString(),
       });
     });
 
@@ -63,7 +63,7 @@ class MissionService {
    * @return {Promise<Object|null>} 미션 데이터
    */
   async getMissionById(userId, missionId) {
-    const doc = await db.collection('users').doc(userId).collection('missions').doc(missionId).get();
+    const doc = await db.collection("users").doc(userId).collection("missions").doc(missionId).get();
 
     if (!doc.exists) {
       return null;
@@ -74,7 +74,7 @@ class MissionService {
       missionId: doc.id,
       ...data,
       startedAt: data.startedAt?.toDate().toISOString(),
-      completedAt: data.completedAt?.toDate().toISOString()
+      completedAt: data.completedAt?.toDate().toISOString(),
     };
   }
 

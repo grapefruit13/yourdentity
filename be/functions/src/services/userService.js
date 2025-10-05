@@ -13,7 +13,7 @@ if (!admin.apps.length) {
  */
 class UserService {
   constructor() {
-    this.firestoreService = new FirestoreService('users');
+    this.firestoreService = new FirestoreService("users");
   }
   /**
    * Firebase Auth 사용자 생성 또는 조회
@@ -60,26 +60,26 @@ class UserService {
         birthYear: userData.birthYear || null,
         phoneNumber: "",
         phoneVerified: false,
-        
+
         // 인증 정보
         authType: provider === "email" ? "email" : "sns",
         snsProvider: provider === "email" ? null : provider,
-        
+
         // 사용자 상태
         role: "user",
         onBoardingComplete: false,
-        
+
         // 리워드 시스템
         rewardPoints: 0,
         level: 1,
         badges: [],
         points: "0",
         mainProfileId: "",
-        
+
         // 스토리지 관리
         uploadQuotaBytes: 1073741824, // 1GB
         usedStorageBytes: 0,
-        
+
         // 타임스탬프
         lastLogin: FieldValue.serverTimestamp(),
       };
@@ -108,9 +108,15 @@ class UserService {
    */
   async createUser(userData) {
     const {name, email, password, profileImageUrl, birthYear, authType = "email", snsProvider = null} = userData;
-    if (!name) { const e = new Error("name is required"); e.code = "BAD_REQUEST"; throw e; }
-    if (!email) { const e = new Error("email is required"); e.code = "BAD_REQUEST"; throw e; }
-    if (!password) { const e = new Error("password is required"); e.code = "BAD_REQUEST"; throw e; }
+    if (!name) {
+      const e = new Error("name is required"); e.code = "BAD_REQUEST"; throw e;
+    }
+    if (!email) {
+      const e = new Error("email is required"); e.code = "BAD_REQUEST"; throw e;
+    }
+    if (!password) {
+      const e = new Error("password is required"); e.code = "BAD_REQUEST"; throw e;
+    }
 
     // Firebase Auth 사용자 생성
     const authUser = await admin.auth().createUser({
@@ -148,14 +154,14 @@ class UserService {
    * 모든 사용자 조회
    * @return {Promise<Array>} 사용자 목록
    */
-    async getAllUsers() {
-      try {
-        return await this.firestoreService.getAll();
-      } catch (error) {
-        console.error("Get all users error:", error.message);
-        throw new Error("Failed to get users");
-      }
+  async getAllUsers() {
+    try {
+      return await this.firestoreService.getAll();
+    } catch (error) {
+      console.error("Get all users error:", error.message);
+      throw new Error("Failed to get users");
     }
+  }
 
   /**
    * 사용자 정보 조회
@@ -174,7 +180,7 @@ class UserService {
   }
 
   /**
-   * 온보딩 프로비저닝용 : 사용자 정보 업데이트 
+   * 온보딩 프로비저닝용 : 사용자 정보 업데이트
    * Auth Trigger로 생성된 사용자 문서를 업데이트
    * @param {string} uid - 사용자 ID
    * @param {Object} userData - 업데이트할 사용자 데이터
