@@ -1,3 +1,11 @@
+/**
+ * ImgBB Service
+ * 이미지 업로드를 위한 서비스 (현재는 모의 구현)
+ */
+
+/**
+ * ImgBB 모의 서비스 클래스
+ */
 class ImgBBService {
   constructor() {
     // NOTE: imgBB API 키가 필요합니다

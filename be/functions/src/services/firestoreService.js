@@ -1,225 +1,103 @@
-const {db, admin} = require("../config/database");
-const {FieldValue} = admin.firestore;
+const {db, FieldValue} = require("../config/database");
 
+/**
+ * Firestore Service (데이터 접근 계층)
+ * 컬렉션별 데이터 CRUD 작업 담당
+ */
 class FirestoreService {
-  async createUser(nickname, profileImageUrl = "") {
-    const userRef = db.collection("users").doc();
-    const userData = {
-      nickname,
-      profileImageUrl,
+  constructor(collectionName) {
+    this.collectionName = collectionName;
+  }
+
+  /**
+   * 문서 생성
+   * @param {Object} data - 문서 데이터
+   * @param {string} docId - 문서 ID (선택사항)
+   * @return {Promise<Object>} 생성된 문서 데이터
+   */
+  async create(data, docId = null) {
+    const collectionRef = db.collection(this.collectionName);
+    const docRef = docId ? collectionRef.doc(docId) : collectionRef.doc();
+
+    const newData = {
+      ...data,
       createdAt: FieldValue.serverTimestamp(),
     };
 
-    await userRef.set(userData);
-    return {userId: userRef.id, ...userData};
+    await docRef.set(newData);
+    return {id: docRef.id, ...newData};
   }
 
-  async getAllUsers() {
-    const snapshot = await db.collection("users").get();
-    const users = [];
+  /**
+   * 모든 문서 조회
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getAll() {
+    const snapshot = await db.collection(this.collectionName).get();
+    const documents = [];
 
     snapshot.forEach((doc) => {
-      users.push({
-        userId: doc.id,
+      documents.push({
+        id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate().toISOString(),
       });
     });
 
-    return users;
+    return documents;
   }
 
-  async getUserById(userId) {
-    const doc = await db.collection("users").doc(userId).get();
+  /**
+   * 문서 ID로 조회
+   * @param {string} docId - 문서 ID
+   * @return {Promise<Object|null>} 문서 데이터
+   */
+  async getById(docId) {
+    const doc = await db.collection(this.collectionName).doc(docId).get();
 
     if (!doc.exists) {
       return null;
     }
 
     return {
-      userId: doc.id,
+      id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate().toISOString(),
     };
   }
 
-  async updateUser(userId, updateData) {
-    await db.collection("users").doc(userId).update(updateData);
-    return {userId, ...updateData};
+  /**
+   * 문서 업데이트
+   * @param {string} docId - 문서 ID
+   * @param {Object} updateData - 업데이트할 데이터
+   * @return {Promise<Object>} 업데이트된 문서 데이터
+   */
+  async update(docId, updateData) {
+    await db.collection(this.collectionName).doc(docId).update(updateData);
+    return {id: docId, ...updateData};
   }
 
-  async deleteUser(userId) {
-    const missionsSnapshot = await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .get();
-    const batch = db.batch();
 
-    missionsSnapshot.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-
-    batch.delete(db.collection("users").doc(userId));
-    await batch.commit();
+  /**
+   * 문서 삭제
+   * @param {string} docId - 문서 ID
+   * @return {Promise<void>}
+   */
+  async delete(docId) {
+    await db.collection(this.collectionName).doc(docId).delete();
   }
 
-  async createMission(userId, missionId, status = "ONGOING") {
-    const missionData = {
-      status,
-      startedAt: FieldValue.serverTimestamp(),
-      certified: false,
-    };
 
-    if (status === "COMPLETED") {
-      missionData.completedAt = FieldValue.serverTimestamp();
-      missionData.certified = true;
-    }
-
-    await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .doc(missionId)
-        .set(missionData);
-    return {userId, missionId, ...missionData};
-  }
-
-  async getUserMissions(userId, statusFilter = null) {
-    let query = db.collection("users").doc(userId).collection("missions");
-
-    if (statusFilter) {
-      query = query.where("status", "==", statusFilter);
-    }
-
-    const snapshot = await query.get();
-    const missions = [];
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      missions.push({
-        missionId: doc.id,
-        ...data,
-        startedAt: data.startedAt?.toDate().toISOString(),
-        completedAt: data.completedAt?.toDate().toISOString(),
-      });
-    });
-
-    return missions;
-  }
-
-  async getMissionById(userId, missionId) {
-    const doc = await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .doc(missionId)
-        .get();
-
-    if (!doc.exists) {
-      return null;
-    }
-
-    const data = doc.data();
-    return {
-      missionId: doc.id,
-      ...data,
-      startedAt: data.startedAt?.toDate().toISOString(),
-      completedAt: data.completedAt?.toDate().toISOString(),
-    };
-  }
-
-  async updateMission(userId, missionId, updateData) {
-    if (updateData.status === "COMPLETED") {
-      updateData.completedAt = FieldValue.serverTimestamp();
-    }
-
-    await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .doc(missionId)
-        .update(updateData);
-    return {userId, missionId, ...updateData};
-  }
-
-  async deleteMission(userId, missionId) {
-    await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .doc(missionId)
-        .delete();
-  }
-
-  async updateUserProfileImage(userId, profileImageUrl) {
-    await db.collection("users").doc(userId).update({profileImageUrl});
-    return {userId, profileImageUrl};
-  }
-
-  // 일반적인 컬렉션 조회 메서드들
-  async getCollection(collectionName) {
-    const snapshot = await db.collection(collectionName).get();
-    const items = [];
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      items.push({
-        id: doc.id,
-        ...data,
-        createdAt:
-          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-        updatedAt:
-          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
-      });
-    });
-
-    return items;
-  }
-
-  async getDocument(collectionName, docId) {
-    const doc = await db.collection(collectionName).doc(docId).get();
-
-    if (!doc.exists) {
-      return null;
-    }
-
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-      updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
-    };
-  }
-
-  async addDocument(collectionName, data) {
-    const now = new Date();
-    const docRef = await db.collection(collectionName).add({
-      ...data,
-      createdAt: now,
-      updatedAt: now,
-    });
-    return docRef.id;
-  }
-
-  async updateDocument(collectionName, docId, data) {
-    await db
-        .collection(collectionName)
-        .doc(docId)
-        .update({
-          ...data,
-          updatedAt: new Date(),
-        });
-  }
-
-  async deleteDocument(collectionName, docId) {
-    await db.collection(collectionName).doc(docId).delete();
-  }
-
-  async getCollectionWhere(collectionName, field, operator, value) {
+  /**
+   * 조건에 맞는 문서들 조회
+   * @param {string} field - 필드명
+   * @param {string} operator - 연산자
+   * @param {any} value - 값
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getWhere(field, operator, value) {
     const snapshot = await db
-        .collection(collectionName)
+        .collection(this.collectionName)
         .where(field, operator, value)
         .get();
     const items = [];
@@ -229,18 +107,21 @@ class FirestoreService {
       items.push({
         id: doc.id,
         ...data,
-        createdAt:
-          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-        updatedAt:
-          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
       });
     });
 
     return items;
   }
 
-  // 여러 값으로 WHERE IN 쿼리를 수행하는 메서드 (N+1 쿼리 문제 해결용)
-  async getCollectionWhereIn(collectionName, field, values) {
+  /**
+   * 여러 값으로 WHERE IN 쿼리 수행 (N+1 쿼리 문제 해결용)
+   * @param {string} field - 필드명
+   * @param {Array} values - 값 배열
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getWhereIn(field, values) {
     if (!values || values.length === 0) return [];
 
     // Firestore의 'in' 쿼리는 최대 10개 값만 지원
@@ -254,7 +135,7 @@ class FirestoreService {
       const allResults = [];
       for (const chunk of chunks) {
         const snapshot = await db
-            .collection(collectionName)
+            .collection(this.collectionName)
             .where(field, "in", chunk)
             .get();
 
@@ -272,7 +153,7 @@ class FirestoreService {
     }
 
     const snapshot = await db
-        .collection(collectionName)
+        .collection(this.collectionName)
         .where(field, "in", values)
         .get();
 
@@ -290,8 +171,12 @@ class FirestoreService {
     return items;
   }
 
-  // 페이지네이션을 지원하는 컬렉션 조회 (Spring Boot의 Pageable과 유사)
-  async getCollectionWithPagination(collectionName, options = {}) {
+  /**
+   * 페이지네이션을 지원하는 컬렉션 조회 (Spring Boot의 Pageable과 유사)
+   * @param {Object} options - 페이지네이션 옵션
+   * @return {Promise<Object>} 페이지네이션 결과
+   */
+  async getWithPagination(options = {}) {
     const {
       page = 0,
       size = 10,
@@ -300,7 +185,7 @@ class FirestoreService {
       where = [],
     } = options;
 
-    let query = db.collection(collectionName);
+    let query = db.collection(this.collectionName);
 
     // 필터 조건 적용
     where.forEach((condition) => {
@@ -330,7 +215,7 @@ class FirestoreService {
     });
 
     // 전체 개수 조회 (총 페이지 수 계산을 위해) - count() 사용으로 성능 최적화
-    let countQuery = db.collection(collectionName);
+    let countQuery = db.collection(this.collectionName);
     where.forEach((condition) => {
       countQuery = countQuery.where(
           condition.field,
@@ -361,4 +246,4 @@ class FirestoreService {
   }
 }
 
-module.exports = new FirestoreService();
+module.exports = FirestoreService;

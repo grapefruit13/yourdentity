@@ -1,4 +1,4 @@
-const firestoreService = require("../services/firestoreService");
+const missionService = require("../services/missionService");
 
 class MissionController {
   async createMission(req, res) {
@@ -8,7 +8,7 @@ class MissionController {
 
       if (!missionId) {
         return res.status(400).json({
-          success: false,
+          status: 400,
           error: "missionId is required",
         });
       }
@@ -16,15 +16,15 @@ class MissionController {
       const validStatuses = ["ONGOING", "COMPLETED", "EXPIRED", "RETRY"];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
-          success: false,
+          status: 400,
           error: "Invalid status. Must be one of: " + validStatuses.join(", "),
         });
       }
 
-      const result = await firestoreService.createMission(userId, missionId, status);
+      const result = await missionService.createMission(userId, missionId, status);
 
       res.json({
-        success: true,
+        status: 200,
         data: {
           ...result,
           startedAt: new Date().toISOString(),
@@ -33,7 +33,7 @@ class MissionController {
       });
     } catch (error) {
       res.status(500).json({
-        success: false,
+        status: 500,
         error: error.message,
       });
     }
@@ -44,16 +44,16 @@ class MissionController {
       const {userId} = req.params;
       const {status} = req.query;
 
-      const missions = await firestoreService.getUserMissions(userId, status);
+      const missions = await missionService.getUserMissions(userId, status);
 
       res.json({
-        success: true,
+        status: 200,
         data: missions,
         count: missions.length,
       });
     } catch (error) {
       res.status(500).json({
-        success: false,
+        status: 500,
         error: error.message,
       });
     }
@@ -63,22 +63,22 @@ class MissionController {
     try {
       const {userId, missionId} = req.params;
 
-      const mission = await firestoreService.getMissionById(userId, missionId);
+      const mission = await missionService.getMissionById(userId, missionId);
 
       if (!mission) {
         return res.status(404).json({
-          success: false,
+          status: 404,
           error: "Mission not found",
         });
       }
 
       res.json({
-        success: true,
+        status: 200,
         data: mission,
       });
     } catch (error) {
       res.status(500).json({
-        success: false,
+        status: 500,
         error: error.message,
       });
     }
@@ -95,7 +95,7 @@ class MissionController {
         const validStatuses = ["ONGOING", "COMPLETED", "EXPIRED", "RETRY"];
         if (!validStatuses.includes(status)) {
           return res.status(400).json({
-            success: false,
+            status: 400,
             error: "Invalid status. Must be one of: " + validStatuses.join(", "),
           });
         }
@@ -107,20 +107,20 @@ class MissionController {
 
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({
-          success: false,
+          status: 400,
           error: "No valid fields to update",
         });
       }
 
-      const result = await firestoreService.updateMission(userId, missionId, updateData);
+      const result = await missionService.updateMission(userId, missionId, updateData);
 
       res.json({
-        success: true,
+        status: 200,
         data: result,
       });
     } catch (error) {
       res.status(500).json({
-        success: false,
+        status: 500,
         error: error.message,
       });
     }
@@ -130,15 +130,15 @@ class MissionController {
     try {
       const {userId, missionId} = req.params;
 
-      await firestoreService.deleteMission(userId, missionId);
+      await missionService.deleteMission(userId, missionId);
 
       res.json({
-        success: true,
+        status: 200,
         message: "Mission deleted successfully",
       });
     } catch (error) {
       res.status(500).json({
-        success: false,
+        status: 500,
         error: error.message,
       });
     }

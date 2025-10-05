@@ -1,10 +1,18 @@
-const formatResponse = (success, data = null, error = null, message = null) => {
+const formatResponse = (success, data = null, error = null, message = null, status = null) => {
   const response = {success};
 
   if (data) response.data = data;
   if (error) response.error = error;
   if (message) response.message = message;
+  if (status) response.status = status;
 
+  return response;
+};
+
+const successResponse = (status = 200, data = null, message = null) => {
+  const response = {status};
+  if (data !== null) response.data = data;
+  if (message) response.message = message;
   return response;
 };
 
@@ -24,7 +32,9 @@ const generateId = () => {
 
 module.exports = {
   formatResponse,
+  successResponse,
   validateMissionStatus,
   isValidEmail,
   generateId,
 };
+

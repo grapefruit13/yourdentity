@@ -1,10 +1,4 @@
 const swaggerJSDoc = require("swagger-jsdoc");
-// const SwaggerGenerator = require('../utils/swaggerGenerator');
-// const AutoSwaggerMiddleware = require('../middleware/autoSwagger');
-
-// 자동 Swagger 생성기 초기화 (임시 비활성화)
-// const swaggerGenerator = new SwaggerGenerator();
-// const autoSwaggerMiddleware = new AutoSwaggerMiddleware();
 
 const options = {
   definition: {
@@ -47,46 +41,134 @@ const options = {
     ],
     servers: [
       {
-        url: process.env.FUNCTIONS_EMULATOR ?
-          "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api" :
-          "/api",
-        description: process.env.FUNCTIONS_EMULATOR ?
-          "로컬 개발 서버" :
+        url: process.env.FUNCTIONS_EMULATOR === "true" ?
+          `http://127.0.0.1:5001/${process.env.DEV_PROJECT_ID || "youthvoice-2025"}/asia-northeast3/api` :
+          `https://asia-northeast3-${process.env.PROD_PROJECT_ID || "yourdentity"}.cloudfunctions.net`,
+        description: process.env.FUNCTIONS_EMULATOR === "true" ?
+          "개발 서버 (Firebase Emulator)" :
           "프로덕션 서버",
       },
     ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Firebase ID Token을 Bearer 토큰으로 전달",
+        },
+      },
       schemas: {
         User: {
           type: "object",
-          required: ["email", "name"],
           properties: {
-            id: {
+            uid: {
               type: "string",
               description: "사용자 고유 ID",
-            },
-            email: {
-              type: "string",
-              format: "email",
-              description: "사용자 이메일",
+              example: "abc123def456",
             },
             name: {
               type: "string",
               description: "사용자 이름",
+              example: "홍길동",
             },
-            profileImage: {
+            email: {
+              type: "string",
+              format: "email",
+              description: "이메일 주소",
+              example: "user@example.com",
+            },
+            profileImageUrl: {
               type: "string",
               description: "프로필 이미지 URL",
+              example: "https://example.com/profile.jpg",
+            },
+            authType: {
+              type: "string",
+              enum: ["email", "sns"],
+              description: "인증 유형",
+              example: "sns",
+            },
+            snsProvider: {
+              type: "string",
+              enum: ["kakao", "google"],
+              description: "소셜 로그인 제공자",
+              example: "kakao",
+            },
+            role: {
+              type: "string",
+              enum: ["user", "admin"],
+              description: "사용자 권한",
+              example: "user",
+            },
+            onBoardingComplete: {
+              type: "boolean",
+              description: "온보딩 완료 여부",
+              example: false,
+            },
+            phoneNumber: {
+              type: "string",
+              description: "휴대전화 번호",
+              example: "010-1234-5678",
+            },
+            phoneVerified: {
+              type: "boolean",
+              description: "휴대전화 인증 완료 여부",
+              example: false,
+            },
+            birthYear: {
+              type: "number",
+              description: "출생년도",
+              example: 1990,
+            },
+            rewardPoints: {
+              type: "number",
+              description: "리워드 포인트",
+              example: 1000,
+            },
+            level: {
+              type: "number",
+              description: "사용자 레벨",
+              example: 5,
+            },
+            badges: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "획득한 배지 목록",
+              example: ["first_mission", "early_bird"],
+            },
+            points: {
+              type: "string",
+              description: "사용자 포인트 (문자열 형태)",
+              example: "1500",
+            },
+            mainProfileId: {
+              type: "string",
+              description: "메인 프로필 ID",
+              example: "profile_abc123",
+              nullable: true,
+            },
+            uploadQuotaBytes: {
+              type: "number",
+              description: "업로드 쿼터 (바이트)",
+              example: 1073741824,
+            },
+            usedStorageBytes: {
+              type: "number",
+              description: "사용 중인 스토리지 (바이트)",
+              example: 52428800,
             },
             createdAt: {
               type: "string",
               format: "date-time",
-              description: "생성일시",
+              description: "계정 생성 시간",
             },
-            updatedAt: {
+            lastLogin: {
               type: "string",
               format: "date-time",
-              description: "수정일시",
+              description: "마지막 로그인 시간",
             },
           },
         },
@@ -94,26 +176,31 @@ const options = {
           type: "object",
           required: ["title", "description", "userId"],
           properties: {
-            id: {
+            missionId: {
               type: "string",
-              description: "미션 고유 ID",
+              description: "미션 ID",
+              example: "mission_001",
+            },
+            userId: {
+              type: "string",
+              description: "소유자 ID",
+              example: "abc123def456",
             },
             title: {
               type: "string",
               description: "미션 제목",
+              example: "노을 보기 미션",
             },
             description: {
               type: "string",
               description: "미션 설명",
-            },
-            userId: {
-              type: "string",
-              description: "미션 소유자 ID",
+              example: "노을 보기 미션 설명",
             },
             status: {
               type: "string",
               enum: ["pending", "in_progress", "completed", "cancelled"],
               description: "미션 상태",
+              example: "in_progress",
             },
             dueDate: {
               type: "string",
@@ -387,10 +474,12 @@ const options = {
             error: {
               type: "string",
               description: "에러 메시지",
+              example: "Invalid request",
             },
-            code: {
-              type: "string",
-              description: "에러 코드",
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 400,
             },
             timestamp: {
               type: "string",
@@ -418,6 +507,25 @@ const options = {
               type: "string",
               format: "date-time",
               description: "에러 발생 시간",
+            },
+          },
+        },
+        Success: {
+          type: "object",
+          properties: {
+            status: {
+              type: "number",
+              example: 200,
+              description: "HTTP 상태 코드",
+            },
+            data: {
+              type: "object",
+              description: "응답 데이터",
+            },
+            message: {
+              type: "string",
+              description: "성공 메시지",
+              example: "Operation succeeded",
             },
           },
         },
@@ -1650,22 +1758,24 @@ const options = {
         },
       },
     },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
   apis: [
-    "./src/routes/*.js", // 기존 라우터 파일
-    "./src/docs/*.js", // 문서 클래스 파일
+    "./src/routes/*.js",
+    "./src/docs/*.js",
   ],
 };
 
 // 기본 Swagger 스펙 생성
 const specs = swaggerJSDoc(options);
 
-// 자동 생성된 Swagger와 병합 (임시 비활성화)
+// 자동 생성된 Swagger와 병합
 async function getMergedSwaggerSpecs() {
   try {
-    // const autoGenerated = await swaggerGenerator.mergeWithExistingSwagger();
-    // return autoGenerated;
-
     // require 캐시 삭제로 파일 변경사항 반영
     const swaggerConfigPath = require.resolve("./swagger.js");
     delete require.cache[swaggerConfigPath];
@@ -1678,28 +1788,10 @@ async function getMergedSwaggerSpecs() {
   }
 }
 
-// 개발 모드에서 자동 업데이트 활성화 (임시 비활성화)
-// if (process.env.NODE_ENV === 'development') {
-//   // 파일 변경 감지 시작
-//   autoSwaggerMiddleware.startFileWatcher();
-//
-//   // 서버 시작 시 초기화
-//   autoSwaggerMiddleware.initializeSwagger();
-// }
-
 module.exports = {
   // 기본 스펙 (기존 호환성)
   default: specs,
 
   // 병합된 스펙 (자동 생성 포함)
   getMerged: getMergedSwaggerSpecs,
-
-  // 자동 업데이트 미들웨어 (임시 비활성화)
-  // autoUpdateMiddleware: autoSwaggerMiddleware.middleware(),
-
-  // 수동 업데이트 함수 (임시 비활성화)
-  // updateSwagger: () => swaggerGenerator.mergeWithExistingSwagger(),
-
-  // Swagger 생성기 인스턴스 (임시 비활성화)
-  // generator: swaggerGenerator
 };

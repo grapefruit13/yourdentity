@@ -1,2 +1,6 @@
 node_modules/
 *.local
+service-account*.json
+.env
+.env.local
+.DS_Store

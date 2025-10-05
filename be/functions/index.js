@@ -1,12 +1,11 @@
 const {onRequest} = require("firebase-functions/v2/https");
-const {setGlobalOptions} = require("firebase-functions/v2");
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
+const swaggerConfig = require("./src/config/swagger");
+
 const {admin} = require("./src/config/database");
 
-// Swagger 설정 (자동 업데이트 포함)
-const swaggerConfig = require("./src/config/swagger");
 
 // 미들웨어
 const logger = require("./src/middleware/logger");
@@ -23,36 +22,59 @@ const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
 const storeRoutes = require("./src/routes/store");
 
-// 리전 설정
-setGlobalOptions({region: "asia-northeast3"});
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+// 1세대 Auth Triggers
+// eslint-disable-next-line no-unused-vars
+const functions = require("firebase-functions");
+const {
+  createUserDocument,
+  deleteUserDocument,
+} = require("./src/triggers/authTrigger");
+
+// 서울 리전 설정 (1st generation에서는 functions.region 사용)
 
 // Express 앱 생성
 const app = express();
 
-// ✅ 전역 CORS 설정 (OPTIONS 자동 처리 포함)
-app.use(
-    cors({
-      origin: [
-        "http://127.0.0.1:5001",
-        "http://localhost:5001",
-        "http://127.0.0.1:4000",
-        "http://localhost:4000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3000",
-        "http://127.0.0.1:8080",
-        "http://localhost:8080",
-        "https://yourdentity.vercel.app",
-      ],
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    }),
-);
+const allowedOrigins = [
+  // 개발 환경
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:4000",
+  "http://127.0.0.1:4000",
+  "http://localhost:5001",
+  "http://127.0.0.1:5001",
+  "http://localhost:8080",
+  "http://127.0.0.1:8080",
+  // 프로덕션 환경
+  "https://yourdentity.vercel.app",
+  "https://yourdentity.web.app",
+  "https://yourdentity.firebaseapp.com",
+  "https://asia-northeast3-youthvoice-2025.cloudfunctions.net",
+  "https://asia-northeast3-yourdentity.cloudfunctions.net",
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // 개발 환경에서는 origin이 없는 요청도 허용
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log("CORS blocked origin:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+}));
 
 app.use(express.json());
 app.use(logger);
 
-// 자동 Swagger 업데이트 (개발 모드에서만)
 if (process.env.NODE_ENV === "development") {
   app.use(swaggerConfig.autoUpdateMiddleware);
 }
@@ -116,12 +138,12 @@ if (process.env.NODE_ENV === "development") {
   });
 }
 
-// 기본 라우트
+// 기본 라우트들 (기존 호환성을 위해 유지)
 app.get("/", (req, res) => {
   res.json({
-    message: "Hello World from Firebase Functions v2!",
+    message: "Hello World from Firebase Functions!",
     timestamp: new Date().toISOString(),
-    service: "Express.js on Firebase Functions v6",
+    service: "Express.js on Firebase Functions v6 (Mixed Generation)",
     version: "2.0.0",
     documentation: "/api-docs",
   });
@@ -192,7 +214,15 @@ app.post("/send-notification", async (req, res) => {
   }
 });
 
-// 에러 핸들러
+// 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
 
-exports.api = onRequest(app);
+exports.api = onRequest({
+  region: "asia-northeast3",
+  cors: true,
+}, app);
+
+// 1세대 Auth Triggers 내보내기
+exports.createUserDocument = createUserDocument;
+exports.deleteUserDocument = deleteUserDocument;
+

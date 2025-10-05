@@ -1,7 +1,15 @@
 const imgbbService = require("../services/imgbbService");
 const firestoreService = require("../services/firestoreService");
 
+/**
+ * Image Controller
+ */
 class ImageController {
+  /**
+   * 이미지 업로드 API
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
   async uploadImage(req, res) {
     try {
       const {image, name = "upload"} = req.body;
@@ -28,6 +36,11 @@ class ImageController {
     }
   }
 
+  /**
+   * 프로필 이미지 업데이트 API
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
   async updateProfileImage(req, res) {
     try {
       const {userId} = req.params;
@@ -41,7 +54,7 @@ class ImageController {
       }
 
       // 실제 구현 시:
-      // 1. imgBB API로 이미지 업로드
+      // 1. 이미지 관련 API로 이미지 업로드
       // 2. 반환된 URL을 Firestore의 사용자 profileImageUrl에 저장
 
       // 현재는 모의 응답
@@ -50,7 +63,7 @@ class ImageController {
       await firestoreService.updateUserProfileImage(userId, mockImageUrl);
 
       res.json({
-        success: true,
+        status: 200,
         message: "Profile image updated (mock)",
         data: {
           userId,
@@ -60,7 +73,7 @@ class ImageController {
       });
     } catch (error) {
       res.status(500).json({
-        success: false,
+        status: 500,
         error: error.message,
       });
     }
