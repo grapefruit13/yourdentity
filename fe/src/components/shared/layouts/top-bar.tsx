@@ -21,7 +21,7 @@ const TopBar = () => {
   };
 
   return (
-    <div className="sticky top-0 left-0 flex w-full items-center justify-center border-b border-b-gray-200 bg-white px-5 py-3">
+    <div className="sticky top-0 left-0 flex h-12 w-full items-center justify-center border-b border-b-gray-200 bg-white px-5 py-3">
       <button
         onClick={handleClick}
         className="absolute left-4 hover:cursor-pointer"
