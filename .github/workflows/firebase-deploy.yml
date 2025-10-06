@@ -3,7 +3,7 @@ name: Firebase Functions 자동 배포
 on:
   push:
     branches:
-      - "main"
+      - "chore#49"
     paths:
       - "be/functions/**"
 
@@ -65,7 +65,7 @@ jobs:
       - name: 배포 실패 로그
         if: failure()
         run: |
-          echo "Firebase Functions 배포가 실패했습니다."
+          echo "Firebase Functions 배포가 실패했습니다. "
           echo "Commit: ${GITHUB_SHA:0:7}"
           echo "Branch: ${GITHUB_REF#refs/heads/}"
           echo "실패 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
