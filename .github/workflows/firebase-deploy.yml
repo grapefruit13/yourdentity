@@ -46,23 +46,9 @@ jobs:
         working-directory: be/functions
         run: |
           pnpm install --frozen-lockfile
-          echo "Firebase 에뮬레이터 빌드 테스트 시작..."
-          nohup pnpm run build > build-test.log 2>&1 &
-          echo $! > build.pid
-          sleep 20
-          echo "빌드 테스트 완료"
-
-      - name: 빌드 프로세스 종료
-        if: always()
-        working-directory: be/functions
-        run: |
-          if [ -f build.pid ]; then
-            BUILD_PID=$(cat build.pid)
-            echo "빌드 프로세스 종료 중... PID: $BUILD_PID"
-            kill $BUILD_PID 2>/dev/null || true
-            rm -f build.pid
-            echo " 빌드 프로세스 정상 종료"
-          fi
+          echo "Firebase 에뮬레이터 빌드 테스트 시작!"
+          pnpm run build
+          echo "빌드 테스트 완료 "
 
       - name: Firebase Functions 배포
         working-directory: be/functions
