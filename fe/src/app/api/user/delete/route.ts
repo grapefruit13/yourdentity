@@ -82,10 +82,11 @@ export async function GET(request: NextRequest) {
     // TODO: 사용자 데이터 내보내기 기능 구현
     // GDPR Article 20 - 데이터 이동권 준수
     
-    // const session = await getServerSession(authOptions);
-    // if (!session) {
-    //   return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-    // }
+    // 세션 토큰 검증
+    const sessionToken = request.cookies.get('session-token')?.value;
+    if (!sessionToken) {
+      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
 
     // const userData = await exportUserData(session.user.id);
     

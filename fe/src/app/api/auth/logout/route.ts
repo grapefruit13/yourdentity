@@ -9,10 +9,10 @@ export async function POST(request: NextRequest) {
   try {
     // TODO: 실제 인증 시스템 구현 시 추가할 로직
     // 1. 세션 토큰 검증
-    // const sessionToken = request.cookies.get('session-token')?.value;
-    // if (!sessionToken) {
-    //   return NextResponse.json({ error: "세션이 없습니다." }, { status: 401 });
-    // }
+    const sessionToken = request.cookies.get('session-token')?.value;
+    if (!sessionToken) {
+      return NextResponse.json({ error: "세션이 없습니다." }, { status: 401 });
+    }
 
     // 2. 서버에서 세션 무효화
     // await invalidateSession(sessionToken);

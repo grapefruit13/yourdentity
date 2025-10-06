@@ -5,6 +5,7 @@ import { Settings } from "lucide-react";
 import ActionButtons from "@/components/my-page/ActionButtons";
 import PointsCard from "@/components/my-page/PointsCard";
 import ProfileCard from "@/components/my-page/ProfileCard";
+import { NTitle5 } from "@/components/shared/typography";
 
 /**
  * @description 마이 페이지
@@ -20,7 +21,7 @@ const Page = () => {
     <div className="flex h-full w-full flex-col bg-gray-50">
       {/* 헤더 */}
       <header className="flex w-full items-center justify-between p-4 pb-6">
-        <h1 className="text-xl font-bold text-black">나다움 공간</h1>
+        <NTitle5>나다움 공간</NTitle5>
         <button
           onClick={handleSettingsClick}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
