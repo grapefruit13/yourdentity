@@ -6,6 +6,7 @@ on:
       - "chore#49"
     paths:
       - "be/functions/**"
+      - ".github/workflows/firebase-deploy.yml"
 
 permissions:
   contents: read
