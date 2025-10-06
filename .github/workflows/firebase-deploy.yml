@@ -1,0 +1,75 @@
+name: Firebase Functions 자동 배포
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "be/functions/**"
+      - ".github/workflows/firebase-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Functions Deploy Job
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+          cache-dependency-path: "be/functions/pnpm-lock.yaml"
+
+      - name: Firebase CLI 설치
+        run: npm install -g firebase-tools@12.9.1
+
+      - name: Firebase 서비스 계정 인증
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: 빌드 테스트
+        working-directory: be/functions
+        run: |
+          pnpm install --frozen-lockfile
+          echo "Firebase 에뮬레이터 빌드 테스트 시작!"
+          pnpm run build
+          echo "빌드 테스트 완료 "
+
+      - name: Firebase Functions 배포
+        working-directory: be/functions
+        id: deploy
+        run: |
+          firebase deploy --only functions
+          echo "deploy-success=true" >> $GITHUB_OUTPUT
+
+      - name: 배포 성공 로그
+        if: success()
+        run: |
+          echo "Firebase Functions 배포가 성공적으로 완료되었습니다."
+          echo "Commit: ${GITHUB_SHA:0:7}"
+          echo "Branch: ${GITHUB_REF#refs/heads/}"
+          echo "배포 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
+
+      - name: 배포 실패 로그
+        if: failure()
+        run: |
+          echo "Firebase Functions 배포가 실패했습니다. "
+          echo "Commit: ${GITHUB_SHA:0:7}"
+          echo "Branch: ${GITHUB_REF#refs/heads/}"
+          echo "실패 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
+          echo "워크플로우 로그: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
