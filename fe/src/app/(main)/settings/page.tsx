@@ -22,9 +22,9 @@ const SettingsPage = () => {
   const handleLogoutConfirm = async () => {
     try {
       // 1. 서버 세션 무효화
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -37,7 +37,9 @@ const SettingsPage = () => {
 
       // 3. 쿠키 정리
       document.cookie.split(";").forEach((c) => {
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
 
       // 4. 모달 닫기
@@ -49,11 +51,11 @@ const SettingsPage = () => {
       console.log("로그아웃 완료");
     } catch (error) {
       console.error("로그아웃 중 오류 발생:", error);
-      
+
       // 오류 발생 시에도 클라이언트 사이드 정리
       localStorage.clear();
       sessionStorage.clear();
-      
+
       // 오류가 발생해도 로그인 페이지로 이동
       router.push("/login");
     }
@@ -77,25 +79,31 @@ const SettingsPage = () => {
       console.log("계정 삭제 진행 중...");
 
       // 1. 서버에 계정 삭제 요청 전송
-      const response = await fetch('/api/user/delete', {
-        method: 'DELETE',
+      const response = await fetch("/api/user/delete", {
+        method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include', // 쿠키 포함
+        credentials: "include", // 쿠키 포함
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         // 503 상태 코드 (서비스 이용 불가) 처리
         if (response.status === 503) {
-          alert("계정 삭제 기능이 현재 비활성화되어 있습니다. 관리자에게 문의해주세요.");
+          alert(
+            "계정 삭제 기능이 현재 비활성화되어 있습니다. 관리자에게 문의해주세요."
+          );
           setIsDeleteModalOpen(false);
           return;
         }
-        
-        throw new Error(errorData.message || errorData.error || `서버 오류: ${response.status}`);
+
+        throw new Error(
+          errorData.message ||
+            errorData.error ||
+            `서버 오류: ${response.status}`
+        );
       }
 
       // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
@@ -104,7 +112,9 @@ const SettingsPage = () => {
 
       // 3. 쿠키 정리
       document.cookie.split(";").forEach((c) => {
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
 
       // 4. 모달 닫기
@@ -122,14 +132,15 @@ const SettingsPage = () => {
       console.log("계정 삭제 완료");
     } catch (error) {
       console.error("계정 삭제 중 오류 발생:", error);
-      
+
       // 사용자에게 구체적인 오류 메시지 표시
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "계정 삭제 중 알 수 없는 오류가 발생했습니다.";
-      
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "계정 삭제 중 알 수 없는 오류가 발생했습니다.";
+
       alert(`계정 삭제 실패: ${errorMessage}`);
-      
+
       // 오류 발생 시 모달은 열어두어 사용자가 재시도할 수 있도록 함
       // setIsDeleteModalOpen(false); // 주석 처리
     }
@@ -143,13 +154,13 @@ const SettingsPage = () => {
   const loginSectionItems = [
     {
       text: "로그아웃",
-      onClick: handleLogout
+      onClick: handleLogout,
     },
     {
       text: "유스-잇 떠나기",
       onClick: handleDeleteAccount,
-      showArrow: true
-    }
+      showArrow: true,
+    },
   ];
 
   const policySectionItems = [
@@ -159,7 +170,7 @@ const SettingsPage = () => {
         // TODO: 서비스 이용약관 페이지로 이동
         console.log("서비스 이용약관 클릭");
       },
-      showArrow: true
+      showArrow: true,
     },
     {
       text: "개인정보 처리방침",
@@ -167,8 +178,8 @@ const SettingsPage = () => {
         // TODO: 개인정보 처리방침 페이지로 이동
         console.log("개인정보 처리방침 클릭");
       },
-      showArrow: true
-    }
+      showArrow: true,
+    },
   ];
 
   return (
@@ -177,7 +188,7 @@ const SettingsPage = () => {
       <header className="flex w-full items-center gap-4 p-4 pb-6">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="rounded-full p-2 transition-colors hover:bg-gray-100"
           aria-label="뒤로 가기"
         >
           <ArrowLeft className="h-6 w-6 text-black" />
@@ -186,18 +197,12 @@ const SettingsPage = () => {
       </header>
 
       {/* 메인 컨텐츠 */}
-      <main className="flex flex-1 flex-col px-4 gap-6">
+      <main className="flex flex-1 flex-col gap-6 px-4">
         {/* 로그인/회원정보 섹션 */}
-        <SettingsSection
-          title="로그인/회원정보"
-          items={loginSectionItems}
-        />
+        <SettingsSection title="로그인/회원정보" items={loginSectionItems} />
 
         {/* 정책 및 약관 섹션 */}
-        <SettingsSection
-          title="정책 및 약관"
-          items={policySectionItems}
-        />
+        <SettingsSection title="정책 및 약관" items={policySectionItems} />
       </main>
 
       {/* 버전 정보 */}
@@ -216,8 +221,8 @@ const SettingsPage = () => {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* 배경 오버레이 */}
-          <div 
-            className="absolute inset-0 bg-black bg-opacity-50"
+          <div
+            className="bg-opacity-50 absolute inset-0 bg-black"
             onClick={handleDeleteCancel}
           />
           <div className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
@@ -225,10 +230,14 @@ const SettingsPage = () => {
               계정을 삭제하시겠습니까?
             </h2>
             <p className="mb-4 text-center text-sm text-red-600">
-              ⚠️ 이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로 삭제됩니다.
+              ⚠️ 이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로
+              삭제됩니다.
             </p>
             <div className="mb-6">
-              <p id="delete-confirm-description" className="mb-2 text-sm text-gray-600">
+              <p
+                id="delete-confirm-description"
+                className="mb-2 text-sm text-gray-600"
+              >
                 확인을 위해 <strong>DELETE</strong>를 정확히 입력해주세요:
               </p>
               <input
@@ -244,7 +253,7 @@ const SettingsPage = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleDeleteCancel}
-                className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
                 aria-label="계정 삭제 취소"
               >
                 취소
@@ -252,7 +261,7 @@ const SettingsPage = () => {
               <button
                 onClick={handleDeleteConfirm}
                 disabled={deleteConfirmText !== "DELETE"}
-                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 aria-label="계정 영구 삭제"
               >
                 계정 삭제

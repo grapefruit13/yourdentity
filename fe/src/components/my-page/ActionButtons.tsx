@@ -14,7 +14,7 @@ const ActionButtons = () => {
       onClick: () => {
         // TODO: 참여한 미션 페이지로 이동
         console.log("참여한 미션 클릭");
-      }
+      },
     },
     {
       icon: MessageSquare,
@@ -22,7 +22,7 @@ const ActionButtons = () => {
       onClick: () => {
         // TODO: 남긴 댓글 페이지로 이동
         console.log("남긴 댓글 클릭");
-      }
+      },
     },
     {
       icon: ClipboardCheck,
@@ -30,8 +30,8 @@ const ActionButtons = () => {
       onClick: () => {
         // TODO: 업로드한 게시물 페이지로 이동
         console.log("업로드한 게시물 클릭");
-      }
-    }
+      },
+    },
   ];
 
   return (
@@ -42,10 +42,10 @@ const ActionButtons = () => {
           <button
             key={index}
             onClick={button.onClick}
-            className="flex flex-1 flex-col items-center justify-center gap-1 p-4 hover:bg-[#e6005a] transition-colors"
+            className="flex flex-1 flex-col items-center justify-center gap-1 p-4 transition-colors hover:bg-[#e6005a]"
           >
             <IconComponent className="h-6 w-6 text-white" />
-            <span className="text-xs font-medium text-white whitespace-nowrap">
+            <span className="text-xs font-medium whitespace-nowrap text-white">
               {button.text}
             </span>
           </button>
