@@ -1,4 +1,5 @@
-const firestoreService = require("../services/firestoreService");
+const FirestoreService = require("../services/firestoreService");
+const firestoreService = new FirestoreService("communities");
 const {db} = require("../config/database");
 const {FieldValue} = require("firebase-admin/firestore");
 
@@ -36,16 +37,13 @@ const getCommunities = async (req, res) => {
       });
     }
 
-    const result = await firestoreService.getCollectionWithPagination(
-        "communities",
-        {
-          page: parseInt(page),
-          size: parseInt(size),
-          orderBy: "createdAt",
-          orderDirection: "desc",
-          where: whereConditions,
-        },
-    );
+    const result = await firestoreService.getWithPagination({
+      page: parseInt(page),
+      size: parseInt(size),
+      orderBy: "createdAt",
+      orderDirection: "desc",
+      where: whereConditions,
+    });
 
     res.json({
       success: true,
@@ -125,15 +123,13 @@ const getCommunityMembers = async (req, res) => {
       });
     }
 
-    const result = await firestoreService.getCollectionWithPagination(
-        `communities/${communityId}/members`,
-        {
-          page: parseInt(page),
-          size: parseInt(size),
-          orderBy: "joinedAt",
-          orderDirection: "desc",
-        },
-    );
+    const membersService = new FirestoreService(`communities/${communityId}/members`);
+    const result = await membersService.getWithPagination({
+      page: parseInt(page),
+      size: parseInt(size),
+      orderBy: "joinedAt",
+      orderDirection: "desc",
+    });
 
     res.json({
       success: true,
@@ -231,27 +227,22 @@ const getAllCommunityPosts = async (req, res) => {
     };
 
     // 모든 커뮤니티 조회
-    const communities = await firestoreService.getCollectionWithPagination(
-        "communities",
-        {
-          page: 0,
-          size: 1000, // 모든 커뮤니티 조회
-        },
-    );
+    const communities = await firestoreService.getWithPagination({
+      page: 0,
+      size: 1000, // 모든 커뮤니티 조회
+    });
 
     let allPosts = [];
 
     for (const community of communities.content || []) {
       // 인덱스 문제를 피하기 위해 먼저 모든 게시글을 가져온 후 필터링
-      const posts = await firestoreService.getCollectionWithPagination(
-          `communities/${community.id}/posts`,
-          {
-            page: 0,
-            size: 100, // 각 커뮤니티에서 최대 100개씩 가져오기
-            orderBy: "createdAt",
-            orderDirection: "desc",
-          },
-      );
+      const postsService = new FirestoreService(`communities/${community.id}/posts`);
+      const posts = await postsService.getWithPagination({
+        page: 0,
+        size: 100, // 각 커뮤니티에서 최대 100개씩 가져오기
+        orderBy: "createdAt",
+        orderDirection: "desc",
+      });
 
       // 메모리에서 필터링
       let filteredPosts = posts.content || [];
@@ -339,15 +330,13 @@ const getCommunityPosts = async (req, res) => {
       });
     }
 
-    const result = await firestoreService.getCollectionWithPagination(
-        `communities/${communityId}/posts`,
-        {
-          page: parseInt(page),
-          size: parseInt(size),
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        },
-    );
+    const postsService = new FirestoreService(`communities/${communityId}/posts`);
+    const result = await postsService.getWithPagination({
+      page: parseInt(page),
+      size: parseInt(size),
+      orderBy: "createdAt",
+      orderDirection: "desc",
+    });
 
     // 간소화된 응답으로 변환
     const simplifiedPosts = (result.content || []).map((post) => ({
@@ -573,16 +562,14 @@ const getPostById = async (req, res) => {
       {field: "deleted", operator: "==", value: false},
     ];
 
-    const commentsResult = await firestoreService.getCollectionWithPagination(
-        "comments",
-        {
-          page: 0,
-          size: 50, // 최대 50개 댓글
-          orderBy: "createdAt",
-          orderDirection: "asc",
-          where: whereConditions,
-        },
-    );
+    const commentsService = new FirestoreService("comments");
+    const commentsResult = await commentsService.getWithPagination({
+      page: 0,
+      size: 50, // 최대 50개 댓글
+      orderBy: "createdAt",
+      orderDirection: "asc",
+      where: whereConditions,
+    });
 
     // 모든 댓글을 평면적으로 조회 (부모 댓글 + 대댓글)
     const allComments = [];
