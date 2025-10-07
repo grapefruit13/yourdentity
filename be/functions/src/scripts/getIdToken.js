@@ -2,8 +2,8 @@
 /**
  * Simple helper to fetch a Firebase ID token from the Auth Emulator.
  * Usage:
- *   node be/scripts/getIdToken.js <email> <password>
- *   OR with flags: node be/scripts/getIdToken.js --email=<email> --password=<password>
+ *   node be/functions/src/scripts/getIdToken.js <email> <password>
+ *   OR with flags: node be/functions/src/scripts/getIdToken.js --email=<email> --password=<password>
  *
  * Requires the Auth Emulator to be running on 127.0.0.1:9099.
  */
@@ -24,7 +24,7 @@ function parseArgs(argv) {
 async function main() {
   const {email, password} = parseArgs(process.argv);
   if (!email || !password) {
-    console.error("Usage: node be/scripts/getIdToken.js <email> <password>");
+    console.error("Usage: node be/functions/src/scripts/getIdToken.js <email> <password>");
     process.exit(1);
   }
 
@@ -53,7 +53,7 @@ async function main() {
   // Convenience: shell export lines
   console.log("\n# Exports for your shell session:");
   console.log(`export FIREBASE_UID=${localId}`);
-  console.log(`export FIREBASE_ID_TOKEN=${JSON.stringify(idToken)}`);
+  console.log(`export FIREBASE_ID_TOKEN=${idToken}`);
 }
 
 main().catch((err) => {
