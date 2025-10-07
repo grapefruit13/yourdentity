@@ -1,6 +1,5 @@
 import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
 import TopBar from "@/components/shared/layouts/top-bar";
-
 /**
  * @description 하단 네브바 포함 레이아웃
  */
