@@ -8,7 +8,10 @@
     "shell": "firebase functions:shell",
     "start": "pnpm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "get:token": "node ./src/scripts/getIdToken.js --email=$EMAIL --password=$PASSWORD",
+    "get:token:example": "EMAIL=hong@example.com PASSWORD=password123 pnpm run get:token",
+    "watch:token": "node ./src/scripts/getIdToken.js --email=$EMAIL --password=$PASSWORD && sleep 3500 && pnpm run watch:token"
   },
   "engines": {
     "node": "20"
