@@ -1,4 +1,4 @@
-const { db, FieldValue } = require("../config/database");
+const {db, FieldValue} = require("../config/database");
 
 /**
  * Firestore Service (데이터 접근 계층)
@@ -25,7 +25,7 @@ class FirestoreService {
     };
 
     await docRef.set(newData);
-    return { id: docRef.id, ...newData };
+    return {id: docRef.id, ...newData};
   }
 
   /**
@@ -74,7 +74,7 @@ class FirestoreService {
    */
   async update(docId, updateData) {
     await db.collection(this.collectionName).doc(docId).update(updateData);
-    return { id: docId, ...updateData };
+    return {id: docId, ...updateData};
   }
 
   /**
@@ -95,9 +95,9 @@ class FirestoreService {
    */
   async getWhere(field, operator, value) {
     const snapshot = await db
-      .collection(this.collectionName)
-      .where(field, operator, value)
-      .get();
+        .collection(this.collectionName)
+        .where(field, operator, value)
+        .get();
     const items = [];
 
     snapshot.forEach((doc) => {
@@ -135,9 +135,9 @@ class FirestoreService {
       const allResults = [];
       for (const chunk of chunks) {
         const snapshot = await db
-          .collection(this.collectionName)
-          .where(field, "in", chunk)
-          .get();
+            .collection(this.collectionName)
+            .where(field, "in", chunk)
+            .get();
 
         snapshot.forEach((doc) => {
           const data = doc.data();
@@ -155,9 +155,9 @@ class FirestoreService {
     }
 
     const snapshot = await db
-      .collection(this.collectionName)
-      .where(field, "in", values)
-      .get();
+        .collection(this.collectionName)
+        .where(field, "in", values)
+        .get();
 
     const items = [];
     snapshot.forEach((doc) => {
@@ -222,9 +222,9 @@ class FirestoreService {
     let countQuery = db.collection(this.collectionName);
     where.forEach((condition) => {
       countQuery = countQuery.where(
-        condition.field,
-        condition.operator,
-        condition.value
+          condition.field,
+          condition.operator,
+          condition.value,
       );
     });
     const countSnapshot = await countQuery.count().get();
@@ -264,9 +264,9 @@ class FirestoreService {
       const allResults = [];
       for (const chunk of chunks) {
         const snapshot = await db
-          .collection(collectionName)
-          .where(field, "in", chunk)
-          .get();
+            .collection(collectionName)
+            .where(field, "in", chunk)
+            .get();
 
         snapshot.forEach((doc) => {
           const data = doc.data();
@@ -284,9 +284,9 @@ class FirestoreService {
     }
 
     const snapshot = await db
-      .collection(collectionName)
-      .where(field, "in", values)
-      .get();
+        .collection(collectionName)
+        .where(field, "in", values)
+        .get();
 
     const items = [];
     snapshot.forEach((doc) => {
