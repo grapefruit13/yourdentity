@@ -1,4 +1,5 @@
-const firestoreService = require("../services/firestoreService");
+const FirestoreService = require("../services/firestoreService");
+const firestoreService = new FirestoreService("tmis");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // TMI 프로젝트 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원
@@ -7,7 +8,7 @@ const getAllTmiProjects = async (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const size = parseInt(req.query.size) || 10;
 
-    const result = await firestoreService.getCollectionWithPagination("tmis", {
+    const result = await firestoreService.getWithPagination({
       page,
       size,
       orderBy: "createdAt",
@@ -93,18 +94,16 @@ const getTmiProjectById = async (req, res) => {
     let communityPosts = [];
     try {
       // TMI 프로젝트 ID와 동일한 커뮤니티 ID에서 해당 TMI 프로젝트와 관련된 게시글 조회
-      const posts = await firestoreService.getCollectionWithPagination(
-          `communities/${projectId}/posts`,
-          {
-            page: 0,
-            size: 10,
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            where: [
-              {field: "type", operator: "==", value: "TMI"},
-            ],
-          },
-      );
+      const communityPostsService = new FirestoreService(`communities/${projectId}/posts`);
+      const posts = await communityPostsService.getWithPagination({
+        page: 0,
+        size: 10,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        where: [
+          {field: "type", operator: "==", value: "TMI"},
+        ],
+      });
 
       communityPosts = (posts.content || []).map((post) => ({
         id: post.id,

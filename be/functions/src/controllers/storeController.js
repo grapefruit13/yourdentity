@@ -1,4 +1,5 @@
-const firestoreService = require("../services/firestoreService");
+const FirestoreService = require("../services/firestoreService");
+const firestoreService = new FirestoreService("products");
 const {FieldValue} = require("firebase-admin/firestore");
 
 const getProducts = async (req, res) => {
@@ -7,16 +8,13 @@ const getProducts = async (req, res) => {
 
     // 인덱스 없이 작동하도록 쿼리 단순화
     // 먼저 모든 상품을 가져온 후 메모리에서 필터링
-    const result = await firestoreService.getCollectionWithPagination(
-        "products",
-        {
-          page: parseInt(page),
-          size: parseInt(size),
-          orderBy: "createdAt",
-          orderDirection: "desc",
-          where: [], // where 조건 제거
-        },
-    );
+    const result = await firestoreService.getWithPagination({
+      page: parseInt(page),
+      size: parseInt(size),
+      orderBy: "createdAt",
+      orderDirection: "desc",
+      where: [], // where 조건 제거
+    });
 
     // 메모리에서 상태 필터링
     if (result.content && status) {

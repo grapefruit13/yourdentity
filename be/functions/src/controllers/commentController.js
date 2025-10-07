@@ -1,4 +1,5 @@
-const firestoreService = require("../services/firestoreService");
+const FirestoreService = require("../services/firestoreService");
+const firestoreService = new FirestoreService("comments");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 댓글 생성 API
@@ -215,16 +216,13 @@ const getComments = async (req, res) => {
       {field: "deleted", operator: "==", value: false},
     ];
 
-    const result = await firestoreService.getCollectionWithPagination(
-        "comments",
-        {
-          page: parseInt(page),
-          size: parseInt(size),
-          orderBy: "createdAt",
-          orderDirection: "asc",
-          where: whereConditions,
-        },
-    );
+    const result = await firestoreService.getWithPagination({
+      page: parseInt(page),
+      size: parseInt(size),
+      orderBy: "createdAt",
+      orderDirection: "asc",
+      where: whereConditions,
+    });
 
     // 모든 댓글을 평면적으로 조회 (부모 댓글 + 대댓글)
     const allComments = [];

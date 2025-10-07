@@ -1,4 +1,5 @@
-const firestoreService = require("../services/firestoreService");
+const FirestoreService = require("../services/firestoreService");
+const firestoreService = new FirestoreService("routines");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 루틴 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원
@@ -7,15 +8,12 @@ const getAllRoutines = async (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const size = parseInt(req.query.size) || 10;
 
-    const result = await firestoreService.getCollectionWithPagination(
-        "routines",
-        {
-          page,
-          size,
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        },
-    );
+    const result = await firestoreService.getWithPagination({
+      page,
+      size,
+      orderBy: "createdAt",
+      orderDirection: "desc",
+    });
 
     // 목록에서는 간소화된 정보만 반환 (새로운 BaseItem 구조)
     if (result.content) {
@@ -97,18 +95,14 @@ const getRoutineById = async (req, res) => {
     let communityPosts = [];
     try {
       // 루틴 ID와 동일한 커뮤니티 ID에서 해당 루틴과 관련된 게시글 조회
-      const posts = await firestoreService.getCollectionWithPagination(
-          `communities/${routineId}/posts`,
-          {
-            page: 0,
-            size: 10,
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            where: [
-              {field: "type", operator: "==", value: "ROUTINE_CERT"},
-            ],
-          },
-      );
+      const communityPostsService = new FirestoreService(`communities/${routineId}/posts`);
+      const posts = await communityPostsService.getWithPagination({
+        page: 0,
+        size: 10,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        where: [{field: "type", operator: "==", value: "ROUTINE_CERT"}],
+      });
 
       communityPosts = (posts.content || []).map((post) => ({
         id: post.id,
@@ -597,7 +591,10 @@ const toggleRoutineLike = async (req, res) => {
     }
 
     // 업데이트된 루틴 정보 조회
-    const updatedRoutine = await firestoreService.getDocument("routines", routineId);
+    const updatedRoutine = await firestoreService.getDocument(
+        "routines",
+        routineId,
+    );
 
     res.json({
       success: true,

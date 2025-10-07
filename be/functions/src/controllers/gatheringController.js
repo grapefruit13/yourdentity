@@ -1,4 +1,5 @@
-const firestoreService = require("../services/firestoreService");
+const FirestoreService = require("../services/firestoreService");
+const firestoreService = new FirestoreService("gatherings");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 소모임 목록 조회 - 페이지네이션 지원 (간소화된 정보만 반환)
@@ -7,15 +8,12 @@ const getAllGatherings = async (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const size = parseInt(req.query.size) || 10;
 
-    const result = await firestoreService.getCollectionWithPagination(
-        "gatherings",
-        {
-          page,
-          size,
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        },
-    );
+    const result = await firestoreService.getWithPagination({
+      page,
+      size,
+      orderBy: "createdAt",
+      orderDirection: "desc",
+    });
 
     // 목록에서는 간소화된 정보만 반환 (새로운 BaseItem 구조)
     if (result.content) {
@@ -100,18 +98,16 @@ const getGatheringById = async (req, res) => {
     let communityPosts = [];
     try {
       // 소모임 ID와 동일한 커뮤니티 ID에서 해당 소모임과 관련된 게시글 조회
-      const posts = await firestoreService.getCollectionWithPagination(
-          `communities/${gatheringId}/posts`,
-          {
-            page: 0,
-            size: 10,
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            where: [
-              {field: "type", operator: "==", value: "GATHERING_REVIEW"},
-            ],
-          },
-      );
+      const communityPostsService = new FirestoreService(`communities/${gatheringId}/posts`);
+      const posts = await communityPostsService.getWithPagination({
+        page: 0,
+        size: 10,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        where: [
+          {field: "type", operator: "==", value: "GATHERING_REVIEW"},
+        ],
+      });
 
       communityPosts = (posts.content || []).map((post) => ({
         id: post.id,
