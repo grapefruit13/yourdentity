@@ -1,6 +1,12 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { connectFirestoreEmulator } from "firebase/firestore";
+import {
+  getAuth,
+  // connectAuthEmulator
+} from "firebase/auth";
+import {
+  // connectFirestoreEmulator,
+  getFirestore,
+} from "firebase/firestore";
 import {
   getMessaging,
   getToken,
@@ -20,11 +26,12 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const db = getFirestore(app);
 
 // 기본 SDK 인스턴스
-// export const auth = getAuth(app);
+export const auth = getAuth(app);
 
-// // 로컬 개발 시 에뮬레이터 연결
+// // 로컬 개발 시 에뮬레이터 연결 (로컬 개발 시 주석처리)
 // if (typeof window !== "undefined") {
 //   const isLocalhost =
 //     window.location.hostname === "localhost" ||
