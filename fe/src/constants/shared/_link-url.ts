@@ -1,4 +1,5 @@
 export const LINK_URL = {
+  LOGIN: "/login",
   KAKAO_LOGIN: "/kakao-login",
   EMAIL_LOGIN: "/email-login",
   TERMS_OF_SERVICE: "/terms-of-service",
