@@ -78,6 +78,16 @@ const ICON = {
       alt: "눈 닫힘",
     },
   },
+  home: {
+    active: {
+      url: "/icons/ic-home-active.svg",
+      alt: "홈 활성화",
+    },
+    inactive: {
+      url: "/icons/ic-home-inactive.svg",
+      alt: "홈 비활성화",
+    },
+  },
 };
 
 const IMG = {
