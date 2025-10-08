@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { cn } from "@/utils/shared/cn";
 
 /**
@@ -11,13 +12,40 @@ import { cn } from "@/utils/shared/cn";
  */
 const BottomNavigation = () => {
   const pathname = usePathname();
-  const isMissionActive = pathname?.startsWith("/mission") === true;
-  const isCommunityActive = pathname?.startsWith("/community") === true;
-  const isMyPageActive = pathname?.startsWith("/my-page") === true;
+  const isHomeActive = pathname?.startsWith(LINK_URL.HOME) === true;
+  const isMissionActive = pathname?.startsWith(LINK_URL.MISSION) === true;
+  const isCommunityActive = pathname?.startsWith(LINK_URL.COMMUNITY) === true;
+  const isMyPageActive = pathname?.startsWith(LINK_URL.MY_PAGE) === true;
 
   return (
-    <nav className="pb-safe fixed right-0 bottom-0 left-0 z-50 flex w-full items-center justify-center gap-14 border-t border-gray-200 bg-white/90 pt-3 backdrop-blur-sm">
-      <Link href="/mission">
+    <nav className="fixed right-0 bottom-0 z-50 flex h-23 w-full items-center justify-center gap-14 bg-slate-100 pt-3 pb-5">
+      <Link href={LINK_URL.HOME}>
+        <button className="flex flex-col items-center justify-center gap-1 hover:cursor-pointer">
+          <Image
+            src={
+              isHomeActive
+                ? IMAGE_URL.ICON.home.active.url
+                : IMAGE_URL.ICON.home.inactive.url
+            }
+            alt={
+              isHomeActive
+                ? IMAGE_URL.ICON.home.active.alt
+                : IMAGE_URL.ICON.home.inactive.alt
+            }
+            width={28}
+            height={28}
+          />
+          <span
+            className={cn(
+              "text-xs leading-none font-semibold text-gray-400",
+              isHomeActive && "text-primary-600"
+            )}
+          >
+            홈
+          </span>
+        </button>
+      </Link>
+      <Link href={LINK_URL.MISSION}>
         <button className="flex flex-col items-center justify-center gap-1 hover:cursor-pointer">
           <Image
             src={
@@ -36,14 +64,14 @@ const BottomNavigation = () => {
           <span
             className={cn(
               "text-xs leading-none font-semibold text-gray-400",
-              isMissionActive && "text-[#FF006C]"
+              isMissionActive && "text-primary-600"
             )}
           >
             미션
           </span>
         </button>
       </Link>
-      <Link href="/community">
+      <Link href={LINK_URL.COMMUNITY}>
         <button className="flex flex-col items-center justify-center gap-1 hover:cursor-pointer">
           <Image
             src={
@@ -62,14 +90,14 @@ const BottomNavigation = () => {
           <span
             className={cn(
               "text-xs leading-none font-semibold text-gray-400",
-              isCommunityActive && "text-[#FF006C]"
+              isCommunityActive && "text-primary-600"
             )}
           >
             커뮤니티
           </span>
         </button>
       </Link>
-      <Link href="/my-page">
+      <Link href={LINK_URL.MY_PAGE}>
         <button className="flex flex-col items-center justify-center gap-1 hover:cursor-pointer">
           <Image
             src={
@@ -88,7 +116,7 @@ const BottomNavigation = () => {
           <span
             className={cn(
               "text-xs leading-none font-semibold text-gray-400",
-              isMyPageActive && "text-[#FF006C]"
+              isMyPageActive && "text-primary-600"
             )}
           >
             마이
