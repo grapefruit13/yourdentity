@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import LogoutModal from "@/components/my-page/LogoutModal";
-import Modal from "@/components/shared/ui/modal";
 import SettingsSection from "@/components/my-page/SettingsSection";
-import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 
 /**
