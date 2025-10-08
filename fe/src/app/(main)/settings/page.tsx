@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import LogoutModal from "@/components/my-page/LogoutModal";
-import Modal from "@/components/shared/ui/modal";
 import SettingsSection from "@/components/my-page/SettingsSection";
+import Modal from "@/components/shared/ui/modal";
 
 /**
  * @description 설정 페이지
