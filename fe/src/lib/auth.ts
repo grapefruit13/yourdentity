@@ -1,71 +1,72 @@
-// "use client";
 /**
  * Firebase Auth - 카카오 소셜 로그인 (OpenID Connect)
  */
-// import {
-//   OAuthProvider,
-//   signInWithPopup,
-//   UserCredential,
-//   onAuthStateChanged,
-//   User,
-// } from "firebase/auth";
-// import { auth } from "@/lib/firebase";
+import {
+  OAuthProvider,
+  signInWithPopup,
+  UserCredential,
+  onAuthStateChanged,
+  User,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 // /**
 //  * 카카오 OAuth 제공업체 생성
 //  */
-// export const createKakaoProvider = () => {
-//   const provider = new OAuthProvider("oidc.kakao");
+export const createKakaoProvider = () => {
+  const provider = new OAuthProvider("oidc.kakao");
 
-//   // Kakao OpenID Connect 표준 스코프 (추후 이름, 출생년도 추가 예정)
-//   provider.addScope("openid");
+  // Kakao OpenID Connect 표준 스코프 (추후 이름, 출생년도 추가 예정)
+  provider.addScope("openid");
 
-//   return provider;
-// };
+  return provider;
+};
+
+// 회원가입하고, 다시 로그인하면
 
 /**
  * 카카오 로그인 - Popup 방식(test)
  */
-// export const signInWithKakao = async (): Promise<UserCredential> => {
-//   const provider = createKakaoProvider();
+export const signInWithKakao = async (): Promise<UserCredential> => {
+  const provider = createKakaoProvider();
 
-//   try {
-//     const result = await signInWithPopup(auth, provider);
-//     // eslint-disable-next-line no-console
-//     console.log("카카오 로그인 성공:", result.user);
-//     return result;
-//   } catch (error) {
-//     // eslint-disable-next-line no-console
-//     console.error("카카오 로그인 실패:", error);
-//     throw error;
-//   }
-// };
+  try {
+    const result = await signInWithPopup(auth, provider);
+    // eslint-disable-next-line no-console
+    console.log("카카오 로그인 성공:", result.user);
+    return result;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("카카오 로그인 실패:", error);
+    throw error;
+  }
+};
 
 /**
  * 현재 로그인된 사용자 확인
  */
-// export const getCurrentUser = (): User | null => {
-//   return auth.currentUser;
-// };
+export const getCurrentUser = (): User | null => {
+  return auth.currentUser;
+};
 
 /**
  * 로그아웃
  */
-// export const signOut = async (): Promise<void> => {
-//   try {
-//     await auth.signOut();
-//     // eslint-disable-next-line no-console
-//     console.log("로그아웃 성공");
-//   } catch (error) {
-//     // eslint-disable-next-line no-console
-//     console.error("로그아웃 실패:", error);
-//     throw error;
-//   }
-// };
+export const signOut = async (): Promise<void> => {
+  try {
+    await auth.signOut();
+    // eslint-disable-next-line no-console
+    console.log("로그아웃 성공");
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("로그아웃 실패:", error);
+    throw error;
+  }
+};
 
 /**
  * Auth 상태 변경 리스너
  */
-// export const onAuthStateChange = (callback: (user: User | null) => void) => {
-//   return onAuthStateChanged(auth, callback);
-// };
+export const onAuthStateChange = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
