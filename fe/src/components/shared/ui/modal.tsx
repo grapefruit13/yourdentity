@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 
 interface ModalProps {
   /** 모달 열림/닫힘 상태 */
@@ -43,6 +43,27 @@ const Modal: React.FC<ModalProps> = ({
   confirmDisabled = false,
   variant = "primary",
 }) => {
+  // Escape 키로 모달 닫기
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        // ESC로 닫을 때 트리거 버튼의 포커스 링 제거
+        requestAnimationFrame(() => {
+          const activeElement = document.activeElement as HTMLElement;
+          if (activeElement && activeElement.blur) {
+            activeElement.blur();
+          }
+        });
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // variant에 따른 버튼 색상 설정
@@ -66,9 +87,18 @@ const Modal: React.FC<ModalProps> = ({
       />
 
       {/* 모달 컨텐츠 */}
-      <div className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <div
+        className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 제목 */}
-        <h2 className="mb-4 text-center text-lg font-medium text-black">
+        <h2
+          id="modal-title"
+          className="mb-4 text-center text-lg font-medium text-black"
+        >
           {title}
         </h2>
 
@@ -91,7 +121,7 @@ const Modal: React.FC<ModalProps> = ({
           {/* 취소 버튼 */}
           <button
             onClick={onClose}
-            className={`flex-1 rounded-xl border-2 bg-white px-4 py-3 text-sm font-medium transition-colors ${cancelButtonStyle}`}
+            className={`flex-1 rounded-xl border-2 bg-white px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
             aria-label={cancelText}
           >
             {cancelText}
@@ -101,7 +131,7 @@ const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed ${confirmButtonStyle}`}
+            className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed ${confirmButtonStyle}`}
             aria-label={confirmText}
           >
             {confirmText}
