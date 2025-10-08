@@ -1,19 +1,11 @@
-import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
-import TopBar from "@/components/shared/layouts/top-bar";
+import { redirect } from "next/navigation";
+import { LINK_URL } from "@/constants/shared/_link-url";
 
 /**
  * @description 홈페이지
  */
 const HomePage = () => {
-  return (
-    <>
-      <TopBar />
-      <div className="flex h-screen w-full flex-col bg-white">
-        <h1>홈페이지</h1>
-      </div>
-      <BottomNavigation />
-    </>
-  );
+  redirect(LINK_URL.HOME);
 };
 
 export default HomePage;
