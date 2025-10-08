@@ -5,6 +5,7 @@ import { Settings } from "lucide-react";
 import ActionButtons from "@/components/my-page/ActionButtons";
 import PointsCard from "@/components/my-page/PointsCard";
 import ProfileCard from "@/components/my-page/ProfileCard";
+import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 
 /**
@@ -15,6 +16,11 @@ const Page = () => {
 
   const handleSettingsClick = () => {
     router.push("/settings");
+  };
+
+  // FIXME: 로그인 페이지 접근 위해 만든 임시 핸들러. 추후 삭제 예정
+  const handleLoginClick = () => {
+    router.push("/login");
   };
 
   return (
@@ -43,6 +49,16 @@ const Page = () => {
         {/* 액션 버튼들 */}
         <ActionButtons />
       </main>
+
+      {/* FIXME: 로그인 페이지 접근 위해 임시로 만든 버튼. 추후 삭제 예정. */}
+      <ButtonBase
+        onClick={handleLoginClick}
+        className="bg-primary-600 w-full rounded-lg py-2"
+      >
+        <Typography font="noto" variant="body1B" className="text-white">
+          로그인
+        </Typography>
+      </ButtonBase>
     </div>
   );
 };
