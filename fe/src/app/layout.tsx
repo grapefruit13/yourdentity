@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Noto_Sans_KR } from "next/font/google";
+import PwaInstallPrompt from "@/components/shared/layouts/pwa-install-prompt";
 import { Toaster } from "@/components/shared/ui/sonner";
 import { cn } from "@/utils/shared/cn";
 
@@ -14,6 +15,7 @@ const notoSansKr = Noto_Sans_KR({
 export const metadata: Metadata = {
   title: "유스-잇",
   description: "유스-잇 앱입니다.",
+  manifest: "/manifest.webmanifest",
   icons: [
     { rel: "icon", url: "/icons/favicon/16x16.png", sizes: "16x16" },
     { rel: "icon", url: "/icons/favicon/32x32.png", sizes: "32x32" },
@@ -276,6 +278,7 @@ export default function RootLayout({
       >
         <Toaster />
         <div className="flex h-screen w-full flex-col bg-white">{children}</div>
+        <PwaInstallPrompt />
       </body>
     </html>
   );
