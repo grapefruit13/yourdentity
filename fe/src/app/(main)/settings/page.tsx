@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import LogoutModal from "@/components/my-page/LogoutModal";
+import Modal from "@/components/shared/ui/modal";
 import SettingsSection from "@/components/my-page/SettingsSection";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
@@ -194,19 +195,12 @@ const SettingsPage = () => {
         variant="danger"
       >
         <div>
-          <Typography
-            as="p"
+          <p
             id="delete-confirm-description"
-            font="noto"
-            variant="body2R"
-            className="mb-2 text-gray-600"
+            className="mb-2 text-sm text-gray-600"
           >
-            확인을 위해{" "}
-            <Typography as="strong" font="noto" variant="body2B">
-              DELETE
-            </Typography>
-            를 정확히 입력해주세요:
-          </Typography>
+            확인을 위해 <strong>DELETE</strong>를 정확히 입력해주세요:
+          </p>
           <input
             type="text"
             value={deleteConfirmText}
