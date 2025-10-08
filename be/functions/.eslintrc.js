@@ -17,6 +17,7 @@ module.exports = {
     "new-cap": ["error", {"capIsNew": false}],
     "require-jsdoc": "off",
     "max-len": ["error", {"code": 120}],
+    "linebreak-style": ["error", "windows"]
   },
   overrides: [
     {
