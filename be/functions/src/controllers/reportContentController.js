@@ -1,5 +1,6 @@
 const reportContentService = require("../services/reportContentService");
 const { successResponse } = require("../utils/helpers");
+const {db} = require("../config/database");
 
 class ReportContentController {
 
@@ -9,21 +10,23 @@ class ReportContentController {
     async createReport(req, res) {
       try {
 
+        //TODO : 실제 환경에서 현제 userId를 받는 것에 제한이 있는경우 로그인된  토큰정보로 userId조회하는 방안 고려
         //const { uid } = req.user; // authGuard에서 설정
-        const uid = 'RpqG32COF2Q3UbpDGp6PEAgiqtui_5'; // 임시 (직접 할당)
+        //const uid = 'RpqG32COF2Q3UbpDGp6PEAgiqtui_5'; // 임시 (직접 할당)
         const { 
-          targetType, 
-          targetId, 
-          targetUserId,
-          communityId, 
-          reportReason 
+          targetType, //신고 대상 종류
+          targetId,  //신고 대상
+          targetUserId, //신고 대상 작성자
+          reporterId, //신고자ID
+          communityId, //커뮤니티ID
+          reportReason  //신고 사유
         } = req.body;
   
         // 요청 데이터 검증
-        if (!targetType || !targetId || !reportReason || !targetUserId) {
+        if (!targetType || !targetId || !reportReason || !targetUserId || !reporterId) {
           return res.status(400).json({
             success: false,
-            error: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserID, reportReason)"
+            error: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reporterId, reportReason)"
           });
         }
   
@@ -33,17 +36,26 @@ class ReportContentController {
             error: "targetType은 'post' 또는 'comment'여야 합니다."
           });
         }
-  
-        // TODO: 실제 구현 시 사용자 이름을 데이터베이스에서 조회
-        const reporterName = "사용자닉네임"; // 임시값
+
+        //Firestore에서 유저 존재 여부 확인
+        const userDoc = await db.collection("users").doc(reporterId).get();
+        if (!userDoc.exists) {
+          return res.status(404).json({
+            success: false,
+            error: "해당 targetUserId를 가진 사용자를 찾을 수 없습니다."
+          });
+        }
+
+        //사용자 이름(닉네임) 가져오기
+        //const userData = userDoc.data();
+        //const reporterName = userData.name || "알 수 없음"; //신고자
   
         const reportData = {
           targetType,
           targetId,
           targetUserId,
           communityId: communityId || null,
-          reporterId: uid,
-          reporterName,
+          reporterId,
           reportReason
         };
   
@@ -74,30 +86,34 @@ class ReportContentController {
       }
     }
   
-    /**
-     * 내가 신고한 목록 조회(보류)
-     */
-    async getMyReports(req, res) {
-      try {
-        const { uid } = req.user;
-        const { page = 0, size = 10, status, targetType } = req.query;
-        
-        const result = await reportContentService.getUserReports(uid, {
-          page: parseInt(page),
-          size: parseInt(size),
-          status,
-          targetType
-        });
-        
-        res.json(successResponse(200, result));
-      } catch (error) {
-        console.error("Get my reports error:", error);
-        res.status(500).json({
-          success: false,
-          error: "서버 오류가 발생했습니다."
-        });
-      }
+
+/**
+ * 내가 신고한 목록 조회
+ */
+async getMyReports(req, res) {
+  try {
+    const { reporterId, page = 0, size = 10, lastCreatedAt } = req.body;
+
+    if (!reporterId) {
+      return res.status(400).json({ success: false, error: "reporterId를 입력해주세요." });
     }
+
+    // 신고 목록 조회
+    const result = await reportContentService.getUserReports(reporterId, {
+      size: parseInt(size),
+      lastCreatedAt, // 이전 페이지 마지막 createdAt
+    });
+
+    res.json(successResponse(200, result));
+  } catch (error) {
+    console.error("Get my reports error:", error);
+    res.status(500).json({
+      success: false,
+      error: "서버 오류가 발생했습니다."
+    });
+  }
+}
+
   
     /**
      * 신고 상세 조회(보류)
@@ -105,9 +121,7 @@ class ReportContentController {
     async getReportById(req, res) {
       try {
         const { reportId } = req.params;
-        const { uid } = req.user;
-        
-        const report = await reportContentService.getReportById(reportId, uid);
+        const report = await reportContentService.getReportById(reportId);
         
         if (!report) {
           return res.status(404).json({

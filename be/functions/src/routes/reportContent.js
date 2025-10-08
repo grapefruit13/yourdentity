@@ -21,7 +21,7 @@ const router = express.Router();
  *   schemas:
  *     Report:
  *       type: object
- *       required:
+ *       required: 
  *         - targetType
  *         - targetId
  *         - reportReason
@@ -103,6 +103,7 @@ const router = express.Router();
  *               - targetType
  *               - targetId
  *               - targetUserId
+ *               - reporterId
  *               - reportReason
  *             properties:
  *               targetType:
@@ -118,6 +119,10 @@ const router = express.Router();
  *                  type: string
  *                  description: 신고 대상 사용자 ID
  *                  example: "user1"
+ *               reporterId:
+ *                  type: string
+ *                  description: 신고자
+ *                  example: "user2"
  *               communityId:
  *                 type: string
  *                 nullable: true
@@ -220,43 +225,34 @@ router.post("/", reportContentController.createReport);
  *                   example: "Notion -> Firebase 동기화 실패: ..."
  */
 // 노션 → Firebase 동기화 라우트 추가
-//router.get("/syncNotionReports", (req, res) => reportContentController.syncNotionReports(req, res));
 router.get("/syncNotionReports", reportContentController.syncNotionReports);
 
 /**
  * @swagger
  * /reports/my:
- *   get:
+ *   post:
  *     summary: 내가 신고한 목록 조회
- *     description: 현재 사용자가 신고한 모든 목록을 조회합니다.
+ *     description: reporterId를 기준으로 사용자가 신고한 목록을 조회합니다.
  *     tags: [Reports]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 0
- *         description: 페이지 번호 (0부터 시작)
- *       - in: query
- *         name: size
- *         schema:
- *           type: integer
- *           default: 10
- *         description: 페이지당 항목 수
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [pending, reviewed, dismissed, resolved]
- *         description: 신고 상태 필터
- *       - in: query
- *         name: targetType
- *         schema:
- *           type: string
- *           enum: [post, comment]
- *         description: 신고 대상 타입 필터
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reporterId:
+ *                 type: string
+ *                 description: 조회할 사용자 ID
+ *                 example: RpqG32COF2Q3UbpDGp6PEAgiqtui_5
+ *               page:
+ *                 type: integer
+ *                 description: 페이지 번호 (0부터 시작)
+ *                 example: 0
+ *               size:
+ *                 type: integer
+ *                 description: 페이지당 항목 수
+ *                 example: 10
  *     responses:
  *       200:
  *         description: 신고 목록 조회 성공
@@ -269,41 +265,15 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   type: object
- *                   properties:
- *                     content:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Report'
- *                     pageable:
- *                       type: object
- *                       properties:
- *                         pageNumber:
- *                           type: integer
- *                           example: 0
- *                         pageSize:
- *                           type: integer
- *                           example: 10
- *                         totalElements:
- *                           type: integer
- *                           example: 25
- *                         totalPages:
- *                           type: integer
- *                           example: 3
- *                         hasNext:
- *                           type: boolean
- *                           example: true
- *                         hasPrevious:
- *                           type: boolean
- *                           example: false
- *       401:
- *         description: 인증 필요
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Report'
+ *       400:
+ *         description: 필수 값 누락 (reporterId)
  *       500:
  *         description: 서버 오류
  */
-
-//router.get("/my", authGuard, reportContentController.getMyReports);
-router.get("/my", reportContentController.getMyReports);
+router.post("/my", reportContentController.getMyReports);
 
 /**
  * @swagger
@@ -342,8 +312,6 @@ router.get("/my", reportContentController.getMyReports);
  *       500:
  *         description: 서버 오류
  */
-
-//router.get("/:reportId", authGuard, reportContentController.getReportById);
 router.get("/:reportId", reportContentController.getReportById);
 
 
