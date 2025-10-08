@@ -26,7 +26,7 @@ const Page = () => {
     }
   };
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-20 p-10">
+    <div className="flex min-h-full flex-col items-center justify-center gap-20 p-10">
       <h1 className="mb-4 text-4xl font-bold">FCM 테스트</h1>
 
       {notificationPermissionStatus === "granted" ? (

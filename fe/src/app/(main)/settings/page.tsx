@@ -184,7 +184,7 @@ const SettingsPage = () => {
   ];
 
   return (
-    <div className="flex h-full w-full flex-col bg-gray-50">
+    <div className="flex min-h-full w-full flex-col bg-gray-50">
       {/* 헤더 */}
       <header className="flex w-full items-center gap-4 p-4 pb-6">
         <button

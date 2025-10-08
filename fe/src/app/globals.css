@@ -41,3 +41,10 @@
 
   --color-kakao: #fee500;
 }
+
+/* iOS Safe Area 지원 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1.25rem) !important;
+  }
+}

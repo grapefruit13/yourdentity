@@ -9,9 +9,11 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex min-h-[100dvh] w-full flex-col">
       <TopBar />
-      <main className="flex h-full w-full flex-col">{children}</main>
+      <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
+        {children}
+      </main>
       <BottomNavigation />
     </div>
   );
