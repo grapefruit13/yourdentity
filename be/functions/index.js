@@ -1,11 +1,10 @@
-const {onRequest} = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https");
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./src/config/swagger");
 
-const {admin} = require("./src/config/database");
-
+const { admin } = require("./src/config/database");
 
 // 미들웨어
 const logger = require("./src/middleware/logger");
@@ -57,20 +56,22 @@ const allowedOrigins = [
   "https://asia-northeast3-yourdentity.cloudfunctions.net",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // 개발 환경에서는 origin이 없는 요청도 허용
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log("CORS blocked origin:", origin);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // 개발 환경에서는 origin이 없는 요청도 허용
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("CORS blocked origin:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
 
 app.use(express.json());
 app.use(logger);
@@ -132,8 +133,8 @@ if (process.env.NODE_ENV === "development") {
       });
     } catch (error) {
       res
-          .status(500)
-          .json({success: false, message: "Swagger 업데이트 실패"});
+        .status(500)
+        .json({ success: false, message: "Swagger 업데이트 실패" });
     }
   });
 }
@@ -178,51 +179,17 @@ app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
 
-// 알림 전송 라우트
-app.post("/send-notification", async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).json({error: "Method not allowed"});
-  }
-
-  try {
-    const {token, title, message, link} = req.body;
-    if (!token || !title || !message) {
-      return res
-          .status(400)
-          .json({error: "Token, title, and message are required"});
-    }
-
-    const payload = {
-      token,
-      notification: {title, body: message},
-      ...(link && {webpush: {fcmOptions: {link}}}),
-    };
-
-    const result = await admin.messaging().send(payload);
-
-    res.status(200).json({
-      success: true,
-      message: "Notification sent successfully",
-      messageId: result,
-    });
-  } catch (error) {
-    console.error("Error sending notification", error);
-    res.status(500).json({
-      error: "Failed to send notification",
-      details: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
 
-exports.api = onRequest({
-  region: "asia-northeast3",
-  cors: true,
-}, app);
+exports.api = onRequest(
+  {
+    region: "asia-northeast3",
+    cors: true,
+  },
+  app
+);
 
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
 exports.deleteUserDocument = deleteUserDocument;
-
