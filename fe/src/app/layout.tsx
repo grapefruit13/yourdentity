@@ -15,6 +15,7 @@ const notoSansKr = Noto_Sans_KR({
 export const metadata: Metadata = {
   title: "유스-잇",
   description: "유스-잇 앱입니다.",
+  manifest: "/manifest.webmanifest",
   icons: [
     { rel: "icon", url: "/icons/favicon/16x16.png", sizes: "16x16" },
     { rel: "icon", url: "/icons/favicon/32x32.png", sizes: "32x32" },
