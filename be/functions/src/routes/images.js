@@ -1,5 +1,6 @@
 const express = require("express");
 const imageController = require("../controllers/imageController");
+const authGuard = require("../middleware/authGuard");
 
 const router = express.Router();
 
@@ -85,6 +86,6 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/upload-image",authGuard,imageController.uploadImage);
+router.post("/upload-image", authGuard, imageController.uploadImage);
 
 module.exports = router;
