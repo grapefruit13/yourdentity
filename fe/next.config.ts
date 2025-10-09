@@ -1,9 +1,20 @@
 import type { NextConfig } from "next";
 import withPWA from "next-pwa";
+import { LINK_URL } from "@/constants/shared/_link-url";
 
 const nextConfig: NextConfig = {
   images: {
     formats: ["image/webp", "image/avif"],
+  },
+  // eslint-disable-next-line require-await
+  async redirects() {
+    return [
+      {
+        source: LINK_URL.ROOT,
+        destination: LINK_URL.HOME,
+        permanent: false,
+      },
+    ];
   },
 };
 
