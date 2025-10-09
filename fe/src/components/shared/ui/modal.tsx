@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { Typography } from "@/components/shared/typography";
 
 interface ModalProps {
   /** 모달 열림/닫힘 상태 */
@@ -95,22 +96,28 @@ const Modal: React.FC<ModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <h2
+        <Typography
+          as="h2"
           id="modal-title"
-          className="mb-4 text-center text-lg font-medium text-black"
+          font="noto"
+          variant="heading2M"
+          className="mb-4 text-center text-black"
         >
           {title}
-        </h2>
+        </Typography>
 
         {/* 설명 (선택) */}
         {description && (
-          <p
-            className={`mb-4 text-center text-sm ${
+          <Typography
+            as="p"
+            font="noto"
+            variant="body2R"
+            className={`mb-4 text-center ${
               variant === "danger" ? "text-red-600" : "text-gray-600"
             }`}
           >
             {description}
-          </p>
+          </Typography>
         )}
 
         {/* 추가 콘텐츠 (선택) */}
@@ -121,20 +128,24 @@ const Modal: React.FC<ModalProps> = ({
           {/* 취소 버튼 */}
           <button
             onClick={onClose}
-            className={`flex-1 rounded-xl border-2 bg-white px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
+            className={`flex-1 rounded-xl border-2 bg-white px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
             aria-label={cancelText}
           >
-            {cancelText}
+            <Typography font="noto" variant="body2M">
+              {cancelText}
+            </Typography>
           </button>
 
           {/* 확인 버튼 */}
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed ${confirmButtonStyle}`}
+            className={`flex-1 rounded-xl px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed ${confirmButtonStyle}`}
             aria-label={confirmText}
           >
-            {confirmText}
+            <Typography font="noto" variant="body2M" className="text-white">
+              {confirmText}
+            </Typography>
           </button>
         </div>
       </div>

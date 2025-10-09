@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
+import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 
 /**
@@ -194,7 +195,9 @@ const SettingsPage = () => {
         >
           <ArrowLeft className="h-6 w-6 text-black" />
         </button>
-        <h1 className="text-xl font-bold text-black">설정</h1>
+        <Typography as="h1" font="noto" variant="title5">
+          설정
+        </Typography>
       </header>
 
       {/* 메인 컨텐츠 */}
@@ -208,7 +211,9 @@ const SettingsPage = () => {
 
       {/* 버전 정보 */}
       <footer className="p-4 pt-6">
-        <span className="text-sm text-gray-500">현재 버전 1.03.004</span>
+        <Typography font="noto" variant="body2R" className="text-gray-500">
+          현재 버전 1.03.004
+        </Typography>
       </footer>
 
       {/* 로그아웃 모달 */}
@@ -231,12 +236,19 @@ const SettingsPage = () => {
         variant="danger"
       >
         <div>
-          <p
+          <Typography
+            as="p"
             id="delete-confirm-description"
-            className="mb-2 text-sm text-gray-600"
+            font="noto"
+            variant="body2R"
+            className="mb-2 text-gray-600"
           >
-            확인을 위해 <strong>DELETE</strong>를 정확히 입력해주세요:
-          </p>
+            확인을 위해{" "}
+            <Typography as="strong" font="noto" variant="body2B">
+              DELETE
+            </Typography>
+            를 정확히 입력해주세요:
+          </Typography>
           <input
             type="text"
             value={deleteConfirmText}
