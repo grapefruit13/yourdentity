@@ -3,9 +3,7 @@ const reportContentController = require("../controllers/reportContentController"
 const authGuard = require("../middleware/authGuard");
 
 
-
 const router = express.Router();
-
 
 
 /**
@@ -21,7 +19,7 @@ const router = express.Router();
  *   schemas:
  *     Report:
  *       type: object
- *       required: 
+ *       required:
  *         - targetType
  *         - targetId
  *         - reportReason
@@ -183,9 +181,8 @@ const router = express.Router();
  *         description: 서버 오류
  */
 
-//router.post("/", authGuard, reportContentController.createReport);
+// router.post("/", authGuard, reportContentController.createReport);
 router.post("/", reportContentController.createReport);
-
 
 
 /**
@@ -231,9 +228,12 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  * @swagger
  * /reports/my:
  *   post:
- *     summary: 내가 신고한 목록 조회
- *     description: reporterId를 기준으로 사용자가 신고한 목록을 조회합니다.
- *     tags: [Reports]
+ *     tags:
+ *       - Reports
+ *     summary: 내가 신고한 목록 조회 (로그인 필요)
+ *     description: 로그인된 사용자의 신고 목록을 조회합니다. 페이지네이션은 cursor 기반입니다.
+ *     security:
+ *       - bearerAuth: []   #토큰 필요
  *     requestBody:
  *       required: true
  *       content:
@@ -241,18 +241,15 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *           schema:
  *             type: object
  *             properties:
- *               reporterId:
- *                 type: string
- *                 description: 조회할 사용자 ID
- *                 example: RpqG32COF2Q3UbpDGp6PEAgiqtui_5
- *               page:
- *                 type: integer
- *                 description: 페이지 번호 (0부터 시작)
- *                 example: 0
  *               size:
  *                 type: integer
- *                 description: 페이지당 항목 수
+ *                 description: 한 번에 조회할 신고 개수
  *                 example: 10
+ *               lastCreatedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: 이전 페이지 마지막 신고 createdAt 값 (다음 페이지 조회용)
+ *                 example: "2025-10-08T20:31:33.028Z"
  *     responses:
  *       200:
  *         description: 신고 목록 조회 성공
@@ -265,15 +262,75 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Report'
- *       400:
- *         description: 필수 값 누락 (reporterId)
+ *                   type: object
+ *                   properties:
+ *                     reports:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           targetType:
+ *                             type: string
+ *                           targetId:
+ *                             type: string
+ *                           reporterId:
+ *                             type: string
+ *                           reporterName:
+ *                             type: string
+ *                           reportReason:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           targetUserId:
+ *                             type: string
+ *                           communityId:
+ *                             type: string
+ *                             nullable: true
+ *                           firebaseUpdatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                           notionUpdatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                     hasMore:
+ *                       type: boolean
+ *                       description: 다음 페이지 존재 여부
+ *                     nextCursor:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Unauthorized"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "서버 오류가 발생했습니다."
  */
-//router.post("/my", reportContentController.getMyReports);
 router.post("/my", authGuard, reportContentController.getMyReports);
 
 /**
@@ -314,10 +371,6 @@ router.post("/my", authGuard, reportContentController.getMyReports);
  *         description: 서버 오류
  */
 router.get("/:reportId", reportContentController.getReportById);
-
-
-
-
 
 
 module.exports = router;

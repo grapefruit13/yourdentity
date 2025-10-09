@@ -4,7 +4,6 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./src/config/swagger");
 
-
 const {admin} = require("./src/config/database");
 
 // 미들웨어
@@ -193,7 +192,6 @@ app.use("/reportContent", reportContentRoutes);
 app.use(errorHandler);
 
 exports.api = onRequest(
-
     {
       region: "asia-northeast3",
       cors: true,
