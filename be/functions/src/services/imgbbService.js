@@ -1,51 +1,6 @@
 class ImgBBService {
   constructor() {
-    this.IMGBB_API_KEY =
-      process.env.IMGBB_API_KEY;
-  }
-
-  async uploadImage(imageData, name = "upload") {
-    const IMGBB_API_KEY = this.IMGBB_API_KEY;
-
-    if (!IMGBB_API_KEY) {
-      throw new Error("ImgBB API key not configured");
-    }
-
-
-    const formBody = new URLSearchParams();
-    formBody.append("image", imageData);
-    formBody.append("name", name);
-
-    const response = await fetch(
-        `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
-        {
-          method: "POST",
-          body: formBody.toString(),
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        },
-    );
-
-    const result = await response.json();
-
-    if (result.success) {
-      return {
-        success: true,
-        data: {
-          imageUrl: result.data.url,
-          displayUrl: result.data.display_url,
-          deleteUrl: result.data.delete_url,
-          size: result.data.size,
-          title: result.data.title,
-        },
-      };
-    } else {
-      return {
-        success: false,
-        error: result.error.message,
-      };
-    }
+    this.IMGBB_API_KEY = process.env.IMGBB_API_KEY;
   }
 
   async uploadFileStream(

@@ -1,5 +1,4 @@
 const imgbbService = require("../services/imgbbService");
-const firestoreService = require("../services/firestoreService");
 const Busboy = require("busboy");
 const {Readable} = require("stream");
 
@@ -137,52 +136,6 @@ class ImageController {
       });
 
       stream.pipe(busboy);
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-
-  async updateProfileImage(req, res) {
-    try {
-      const {userId} = req.params;
-      const {image} = req.body;
-
-      if (!image) {
-        return res.status(400).json({
-          success: false,
-          error: "image data is required (base64 encoded)",
-        });
-      }
-
-      const uploadResult = await imgbbService.uploadImage(
-          image,
-          `profile_${userId}`,
-      );
-
-      if (!uploadResult.success) {
-        return res.status(500).json({
-          success: false,
-          error: uploadResult.error,
-        });
-      }
-
-      await firestoreService.updateUserProfileImage(
-          userId,
-          uploadResult.data.imageUrl,
-      );
-
-      res.json({
-        success: true,
-        message: "Profile image updated successfully",
-        data: {
-          userId,
-          profileImageUrl: uploadResult.data.imageUrl,
-          displayUrl: uploadResult.data.displayUrl,
-        },
-      });
     } catch (error) {
       res.status(500).json({
         success: false,
