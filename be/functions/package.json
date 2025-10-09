@@ -26,7 +26,8 @@
     "firebase-functions": "^4.9.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0"
+    "yamljs": "^0.3.0",
+    "@notionhq/client": "^5.1.0"
   },
   "devDependencies": {
     "eslint": "^8.15.0",
