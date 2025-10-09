@@ -4,6 +4,7 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./src/config/swagger");
 
+
 const {admin} = require("./src/config/database");
 
 // 미들웨어
@@ -58,6 +59,7 @@ const allowedOrigins = [
 ];
 
 app.use(
+
     cors({
       origin: (origin, callback) => {
       // 개발 환경에서는 origin이 없는 요청도 허용
@@ -72,6 +74,7 @@ app.use(
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     }),
+
 );
 
 app.use(express.json());
@@ -186,10 +189,13 @@ app.use("/notion/announcements", announcementRoutes);
 app.use(errorHandler);
 
 exports.api = onRequest(
+
     {
       region: "asia-northeast3",
+      cors: true,
     },
     app,
+
 );
 
 // 1세대 Auth Triggers 내보내기

@@ -65,7 +65,7 @@ const Page = () => {
   }
 
   return (
-    <div className="h-full bg-white">
+    <div className="min-h-full bg-white">
       {/* 헤더 */}
       <div className="relative flex items-center justify-center px-4 py-4">
         <h1 className="text-xl font-bold text-black">커뮤니티</h1>

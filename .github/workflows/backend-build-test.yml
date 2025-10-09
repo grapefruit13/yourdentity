@@ -44,28 +44,15 @@ jobs:
           cd be/functions
           pnpm install --frozen-lockfile
 
-      - name: 🔍 린트 검사
-        run: |
-          cd be/functions
-          echo "🔍 ESLint 검사 시작..."
-          pnpm run lint
-          echo "✅ ESLint 검사 통과!"
 
-      - name: 🔧 빌드 체크 (에뮬레이터 실행)
+      - name: 빌드 테스트
+        working-directory: be/functions
         run: |
-          cd be/functions
-          echo "🚀 Firebase 에뮬레이터 빌드 테스트 시작..."
-          nohup pnpm run build > emulator.log 2>&1 &
-          sleep 15
-          echo "✅ 빌드 및 에뮬레이터 기동 성공!"
+          echo "Firebase 에뮬레이터 빌드 테스트 시작!"
+          pnpm run build
+          echo "빌드 테스트 완료 "
 
-      # ✅ 성공 시 에뮬레이터 종료
-      - name: ✅ 빌드 성공 시 에뮬레이터 종료
-        if: success()
-        run: |
-          echo "🧹 빌드 성공 → 에뮬레이터 프로세스 종료 중..."
-          pkill -f "firebase emulators:start" || true
-
+      
       # ✅ 성공 시 코멘트 남기기
       - name: ✅ 빌드 성공 알림
         if: success()

@@ -161,7 +161,7 @@ const PwaDownloadBottomSheet = ({
             <ButtonBase onClick={onClose}>
               <Typography
                 font="noto"
-                variant="body3M"
+                variant="body2M"
                 className="text-gray-400 underline"
               >
                 다음에 하기
