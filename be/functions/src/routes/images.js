@@ -14,27 +14,22 @@ const router = express.Router();
  * @swagger
  * /images/upload-image:
  *   post:
- *     summary: 이미지 업로드
- *     description: Base64 인코딩된 이미지를 업로드합니다
+ *     summary: 이미지 업로드 (multipart/form-data)
+ *     description: multipart/form-data 형식으로 이미지 파일을 업로드합니다
  *     tags: [Images]
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
- *               - image
+ *               - file
  *             properties:
- *               image:
+ *               file:
  *                 type: string
- *                 description: Base64 인코딩된 이미지 데이터
- *                 example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...
- *               name:
- *                 type: string
- *                 description: 이미지 이름
- *                 example: profile.jpg
- *                 default: upload
+ *                 format: binary
+ *                 description: 업로드할 이미지 파일 (JPEG, PNG, GIF, WebP 지원, 최대 10MB)
  *     responses:
  *       200:
  *         description: 이미지 업로드 성공
@@ -51,11 +46,34 @@ const router = express.Router();
  *                         imageUrl:
  *                           type: string
  *                           example: https://i.ibb.co/abc123/image.jpg
+ *                         displayUrl:
+ *                           type: string
+ *                           example: https://i.ibb.co/abc123/image.jpg
  *                         deleteUrl:
  *                           type: string
  *                           example: https://ibb.co/delete/abc123
+ *                         size:
+ *                           type: number
+ *                           example: 1024000
+ *                         title:
+ *                           type: string
+ *                           example: image.jpg
+ *                         fileName:
+ *                           type: string
+ *                           example: image.jpg
+ *                         mimeType:
+ *                           type: string
+ *                           example: image/jpeg
+ *                         width:
+ *                           type: number
+ *                           description: 이미지 가로 크기 (픽셀)
+ *                           example: 1920
+ *                         height:
+ *                           type: number
+ *                           description: 이미지 세로 크기 (픽셀)
+ *                           example: 1080
  *       400:
- *         description: 잘못된 요청
+ *         description: 잘못된 요청 (파일 없음, 크기 초과, 지원하지 않는 형식)
  *         content:
  *           application/json:
  *             schema:
@@ -132,4 +150,3 @@ router.post("/upload-image", imageController.uploadImage);
 router.put("/users/:userId/profile-image", imageController.updateProfileImage);
 
 module.exports = router;
-
