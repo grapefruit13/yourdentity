@@ -1,7 +1,7 @@
 const ICON = {
   home: {
     url: "/icons/ic-home.svg",
-    alt: "홈 비활성화",
+    alt: "홈",
   },
   mission: {
     url: "/icons/ic-mission.svg",
