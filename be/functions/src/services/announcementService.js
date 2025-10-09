@@ -7,31 +7,68 @@ class AnnouncementService {
   }
 
   async retrieveNotionPage(pageId) {
-    const resp = await fetch(
-        `https://api.notion.com/v1/pages/${pageId}`,
-        {method: "GET", headers: buildNotionHeadersFromEnv()},
-    );
-    if (!resp.ok) {
-      const text = await resp.text();
-      const err = new Error(`노션 페이지 조회 실패: ${text}`);
-      err.status = resp.status;
-      throw err;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    try {
+      const resp = await fetch(
+          `https://api.notion.com/v1/pages/${pageId}`,
+          {method: "GET", headers: buildNotionHeadersFromEnv(), signal: controller.signal},
+      );
+      clearTimeout(timeoutId);
+      if (!resp.ok) {
+        const text = await resp.text();
+        const err = new Error(`노션 페이지 조회 실패: ${text}`);
+        err.status = resp.status;
+        throw err;
+      }
+      return resp.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        const err = new Error("노션 API 요청 시간 초과");
+        err.status = 504;
+        throw err;
+      }
+      throw error;
     }
-    return resp.json();
   }
 
   async retrieveNotionBlocks(rootBlockId) {
     let cursor = null;
     const all = [];
     do {
-      const url = new URL(`https://api.notion.com/v1/blocks/${rootBlockId}/children`);
-      if (cursor) url.searchParams.set("start_cursor", cursor);
-      url.searchParams.set("page_size", "100");
-      const resp = await fetch(url.toString(), {method: "GET", headers: buildNotionHeadersFromEnv()});
-      if (!resp.ok) break;
-      const data = await resp.json();
-      for (const block of data.results || []) all.push(block);
-      cursor = data.next_cursor;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      try {
+        const url = new URL(`https://api.notion.com/v1/blocks/${rootBlockId}/children`);
+        if (cursor) url.searchParams.set("start_cursor", cursor);
+        url.searchParams.set("page_size", "100");
+        const resp = await fetch(url.toString(), {
+          method: "GET",
+          headers: buildNotionHeadersFromEnv(),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!resp.ok) {
+          const text = await resp.text();
+          const err = new Error(`노션 블록 조회 실패: ${text}`);
+          err.status = resp.status;
+          throw err;
+        }
+        const data = await resp.json();
+        for (const block of data.results || []) all.push(block);
+        cursor = data.next_cursor;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === "AbortError") {
+          const err = new Error("노션 API 요청 시간 초과");
+          err.status = 504;
+          throw err;
+        }
+        throw error;
+      }
     } while (cursor);
     return all;
   }
@@ -77,6 +114,12 @@ class AnnouncementService {
   }
 
   async markAsDeleted(pageId) {
+    const doc = await db.collection(this.collectionName).doc(pageId).get();
+    if (!doc.exists) {
+      const err = new Error("삭제할 공지사항을 찾을 수 없습니다");
+      err.status = 404;
+      throw err;
+    }
     const updateData = {isDeleted: true, updatedAt: new Date().toISOString()};
     await db.collection(this.collectionName).doc(pageId).update(updateData);
     return {id: pageId, ...updateData};
