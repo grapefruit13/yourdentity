@@ -3,26 +3,18 @@ const {buildNotionHeadersFromEnv, getNotionToken} = require("../utils/notionHelp
 
 class AnnouncementService {
   constructor() {
-    this.collectionName = "announcement";
+    this.collectionName = "announcements";
+    this.NOTION_API_TIMEOUT = 10000; // 10초
   }
 
-  async retrieveNotionPage(pageId) {
+  async fetchWithTimeout(url, options = {}) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), this.NOTION_API_TIMEOUT);
 
     try {
-      const resp = await fetch(
-          `https://api.notion.com/v1/pages/${pageId}`,
-          {method: "GET", headers: buildNotionHeadersFromEnv(), signal: controller.signal},
-      );
+      const resp = await fetch(url, {...options, signal: controller.signal});
       clearTimeout(timeoutId);
-      if (!resp.ok) {
-        const text = await resp.text();
-        const err = new Error(`노션 페이지 조회 실패: ${text}`);
-        err.status = resp.status;
-        throw err;
-      }
-      return resp.json();
+      return resp;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
@@ -34,57 +26,58 @@ class AnnouncementService {
     }
   }
 
+  async retrieveNotionPage(pageId) {
+    const resp = await this.fetchWithTimeout(
+        `https://api.notion.com/v1/pages/${pageId}`,
+        {method: "GET", headers: buildNotionHeadersFromEnv()},
+    );
+    if (!resp.ok) {
+      const text = await resp.text();
+      const err = new Error(`노션 페이지 조회 실패: ${text}`);
+      err.status = resp.status;
+      throw err;
+    }
+    return resp.json();
+  }
+
   async retrieveNotionBlocks(rootBlockId) {
     let cursor = null;
     const all = [];
     do {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      try {
-        const url = new URL(`https://api.notion.com/v1/blocks/${rootBlockId}/children`);
-        if (cursor) url.searchParams.set("start_cursor", cursor);
-        url.searchParams.set("page_size", "100");
-        const resp = await fetch(url.toString(), {
-          method: "GET",
-          headers: buildNotionHeadersFromEnv(),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (!resp.ok) {
-          const text = await resp.text();
-          const err = new Error(`노션 블록 조회 실패: ${text}`);
-          err.status = resp.status;
-          throw err;
-        }
-        const data = await resp.json();
-        for (const block of data.results || []) all.push(block);
-        cursor = data.next_cursor;
-      } catch (error) {
-        clearTimeout(timeoutId);
-        if (error.name === "AbortError") {
-          const err = new Error("노션 API 요청 시간 초과");
-          err.status = 504;
-          throw err;
-        }
-        throw error;
+      const url = new URL(`https://api.notion.com/v1/blocks/${rootBlockId}/children`);
+      if (cursor) url.searchParams.set("start_cursor", cursor);
+      url.searchParams.set("page_size", "100");
+      const resp = await this.fetchWithTimeout(url.toString(), {
+        method: "GET",
+        headers: buildNotionHeadersFromEnv(),
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        const err = new Error(`노션 블록 조회 실패: ${text}`);
+        err.status = resp.status;
+        throw err;
       }
+      const data = await resp.json();
+      for (const block of data.results || []) all.push(block);
+      cursor = data.next_cursor;
     } while (cursor);
     return all;
   }
 
   transformPageToAnnouncement(page, contentRich) {
     const props = page.properties || {};
-    const titleProp = props["이름"] || props["Name"] || props["title"];
+    // 실제 Notion 페이지 속성명 사용
+    const titleProp = props["이름"];
     const title = Array.isArray(titleProp?.title) && titleProp.title.length > 0 ?
         (titleProp.title[0].plain_text || titleProp.title[0]?.text?.content || "") :
         "";
-    const pinnedProp = props["pinned"] || props["Pinned"] || props["고정"];
+    const pinnedProp = props["고정"];
     const pinned = typeof pinnedProp?.checkbox === "boolean" ? pinnedProp.checkbox : null;
-    const startProp = props["startDate"] || props["Start date"] || props["시작일"] || props["start"];
-    const endProp = props["endDate"] || props["End date"] || props["종료일"] || props["end"];
+    // 실제 시작일/종료일 속성 사용
+    const startProp = props["시작일"];
+    const endProp = props["종료일"];
     const startIso = startProp?.date?.start || null;
-    const endIso = endProp?.date?.end || endProp?.date?.start || null;
+    const endIso = endProp?.date?.start || null;
 
     return {
       title,
