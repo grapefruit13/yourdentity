@@ -21,6 +21,7 @@ const tmiRoutes = require("./src/routes/tmi");
 const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
 const storeRoutes = require("./src/routes/store");
+const announcementRoutes = require("./src/routes/announcements");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -79,9 +80,10 @@ app.use(
 app.use(express.json());
 app.use(logger);
 
-if (process.env.NODE_ENV === "development") {
-  app.use(swaggerConfig.autoUpdateMiddleware);
-}
+// TODO: 자동 업데이트 미들웨어 히스토리 확인 필요
+// if (process.env.NODE_ENV === "development") {
+//   app.use(swaggerConfig.autoUpdateMiddleware);
+// }
 
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, async (req, res, next) => {
@@ -181,6 +183,7 @@ app.use("/tmis", tmiRoutes);
 app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
+app.use("/notion/announcements", announcementRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
