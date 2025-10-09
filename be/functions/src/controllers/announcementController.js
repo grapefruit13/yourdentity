@@ -39,7 +39,7 @@ exports.getAnnouncementList = async (req, res, next) => {
       data: result.data,
       pagination: {
         hasMore: result.hasMore,
-        lastDoc: result.lastDoc?.id,
+        cursor: result.cursor,
       },
     });
   } catch (error) {

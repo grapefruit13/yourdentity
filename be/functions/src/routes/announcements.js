@@ -13,13 +13,13 @@ const router = express.Router();
  *     parameters:
  *       - in: query
  *         name: limit
- *         description: 조회할 공지사항 개수 (기본값: 20)
+ *         description: "조회할 공지사항 개수 (기본값: 20)"
  *         schema:
  *           type: integer
  *           default: 20
  *       - in: query
  *         name: cursor
- *         description: 페이지네이션 커서 (이전 응답의 lastDoc 값 사용)
+ *         description: "페이지네이션 커서 (이전 응답의 cursor 값 사용)"
  *         schema:
  *           type: string
  *     responses:

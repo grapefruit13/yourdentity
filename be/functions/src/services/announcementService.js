@@ -129,7 +129,13 @@ class AnnouncementService {
         .limit(limit);
 
     if (cursor) {
-      query = query.startAfter(cursor);
+      const cursorDoc = await db.collection(this.collectionName).doc(cursor).get();
+      if (!cursorDoc.exists) {
+        const err = new Error("유효하지 않은 페이지네이션 커서입니다");
+        err.status = 400;
+        throw err;
+      }
+      query = query.startAfter(cursorDoc);
     }
 
     const snapshot = await query.get();
@@ -144,7 +150,7 @@ class AnnouncementService {
     return {
       data: announcements,
       hasMore: snapshot.docs.length === limit,
-      lastDoc: snapshot.docs[snapshot.docs.length - 1],
+      cursor: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1].id : null,
     };
   }
 
