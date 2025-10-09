@@ -23,7 +23,6 @@ const router = express.Router();
  *                 - id: "abc123def456"
  *                   title: "새로운 기능 업데이트 안내"
  *                   author: "user_123"
- *                   contentRich: []
  *                   pinned: true
  *                   startDate: "2024-01-01T00:00:00.000Z"
  *                   endDate: "2024-12-31T23:59:59.000Z"
@@ -33,7 +32,6 @@ const router = express.Router();
  *                 - id: "def456ghi789"
  *                   title: "서비스 점검 안내"
  *                   author: "user_456"
- *                   contentRich: []
  *                   pinned: false
  *                   startDate: null
  *                   endDate: null

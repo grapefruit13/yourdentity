@@ -90,9 +90,12 @@ class AnnouncementService {
 
     const announcements = [];
     snapshot.forEach((doc) => {
+      const data = doc.data();
+      // 목록 조회 시에는 contentRich 제외하여 성능 최적화
+      const {contentRich, ...listData} = data;
       announcements.push({
         id: doc.id,
-        ...doc.data(),
+        ...listData,
       });
     });
 
