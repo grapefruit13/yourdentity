@@ -1,10 +1,11 @@
-const { onRequest } = require("firebase-functions/v2/https");
+const {onRequest} = require("firebase-functions/v2/https");
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./src/config/swagger");
 
-const { admin } = require("./src/config/database");
+
+const {admin} = require("./src/config/database");
 
 // 미들웨어
 const logger = require("./src/middleware/logger");
@@ -57,20 +58,22 @@ const allowedOrigins = [
 ];
 
 app.use(
-  cors({
-    origin: (origin, callback) => {
+
+    cors({
+      origin: (origin, callback) => {
       // 개발 환경에서는 origin이 없는 요청도 허용
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log("CORS blocked origin:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          console.log("CORS blocked origin:", origin);
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    }),
+
 );
 
 app.use(express.json());
@@ -133,8 +136,8 @@ if (process.env.NODE_ENV === "development") {
       });
     } catch (error) {
       res
-        .status(500)
-        .json({ success: false, message: "Swagger 업데이트 실패" });
+          .status(500)
+          .json({success: false, message: "Swagger 업데이트 실패"});
     }
   });
 }
@@ -183,11 +186,13 @@ app.use("/comments", commentRoutes);
 app.use(errorHandler);
 
 exports.api = onRequest(
-  {
-    region: "asia-northeast3",
-    cors: true,
-  },
-  app
+
+    {
+      region: "asia-northeast3",
+      cors: true,
+    },
+    app,
+
 );
 
 // 1세대 Auth Triggers 내보내기
