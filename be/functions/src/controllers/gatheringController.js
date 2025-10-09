@@ -178,18 +178,13 @@ const applyToGathering = async (req, res) => {
   try {
     const {gatheringId} = req.params;
     const {
-      userId,
       selectedVariant = null,
       quantity = 1,
       customFieldsResponse = {},
     } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "userId는 필수입니다.",
-      });
-    }
+    // authGuard에서 검증된 사용자 ID 사용
+    const userId = req.user.uid;
 
     // 소모임 정보 조회
     const gathering = await firestoreService.getDocument(
@@ -308,7 +303,7 @@ const createQnA = async (req, res) => {
     const qnaData = {
       type: "GATHERING",
       targetId: gatheringId,
-      userId: "user123", // 하드코딩된 사용자 ID
+      userId: req.user.uid,
       content, // 원본 content 그대로 저장
       media,
       answerContent: null,
@@ -428,7 +423,7 @@ const createQnAAnswer = async (req, res) => {
     const updatedData = {
       answerContent: content,
       answerMedia: media,
-      answerUserId: "user123", // 하드코딩된 사용자 ID
+      answerUserId: req.user.uid,
       answerCreatedAt: new Date(),
       updatedAt: new Date(),
     };
@@ -474,7 +469,7 @@ const toggleQnALike = async (req, res) => {
         qnaId,
     );
     const userLike = existingLikes.find(
-        (like) => like.userId === "user123" && like.type === "QNA",
+        (like) => like.userId === req.user.uid && like.type === "QNA",
     );
     let isLiked = false;
 
@@ -493,7 +488,7 @@ const toggleQnALike = async (req, res) => {
       await firestoreService.addDocument("likes", {
         type: "QNA",
         targetId: qnaId,
-        userId: "user123",
+        userId: req.user.uid,
         createdAt: new Date(),
       });
       isLiked = true;
@@ -512,7 +507,7 @@ const toggleQnALike = async (req, res) => {
       success: true,
       data: {
         qnaId,
-        userId: "user123",
+        userId: req.user.uid,
         isLiked,
         likeCount: updatedQna.likesCount || 0,
       },
@@ -572,7 +567,7 @@ const toggleGatheringLike = async (req, res) => {
         gatheringId,
     );
     const userLike = existingLikes.find(
-        (like) => like.userId === "user123" && like.type === "GATHERING",
+        (like) => like.userId === req.user.uid && like.type === "GATHERING",
     );
 
     let isLiked = false;
@@ -592,7 +587,7 @@ const toggleGatheringLike = async (req, res) => {
       await firestoreService.addDocument("likes", {
         type: "GATHERING",
         targetId: gatheringId,
-        userId: "user123",
+        userId: req.user.uid,
         createdAt: new Date(),
       });
       isLiked = true;
@@ -611,7 +606,7 @@ const toggleGatheringLike = async (req, res) => {
       success: true,
       data: {
         gatheringId,
-        userId: "user123",
+        userId: req.user.uid,
         isLiked,
         likeCount: updatedGathering.likesCount || 0,
       },

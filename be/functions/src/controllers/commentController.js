@@ -28,9 +28,9 @@ const createComment = async (req, res) => {
       });
     }
 
-    // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
-    const userId = "user123"; // 고정값
-    const userNickname = "사용자닉네임"; // 고정값
+    // 사용자 인증 정보에서 유저 ID 추출
+    const userId = req.user.uid;
+    const userNickname = "사용자닉네임"; // TODO: 실제로는 사용자 정보에서 닉네임 조회
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
@@ -373,8 +373,8 @@ const updateComment = async (req, res) => {
       });
     }
 
-    // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
-    const userId = "user123"; // req.user.id 또는 JWT에서 추출
+    // 사용자 인증 정보에서 유저 ID 추출
+    const userId = req.user.uid;
 
     // 기존 댓글 조회
     const existingComment = await firestoreService.getDocument(
@@ -483,8 +483,8 @@ const deleteComment = async (req, res) => {
   try {
     const {commentId} = req.params;
 
-    // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
-    const userId = "user123"; // 고정값
+    // 사용자 인증 정보에서 유저 ID 추출
+    const userId = req.user.uid;
 
     // 기존 댓글 조회
     const existingComment = await firestoreService.getDocument(
@@ -567,7 +567,7 @@ const deleteComment = async (req, res) => {
 const toggleCommentLike = async (req, res) => {
   try {
     const {commentId} = req.params;
-    const userId = "user123"; // 하드코딩
+    const userId = req.user.uid;
 
     // 댓글 조회
     const comment = await firestoreService.getDocument("comments", commentId);

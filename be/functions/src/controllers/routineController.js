@@ -169,18 +169,13 @@ const applyToRoutine = async (req, res) => {
   try {
     const {routineId} = req.params;
     const {
-      userId,
       selectedVariant = null,
       quantity = 1,
       customFieldsResponse = {},
     } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "userId는 필수입니다.",
-      });
-    }
+    // authGuard에서 검증된 사용자 ID 사용
+    const userId = req.user.uid;
 
     // 루틴 정보 조회
     const routine = await firestoreService.getDocument("routines", routineId);
@@ -296,7 +291,7 @@ const createQnA = async (req, res) => {
     const qnaData = {
       type: "ROUTINE",
       targetId: routineId,
-      userId: "user123", // 하드코딩된 사용자 ID
+      userId: req.user.uid,
       content, // 원본 content 그대로 저장
       media,
       answerContent: null,
@@ -416,7 +411,7 @@ const createQnAAnswer = async (req, res) => {
     const updatedData = {
       answerContent: content,
       answerMedia: media,
-      answerUserId: "user123", // 하드코딩된 사용자 ID
+      answerUserId: req.user.uid,
       answerCreatedAt: new Date(),
       updatedAt: new Date(),
     };
@@ -462,7 +457,7 @@ const toggleQnALike = async (req, res) => {
         qnaId,
     );
     const userLike = existingLikes.find(
-        (like) => like.userId === "user123" && like.type === "QNA",
+        (like) => like.userId === req.user.uid && like.type === "QNA",
     );
     let isLiked = false;
 
@@ -481,7 +476,7 @@ const toggleQnALike = async (req, res) => {
       await firestoreService.addDocument("likes", {
         type: "QNA",
         targetId: qnaId,
-        userId: "user123",
+        userId: req.user.uid,
         createdAt: new Date(),
       });
       isLiked = true;
@@ -500,7 +495,7 @@ const toggleQnALike = async (req, res) => {
       success: true,
       data: {
         qnaId,
-        userId: "user123",
+        userId: req.user.uid,
         isLiked,
         likeCount: updatedQna.likesCount || 0,
       },
@@ -558,7 +553,7 @@ const toggleRoutineLike = async (req, res) => {
         routineId,
     );
     const userLike = existingLikes.find(
-        (like) => like.userId === "user123" && like.type === "ROUTINE",
+        (like) => like.userId === req.user.uid && like.type === "ROUTINE",
     );
 
     let isLiked = false;
@@ -578,7 +573,7 @@ const toggleRoutineLike = async (req, res) => {
       await firestoreService.addDocument("likes", {
         type: "ROUTINE",
         targetId: routineId,
-        userId: "user123",
+        userId: req.user.uid,
         createdAt: new Date(),
       });
       isLiked = true;
@@ -600,7 +595,7 @@ const toggleRoutineLike = async (req, res) => {
       success: true,
       data: {
         routineId,
-        userId: "user123",
+        userId: req.user.uid,
         isLiked,
         likeCount: updatedRoutine.likesCount || 0,
       },

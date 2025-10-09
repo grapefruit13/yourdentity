@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const routineController = require("../controllers/routineController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -555,7 +556,7 @@ router.get("/:routineId", routineController.getRoutineById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/apply", routineController.applyForRoutine);
+router.post("/:routineId/apply", authGuard, routineController.applyForRoutine);
 
 // 루틴 좋아요 토글
 /**
@@ -593,7 +594,7 @@ router.post("/:routineId/apply", routineController.applyForRoutine);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/like", routineController.toggleRoutineLike);
+router.post("/:routineId/like", authGuard, routineController.toggleRoutineLike);
 
 // 루틴 QnA 작성
 /**
@@ -693,7 +694,7 @@ router.post("/:routineId/like", routineController.toggleRoutineLike);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/qna", routineController.createQnA);
+router.post("/:routineId/qna", authGuard, routineController.createQnA);
 
 // 루틴 QnA 수정
 /**
@@ -799,7 +800,7 @@ router.post("/:routineId/qna", routineController.createQnA);
  *       500:
  *         description: 서버 오류
  */
-router.put("/:routineId/qna/:qnaId", routineController.updateQnA);
+router.put("/:routineId/qna/:qnaId", authGuard, routineController.updateQnA);
 
 // 루틴 QnA 답변 작성
 /**
@@ -882,7 +883,7 @@ router.put("/:routineId/qna/:qnaId", routineController.updateQnA);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/answer", routineController.createQnAAnswer);
+router.post("/qna/:qnaId/answer", authGuard, routineController.createQnAAnswer);
 
 // 루틴 QnA 좋아요 토글
 /**
@@ -920,7 +921,7 @@ router.post("/qna/:qnaId/answer", routineController.createQnAAnswer);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/like", routineController.toggleQnALike);
+router.post("/qna/:qnaId/like", authGuard, routineController.toggleQnALike);
 
 // 루틴 QnA 삭제
 /**

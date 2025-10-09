@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const communityController = require("../controllers/communityController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -728,7 +729,7 @@ router.get("/:communityId/posts", communityController.getCommunityPosts);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:communityId/posts", communityController.createPost);
+router.post("/:communityId/posts", authGuard, communityController.createPost);
 
 // 커뮤니티 게시글 상세 조회
 /**
@@ -993,7 +994,7 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *       500:
  *         description: 서버 오류
  */
-router.put("/:communityId/posts/:postId", communityController.updatePost);
+router.put("/:communityId/posts/:postId", authGuard, communityController.updatePost);
 
 // 커뮤니티 게시글 삭제
 /**
@@ -1026,7 +1027,7 @@ router.put("/:communityId/posts/:postId", communityController.updatePost);
  *       500:
  *         description: 서버 오류
  */
-router.delete("/:communityId/posts/:postId", communityController.deletePost);
+router.delete("/:communityId/posts/:postId", authGuard, communityController.deletePost);
 
 // 커뮤니티 게시글 좋아요 토글
 /**
@@ -1076,6 +1077,7 @@ router.delete("/:communityId/posts/:postId", communityController.deletePost);
  */
 router.post(
     "/:communityId/posts/:postId/like",
+    authGuard,
     communityController.togglePostLike,
 );
 

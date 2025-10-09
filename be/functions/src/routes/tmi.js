@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const tmiController = require("../controllers/tmiController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -628,7 +629,7 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:projectId/apply", tmiController.applyToTmiProject);
+router.post("/:projectId/apply", authGuard, tmiController.applyToTmiProject);
 
 // TMI 프로젝트 좋아요 토글
 /**
@@ -677,7 +678,7 @@ router.post("/:projectId/apply", tmiController.applyToTmiProject);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:projectId/like", tmiController.toggleTmiProjectLike);
+router.post("/:projectId/like", authGuard, tmiController.toggleTmiProjectLike);
 
 // TMI 프로젝트 QnA 작성
 /**
@@ -756,7 +757,7 @@ router.post("/:projectId/like", tmiController.toggleTmiProjectLike);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:projectId/qna", tmiController.createQnA);
+router.post("/:projectId/qna", authGuard, tmiController.createQnA);
 
 // TMI 프로젝트 QnA 수정
 /**
@@ -820,7 +821,7 @@ router.post("/:projectId/qna", tmiController.createQnA);
  *       500:
  *         description: 서버 오류
  */
-router.put("/:projectId/qna/:qnaId", tmiController.updateQnA);
+router.put("/:projectId/qna/:qnaId", authGuard, tmiController.updateQnA);
 
 // TMI 프로젝트 QnA 답변 작성
 /**
@@ -860,7 +861,7 @@ router.put("/:projectId/qna/:qnaId", tmiController.updateQnA);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/answer", tmiController.createQnAAnswer);
+router.post("/qna/:qnaId/answer", authGuard, tmiController.createQnAAnswer);
 
 // TMI 프로젝트 QnA 좋아요 토글
 /**
@@ -909,7 +910,7 @@ router.post("/qna/:qnaId/answer", tmiController.createQnAAnswer);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/like", tmiController.toggleQnALike);
+router.post("/qna/:qnaId/like", authGuard, tmiController.toggleQnALike);
 
 // TMI 프로젝트 QnA 삭제
 /**
