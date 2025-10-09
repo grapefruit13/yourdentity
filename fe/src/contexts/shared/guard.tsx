@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { onAuthStateChange } from "@/lib/auth";
@@ -11,9 +11,11 @@ import { onAuthStateChange } from "@/lib/auth";
 export const AuthGuard = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user) => {
+      setIsChecking(false);
       if (!user && pathname !== LINK_URL.LOGIN) {
         router.replace(LINK_URL.LOGIN);
       }
@@ -21,6 +23,9 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
+  if (isChecking) {
+    return <div>Loading...</div>;
+  }
   return <>{children}</>;
 };
 
@@ -30,9 +35,11 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
 export const GuestGuard = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user) => {
+      setIsChecking(false);
       if (user && pathname !== LINK_URL.HOME) {
         router.replace(LINK_URL.HOME);
       }
@@ -40,5 +47,8 @@ export const GuestGuard = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
+  if (isChecking) {
+    return <div>Loading...</div>;
+  }
   return <>{children}</>;
 };
