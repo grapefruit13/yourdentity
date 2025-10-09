@@ -32,8 +32,16 @@ exports.softDeleteAnnouncement = async (req, res, next) => {
 
 exports.getAnnouncementList = async (req, res, next) => {
   try {
-    const announcements = await announcementService.getAnnouncementList();
-    return res.status(200).json({status: 200, data: announcements});
+    const { limit = 20, cursor } = req.query;
+    const result = await announcementService.getAnnouncementList(parseInt(limit), cursor);
+    return res.status(200).json({
+      status: 200, 
+      data: result.data,
+      pagination: {
+        hasMore: result.hasMore,
+        lastDoc: result.lastDoc?.id,
+      }
+    });
   } catch (error) {
     return next(error);
   }

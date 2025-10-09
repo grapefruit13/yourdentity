@@ -118,16 +118,21 @@ class AnnouncementService {
     return {id: pageId, ...updateData};
   }
 
-  async getAnnouncementList() {
+  async getAnnouncementList(limit = 20, cursor = null) {
     // contentRich 필드를 제외하고 필요한 필드만 조회하여 성능 최적화
     // pinned 필드로 정렬하여 고정된 공지사항이 상단에 표시됨
-    const snapshot = await db.collection(this.collectionName)
+    let query = db.collection(this.collectionName)
         .where("isDeleted", "==", false)
         .orderBy("pinned", "desc")
         .orderBy("createdAt", "desc")
         .select("title", "author", "pinned", "startDate", "endDate", "createdAt", "updatedAt", "isDeleted")
-        .get();
+        .limit(limit);
 
+    if (cursor) {
+      query = query.startAfter(cursor);
+    }
+
+    const snapshot = await query.get();
     const announcements = [];
     snapshot.forEach((doc) => {
       announcements.push({
@@ -136,7 +141,11 @@ class AnnouncementService {
       });
     });
 
-    return announcements;
+    return {
+      data: announcements,
+      hasMore: snapshot.docs.length === limit,
+      lastDoc: snapshot.docs[snapshot.docs.length - 1],
+    };
   }
 
   async getAnnouncementDetail(pageId) {

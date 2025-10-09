@@ -13,7 +13,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "isDeleted", "order": "ASCENDING" },
-        { "fieldPath": "pinned", "order": "ASCENDING" },
+        { "fieldPath": "pinned", "order": "DESCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }

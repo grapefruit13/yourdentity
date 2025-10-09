@@ -8,8 +8,20 @@ const router = express.Router();
  * /notion/announcements:
  *   get:
  *     summary: 공지사항 목록 조회
- *     description: 삭제되지 않은 공지사항 목록을 조회합니다. 고정된 공지사항이 상단에 표시됩니다.
+ *     description: 삭제되지 않은 공지사항 목록을 조회합니다. 고정된 공지사항이 상단에 표시됩니다. 페이지네이션을 지원합니다.
  *     tags: [Announcements]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         description: 조회할 공지사항 개수 (기본값: 20)
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: cursor
+ *         description: 페이지네이션 커서 (이전 응답의 lastDoc 값 사용)
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: 공지사항 목록 조회 성공
