@@ -47,7 +47,7 @@ async createReport(reportData) {
       reviewedBy: null,
       reviewedAt: null,
       memo: null,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString(),
       firebaseUpdatedAt: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString()
     };
 
@@ -71,17 +71,22 @@ async createReport(reportData) {
   }
 }
 
+
 /**
- * 중복 신고 체크
+ * 동일 신고(중복 신고) 여부 체크
  */
 async checkDuplicateReport(reporterId, targetType, targetId) {
   const snapshot = await db.collection("reports")
     .where("reporterId", "==", reporterId)
+    .where("targetType", "==", targetType)
+    .where("targetId", "==", targetId)
+    .limit(1) //첫 번째 일치 문서만 조회
     .get();
 
-  return snapshot.docs
-    .map(doc => ({ id: doc.id, ...doc.data() }))
-    .find(report => report.targetType === targetType && report.targetId === targetId);
+  // 문서가 없으면 null 반환
+  return snapshot.empty
+    ? null
+    : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
 }
 
 /**
@@ -114,21 +119,32 @@ async validateTargetExists(targetType, targetId, communityId) {
 
 /**
  * 사용자 신고 목록 조회 (cursor 기반 페이지네이션)
+ * + Firestore -> Reports컬렉션 Index추가(reporterId, createdAt, _name_)
+ * {
+    "reporterId": "2JJJUVyFPyRRRiyOgGfEqIZS3123",  
+    "size": 1,
+    "lastCreatedAt": "2025-10-09T12:06:22.296Z"  -> 다음 페이지를 조회하는 경우만 요청
+  }
  */
-async getUserReports(reporterId, { page = 0, size = 10 }) {
-  // reporterId로 필터링 (orderBy 없이)
-  const snapshot = await db.collection("reports")
+async getUserReports(reporterId, { size = 10, lastCreatedAt }) {
+  let query = db.collection("reports")
     .where("reporterId", "==", reporterId)
-    .get();  // 전체 데이터 가져오기
+    .orderBy("createdAt", "desc") // 최신 순 정렬
+    .limit(size);
 
-  const allReports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (lastCreatedAt) {
+    query = query.startAfter(lastCreatedAt); // 커서 적용
+  }
 
-  // 페이지와 사이즈 기준으로 자르기
-  const startIndex = page * size;
-  const pagedReports = allReports.slice(startIndex, startIndex + size);
+  const snapshot = await query.get();
+  const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  return pagedReports;
+  const hasMore = snapshot.docs.length === size;
+  const nextCursor = hasMore ? reports[reports.length - 1].createdAt : null;
+
+  return { reports, hasMore, nextCursor };
 }
+
 
 
 /**
@@ -370,7 +386,6 @@ async syncAllReportsToFirebase() {
       // 이미 존재하면 첫 번째 문서 업데이트
       const docRef = querySnapshot.docs[0].ref;
       // Firebase에 notionUpdatedAt 추가
-      //report.notionUpdatedAt = report.notionUpdatedAt;
       batch.set(docRef, report, { merge: true });
 
        //Firebase에 업데이트된 경우, 노션의 "동기화 시간" 갱신
