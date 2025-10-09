@@ -1,10 +1,19 @@
 {
   "indexes": [
     {
-      "collectionGroup": "announcement",
+      "collectionGroup": "announcements",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "announcements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "pinned", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }

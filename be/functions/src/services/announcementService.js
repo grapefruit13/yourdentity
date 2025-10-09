@@ -120,8 +120,10 @@ class AnnouncementService {
 
   async getAnnouncementList() {
     // contentRich 필드를 제외하고 필요한 필드만 조회하여 성능 최적화
+    // pinned 필드로 정렬하여 고정된 공지사항이 상단에 표시됨
     const snapshot = await db.collection(this.collectionName)
         .where("isDeleted", "==", false)
+        .orderBy("pinned", "desc")
         .orderBy("createdAt", "desc")
         .select("title", "author", "pinned", "startDate", "endDate", "createdAt", "updatedAt", "isDeleted")
         .get();
@@ -134,11 +136,7 @@ class AnnouncementService {
       });
     });
 
-    // pinned=true인 항목들을 상위로 이동
-    const pinned = announcements.filter((item) => item.pinned === true);
-    const unpinned = announcements.filter((item) => item.pinned !== true);
-
-    return [...pinned, ...unpinned];
+    return announcements;
   }
 
   async getAnnouncementDetail(pageId) {
