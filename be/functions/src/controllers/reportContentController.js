@@ -95,7 +95,7 @@ class ReportContentController {
       const reporterId = req.user.uid; // 인증된 사용자 ID
       const { size = 10, lastCreatedAt } = req.body;
 
-      const result = await reportContentService.getUserReports(reporterId, {
+      const result = await reportContentService.getReportsByReporter(reporterId, {
         size: parseInt(size),
         lastCreatedAt,
       });
