@@ -42,6 +42,10 @@ const options = {
         name: "Announcements",
         description: "공지사항 관련 API",
       },
+      {
+        name: "FAQs",
+        description: "FAQ 관련 API",
+      },
     ],
     servers: [
       {

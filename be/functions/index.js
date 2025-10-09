@@ -22,6 +22,7 @@ const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
 const storeRoutes = require("./src/routes/store");
 const announcementRoutes = require("./src/routes/announcements");
+const faqRoutes = require("./src/routes/faqs");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -184,6 +185,7 @@ app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
 app.use("/notion/announcements", announcementRoutes);
+app.use("/faqs", faqRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
