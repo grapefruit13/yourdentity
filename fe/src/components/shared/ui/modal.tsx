@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { Typography } from "@/components/shared/typography";
 
 interface ModalProps {
@@ -44,26 +44,57 @@ const Modal: React.FC<ModalProps> = ({
   confirmDisabled = false,
   variant = "primary",
 }) => {
+  const previousOverflow = useRef<string>("");
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  // 이전 포커스 요소 저장 (모달 열릴 때)
+  useEffect(() => {
+    if (!isOpen) return;
+    previouslyFocusedElementRef.current =
+      document.activeElement as HTMLElement | null;
+  }, [isOpen]);
+
+  // 모달 닫기 핸들러 (포커스 복원)
+  const handleClose = useCallback(() => {
+    onClose();
+    // 모달이 닫힌 후 이전 포커스 요소로 복원
+    requestAnimationFrame(() => {
+      const target = previouslyFocusedElementRef.current;
+      if (target && typeof target.focus === "function") {
+        target.focus();
+      }
+    });
+  }, [onClose]);
+
+  // Body 스크롤 방지 (모달 열릴 때)
+  useEffect(() => {
+    if (isOpen) {
+      previousOverflow.current = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        document.body.style.overflow = previousOverflow.current;
+      };
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow.current;
+    };
+  }, [isOpen]);
+
   // Escape 키로 모달 닫기
   useEffect(() => {
     if (!isOpen) return;
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
-        // ESC로 닫을 때 트리거 버튼의 포커스 링 제거
-        requestAnimationFrame(() => {
-          const activeElement = document.activeElement as HTMLElement;
-          if (activeElement && activeElement.blur) {
-            activeElement.blur();
-          }
-        });
+        handleClose();
       }
     };
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
 
@@ -83,7 +114,7 @@ const Modal: React.FC<ModalProps> = ({
       {/* 오버레이: #000 60% 투명도 */}
       <div
         className="absolute inset-0 bg-black/60"
-        onClick={onClose}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
@@ -127,7 +158,7 @@ const Modal: React.FC<ModalProps> = ({
         <div className="flex gap-3">
           {/* 취소 버튼 */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={`flex-1 rounded-xl border-2 bg-white px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
             aria-label={cancelText}
           >
