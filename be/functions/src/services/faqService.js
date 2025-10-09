@@ -3,16 +3,19 @@ const {buildNotionHeadersFromEnv} = require("../utils/notionHelper");
 class FaqService {
   constructor() {
     this.databaseId = process.env.NOTION_FAQ_DATABASE_ID;
+    this.dataSourceId = process.env.NOTION_FAQ_DATA_SOURCE_ID;
     this.baseUrl = "https://api.notion.com/v1";
     this.NOTION_API_TIMEOUT = 10000; // 10초
   }
 
-  async fetchWithRetry(url, options = {}, attempt = 1) {
+  async fetchWithTimeout(url, options = {}) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.NOTION_API_TIMEOUT);
-    let res;
+
     try {
-      res = await fetch(url, {...options, signal: controller.signal});
+      const resp = await fetch(url, {...options, signal: controller.signal});
+      clearTimeout(timeoutId);
+      return resp;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
@@ -22,24 +25,20 @@ class FaqService {
       }
       throw error;
     }
-    clearTimeout(timeoutId);
-    if (res.status !== 429 || attempt >= 3) return res;
-
-    const retryAfter = res.headers.get("retry-after");
-    const delayMs = Math.max(200, Math.floor(Number(retryAfter || 0) * 1000) || 400 * attempt);
-    await new Promise((r) => setTimeout(r, delayMs));
-    return this.fetchWithRetry(url, options, attempt + 1);
   }
 
   async queryFaqList({category, pageSize = 20, startCursor} = {}) {
-    if (!this.databaseId) {
-      const e = new Error("노션 FAQ 데이터베이스 ID가 설정되지 않았습니다");
-      e.code = "BAD_REQUEST";
-      throw e;
+    if (!this.dataSourceId) {
+      const err = new Error("노션 FAQ 데이터 소스 ID가 설정되지 않았습니다");
+      err.status = 500;
+      err.code = "MISSING_CONFIG";
+      throw err;
     }
 
-    const url = `${this.baseUrl}/databases/${this.databaseId}/query`;
+    const url = `${this.baseUrl}/data_sources/${this.dataSourceId}/query`;
     const headers = buildNotionHeadersFromEnv();
+    
+    console.log(`[FAQ 서비스] FAQ 목록 조회 중 - 카테고리: ${category}, 페이지 크기: ${pageSize}`);
 
     const body = {};
 
@@ -56,26 +55,30 @@ class FaqService {
     }
     if (startCursor) body.start_cursor = String(startCursor);
 
-    const res = await this.fetchWithRetry(url, {
+    const resp = await this.fetchWithTimeout(url, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      const e = new Error(`노션 FAQ 목록 조회 실패: ${text}`);
-      e.status = res.status;
-      throw e;
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error(`[FAQ 서비스] FAQ 목록 조회 실패: ${resp.status} - ${text}`);
+      const err = new Error(`노션 FAQ 목록 조회 실패: ${text}`);
+      err.status = resp.status;
+      throw err;
     }
-    return await res.json();
+    
+    console.log(`[FAQ 서비스] FAQ 목록 조회 성공`);
+    return resp.json();
   }
 
   async getPageBlocks({pageId, pageSize = 50, startCursor}) {
     if (!pageId) {
-      const e = new Error("pageId is required");
-      e.code = "BAD_REQUEST";
-      throw e;
+      const err = new Error("pageId is required");
+      err.status = 400;
+      err.code = "MISSING_PARAMETER";
+      throw err;
     }
 
     const headers = buildNotionHeadersFromEnv();
@@ -88,15 +91,20 @@ class FaqService {
     if (startCursor) searchParams.set("start_cursor", String(startCursor));
 
     const url = `${this.baseUrl}/blocks/${pageId}/children${searchParams.size ? `?${searchParams.toString()}` : ""}`;
+    
+    console.log(`[FAQ 서비스] 페이지 블록 조회 중 - 페이지 ID: ${pageId}`);
 
-    const res = await this.fetchWithRetry(url, {method: "GET", headers});
-    if (!res.ok) {
-      const text = await res.text();
-      const e = new Error(`노션 블록 조회 실패: ${text}`);
-      e.status = res.status;
-      throw e;
+    const resp = await this.fetchWithTimeout(url, {method: "GET", headers});
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error(`[FAQ 서비스] 페이지 블록 조회 실패: ${resp.status} - ${text}`);
+      const err = new Error(`노션 블록 조회 실패: ${text}`);
+      err.status = resp.status;
+      throw err;
     }
-    return await res.json();
+    
+    console.log(`[FAQ 서비스] 페이지 블록 조회 성공 - 페이지 ID: ${pageId}`);
+    return resp.json();
   }
 }
 
