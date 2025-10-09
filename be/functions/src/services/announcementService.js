@@ -7,7 +7,10 @@ class AnnouncementService {
   }
 
   async retrieveNotionPage(pageId) {
-    const resp = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {method: "GET", headers: buildNotionHeadersFromEnv()});
+    const resp = await fetch(
+        `https://api.notion.com/v1/pages/${pageId}`,
+        {method: "GET", headers: buildNotionHeadersFromEnv()},
+    );
     if (!resp.ok) {
       const text = await resp.text();
       const err = new Error(`노션 페이지 조회 실패: ${text}`);
@@ -36,11 +39,13 @@ class AnnouncementService {
   transformPageToAnnouncement(page, contentRich) {
     const props = page.properties || {};
     const titleProp = props["이름"] || props["Name"] || props["title"];
-    const title = Array.isArray(titleProp?.title) && titleProp.title.length > 0 ? (titleProp.title[0].plain_text || titleProp.title[0]?.text?.content || "") : "";
+    const title = Array.isArray(titleProp?.title) && titleProp.title.length > 0 ?
+        (titleProp.title[0].plain_text || titleProp.title[0]?.text?.content || "") :
+        "";
     const pinnedProp = props["pinned"] || props["Pinned"] || props["고정"];
     const pinned = typeof pinnedProp?.checkbox === "boolean" ? pinnedProp.checkbox : null;
-    const startProp = props["startDate"] || props["Start date"] || props["시작일"] || props["start"]; 
-    const endProp = props["endDate"] || props["End date"] || props["종료일"] || props["end"]; 
+    const startProp = props["startDate"] || props["Start date"] || props["시작일"] || props["start"];
+    const endProp = props["endDate"] || props["End date"] || props["종료일"] || props["end"];
     const startIso = startProp?.date?.start || null;
     const endIso = endProp?.date?.end || endProp?.date?.start || null;
 
@@ -79,10 +84,10 @@ class AnnouncementService {
 
   async getAnnouncementList() {
     const snapshot = await db.collection(this.collectionName)
-      .where("isDeleted", "==", false)
-      .orderBy("createdAt", "desc")
-      .get();
-    
+        .where("isDeleted", "==", false)
+        .orderBy("createdAt", "desc")
+        .get();
+
     const announcements = [];
     snapshot.forEach((doc) => {
       announcements.push({
@@ -92,15 +97,15 @@ class AnnouncementService {
     });
 
     // pinned=true인 항목들을 상위로 이동
-    const pinned = announcements.filter(item => item.pinned === true);
-    const unpinned = announcements.filter(item => item.pinned !== true);
-    
+    const pinned = announcements.filter((item) => item.pinned === true);
+    const unpinned = announcements.filter((item) => item.pinned !== true);
+
     return [...pinned, ...unpinned];
   }
 
   async getAnnouncementDetail(pageId) {
     const doc = await db.collection(this.collectionName).doc(pageId).get();
-    
+
     if (!doc.exists) {
       const err = new Error("공지사항을 찾을 수 없습니다");
       err.status = 404;
