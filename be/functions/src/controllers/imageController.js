@@ -52,6 +52,15 @@ class ImageController {
       };
 
       busboy.on("file", async (fieldname, file, info) => {
+        // 파일 크기 제한 초과 시 처리
+        file.on("limit", () => {
+          file.destroy();
+          sendResponse(413, {
+            success: false,
+            error: "File too large. Maximum size is 10 MB",
+          });
+        });
+
         if (uploadStarted || responseSent) {
           file.destroy();
           return;
@@ -115,7 +124,7 @@ class ImageController {
           success: false,
           error: "Upload timeout",
         });
-      }, 8000);
+      }, 30000); // 8초 → 30초로 변경 (느린 네트워크 환경 고려)
 
       busboy.on("finish", () => {
         clearTimeout(timeout);
