@@ -38,6 +38,10 @@ const options = {
         description:
           "커뮤니티 통합 관리 API (전체 포스트 조회, 루틴 인증글, 소모임 후기글, TMI 소개글)",
       },
+      {
+        name: "Announcements",
+        description: "공지사항 관련 API",
+      },
     ],
     servers: [
       {
@@ -1753,6 +1757,146 @@ const options = {
               type: "integer",
               description: "좋아요 수",
               example: 3,
+            },
+          },
+        },
+        Announcement: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "공지사항 ID (Notion 페이지 ID)",
+              example: "abc123def456",
+            },
+            title: {
+              type: "string",
+              description: "공지사항 제목",
+              example: "새로운 기능 업데이트 안내",
+            },
+            author: {
+              type: "string",
+              nullable: true,
+              description: "작성자 ID",
+              example: "user_123",
+            },
+            contentRich: {
+              type: "array",
+              description: "노션 블록 형태의 상세 내용",
+              items: {
+                type: "object",
+                description: "노션 블록 객체",
+              },
+            },
+            pinned: {
+              type: "boolean",
+              nullable: true,
+              description: "고정 여부",
+              example: false,
+            },
+            startDate: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "공지 시작일",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            endDate: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "공지 종료일",
+              example: "2024-12-31T23:59:59.000Z",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "생성일시",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "수정일시",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            isDeleted: {
+              type: "boolean",
+              description: "삭제 여부",
+              example: false,
+            },
+          },
+        },
+        AnnouncementListResponse: {
+          type: "object",
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
+            },
+            data: {
+              type: "array",
+              description: "공지사항 목록",
+              items: {
+                $ref: "#/components/schemas/Announcement",
+              },
+            },
+          },
+        },
+        AnnouncementDetailResponse: {
+          type: "object",
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
+            },
+            data: {
+              $ref: "#/components/schemas/Announcement",
+            },
+          },
+        },
+        AnnouncementSyncResponse: {
+          type: "object",
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
+            },
+            data: {
+              $ref: "#/components/schemas/Announcement",
+            },
+          },
+        },
+        AnnouncementDeleteResponse: {
+          type: "object",
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
+            },
+            data: {
+              type: "object",
+              properties: {
+                id: {
+                  type: "string",
+                  description: "공지사항 ID",
+                  example: "abc123def456",
+                },
+                isDeleted: {
+                  type: "boolean",
+                  description: "삭제 여부",
+                  example: true,
+                },
+                updatedAt: {
+                  type: "string",
+                  format: "date-time",
+                  description: "수정일시",
+                  example: "2024-01-01T00:00:00.000Z",
+                },
+              },
             },
           },
         },
