@@ -370,7 +370,7 @@ async syncAllReportsToFirebase() {
       // 이미 존재하면 첫 번째 문서 업데이트
       const docRef = querySnapshot.docs[0].ref;
       // Firebase에 notionUpdatedAt 추가
-      report.notionUpdatedAt = report.notionUpdatedAt;
+      //report.notionUpdatedAt = report.notionUpdatedAt;
       batch.set(docRef, report, { merge: true });
 
        //Firebase에 업데이트된 경우, 노션의 "동기화 시간" 갱신

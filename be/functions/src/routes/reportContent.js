@@ -1,6 +1,6 @@
 const express = require("express");
 const reportContentController = require("../controllers/reportContentController");
-//const authGuard = require("../middleware/authGuard");
+const authGuard = require("../middleware/authGuard");
 
 
 
@@ -273,7 +273,8 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *       500:
  *         description: 서버 오류
  */
-router.post("/my", reportContentController.getMyReports);
+//router.post("/my", reportContentController.getMyReports);
+router.post("/my", authGuard, reportContentController.getMyReports);
 
 /**
  * @swagger
