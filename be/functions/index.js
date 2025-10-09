@@ -77,9 +77,9 @@ app.use(
 app.use(express.json());
 app.use(logger);
 
-if (process.env.NODE_ENV === "development") {
-  app.use(swaggerConfig.autoUpdateMiddleware);
-}
+// if (process.env.NODE_ENV === "development") {
+//   app.use(swaggerConfig.autoUpdateMiddleware);
+// }
 
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, async (req, res, next) => {
