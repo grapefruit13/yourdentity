@@ -224,6 +224,7 @@ router.post("/", reportContentController.createReport);
 // 노션 → Firebase 동기화 라우트 추가
 router.get("/syncNotionReports", reportContentController.syncNotionReports);
 
+
 /**
  * @swagger
  * /reports/my:
@@ -335,21 +336,36 @@ router.post("/my", authGuard, reportContentController.getMyReports);
 
 /**
  * @swagger
- * /reports/{reportId}:
+ * /reports/detail:
  *   get:
- *     summary: 신고 상세 조회
- *     description: 특정 신고의 상세 정보를 조회합니다.
+ *     summary: Notion 신고 상세 조회
+ *     description: 신고 타입, 콘텐츠 ID, 작성자 ID를 기준으로 Notion에서 해당 신고 정보를 조회합니다.
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: reportId
+ *       - in: query
+ *         name: targetType
  *         required: true
  *         schema:
  *           type: string
- *         description: 신고 ID
- *         example: "report_123"
+ *           enum: [post, comment]
+ *         description: 신고 대상 타입 (게시글 또는 댓글)
+ *         example: "post"
+ *       - in: query
+ *         name: targetId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 신고 대상 콘텐츠 ID
+ *         example: "community_abc123"
+ *       - in: query
+ *         name: reporterId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 신고자 ID
+ *         example: "user_456"
  *     responses:
  *       200:
  *         description: 신고 상세 조회 성공
@@ -362,15 +378,36 @@ router.post("/my", authGuard, reportContentController.getMyReports);
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   $ref: '#/components/schemas/Report'
+ *                   type: object
+ *                   description: 신고 상세 데이터 (Notion 데이터베이스에서 가져온 정보)
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "notion_page_abc123"
+ *                     targetType:
+ *                       type: string
+ *                       example: "post"
+ *                     targetId:
+ *                       type: string
+ *                       example: "community_abc123"
+ *                     reporterId:
+ *                       type: string
+ *                       example: "user_456"
+ *                     status:
+ *                       type: string
+ *                       example: "resolved"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-09T09:00:00Z"
  *       404:
- *         description: 신고를 찾을 수 없음
+ *         description: 해당 조건에 맞는 신고를 찾을 수 없음
  *       401:
  *         description: 인증 필요
  *       500:
  *         description: 서버 오류
  */
-router.get("/:reportId", reportContentController.getReportById);
+router.get("/", reportContentController.getReportById);
 
 
 module.exports = router;
