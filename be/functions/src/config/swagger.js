@@ -230,6 +230,17 @@ const options = {
             },
           },
         },
+        FileUpload: {
+          type: "object",
+          required: ["file"],
+          properties: {
+            file: {
+              type: "string",
+              format: "binary",
+              description: "업로드할 파일 (multipart/form-data)",
+            },
+          },
+        },
         Image: {
           type: "object",
           required: ["url", "order"],
@@ -1764,10 +1775,7 @@ const options = {
       },
     ],
   },
-  apis: [
-    "./src/routes/*.js",
-    "./src/docs/*.js",
-  ],
+  apis: ["./src/routes/*.js", "./src/docs/*.js"],
 };
 
 // 기본 Swagger 스펙 생성
