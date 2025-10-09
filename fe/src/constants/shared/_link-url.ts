@@ -1,4 +1,6 @@
 export const LINK_URL = {
+  ROOT: "/",
+  HOME: "/home",
   LOGIN: "/login",
   KAKAO_LOGIN: "/kakao-login",
   EMAIL_LOGIN: "/email-login",
@@ -7,5 +9,7 @@ export const LINK_URL = {
   FIND_PASSWORD: "/find-password",
   EMAIL_SIGNUP: "/signup/email",
   MISSION: "/mission",
+  COMMUNITY: "/community",
   DOWNLOAD: "/download",
+  MY_PAGE: "/my-page",
 };

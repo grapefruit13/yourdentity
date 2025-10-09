@@ -11,9 +11,7 @@ export default function MainLayout({
   return (
     <div className="flex min-h-[100dvh] w-full flex-col">
       <TopBar />
-      <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
-        {children}
-      </main>
+      <main className="flex w-full flex-1 flex-col">{children}</main>
       <BottomNavigation />
     </div>
   );
