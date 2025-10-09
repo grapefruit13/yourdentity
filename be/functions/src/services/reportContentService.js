@@ -26,7 +26,6 @@ async createReport(reportData) {
       reportReason 
     } = reportData;
 
-    const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
     // 1. 중복 신고 체크
     const existingReport = await this.checkDuplicateReport(reporterId, targetType, targetId);
@@ -49,8 +48,8 @@ async createReport(reportData) {
       reviewedBy: null,
       reviewedAt: null,
       memo: null,
-      createdAt: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString(),
-      notionUpdatedAt: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString()
+      createdAt: new Date().toISOString(),
+      notionUpdatedAt: new Date().toISOString()
     };
 
     // 4. Notion에 직접 저장
@@ -63,7 +62,6 @@ async createReport(reportData) {
       message: "신고가 정상적으로 접수되었습니다 (Notion에 저장됨)."
     };
 
-    return savedReport;
   } catch (error) {
     console.error("Create report error:", error);
     throw error;
@@ -148,25 +146,67 @@ async validateTargetExists(targetType, targetId, communityId) {
     "lastCreatedAt": "2025-10-09T12:06:22.296Z"  -> 다음 페이지를 조회하는 경우만 요청
   }
  */
-async getUserReports(reporterId, { size = 10, lastCreatedAt }) {
-  let query = db.collection("reports")
-    .where("reporterId", "==", reporterId)
-    .orderBy("createdAt", "desc") // 최신 순 정렬
-    .limit(size);
+async getReportsByReporter(reporterId, { size = 10, cursor }) {
+  try {
+    const body = {
+      filter: {
+        property: '신고자ID',
+        rich_text: { equals: reporterId }
+      },
+      sorts: [
+        { property: '신고일시', direction: 'descending' } // 최신 순 정렬
+      ],
+      page_size: size
+    };
 
-  if (lastCreatedAt) {
-    query = query.startAfter(lastCreatedAt); // 커서 적용
+    if (cursor) {
+      body.start_cursor = cursor;
+    }
+
+    const response = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (!data.results || data.results.length === 0) {
+      return { reports: [], hasMore: false, nextCursor: null };
+    }
+
+    const reports = data.results.map(page => {
+      const props = page.properties;
+      return {
+        notionPageId: page.id,
+        targetType: props['신고 타입']?.title?.[0]?.text?.content || null,
+        targetId: props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null,
+        targetUserId: props['작성자']?.rich_text?.[0]?.text?.content || null,
+        reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
+        reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
+        communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
+        status: props['상태']?.select?.name || null,
+        reportedAt: props['신고일시']?.date?.start || null,
+        syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
+        syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null
+      };
+    });
+
+    return {
+      reports,
+      hasMore: data.has_more,
+      nextCursor: data.next_cursor || null
+    };
+
+  } catch (error) {
+    console.error("Notion 신고 조회 실패:", error);
+    throw new Error("Notion에서 신고 데이터를 조회하는 중 오류가 발생했습니다.");
   }
-
-  const snapshot = await query.get();
-  const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  const hasMore = snapshot.docs.length === size;
-  const nextCursor = hasMore ? reports[reports.length - 1].createdAt : null;
-
-  return { reports, hasMore, nextCursor };
 }
-
 
 
 /**
@@ -196,13 +236,13 @@ async getReportFromNotion({ targetType, targetId, targetUserId }) {
     const data = await response.json();
 
     if (!data.results || data.results.length === 0) {
-      return null; // ❌ 해당 신고 없음
+      return null; // 해당 신고 없음
     }
 
     const page = data.results[0];
     const props = page.properties;
 
-    // ✅ 반환 데이터 구조
+    // 반환 데이터 구조
     return {
       notionPageId: page.id,
       targetType: props['신고 타입']?.title?.[0]?.text?.content || null,
@@ -360,7 +400,7 @@ async syncResolvedReports() {
         const targetId = props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null;
         const communityId = props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null;
         const status = props['상태']?.select?.name || 'pending';
-        const notionUpdatedAt = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+        const notionUpdatedAt = new Date().toISOString();
 
         reports.push({
           notionPageId: page.id,
@@ -443,7 +483,7 @@ async syncResolvedReports() {
           properties: {
             '동기화 시간(Notion)': {
               date: {
-                start: new Date(new Date(report.notionUpdatedAt).getTime() - 9 * 60 * 60 * 1000).toISOString()
+                start: new Date(report.notionUpdatedAt).toISOString()
               }
             }
           }
