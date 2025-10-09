@@ -24,7 +24,7 @@ const Page = () => {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-gray-50">
+    <div className="flex min-h-full w-full flex-col bg-gray-50">
       {/* 헤더 */}
       <header className="flex w-full items-center justify-between p-4 pb-6">
         <Typography font="noto" variant="title5">

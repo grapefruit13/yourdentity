@@ -16,7 +16,7 @@ const BottomNavigation = () => {
   const isMyPageActive = pathname?.startsWith("/my-page") === true;
 
   return (
-    <nav className="sticky bottom-0 flex h-23 w-full items-center justify-center gap-14 bg-slate-100 pt-3 pb-5">
+    <nav className="pb-safe fixed right-0 bottom-0 left-0 z-50 flex w-full items-center justify-center gap-14 border-t border-gray-200 bg-white/90 pt-3 backdrop-blur-sm">
       <Link href="/mission">
         <button className="flex flex-col items-center justify-center gap-1 hover:cursor-pointer">
           <Image

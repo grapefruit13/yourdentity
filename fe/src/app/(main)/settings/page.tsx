@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
+import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
 
 /**
  * @description 설정 페이지
@@ -183,7 +185,7 @@ const SettingsPage = () => {
   ];
 
   return (
-    <div className="flex h-full w-full flex-col bg-gray-50">
+    <div className="flex min-h-full w-full flex-col bg-gray-50">
       {/* 헤더 */}
       <header className="flex w-full items-center gap-4 p-4 pb-6">
         <button
@@ -193,7 +195,9 @@ const SettingsPage = () => {
         >
           <ArrowLeft className="h-6 w-6 text-black" />
         </button>
-        <h1 className="text-xl font-bold text-black">설정</h1>
+        <Typography as="h1" font="noto" variant="title5">
+          설정
+        </Typography>
       </header>
 
       {/* 메인 컨텐츠 */}
@@ -207,7 +211,9 @@ const SettingsPage = () => {
 
       {/* 버전 정보 */}
       <footer className="p-4 pt-6">
-        <span className="text-sm text-gray-500">현재 버전 1.03.004</span>
+        <Typography font="noto" variant="body2R" className="text-gray-500">
+          현재 버전 1.03.004
+        </Typography>
       </footer>
 
       {/* 로그아웃 모달 */}
@@ -218,58 +224,42 @@ const SettingsPage = () => {
       />
 
       {/* 계정 삭제 모달 */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* 배경 오버레이 */}
-          <div
-            className="bg-opacity-50 absolute inset-0 bg-black"
-            onClick={handleDeleteCancel}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        title="계정을 삭제하시겠습니까?"
+        description="⚠️ 이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로 삭제됩니다."
+        confirmText="계정 삭제"
+        cancelText="취소"
+        onConfirm={handleDeleteConfirm}
+        onClose={handleDeleteCancel}
+        confirmDisabled={deleteConfirmText !== "DELETE"}
+        variant="danger"
+      >
+        <div>
+          <Typography
+            as="p"
+            id="delete-confirm-description"
+            font="noto"
+            variant="body2R"
+            className="mb-2 text-gray-600"
+          >
+            확인을 위해{" "}
+            <Typography as="strong" font="noto" variant="body2B">
+              DELETE
+            </Typography>
+            를 정확히 입력해주세요:
+          </Typography>
+          <input
+            type="text"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="DELETE 입력"
+            aria-label="계정 삭제 확인 텍스트 입력"
+            aria-describedby="delete-confirm-description"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
           />
-          <div className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-center text-lg font-medium text-black">
-              계정을 삭제하시겠습니까?
-            </h2>
-            <p className="mb-4 text-center text-sm text-red-600">
-              ⚠️ 이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로
-              삭제됩니다.
-            </p>
-            <div className="mb-6">
-              <p
-                id="delete-confirm-description"
-                className="mb-2 text-sm text-gray-600"
-              >
-                확인을 위해 <strong>DELETE</strong>를 정확히 입력해주세요:
-              </p>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="DELETE 입력"
-                aria-label="계정 삭제 확인 텍스트 입력"
-                aria-describedby="delete-confirm-description"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleDeleteCancel}
-                className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-                aria-label="계정 삭제 취소"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                disabled={deleteConfirmText !== "DELETE"}
-                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-                aria-label="계정 영구 삭제"
-              >
-                계정 삭제
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };
