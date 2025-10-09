@@ -303,6 +303,88 @@ class FirestoreService {
 
     return items;
   }
+  // 일반적인 컬렉션 조회 메서드들
+  async getCollection(collectionName) {
+    const snapshot = await db.collection(collectionName).get();
+    const items = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt:
+          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    return items;
+  }
+
+  async getDocument(collectionName, docId) {
+    const doc = await db.collection(collectionName).doc(docId).get();
+
+    if (!doc.exists) {
+      return null;
+    }
+
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+      updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+    };
+  }
+
+  async addDocument(collectionName, data) {
+    const now = new Date();
+    const docRef = await db.collection(collectionName).add({
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return docRef.id;
+  }
+
+  async updateDocument(collectionName, docId, data) {
+    await db
+        .collection(collectionName)
+        .doc(docId)
+        .update({
+          ...data,
+          updatedAt: new Date(),
+        });
+  }
+
+  async deleteDocument(collectionName, docId) {
+    await db.collection(collectionName).doc(docId).delete();
+  }
+
+  async getCollectionWhere(collectionName, field, operator, value) {
+    const snapshot = await db
+        .collection(collectionName)
+        .where(field, operator, value)
+        .get();
+    const items = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt:
+          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    return items;
+  }
+
 }
 
 module.exports = FirestoreService;
