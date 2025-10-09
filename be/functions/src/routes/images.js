@@ -85,6 +85,6 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/upload-image", imageController.uploadImage);
+router.post("/upload-image",authGuard,imageController.uploadImage);
 
 module.exports = router;
