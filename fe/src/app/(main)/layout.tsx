@@ -1,5 +1,6 @@
 import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
 import TopBar from "@/components/shared/layouts/top-bar";
+import { AuthGuard } from "@/contexts/shared/guard";
 /**
  * @description 하단 네브바 포함 레이아웃
  */
@@ -9,12 +10,12 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-[100dvh] w-full flex-col">
-      <TopBar />
-      <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
-        {children}
-      </main>
-      <BottomNavigation />
-    </div>
+    <AuthGuard>
+      <div className="flex min-h-[100dvh] w-full flex-col">
+        <TopBar />
+        <main className="flex w-full flex-1 flex-col">{children}</main>
+        <BottomNavigation />
+      </div>
+    </AuthGuard>
   );
 }
