@@ -42,7 +42,7 @@ class ReportContentController {
         if (!userDoc.exists) {
           return res.status(404).json({
             success: false,
-            error: "해당 targetUserId를 가진 사용자를 찾을 수 없습니다."
+            error: "해당 reporterId를 가진 사용자를 찾을 수 없습니다."
           });
         }
 
@@ -85,23 +85,23 @@ class ReportContentController {
         });
       }
     }
-  
+
 
 /**
  * 내가 신고한 목록 조회
  */
 async getMyReports(req, res) {
   try {
-    const { reporterId, page = 0, size = 10, lastCreatedAt } = req.body;
+    const reporterId = req.user.uid;
+    const { page = 0, size = 10, lastCreatedAt } = req.body;
 
     if (!reporterId) {
-      return res.status(400).json({ success: false, error: "reporterId를 입력해주세요." });
+      return res.status(401).json({ success: false, error: "인증 정보가 없습니다." });
     }
 
-    // 신고 목록 조회
     const result = await reportContentService.getUserReports(reporterId, {
       size: parseInt(size),
-      lastCreatedAt, // 이전 페이지 마지막 createdAt
+      lastCreatedAt,
     });
 
     res.json(successResponse(200, result));
