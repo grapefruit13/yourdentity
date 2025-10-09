@@ -19,6 +19,7 @@
   "main": "index.js",
   "dependencies": {
     "@google-cloud/functions-framework": "^4.0.0",
+    "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "firebase-admin": "^12.6.0",
