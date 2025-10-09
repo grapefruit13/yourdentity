@@ -1,10 +1,9 @@
-const NOTION_VERSION = "2022-06-28";
-
 const getNotionToken = () => process.env.NOTION_API_KEY;
+const getNotionVersion = () => process.env.NOTION_VERSION;
 
 const buildNotionHeaders = (token) => ({
   "Authorization": `Bearer ${token}`,
-  "Notion-Version": NOTION_VERSION,
+  "Notion-Version": getNotionVersion(),
   "Content-Type": "application/json",
 });
 
@@ -23,10 +22,10 @@ const nowKstIso = () => {
 };
 
 module.exports = {
-  NOTION_VERSION,
   buildNotionHeaders,
   buildNotionHeadersFromEnv,
   getNotionToken,
+  getNotionVersion,
   toKstIso,
   nowKstIso,
 };

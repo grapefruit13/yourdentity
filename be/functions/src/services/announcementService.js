@@ -83,19 +83,18 @@ class AnnouncementService {
   }
 
   async getAnnouncementList() {
+    // contentRich 필드를 제외하고 필요한 필드만 조회하여 성능 최적화
     const snapshot = await db.collection(this.collectionName)
         .where("isDeleted", "==", false)
         .orderBy("createdAt", "desc")
+        .select("title", "author", "pinned", "startDate", "endDate", "createdAt", "updatedAt", "isDeleted")
         .get();
 
     const announcements = [];
     snapshot.forEach((doc) => {
-      const data = doc.data();
-      // 목록 조회 시에는 contentRich 제외하여 성능 최적화
-      const {contentRich, ...listData} = data;
       announcements.push({
         id: doc.id,
-        ...listData,
+        ...doc.data(),
       });
     });
 
