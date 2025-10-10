@@ -1,0 +1,23 @@
+const notionUserService = require("../services/notionUserService");
+const {successResponse} = require("../utils/helpers");
+const {db} = require("../config/database");
+
+class NotionUserController {
+
+
+  async syncActiveUsers(req, res, next) {
+    try {
+      const result = await notionUserService.syncActiveUsers();
+      //res.json(successResponse("활동회원 동기화 완료", result));
+      res.json(successResponse(`활동회원 동기화 완료: ${result.syncedCount}명`));
+    } catch (error) {
+      console.error("[Controller Error] syncActiveUsers:", error);
+      res.status(500).json({ message: "활동회원 동기화 중 오류가 발생했습니다.", error: error.message });
+    }
+  }
+
+
+
+}
+
+module.exports = new NotionUserController();
