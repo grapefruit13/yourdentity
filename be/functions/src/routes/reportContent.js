@@ -9,7 +9,7 @@ const router = express.Router();
 /**
  * @swagger
  * tags:
- *   name: Reports
+ *   name: reportContent
  *   description: 신고 관리 API
  */
 
@@ -84,7 +84,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /reports:
+ * /reportContent:
  *   post:
  *     summary: 게시글/댓글 신고 생성
  *     description: 게시글 또는 댓글을 신고합니다. Firebase와 Notion에 동시 저장됩니다.
@@ -192,7 +192,7 @@ router.post("/", reportContentController.createReport);
  *     summary: Notion 전체 DB를 Firebase reports 컬렉션으로 동기화
  *     description: 노션에 있는 모든 신고 데이터를 가져와서 Firebase reports 컬렉션에 저장합니다.
  *     tags:
- *       - Report
+ *       - Reports
  *     responses:
  *       200:
  *         description: 동기화 성공
@@ -227,7 +227,7 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
 
 /**
  * @swagger
- * /reports/my:
+ * /reportContent/my:
  *   post:
  *     tags:
  *       - Reports
@@ -336,39 +336,37 @@ router.post("/my", authGuard, reportContentController.getMyReports);
 
 /**
  * @swagger
- * /reports/detail:
+ * /reportContent:
  *   get:
- *     summary: Notion 신고 상세 조회
- *     description: 신고 타입, 콘텐츠 ID, 작성자 ID를 기준으로 Notion에서 해당 신고 정보를 조회합니다.
- *     tags: [Reports]
- *     security:
- *       - bearerAuth: []
+ *     summary: 신고 상세 조회
+ *     description: targetType, targetId, targetUserId를 기준으로 Notion DB에서 특정 신고 데이터를 조회합니다.
+ *     tags:
+ *       - Reports
  *     parameters:
  *       - in: query
  *         name: targetType
- *         required: true
  *         schema:
  *           type: string
- *           enum: [post, comment]
- *         description: 신고 대상 타입 (게시글 또는 댓글)
- *         example: "post"
+ *           example: post
+ *         required: true
+ *         description: "신고 대상 타입 (예: '게시글' 또는 '댓글')"
  *       - in: query
  *         name: targetId
- *         required: true
  *         schema:
  *           type: string
- *         description: 신고 대상 콘텐츠 ID
- *         example: "community_abc123"
+ *           example: "abc123"
+ *         required: true
+ *         description: "신고 대상의 고유 ID"
  *       - in: query
- *         name: reporterId
- *         required: true
+ *         name: targetUserId
  *         schema:
  *           type: string
- *         description: 신고자 ID
- *         example: "user_456"
+ *           example: "user567"
+ *         required: true
+ *         description: "신고된 사용자 ID"
  *     responses:
  *       200:
- *         description: 신고 상세 조회 성공
+ *         description: "신고 상세 조회 성공"
  *         content:
  *           application/json:
  *             schema:
@@ -379,33 +377,49 @@ router.post("/my", authGuard, reportContentController.getMyReports);
  *                   example: true
  *                 data:
  *                   type: object
- *                   description: 신고 상세 데이터 (Notion 데이터베이스에서 가져온 정보)
  *                   properties:
- *                     id:
+ *                     notionPageId:
  *                       type: string
- *                       example: "notion_page_abc123"
+ *                       example: "a1b2c3d4e5"
  *                     targetType:
  *                       type: string
  *                       example: "post"
  *                     targetId:
  *                       type: string
- *                       example: "community_abc123"
+ *                       example: "abc123"
+ *                     targetUserId:
+ *                       type: string
+ *                       example: "user567"
  *                     reporterId:
  *                       type: string
- *                       example: "user_456"
+ *                       example: "reporter999"
+ *                     reportReason:
+ *                       type: string
+ *                       example: "부적절한 내용"
+ *                     communityId:
+ *                       type: string
+ *                       example: "community001"
  *                     status:
  *                       type: string
- *                       example: "resolved"
- *                     createdAt:
+ *                       example: "접수됨"
+ *                     reportedAt:
  *                       type: string
  *                       format: date-time
- *                       example: "2025-10-09T09:00:00Z"
+ *                       example: "2025-10-10T12:00:00Z"
+ *                     syncNotionAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-10T12:01:00Z"
+ *                     syncNotionFirebase:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-10T12:02:00Z"
+ *       400:
+ *         description: "필수 쿼리 파라미터 누락"
  *       404:
- *         description: 해당 조건에 맞는 신고를 찾을 수 없음
- *       401:
- *         description: 인증 필요
+ *         description: "신고 데이터 없음"
  *       500:
- *         description: 서버 오류
+ *         description: "서버 내부 오류"
  */
 router.get("/", reportContentController.getReportById);
 

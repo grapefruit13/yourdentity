@@ -137,6 +137,16 @@ async validateTargetExists(targetType, targetId, communityId) {
 }
 
 
+unmapTargetType(label) {
+  switch (label) {
+    case "게시글": return "post";
+    case "댓글": return "comment";
+    default: return label;
+  }
+}
+
+
+
 /**
  * 사용자 신고 목록 조회 (cursor 기반 페이지네이션)
  * + Firestore -> Reports컬렉션 Index추가(reporterId, createdAt, _name_)
@@ -183,7 +193,7 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
       const props = page.properties;
       return {
         notionPageId: page.id,
-        targetType: props['신고 타입']?.title?.[0]?.text?.content || null,
+        targetType: this.unmapTargetType(props['신고 타입']?.title?.[0]?.text?.content),
         targetId: props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null,
         targetUserId: props['작성자']?.rich_text?.[0]?.text?.content || null,
         reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
@@ -245,7 +255,7 @@ async getReportFromNotion({ targetType, targetId, targetUserId }) {
     // 반환 데이터 구조
     return {
       notionPageId: page.id,
-      targetType: props['신고 타입']?.title?.[0]?.text?.content || null,
+      targetType: this.unmapTargetType(props['신고 타입']?.title?.[0]?.text?.content),
       targetId: props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null,
       targetUserId: props['작성자']?.rich_text?.[0]?.text?.content || null,
       reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
