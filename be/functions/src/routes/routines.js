@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const routineController = require("../controllers/routineController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -182,83 +183,91 @@ const routineController = require("../controllers/routineController");
  *           items:
  *             $ref: '#/components/schemas/CommunityPost'
  *
- *     QnAItem:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: Q&A ID
- *           example: "qna_123"
- *         content:
- *           type: array
- *           description: 질문 내용
- *           items:
- *             type: object
- *         media:
- *           type: array
- *           description: 미디어 파일
- *           items:
- *             type: object
- *         answerContent:
- *           type: array
- *           nullable: true
- *           description: 답변 내용
- *           items:
- *             type: object
- *         answerMedia:
- *           type: array
- *           description: 답변 미디어
- *           items:
- *             type: object
- *         answerUserId:
- *           type: string
- *           nullable: true
- *           description: 답변자 ID
- *           example: "user_456"
- *         askedBy:
- *           type: string
- *           description: 질문자 ID
- *           example: "user_123"
- *         answeredBy:
- *           type: string
- *           nullable: true
- *           description: 답변자 ID
- *           example: "user_456"
- *         askedAt:
- *           type: string
- *           format: date-time
- *           description: 질문일
- *           example: "2024-01-01T00:00:00.000Z"
- *         answeredAt:
- *           type: string
- *           format: date-time
- *           nullable: true
- *           description: 답변일
- *           example: "2024-01-02T00:00:00.000Z"
- *         likesCount:
- *           type: integer
- *           description: 좋아요 수
- *           example: 5
+     *     QnAItem:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *           description: Q&A ID
+     *           example: "qna_123"
+     *         userId:
+     *           type: string
+     *           description: 질문 작성자 ID
+     *           example: "user_123"
+     *         content:
+     *           type: array
+     *           description: 질문 내용
+     *           items:
+     *             type: object
+     *         media:
+     *           type: array
+     *           description: 미디어 파일
+     *           items:
+     *             type: object
+     *         answerContent:
+     *           type: array
+     *           nullable: true
+     *           description: 답변 내용
+     *           items:
+     *             type: object
+     *         answerMedia:
+     *           type: array
+     *           description: 답변 미디어
+     *           items:
+     *             type: object
+     *         answerUserId:
+     *           type: string
+     *           nullable: true
+     *           description: 답변자 ID
+     *           example: "user_456"
+     *         askedBy:
+     *           type: string
+     *           description: 질문자 ID
+     *           example: "user_123"
+     *         answeredBy:
+     *           type: string
+     *           nullable: true
+     *           description: 답변자 ID
+     *           example: "user_456"
+     *         askedAt:
+     *           type: string
+     *           format: date-time
+     *           description: 질문일
+     *           example: "2024-01-01T00:00:00.000Z"
+     *         answeredAt:
+     *           type: string
+     *           format: date-time
+     *           nullable: true
+     *           description: 답변일
+     *           example: "2024-01-02T00:00:00.000Z"
+     *         likesCount:
+     *           type: integer
+     *           description: 좋아요 수
+     *           example: 5
  *
- *     CommunityPost:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: 게시글 ID
- *           example: "post_123"
- *         type:
- *           type: string
- *           description: 게시글 타입
- *           example: "ROUTINE_CERT"
- *         author:
- *           type: string
- *           description: 작성자
- *           example: "사용자닉네임"
- *         title:
- *           type: string
- *           description: 제목
- *           example: "오늘의 루틴 인증!"
+     *     CommunityPost:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *           description: 게시글 ID
+     *           example: "post_123"
+     *         type:
+     *           type: string
+     *           description: 게시글 타입
+     *           example: "ROUTINE_CERT"
+     *         authorId:
+     *           type: string
+     *           description: 작성자 ID (uid)
+     *           example: "user_123"
+     *         author:
+     *           type: string
+     *           description: 작성자 닉네임
+     *           example: "사용자닉네임"
+     *         title:
+     *           type: string
+     *           description: 제목
+     *           example: "오늘의 루틴 인증!"
  *         content:
  *           type: array
  *           description: 내용
@@ -507,13 +516,7 @@ router.get("/:routineId", routineController.getRoutineById);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
  *             properties:
- *               userId:
- *                 type: string
- *                 description: 사용자 ID
- *                 example: "user123"
  *               selectedVariant:
  *                 type: string
  *                 description: 선택된 옵션
@@ -555,7 +558,7 @@ router.get("/:routineId", routineController.getRoutineById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/apply", routineController.applyForRoutine);
+router.post("/:routineId/apply", authGuard, routineController.applyForRoutine);
 
 // 루틴 좋아요 토글
 /**
@@ -593,7 +596,7 @@ router.post("/:routineId/apply", routineController.applyForRoutine);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/like", routineController.toggleRoutineLike);
+router.post("/:routineId/like", authGuard, routineController.toggleRoutineLike);
 
 // 루틴 QnA 작성
 /**
@@ -693,7 +696,7 @@ router.post("/:routineId/like", routineController.toggleRoutineLike);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/qna", routineController.createQnA);
+router.post("/:routineId/qna", authGuard, routineController.createQnA);
 
 // 루틴 QnA 수정
 /**
@@ -799,7 +802,7 @@ router.post("/:routineId/qna", routineController.createQnA);
  *       500:
  *         description: 서버 오류
  */
-router.put("/:routineId/qna/:qnaId", routineController.updateQnA);
+router.put("/:routineId/qna/:qnaId", authGuard, routineController.updateQnA);
 
 // 루틴 QnA 답변 작성
 /**
@@ -882,7 +885,7 @@ router.put("/:routineId/qna/:qnaId", routineController.updateQnA);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/answer", routineController.createQnAAnswer);
+router.post("/qna/:qnaId/answer", authGuard, routineController.createQnAAnswer);
 
 // 루틴 QnA 좋아요 토글
 /**
@@ -920,7 +923,7 @@ router.post("/qna/:qnaId/answer", routineController.createQnAAnswer);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/like", routineController.toggleQnALike);
+router.post("/qna/:qnaId/like", authGuard, routineController.toggleQnALike);
 
 // 루틴 QnA 삭제
 /**

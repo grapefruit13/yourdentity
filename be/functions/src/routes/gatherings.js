@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const gatheringController = require("../controllers/gatheringController");
+const authGuard = require("../middleware/authGuard");
 
 
 // 소모임 목록 조회
@@ -115,13 +116,7 @@ router.get("/:gatheringId", gatheringController.getGatheringById);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
  *             properties:
- *               userId:
- *                 type: string
- *                 description: 사용자 ID
- *                 example: "user123"
  *               selectedVariant:
  *                 type: string
  *                 description: 선택된 옵션
@@ -176,7 +171,7 @@ router.get("/:gatheringId", gatheringController.getGatheringById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:gatheringId/apply", gatheringController.applyToGathering);
+router.post("/:gatheringId/apply", authGuard, gatheringController.applyToGathering);
 
 // 소모임 좋아요 토글
 /**
@@ -225,7 +220,7 @@ router.post("/:gatheringId/apply", gatheringController.applyToGathering);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:gatheringId/like", gatheringController.toggleGatheringLike);
+router.post("/:gatheringId/like", authGuard, gatheringController.toggleGatheringLike);
 
 // 소모임 QnA 작성
 /**
@@ -304,7 +299,7 @@ router.post("/:gatheringId/like", gatheringController.toggleGatheringLike);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:gatheringId/qna", gatheringController.createQnA);
+router.post("/:gatheringId/qna", authGuard, gatheringController.createQnA);
 
 // 소모임 QnA 수정
 /**
@@ -368,7 +363,7 @@ router.post("/:gatheringId/qna", gatheringController.createQnA);
  *       500:
  *         description: 서버 오류
  */
-router.put("/:gatheringId/qna/:qnaId", gatheringController.updateQnA);
+router.put("/:gatheringId/qna/:qnaId", authGuard, gatheringController.updateQnA);
 
 // 소모임 QnA 답변 작성
 /**
@@ -408,7 +403,7 @@ router.put("/:gatheringId/qna/:qnaId", gatheringController.updateQnA);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/answer", gatheringController.createQnAAnswer);
+router.post("/qna/:qnaId/answer", authGuard, gatheringController.createQnAAnswer);
 
 // 소모임 QnA 좋아요 토글
 /**
@@ -457,7 +452,7 @@ router.post("/qna/:qnaId/answer", gatheringController.createQnAAnswer);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/like", gatheringController.toggleQnALike);
+router.post("/qna/:qnaId/like", authGuard, gatheringController.toggleQnALike);
 
 // 소모임 QnA 삭제
 /**

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const commentController = require("../controllers/commentController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -386,6 +387,7 @@ router.get(
  */
 router.post(
     "/communities/:communityId/posts/:postId",
+    authGuard,
     commentController.createComment,
 );
 
@@ -546,7 +548,7 @@ router.post(
  *       500:
  *         description: 서버 오류
  */
-router.put("/:commentId", commentController.updateComment);
+router.put("/:commentId", authGuard, commentController.updateComment);
 
 // 댓글 삭제
 /**
@@ -584,7 +586,7 @@ router.put("/:commentId", commentController.updateComment);
  *       500:
  *         description: 서버 오류
  */
-router.delete("/:commentId", commentController.deleteComment);
+router.delete("/:commentId", authGuard, commentController.deleteComment);
 
 // 댓글 좋아요 토글
 /**
@@ -633,6 +635,6 @@ router.delete("/:commentId", commentController.deleteComment);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:commentId/like", commentController.toggleCommentLike);
+router.post("/:commentId/like", authGuard, commentController.toggleCommentLike);
 
 module.exports = router;

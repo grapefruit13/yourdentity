@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const storeController = require("../controllers/storeController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -641,16 +642,11 @@ router.get("/products/:productId", storeController.getProductById);
  *             type: object
  *             required:
  *               - productId
- *               - userId
  *             properties:
  *               productId:
  *                 type: string
  *                 description: 상품 ID
  *                 example: "product123"
- *               userId:
- *                 type: string
- *                 description: 사용자 ID
- *                 example: "user123"
  *               quantity:
  *                 type: integer
  *                 default: 1
@@ -692,7 +688,7 @@ router.get("/products/:productId", storeController.getProductById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/purchase", storeController.purchaseProduct);
+router.post("/purchase", authGuard, storeController.purchaseProduct);
 
 // 상품 좋아요 토글
 /**
@@ -741,7 +737,7 @@ router.post("/purchase", storeController.purchaseProduct);
  *       500:
  *         description: 서버 오류
  */
-router.post("/products/:productId/like", storeController.toggleProductLike);
+router.post("/products/:productId/like", authGuard, storeController.toggleProductLike);
 
 // 상품 QnA 질문 작성
 /**
@@ -820,7 +816,7 @@ router.post("/products/:productId/like", storeController.toggleProductLike);
  *       500:
  *         description: 서버 오류
  */
-router.post("/products/:productId/qna", storeController.createProductQnA);
+router.post("/products/:productId/qna", authGuard, storeController.createProductQnA);
 
 // 상품 QnA 질문 수정
 /**
@@ -884,7 +880,7 @@ router.post("/products/:productId/qna", storeController.createProductQnA);
  *       500:
  *         description: 서버 오류
  */
-router.put("/products/:productId/qna/:qnaId", storeController.updateProductQnA);
+router.put("/products/:productId/qna/:qnaId", authGuard, storeController.updateProductQnA);
 
 // 상품 QnA 답변 작성
 /**
@@ -924,7 +920,7 @@ router.put("/products/:productId/qna/:qnaId", storeController.updateProductQnA);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/answer", storeController.createProductQnAAnswer);
+router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAnswer);
 
 // 상품 QnA 좋아요 토글
 /**
@@ -973,7 +969,7 @@ router.post("/qna/:qnaId/answer", storeController.createProductQnAAnswer);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/like", storeController.toggleProductQnALike);
+router.post("/qna/:qnaId/like", authGuard, storeController.toggleProductQnALike);
 
 // 상품 QnA 삭제
 /**

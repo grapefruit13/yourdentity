@@ -131,8 +131,8 @@ const purchaseProduct = async (req, res) => {
       phoneNumber,
     } = req.body;
 
-    const userId = "user123"; // 하드코딩
-    const userWalletBalance = 500; // 하드코딩: 사용자 지갑 잔액
+    const userId = req.user.uid;
+    const userWalletBalance = 500; // TODO: 실제로는 사용자 지갑에서 잔액 조회
 
     if (!productId) {
       return res.status(400).json({
@@ -295,7 +295,7 @@ const purchaseProduct = async (req, res) => {
 const toggleProductLike = async (req, res) => {
   try {
     const {productId} = req.params;
-    const userId = "user123"; // 하드코딩
+    const userId = req.user.uid;
 
     // 상품 존재 확인
     const product = await firestoreService.getDocument("products", productId);
@@ -425,7 +425,7 @@ const createProductQnA = async (req, res) => {
     const qnaData = {
       type: "PRODUCT",
       targetId: productId,
-      userId: "user123", // 하드코딩된 사용자 ID
+      userId: req.user.uid,
       content,
       media,
       answerContent: null,
@@ -577,7 +577,7 @@ const createProductQnAAnswer = async (req, res) => {
     const updatedData = {
       answerContent: content,
       answerMedia: media,
-      answerUserId: "user123", // 하드코딩된 사용자 ID
+      answerUserId: req.user.uid,
       answerCreatedAt: new Date(),
       updatedAt: new Date(),
     };
@@ -623,7 +623,7 @@ const toggleProductQnALike = async (req, res) => {
         qnaId,
     );
     const userLike = existingLikes.find(
-        (like) => like.userId === "user123" && like.type === "QNA",
+        (like) => like.userId === req.user.uid && like.type === "QNA",
     );
     let isLiked = false;
 
@@ -642,7 +642,7 @@ const toggleProductQnALike = async (req, res) => {
       await firestoreService.addDocument("likes", {
         type: "QNA",
         targetId: qnaId,
-        userId: "user123",
+        userId: req.user.uid,
         createdAt: new Date(),
       });
       isLiked = true;
@@ -661,7 +661,7 @@ const toggleProductQnALike = async (req, res) => {
       success: true,
       data: {
         qnaId,
-        userId: "user123",
+        userId: req.user.uid,
         isLiked,
         likeCount: updatedQna.likesCount || 0,
       },

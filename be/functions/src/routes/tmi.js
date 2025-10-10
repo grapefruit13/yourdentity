@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const tmiController = require("../controllers/tmiController");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -445,47 +446,52 @@ router.get("/", tmiController.getAllTmiProjects);
  *                       format: date-time
  *                       description: 수정일
  *                       example: "2024-01-01T00:00:00.000Z"
- *                     qna:
- *                       type: array
- *                       description: Q&A 목록
- *                       items:
- *                         $ref: '#/components/schemas/QnAItem'
- *                       example:
- *                         - id: "qna_123"
- *                           content:
- *                             - type: "text"
- *                               content: "이 TMI 프로젝트는 어떻게 진행되나요?"
- *                           media: []
- *                           answerContent: null
- *                           answerMedia: []
- *                           answerUserId: null
- *                           askedBy: "user123"
- *                           answeredBy: null
- *                           askedAt: "2024-01-01T00:00:00.000Z"
- *                           answeredAt: null
- *                           likesCount: 0
+     *                     qna:
+     *                       type: array
+     *                       description: Q&A 목록
+     *                       items:
+     *                         $ref: '#/components/schemas/QnAItem'
+     *                       example:
+     *                         - id: "qna_123"
+     *                           userId: "user123"
+     *                           content:
+     *                             - type: "text"
+     *                               content: "이 TMI 프로젝트는 어떻게 진행되나요?"
+     *                           media: []
+     *                           answerContent: null
+     *                           answerMedia: []
+     *                           answerUserId: null
+     *                           askedBy: "user123"
+     *                           answeredBy: null
+     *                           askedAt: "2024-01-01T00:00:00.000Z"
+     *                           answeredAt: null
+     *                           likesCount: 0
  *                     communityPosts:
  *                       type: array
  *                       description: 커뮤니티 게시글 목록 (TMI 소개글)
  *                       items:
  *                         type: object
  *                         properties:
- *                           id:
- *                             type: string
- *                             description: 게시글 ID
- *                             example: "post_123"
- *                           type:
- *                             type: string
- *                             description: 게시글 타입
- *                             example: "TMI"
- *                           author:
- *                             type: string
- *                             description: 작성자
- *                             example: "사용자닉네임"
- *                           title:
- *                             type: string
- *                             description: 제목
- *                             example: "TMI 소개글입니다!"
+     *                           id:
+     *                             type: string
+     *                             description: 게시글 ID
+     *                             example: "post_123"
+     *                           type:
+     *                             type: string
+     *                             description: 게시글 타입
+     *                             example: "TMI"
+     *                           authorId:
+     *                             type: string
+     *                             description: 작성자 ID (uid)
+     *                             example: "user_123"
+     *                           author:
+     *                             type: string
+     *                             description: 작성자 닉네임
+     *                             example: "사용자닉네임"
+     *                           title:
+     *                             type: string
+     *                             description: 제목
+     *                             example: "TMI 소개글입니다!"
  *                           content:
  *                             type: array
  *                             description: 게시글 내용
@@ -567,13 +573,7 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
  *             properties:
- *               userId:
- *                 type: string
- *                 description: 사용자 ID
- *                 example: "user123"
  *               selectedVariant:
  *                 type: string
  *                 description: 선택된 옵션
@@ -628,7 +628,7 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:projectId/apply", tmiController.applyToTmiProject);
+router.post("/:projectId/apply", authGuard, tmiController.applyToTmiProject);
 
 // TMI 프로젝트 좋아요 토글
 /**
@@ -677,7 +677,7 @@ router.post("/:projectId/apply", tmiController.applyToTmiProject);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:projectId/like", tmiController.toggleTmiProjectLike);
+router.post("/:projectId/like", authGuard, tmiController.toggleTmiProjectLike);
 
 // TMI 프로젝트 QnA 작성
 /**
@@ -756,7 +756,7 @@ router.post("/:projectId/like", tmiController.toggleTmiProjectLike);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:projectId/qna", tmiController.createQnA);
+router.post("/:projectId/qna", authGuard, tmiController.createQnA);
 
 // TMI 프로젝트 QnA 수정
 /**
@@ -820,7 +820,7 @@ router.post("/:projectId/qna", tmiController.createQnA);
  *       500:
  *         description: 서버 오류
  */
-router.put("/:projectId/qna/:qnaId", tmiController.updateQnA);
+router.put("/:projectId/qna/:qnaId", authGuard, tmiController.updateQnA);
 
 // TMI 프로젝트 QnA 답변 작성
 /**
@@ -860,7 +860,7 @@ router.put("/:projectId/qna/:qnaId", tmiController.updateQnA);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/answer", tmiController.createQnAAnswer);
+router.post("/qna/:qnaId/answer", authGuard, tmiController.createQnAAnswer);
 
 // TMI 프로젝트 QnA 좋아요 토글
 /**
@@ -909,7 +909,7 @@ router.post("/qna/:qnaId/answer", tmiController.createQnAAnswer);
  *       500:
  *         description: 서버 오류
  */
-router.post("/qna/:qnaId/like", tmiController.toggleQnALike);
+router.post("/qna/:qnaId/like", authGuard, tmiController.toggleQnALike);
 
 // TMI 프로젝트 QnA 삭제
 /**

@@ -277,6 +277,7 @@ const getAllCommunityPosts = async (req, res) => {
     const simplifiedPosts = paginatedPosts.map((post) => ({
       id: post.id,
       type: post.type,
+      authorId: post.authorId,
       author: post.author,
       title: post.title,
       preview: createPreview(post),
@@ -342,6 +343,7 @@ const getCommunityPosts = async (req, res) => {
     const simplifiedPosts = (result.content || []).map((post) => ({
       id: post.id,
       type: post.type,
+      authorId: post.authorId,
       author: post.author,
       title: post.title,
       preview: createPreview(post),
@@ -394,10 +396,9 @@ const createPost = async (req, res) => {
       });
     }
 
-    // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
-    // 현재는 임시로 하드코딩된 값 사용
-    const authorId = "user123"; // req.user.id 또는 JWT에서 추출
-    const author = "사용자닉네임"; // req.user.nickname 또는 JWT에서 추출
+    // 사용자 인증 정보에서 유저 ID 추출
+    const authorId = req.user.uid;
+    const author = "사용자닉네임"; // TODO: 실제로는 사용자 정보에서 닉네임 조회
     const isLocked = false;
     const rewardGiven = false;
 
@@ -713,8 +714,8 @@ const updatePost = async (req, res) => {
       scheduledDate,
     } = req.body;
 
-    // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
-    const authorId = "user123"; // req.user.id 또는 JWT에서 추출
+    // 사용자 인증 정보에서 유저 ID 추출
+    const authorId = req.user.uid;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
@@ -846,8 +847,8 @@ const deletePost = async (req, res) => {
   try {
     const {communityId, postId} = req.params;
 
-    // TODO: 실제 구현 시 JWT 토큰에서 유저 정보 추출
-    const authorId = "user123"; // req.user.id 또는 JWT에서 추출
+    // 사용자 인증 정보에서 유저 ID 추출
+    const authorId = req.user.uid;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
@@ -904,7 +905,7 @@ const deletePost = async (req, res) => {
 const togglePostLike = async (req, res) => {
   try {
     const {communityId, postId} = req.params;
-    const userId = "user123"; // 하드코딩
+    const userId = req.user.uid;
 
     // 커뮤니티 존재 확인
     const community = await firestoreService.getDocument(
