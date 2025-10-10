@@ -3,6 +3,7 @@ import "./globals.css";
 import { Noto_Sans_KR } from "next/font/google";
 import PwaInstallPrompt from "@/components/shared/layouts/pwa-install-prompt";
 import { Toaster } from "@/components/shared/ui/sonner";
+import { QueryProvider } from "@/providers/query-provider";
 import { cn } from "@/utils/shared/cn";
 
 const notoSansKr = Noto_Sans_KR({
@@ -276,9 +277,13 @@ export default function RootLayout({
       <body
         className={cn(notoSansKr.variable, "flex h-screen w-full flex-col")}
       >
-        <Toaster />
-        <div className="flex h-screen w-full flex-col bg-white">{children}</div>
-        <PwaInstallPrompt />
+        <QueryProvider>
+          <Toaster />
+          <div className="flex h-screen w-full flex-col bg-white">
+            {children}
+          </div>
+          <PwaInstallPrompt />
+        </QueryProvider>
       </body>
     </html>
   );
