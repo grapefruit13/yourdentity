@@ -4,7 +4,6 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./src/config/swagger");
 
-
 const {admin} = require("./src/config/database");
 
 // 미들웨어
@@ -22,6 +21,7 @@ const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
 const storeRoutes = require("./src/routes/store");
 const announcementRoutes = require("./src/routes/announcements");
+const reportContentRoutes = require("./src/routes/reportContent");
 const faqRoutes = require("./src/routes/faqs");
 
 if (!admin.apps.length) {
@@ -186,12 +186,12 @@ app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
 app.use("/notion/announcements", announcementRoutes);
 app.use("/faqs", faqRoutes);
+app.use("/reportContent", reportContentRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
 
 exports.api = onRequest(
-
     {
       region: "asia-northeast3",
       cors: true,
