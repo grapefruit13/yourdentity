@@ -568,13 +568,7 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
  *             properties:
- *               userId:
- *                 type: string
- *                 description: 사용자 ID
- *                 example: "user123"
  *               selectedVariant:
  *                 type: string
  *                 description: 선택된 옵션

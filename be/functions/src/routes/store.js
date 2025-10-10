@@ -642,7 +642,6 @@ router.get("/products/:productId", storeController.getProductById);
  *             type: object
  *             required:
  *               - productId
- *               - userId
  *             properties:
  *               productId:
  *                 type: string
