@@ -111,6 +111,7 @@ async clearNotionDatabase(databaseId) {
    * 7. 노션 데이터베이스를 지우는 경우 속도 측면에서 느림 -> 개선이 필요해 보임
    *   + 노션에서는 전체 삭제를 지원하지 않고 페이지를 아카이브 처리해서 개별적으로 archived: true로 삭제를 진행
    * ※ firebase구조 추가 고려라고 되어 있는 부분은 우선 컬럼은 다 추가함
+   * 8. SMS광고 수신 여부, Push 광고 수신 여부 통일 고려 -> 현재는 push만 사용
    */
   async syncActiveUsers() {
 
@@ -149,7 +150,7 @@ async clearNotionDatabase(databaseId) {
                 {
                 name: "profile-image",
                 type: "external",
-                external: { url: user.profileImageUrl || "" },
+                 external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
                 },
             ],
             },
@@ -171,7 +172,7 @@ async clearNotionDatabase(databaseId) {
         "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
         "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
         //"Push 광고 수신 여부": { checkbox: user.pushAdConsent || false },
-        "Push 광고 수신 여부": { select: { name: user.pushAdConsent || "" } },
+        "Push 광고 수신 여부": { select: { name: user.pushAdConsent || "미설정" } },
         "패널티 주기": { checkbox: user.penalty || false },
         //기획에는 없고 Firebase에만 있는 데이터 추가여부 고려
         //"포인트": { number: user.rewardPoints || 0 },
