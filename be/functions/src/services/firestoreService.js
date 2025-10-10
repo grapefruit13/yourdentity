@@ -384,7 +384,6 @@ class FirestoreService {
 
     return items;
   }
-
 }
 
 module.exports = FirestoreService;
