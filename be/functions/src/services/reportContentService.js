@@ -146,7 +146,6 @@ unmapTargetType(label) {
 }
 
 
-
 /**
  * 사용자 신고 목록 조회 (cursor 기반 페이지네이션)
  * + Firestore -> Reports컬렉션 Index추가(reporterId, createdAt, _name_)

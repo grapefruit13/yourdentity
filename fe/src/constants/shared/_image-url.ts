@@ -1,33 +1,18 @@
 const ICON = {
-  misson: {
-    active: {
-      url: "/icons/ic-mission-active.svg",
-      alt: "미션",
-    },
-    inactive: {
-      url: "/icons/ic-mission-inactive.svg",
-      alt: "미션",
-    },
+  home: {
+    url: "/icons/ic-home.svg",
+    alt: "홈",
+  },
+  mission: {
+    url: "/icons/ic-mission.svg",
+    alt: "미션",
   },
   community: {
-    active: {
-      url: "/icons/ic-community-active.svg",
-      alt: "커뮤니티",
-    },
-    inactive: {
-      url: "/icons/ic-community-inactive.svg",
-      alt: "커뮤니티",
-    },
+    url: "/icons/ic-community.svg",
+    alt: "커뮤니티",
   },
   myPage: {
-    active: {
-      url: "/icons/ic-my-page-active.svg",
-      alt: "마이페이지",
-    },
-    inactive: {
-      url: "/icons/ic-my-page-inactive.svg",
-      alt: "마이페이지",
-    },
+    url: "/icons/ic-my-page.svg",
     alt: "마이페이지",
   },
   chevron: {
@@ -40,16 +25,6 @@ const ICON = {
         url: "/icons/ic-chevron-double-down.svg",
         alt: "아래쪽 화살표",
       },
-    },
-  },
-  mission: {
-    active: {
-      url: "/icons/ic-mission-active.svg",
-      alt: "미션",
-    },
-    inactive: {
-      url: "/icons/ic-mission-inactive.svg",
-      alt: "미션",
     },
   },
   login: {
