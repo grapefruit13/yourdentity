@@ -54,9 +54,13 @@ const authGuard = require("../middleware/authGuard");
      *           enum: [ROUTINE_CERT, GATHERING_REVIEW, TMI]
      *           description: 게시글 타입
      *           example: "TMI"
+     *         authorId:
+     *           type: string
+     *           description: 작성자 ID (uid)
+     *           example: "user123"
      *         author:
      *           type: string
-     *           description: 작성자
+     *           description: 작성자 닉네임
      *           example: "사용자닉네임"
      *         title:
      *           type: string
@@ -277,6 +281,7 @@ router.get("/", communityController.getCommunities);
  *                   example:
  *                     - id: "AMrsQRg9tBY0ZGJMbKG2"
  *                       type: "TMI"
+ *                       authorId: "user123"
  *                       author: "사용자닉네임"
  *                       title: "오늘의 루틴 인증!"
  *                       preview:
@@ -298,6 +303,7 @@ router.get("/", communityController.getCommunities);
  *                       timeAgo: "2분 전"
  *                     - id: "jpb8WjP7poOmI07Z7tU8"
  *                       type: "TMI"
+ *                       authorId: "user456"
  *                       author: "사용자닉네임"
  *                       title: "수정된 TMI 인증!"
  *                       preview:
@@ -465,6 +471,7 @@ router.get("/:communityId/members", communityController.getCommunityMembers);
  *                   example:
  *                     - id: "AMrsQRg9tBY0ZGJMbKG2"
  *                       type: "TMI"
+ *                       authorId: "user123"
  *                       author: "사용자닉네임"
  *                       title: "오늘의 루틴 인증!"
  *                       preview:
@@ -486,6 +493,7 @@ router.get("/:communityId/members", communityController.getCommunityMembers);
  *                       timeAgo: "2분 전"
  *                     - id: "jpb8WjP7poOmI07Z7tU8"
  *                       type: "TMI"
+ *                       authorId: "user456"
  *                       author: "사용자닉네임"
  *                       title: "수정된 TMI 인증!"
  *                       preview:

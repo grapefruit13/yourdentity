@@ -107,6 +107,7 @@ const getRoutineById = async (req, res) => {
       communityPosts = (posts.content || []).map((post) => ({
         id: post.id,
         type: post.type,
+        authorId: post.authorId,
         author: post.author,
         title: post.title,
         content: post.content,

@@ -183,83 +183,91 @@ const authGuard = require("../middleware/authGuard");
  *           items:
  *             $ref: '#/components/schemas/CommunityPost'
  *
- *     QnAItem:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: Q&A ID
- *           example: "qna_123"
- *         content:
- *           type: array
- *           description: 질문 내용
- *           items:
- *             type: object
- *         media:
- *           type: array
- *           description: 미디어 파일
- *           items:
- *             type: object
- *         answerContent:
- *           type: array
- *           nullable: true
- *           description: 답변 내용
- *           items:
- *             type: object
- *         answerMedia:
- *           type: array
- *           description: 답변 미디어
- *           items:
- *             type: object
- *         answerUserId:
- *           type: string
- *           nullable: true
- *           description: 답변자 ID
- *           example: "user_456"
- *         askedBy:
- *           type: string
- *           description: 질문자 ID
- *           example: "user_123"
- *         answeredBy:
- *           type: string
- *           nullable: true
- *           description: 답변자 ID
- *           example: "user_456"
- *         askedAt:
- *           type: string
- *           format: date-time
- *           description: 질문일
- *           example: "2024-01-01T00:00:00.000Z"
- *         answeredAt:
- *           type: string
- *           format: date-time
- *           nullable: true
- *           description: 답변일
- *           example: "2024-01-02T00:00:00.000Z"
- *         likesCount:
- *           type: integer
- *           description: 좋아요 수
- *           example: 5
+     *     QnAItem:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *           description: Q&A ID
+     *           example: "qna_123"
+     *         userId:
+     *           type: string
+     *           description: 질문 작성자 ID
+     *           example: "user_123"
+     *         content:
+     *           type: array
+     *           description: 질문 내용
+     *           items:
+     *             type: object
+     *         media:
+     *           type: array
+     *           description: 미디어 파일
+     *           items:
+     *             type: object
+     *         answerContent:
+     *           type: array
+     *           nullable: true
+     *           description: 답변 내용
+     *           items:
+     *             type: object
+     *         answerMedia:
+     *           type: array
+     *           description: 답변 미디어
+     *           items:
+     *             type: object
+     *         answerUserId:
+     *           type: string
+     *           nullable: true
+     *           description: 답변자 ID
+     *           example: "user_456"
+     *         askedBy:
+     *           type: string
+     *           description: 질문자 ID
+     *           example: "user_123"
+     *         answeredBy:
+     *           type: string
+     *           nullable: true
+     *           description: 답변자 ID
+     *           example: "user_456"
+     *         askedAt:
+     *           type: string
+     *           format: date-time
+     *           description: 질문일
+     *           example: "2024-01-01T00:00:00.000Z"
+     *         answeredAt:
+     *           type: string
+     *           format: date-time
+     *           nullable: true
+     *           description: 답변일
+     *           example: "2024-01-02T00:00:00.000Z"
+     *         likesCount:
+     *           type: integer
+     *           description: 좋아요 수
+     *           example: 5
  *
- *     CommunityPost:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: 게시글 ID
- *           example: "post_123"
- *         type:
- *           type: string
- *           description: 게시글 타입
- *           example: "ROUTINE_CERT"
- *         author:
- *           type: string
- *           description: 작성자
- *           example: "사용자닉네임"
- *         title:
- *           type: string
- *           description: 제목
- *           example: "오늘의 루틴 인증!"
+     *     CommunityPost:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *           description: 게시글 ID
+     *           example: "post_123"
+     *         type:
+     *           type: string
+     *           description: 게시글 타입
+     *           example: "ROUTINE_CERT"
+     *         authorId:
+     *           type: string
+     *           description: 작성자 ID (uid)
+     *           example: "user_123"
+     *         author:
+     *           type: string
+     *           description: 작성자 닉네임
+     *           example: "사용자닉네임"
+     *         title:
+     *           type: string
+     *           description: 제목
+     *           example: "오늘의 루틴 인증!"
  *         content:
  *           type: array
  *           description: 내용

@@ -277,6 +277,7 @@ const getAllCommunityPosts = async (req, res) => {
     const simplifiedPosts = paginatedPosts.map((post) => ({
       id: post.id,
       type: post.type,
+      authorId: post.authorId,
       author: post.author,
       title: post.title,
       preview: createPreview(post),
@@ -342,6 +343,7 @@ const getCommunityPosts = async (req, res) => {
     const simplifiedPosts = (result.content || []).map((post) => ({
       id: post.id,
       type: post.type,
+      authorId: post.authorId,
       author: post.author,
       title: post.title,
       preview: createPreview(post),

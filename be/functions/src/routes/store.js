@@ -646,7 +646,7 @@ router.get("/products/:productId", storeController.getProductById);
  *               productId:
  *                 type: string
  *                 description: 상품 ID
- *                 example: "product123"      
+ *                 example: "product123"
  *               quantity:
  *                 type: integer
  *                 default: 1
