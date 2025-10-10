@@ -113,7 +113,7 @@ class ReportContentController {
 
 
   /**
-     * 신고 상세 조회(보류)
+     * 신고 상세 조회
      */
   async getReportById(req, res) {
   try {
