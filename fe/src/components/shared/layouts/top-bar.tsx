@@ -14,7 +14,7 @@ const TopBar = () => {
   const router = useRouter();
   const currentTitle =
     TOPBAR_TITLE_MAP.find((item) => pathname?.startsWith(item.prefix))?.label ??
-    "";
+    "\n";
 
   const handleClick = () => {
     router.back();
