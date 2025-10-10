@@ -1,3 +1,9 @@
 echo "pre-commit husky script is running ^_^"
 
-pnpm --dir "$(git rev-parse --show-toplevel)/fe" exec lint-staged --no-stash
+# Check if any staged files are in the fe/ directory
+if git diff --cached --name-only | grep -q "^fe/"; then
+  echo "Frontend files detected, running lint-staged..."
+  pnpm --dir "$(git rev-parse --show-toplevel)/fe" exec lint-staged --no-stash
+else
+  echo "No frontend files in commit, skipping lint-staged"
+fi
