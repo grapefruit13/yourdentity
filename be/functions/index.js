@@ -177,19 +177,19 @@ app.post("/echo", (req, res) => {
   });
 });
 
-// API 라우트 직접 등록 (함수명이 'api'이므로 /api prefix 자동 적용)
-app.use("/users", userRoutes);
-app.use("/missions", missionRoutes);
-app.use("/images", imageRoutes);
-app.use("/routines", routineRoutes);
-app.use("/gatherings", gatheringRoutes);
-app.use("/tmis", tmiRoutes);
-app.use("/communities", communityRoutes);
-app.use("/store", storeRoutes);
-app.use("/comments", commentRoutes);
-app.use("/notion/announcements", announcementRoutes);
-app.use("/faqs", faqRoutes);
-app.use("/reportContent", reportContentRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/missions", missionRoutes);
+app.use("/api/images", imageRoutes);
+app.use("/api/routines", routineRoutes);
+app.use("/api/gatherings", gatheringRoutes);
+app.use("/api/tmis", tmiRoutes);
+app.use("/api/communities", communityRoutes);
+app.use("/api/store", storeRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/notion/announcements", announcementRoutes);
+app.use("/api/faqs", faqRoutes);
+app.use("/api/reportContent", reportContentRoutes);
+
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
