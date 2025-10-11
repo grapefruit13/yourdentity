@@ -24,6 +24,7 @@ const announcementRoutes = require("./src/routes/announcements");
 const reportContentRoutes = require("./src/routes/reportContent");
 const faqRoutes = require("./src/routes/faqs");
 
+
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -40,6 +41,7 @@ const {
 
 // Express 앱 생성
 const app = express();
+const apiRouter = express.Router();
 
 const allowedOrigins = [
   // 개발 환경
@@ -176,19 +178,21 @@ app.post("/echo", (req, res) => {
   });
 });
 
-// API 라우트 등록
-app.use("/users", userRoutes);
-app.use("/missions", missionRoutes);
-app.use("/images", imageRoutes);
-app.use("/routines", routineRoutes);
-app.use("/gatherings", gatheringRoutes);
-app.use("/tmis", tmiRoutes);
-app.use("/communities", communityRoutes);
-app.use("/store", storeRoutes);
-app.use("/comments", commentRoutes);
-app.use("/notion/announcements", announcementRoutes);
-app.use("/faqs", faqRoutes);
-app.use("/reportContent", reportContentRoutes);
+
+apiRouter.use("/users", userRoutes);
+apiRouter.use("/missions", missionRoutes);
+apiRouter.use("/images", imageRoutes);
+apiRouter.use("/routines", routineRoutes);
+apiRouter.use("/gatherings", gatheringRoutes);
+apiRouter.use("/tmis", tmiRoutes);
+apiRouter.use("/communities", communityRoutes);
+apiRouter.use("/store", storeRoutes);
+apiRouter.use("/comments", commentRoutes);
+apiRouter.use("/notion/announcements", announcementRoutes);
+apiRouter.use("/faqs", faqRoutes);
+apiRouter.use("/reportContent", reportContentRoutes);
+
+app.use("/api", apiRouter);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
