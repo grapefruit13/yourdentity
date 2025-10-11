@@ -190,7 +190,7 @@ app.use(errorHandler);
 exports.api = onRequest(
     {
       region: "asia-northeast3",
-      cors: true, // ✅ 반드시 true로 유지
+      // cors: true, // ✅ 반드시 true로 유지
     },
     app,
 );
