@@ -177,7 +177,7 @@ app.post("/echo", (req, res) => {
   });
 });
 
-// 통합 API용 라우트 (선택적)
+// API 라우트 직접 등록 (함수명이 'api'이므로 /api prefix 자동 적용)
 app.use("/users", userRoutes);
 app.use("/missions", missionRoutes);
 app.use("/images", imageRoutes);
@@ -194,52 +194,14 @@ app.use("/reportContent", reportContentRoutes);
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
 
-// 통합 API 엔드포인트
 exports.api = onRequest(
     {
       region: "asia-northeast3",
+      // cors: true,
     },
     app,
+
 );
-
-// 헬퍼 함수: 개별 라우트용 Express 앱 생성
-const createRouteApp = (router) => {
-  const routeApp = express();
-  routeApp.use(
-      cors({
-        origin: (origin, callback) => {
-          if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-          } else {
-            console.log("CORS blocked origin:", origin);
-            callback(new Error("Not allowed by CORS"));
-          }
-        },
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-      }),
-  );
-  routeApp.use(express.json());
-  routeApp.use(logger);
-  routeApp.use("/", router);
-  routeApp.use(errorHandler);
-  return routeApp;
-};
-
-// 각 라우트를 개별 Cloud Function으로 export (prefix 없이 직접 접근)
-exports.routines = onRequest({region: "asia-northeast3"}, createRouteApp(routineRoutes));
-exports.users = onRequest({region: "asia-northeast3"}, createRouteApp(userRoutes));
-exports.missions = onRequest({region: "asia-northeast3"}, createRouteApp(missionRoutes));
-exports.images = onRequest({region: "asia-northeast3"}, createRouteApp(imageRoutes));
-exports.gatherings = onRequest({region: "asia-northeast3"}, createRouteApp(gatheringRoutes));
-exports.tmis = onRequest({region: "asia-northeast3"}, createRouteApp(tmiRoutes));
-exports.communities = onRequest({region: "asia-northeast3"}, createRouteApp(communityRoutes));
-exports.store = onRequest({region: "asia-northeast3"}, createRouteApp(storeRoutes));
-exports.comments = onRequest({region: "asia-northeast3"}, createRouteApp(commentRoutes));
-exports.announcements = onRequest({region: "asia-northeast3"}, createRouteApp(announcementRoutes));
-exports.faqs = onRequest({region: "asia-northeast3"}, createRouteApp(faqRoutes));
-exports.reportContent = onRequest({region: "asia-northeast3"}, createRouteApp(reportContentRoutes));
 
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
