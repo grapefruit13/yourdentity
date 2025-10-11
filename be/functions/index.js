@@ -62,16 +62,12 @@ const allowedOrigins = [
   "https://asia-northeast3-yourdentity.cloudfunctions.net",
 ];
 
-// ✅ CORS 미들웨어 (allowlist 기반 + 환경별 분기)
+// ✅ CORS 미들웨어 (기본 허용 + 프리플라이트 대응)
 app.use(
     cors({
       origin: (origin, callback) => {
-        const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true" ||
-                            process.env.NODE_ENV !== "production";
-
-        if (!origin && isDevelopment) {
-          callback(null, true);
-        } else if (origin && allowedOrigins.includes(origin)) {
+        // ✅ 개발용: origin이 없으면 (예: Postman) 허용
+        if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
           console.warn("🚫 CORS blocked origin:", origin);
@@ -177,7 +173,7 @@ app.use(errorHandler);
 exports.api = onRequest(
     {
       region: "asia-northeast3",
-      // cors 옵션 제거: Express의 cors() 미들웨어가 환경별 allowlist 처리
+      // cors 옵션 제거: Express의 cors() 미들웨어가 allowlist 기반으로 처리
     },
     app,
 );
