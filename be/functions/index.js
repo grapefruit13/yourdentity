@@ -62,12 +62,16 @@ const allowedOrigins = [
   "https://asia-northeast3-yourdentity.cloudfunctions.net",
 ];
 
-// ✅ CORS 미들웨어 (기본 허용 + 프리플라이트 대응)
+// ✅ CORS 미들웨어 (allowlist 기반 + 환경별 분기)
 app.use(
     cors({
       origin: (origin, callback) => {
-        // ✅ 개발용: origin이 없으면 (예: Postman) 허용
-        if (!origin || allowedOrigins.includes(origin)) {
+        const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true" ||
+                            process.env.NODE_ENV !== "production";
+
+        if (!origin && isDevelopment) {
+          callback(null, true);
+        } else if (origin && allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
           console.warn("🚫 CORS blocked origin:", origin);
@@ -169,11 +173,11 @@ app.use("/reportContent", reportContentRoutes);
 // 에러 핸들러
 app.use(errorHandler);
 
-// ✅ v2 Functions 설정 (CORS 자동 허용 옵션 포함)
+// ✅ Firebase Functions 설정 (Express CORS 미들웨어 사용)
 exports.api = onRequest(
     {
       region: "asia-northeast3",
-      // cors: true, // ✅ 반드시 true로 유지
+      // cors 옵션 제거: Express의 cors() 미들웨어가 환경별 allowlist 처리
     },
     app,
 );
