@@ -196,7 +196,7 @@ app.use(errorHandler);
 exports.api = onRequest(
     {
       region: "asia-northeast3",
-      cors: true,
+      // cors: true,
     },
     app,
 
