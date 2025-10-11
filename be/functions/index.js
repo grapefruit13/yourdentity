@@ -24,6 +24,7 @@ const announcementRoutes = require("./src/routes/announcements");
 const reportContentRoutes = require("./src/routes/reportContent");
 const faqRoutes = require("./src/routes/faqs");
 
+
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -61,15 +62,19 @@ const allowedOrigins = [
   "https://asia-northeast3-yourdentity.cloudfunctions.net",
 ];
 
+// ✅ CORS 미들웨어 (allowlist 기반 + 환경별 분기)
 app.use(
-
     cors({
       origin: (origin, callback) => {
-      // 개발 환경에서는 origin이 없는 요청도 허용
-        if (!origin || allowedOrigins.includes(origin)) {
+        const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true" ||
+                            process.env.NODE_ENV !== "production";
+
+        if (!origin && isDevelopment) {
+          callback(null, true);
+        } else if (origin && allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
-          console.log("CORS blocked origin:", origin);
+          console.warn("🚫 CORS blocked origin:", origin);
           callback(new Error("Not allowed by CORS"));
         }
       },
@@ -77,16 +82,10 @@ app.use(
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     }),
-
 );
 
 app.use(express.json());
 app.use(logger);
-
-// TODO: 자동 업데이트 미들웨어 히스토리 확인 필요
-// if (process.env.NODE_ENV === "development") {
-//   app.use(swaggerConfig.autoUpdateMiddleware);
-// }
 
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, async (req, res, next) => {
@@ -100,7 +99,6 @@ app.use("/api-docs", swaggerUi.serve, async (req, res, next) => {
         validatorUrl: null,
         tryItOutEnabled: true,
         supportedSubmitMethods: ["get", "post", "put", "patch", "delete"],
-        // ⚠️ requestInterceptor는 제거 (응답 헤더에서만 처리)
       },
     });
     swaggerUiHandler(req, res, next);
@@ -114,7 +112,7 @@ app.use("/api-docs", swaggerUi.serve, async (req, res, next) => {
   }
 });
 
-// Swagger JSON 엔드포인트
+// Swagger JSON
 app.get("/api-docs.json", async (req, res) => {
   try {
     const mergedSpec = await swaggerConfig.getMerged();
@@ -129,30 +127,12 @@ app.get("/api-docs.json", async (req, res) => {
   }
 });
 
-// 개발 모드용 Swagger 관리 API
-if (process.env.NODE_ENV === "development") {
-  app.post("/api-docs/update", async (req, res) => {
-    try {
-      await swaggerConfig.updateSwagger();
-      res.json({
-        success: true,
-        message: "Swagger 문서가 업데이트되었습니다.",
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      res
-          .status(500)
-          .json({success: false, message: "Swagger 업데이트 실패"});
-    }
-  });
-}
-
-// 기본 라우트들 (기존 호환성을 위해 유지)
+// 기본 라우트
 app.get("/", (req, res) => {
   res.json({
     message: "Hello World from Firebase Functions!",
     timestamp: new Date().toISOString(),
-    service: "Express.js on Firebase Functions v6 (Mixed Generation)",
+    service: "Express.js on Firebase Functions v6",
     version: "2.0.0",
     documentation: "/api-docs",
   });
@@ -176,7 +156,7 @@ app.post("/echo", (req, res) => {
   });
 });
 
-// API 라우트 등록
+// ✅ 라우트 등록 (/api prefix는 자동으로 붙음)
 app.use("/users", userRoutes);
 app.use("/missions", missionRoutes);
 app.use("/images", imageRoutes);
@@ -190,18 +170,18 @@ app.use("/notion/announcements", announcementRoutes);
 app.use("/faqs", faqRoutes);
 app.use("/reportContent", reportContentRoutes);
 
-// 에러 핸들러 (마지막에 등록)
+// 에러 핸들러
 app.use(errorHandler);
 
+// ✅ Firebase Functions 설정 (Express CORS 미들웨어 사용)
 exports.api = onRequest(
     {
       region: "asia-northeast3",
-      // cors: true,
+      // cors 옵션 제거: Express의 cors() 미들웨어가 환경별 allowlist 처리
     },
     app,
-
 );
 
-// 1세대 Auth Triggers 내보내기
+// 1세대 Auth 트리거
 exports.createUserDocument = createUserDocument;
 exports.deleteUserDocument = deleteUserDocument;

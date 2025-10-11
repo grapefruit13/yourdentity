@@ -51,7 +51,7 @@ const options = {
       {
         url: process.env.FUNCTIONS_EMULATOR === "true" ?
           `http://127.0.0.1:5001/${process.env.DEV_PROJECT_ID || "youthvoice-2025"}/asia-northeast3/api` :
-          `https://asia-northeast3-${process.env.PROD_PROJECT_ID || "yourdentity"}.cloudfunctions.net`,
+          `https://asia-northeast3-${process.env.PROD_PROJECT_ID || "youthvoice-2025"}.cloudfunctions.net/api`,
         description: process.env.FUNCTIONS_EMULATOR === "true" ?
           "개발 서버 (Firebase Emulator)" :
           "프로덕션 서버",
