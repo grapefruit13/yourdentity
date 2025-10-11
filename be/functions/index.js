@@ -41,7 +41,6 @@ const {
 
 // Express 앱 생성
 const app = express();
-const apiRouter = express.Router();
 
 const allowedOrigins = [
   // 개발 환경
@@ -178,21 +177,19 @@ app.post("/echo", (req, res) => {
   });
 });
 
-
-apiRouter.use("/users", userRoutes);
-apiRouter.use("/missions", missionRoutes);
-apiRouter.use("/images", imageRoutes);
-apiRouter.use("/routines", routineRoutes);
-apiRouter.use("/gatherings", gatheringRoutes);
-apiRouter.use("/tmis", tmiRoutes);
-apiRouter.use("/communities", communityRoutes);
-apiRouter.use("/store", storeRoutes);
-apiRouter.use("/comments", commentRoutes);
-apiRouter.use("/notion/announcements", announcementRoutes);
-apiRouter.use("/faqs", faqRoutes);
-apiRouter.use("/reportContent", reportContentRoutes);
-
-app.use("/api", apiRouter);
+// API 라우트 직접 등록 (함수명이 'api'이므로 /api prefix 자동 적용)
+app.use("/users", userRoutes);
+app.use("/missions", missionRoutes);
+app.use("/images", imageRoutes);
+app.use("/routines", routineRoutes);
+app.use("/gatherings", gatheringRoutes);
+app.use("/tmis", tmiRoutes);
+app.use("/communities", communityRoutes);
+app.use("/store", storeRoutes);
+app.use("/comments", commentRoutes);
+app.use("/notion/announcements", announcementRoutes);
+app.use("/faqs", faqRoutes);
+app.use("/reportContent", reportContentRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
