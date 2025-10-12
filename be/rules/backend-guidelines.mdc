@@ -1,0 +1,1943 @@
+---
+description: "Backend development guidelines for Firebase Functions + Express.js"
+globs:
+  - "functions/**/*.js"
+alwaysApply: false
+---
+
+# Backend Development Guidelines
+
+이 문서는 Firebase Functions + Express.js 백엔드 개발 시 따라야 할 핵심 원칙과 권장 패턴을 정리합니다.
+토스 프론트엔드 가이드라인의 4가지 핵심 원칙을 백엔드에 적용했습니다.
+
+# Readability
+
+코드의 명확성과 이해 용이성을 향상시킵니다.
+
+## Controller-Service-Database 레이어 분리
+
+**Rule:** 비즈니스 로직은 Service 계층에, HTTP 처리는 Controller 계층에 명확히 분리합니다.
+
+**Reasoning:**
+- 각 레이어의 단일 책임 원칙(SRP)을 준수하여 코드의 역할이 명확해집니다.
+- 테스트 용이성이 향상되고 비즈니스 로직을 독립적으로 검증할 수 있습니다.
+- 비즈니스 로직을 여러 곳에서 재사용할 수 있어 유지보수가 쉬워집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 나쁜 예: Controller에 비즈니스 로직 혼재
+class UserController {
+  async createUser(req, res) {
+    const { email, password, name } = req.body;
+    
+    // 비즈니스 로직이 Controller에 있음
+    const authUser = await admin.auth().createUser({ email, password });
+    const userDoc = { name, email, rewardPoints: 0 };
+    await admin.firestore().collection('users').doc(authUser.uid).set(userDoc);
+    
+    res.json({ success: true, user: userDoc });
+  }
+}
+
+// ✅ 좋은 예: Service 계층에서 비즈니스 로직 처리
+class UserController {
+  async createUser(req, res) {
+    try {
+      const result = await userService.createUser(req.body);
+      res.json(successResponse(200, result));
+    } catch (error) {
+      console.error('Create user error:', error);
+      return req.next ? req.next(error) : res.status(400).json({ error: error.message });
+    }
+  }
+}
+
+class UserService {
+  async createUser(userData) {
+    const { name, email, password } = userData;
+    
+    // 유효성 검증
+    this.validateUserData(userData);
+    
+    // Firebase Auth 사용자 생성
+    const authUser = await admin.auth().createUser({ email, password, displayName: name });
+    
+    // Firestore 문서 생성
+    const firestoreUser = {
+      name,
+      email,
+      rewardPoints: 0,
+      level: 1,
+      onBoardingComplete: false,
+    };
+    
+    await this.firestoreService.create(firestoreUser, authUser.uid);
+    return { uid: authUser.uid, ...firestoreUser };
+  }
+  
+  validateUserData(userData) {
+    if (!userData.name) {
+      const error = new Error('name is required');
+      error.code = 'BAD_REQUEST';
+      throw error;
+    }
+    // ... 추가 검증
+  }
+}
+```
+
+## 복잡한 조건문을 명명된 변수로 추출
+
+**Rule:** 복잡한 Boolean 조건은 의미 있는 이름을 가진 변수로 추출합니다.
+
+**Reasoning:**
+- 조건의 의도를 명확하게 드러내어 가독성이 향상됩니다.
+- 조건 로직을 재사용하고 독립적으로 테스트할 수 있습니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 복잡한 조건문이 인라인으로 있는 경우
+async function processOrder(order, user) {
+  if (order.status === 'pending' && 
+      order.totalAmount > 0 && 
+      user.balance >= order.totalAmount &&
+      !user.isSuspended &&
+      order.items.length > 0) {
+    await completeOrder(order.id);
+  }
+}
+
+// ✅ 명명된 변수로 조건을 명확히 표현
+async function processOrder(order, user) {
+  const isOrderValid = order.status === 'pending' && order.totalAmount > 0;
+  const hasValidItems = order.items.length > 0;
+  const canUserPay = user.balance >= order.totalAmount && !user.isSuspended;
+  
+  if (isOrderValid && hasValidItems && canUserPay) {
+    await completeOrder(order.id);
+  }
+}
+
+// ✅ Service 메서드로 추출하여 재사용 가능하게
+class OrderService {
+  async processOrder(order, user) {
+    if (this.canProcessOrder(order, user)) {
+      await this.completeOrder(order.id);
+    }
+  }
+  
+  canProcessOrder(order, user) {
+    return this.isOrderValid(order) && 
+           this.hasValidItems(order) && 
+           this.canUserPay(order, user);
+  }
+  
+  isOrderValid(order) {
+    return order.status === 'pending' && order.totalAmount > 0;
+  }
+  
+  hasValidItems(order) {
+    return order.items.length > 0;
+  }
+  
+  canUserPay(order, user) {
+    return user.balance >= order.totalAmount && !user.isSuspended;
+  }
+}
+```
+
+## 매직 넘버에 이름 부여
+
+**Rule:** 매직 넘버와 매직 스트링을 명명된 상수로 대체합니다.
+
+**Reasoning:**
+- 숫자/문자열의 의미를 명확하게 드러냅니다.
+- 값이 변경될 때 한 곳만 수정하면 되어 유지보수가 쉬워집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 매직 넘버 사용
+async function checkUploadLimit(user, fileSize) {
+  if (fileSize > 1073741824) {
+    throw new Error('File too large');
+  }
+  if (user.usedStorageBytes + fileSize > 5368709120) {
+    throw new Error('Storage quota exceeded');
+  }
+}
+
+// ✅ 명명된 상수 사용
+const STORAGE_LIMITS = {
+  MAX_FILE_SIZE_BYTES: 1073741824, // 1GB
+  MAX_STORAGE_BYTES: 5368709120,   // 5GB
+};
+
+async function checkUploadLimit(user, fileSize) {
+  if (fileSize > STORAGE_LIMITS.MAX_FILE_SIZE_BYTES) {
+    throw new Error('File too large');
+  }
+  
+  const totalStorage = user.usedStorageBytes + fileSize;
+  if (totalStorage > STORAGE_LIMITS.MAX_STORAGE_BYTES) {
+    throw new Error('Storage quota exceeded');
+  }
+}
+
+// ✅ 상수 파일로 분리
+// constants/storageConstants.js
+module.exports = {
+  MAX_FILE_SIZE_BYTES: 1073741824,
+  MAX_STORAGE_BYTES: 5368709120,
+  ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/gif'],
+};
+
+// ✅ 시간 관련 상수 (프로젝트에서 자주 사용)
+// constants/timeConstants.js
+module.exports = {
+  SECONDS_IN_MINUTE: 60,
+  SECONDS_IN_HOUR: 3600,
+  SECONDS_IN_DAY: 86400,
+  SECONDS_IN_MONTH: 2592000,
+  MILLISECONDS_IN_SECOND: 1000,
+};
+
+// 사용 예시
+const { SECONDS_IN_MINUTE, SECONDS_IN_HOUR, SECONDS_IN_DAY } = require('../constants/timeConstants');
+
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < SECONDS_IN_MINUTE) {
+    return "방금 전";
+  } else if (diffInSeconds < SECONDS_IN_HOUR) {
+    const minutes = Math.floor(diffInSeconds / SECONDS_IN_MINUTE);
+    return `${minutes}분 전`;
+  } else if (diffInSeconds < SECONDS_IN_DAY) {
+    const hours = Math.floor(diffInSeconds / SECONDS_IN_HOUR);
+    return `${hours}시간 전`;
+  }
+  // ...
+}
+```
+
+# Predictability
+
+코드가 이름, 파라미터, 컨텍스트를 기반으로 예상대로 동작하도록 보장합니다.
+
+## 일관된 에러 처리 및 코드 부여
+
+**Rule:** 모든 에러에 명확한 에러 코드를 부여하고, 중앙 집중식 에러 핸들러를 사용합니다.
+
+**Reasoning:**
+- 클라이언트가 에러 타입을 예측 가능하게 식별할 수 있습니다.
+- 일관된 에러 응답 형식으로 예측 가능한 API를 제공합니다.
+- 에러 로깅 및 모니터링이 체계적으로 이루어집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ 에러 코드를 명시적으로 부여
+class UserService {
+  async getUserById(uid) {
+    const user = await this.firestoreService.getById(uid);
+    
+    if (!user) {
+      const error = new Error('User not found');
+      error.code = 'NOT_FOUND';
+      error.statusCode = 404;
+      throw error;
+    }
+    
+    return user;
+  }
+  
+  async createUser(userData) {
+    if (!userData.email) {
+      const error = new Error('email is required');
+      error.code = 'BAD_REQUEST';
+      error.statusCode = 400;
+      throw error;
+    }
+    // ... 로직
+  }
+}
+
+// ✅ Controller에서 일관된 에러 처리
+class UserController {
+  async getUserById(req, res) {
+    try {
+      const { userId } = req.params;
+      const user = await userService.getUserById(userId);
+      res.json(successResponse(200, user));
+    } catch (error) {
+      // 에러를 중앙 핸들러로 전달
+      return req.next ? req.next(error) : res.status(500).json({ error: error.message });
+    }
+  }
+}
+
+// ✅ 중앙 에러 핸들러 (errorHandler.js)
+const errorHandler = (err, req, res, next) => {
+  const statusCode = err.statusCode || ERROR_CODES[err.code]?.status || 500;
+  const code = err.code || 'INTERNAL_ERROR';
+  
+  console.error(`[${code}] ${err.message}`, {
+    path: req.path,
+    method: req.method,
+    stack: err.stack,
+  });
+  
+  res.status(statusCode).json({
+    status: statusCode,
+    code,
+    message: err.message,
+    timestamp: new Date().toISOString(),
+  });
+};
+```
+
+## 일관된 반환 타입 사용
+
+**Rule:** 유사한 기능을 하는 함수/메서드는 일관된 반환 타입을 사용합니다.
+
+**Reasoning:**
+- 함수의 반환값 형태를 예측할 수 있어 사용하기 쉬워집니다.
+- 타입의 일관성으로 버그를 예방할 수 있습니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 반환 타입이 일관되지 않음
+async function getUserById(userId) {
+  const user = await db.collection('users').doc(userId).get();
+  if (!user.exists) {
+    return null; // 때로는 null
+  }
+  return user.data(); // 때로는 객체
+}
+
+async function getPostById(postId) {
+  const post = await db.collection('posts').doc(postId).get();
+  if (!post.exists) {
+    throw new Error('Post not found'); // 때로는 에러 발생
+  }
+  return post.data();
+}
+
+// ✅ 일관된 반환 타입 (항상 에러 throw)
+class UserService {
+  async getUserById(userId) {
+    const user = await db.collection('users').doc(userId).get();
+    if (!user.exists) {
+      const error = new Error('User not found');
+      error.code = 'NOT_FOUND';
+      throw error;
+    }
+    return user.data();
+  }
+}
+
+class PostService {
+  async getPostById(postId) {
+    const post = await db.collection('posts').doc(postId).get();
+    if (!post.exists) {
+      const error = new Error('Post not found');
+      error.code = 'NOT_FOUND';
+      throw error;
+    }
+    return post.data();
+  }
+}
+
+// ✅ 또는 일관된 Result 타입 사용
+class ValidationResult {
+  constructor(isValid, errors = []) {
+    this.isValid = isValid;
+    this.errors = errors;
+  }
+  
+  static success() {
+    return new ValidationResult(true, []);
+  }
+  
+  static failure(errors) {
+    return new ValidationResult(false, Array.isArray(errors) ? errors : [errors]);
+  }
+}
+
+function validateEmail(email) {
+  if (!email) {
+    return ValidationResult.failure('Email is required');
+  }
+  if (!email.includes('@')) {
+    return ValidationResult.failure('Invalid email format');
+  }
+  return ValidationResult.success();
+}
+
+function validatePassword(password) {
+  if (!password) {
+    return ValidationResult.failure('Password is required');
+  }
+  if (password.length < 8) {
+    return ValidationResult.failure('Password must be at least 8 characters');
+  }
+  return ValidationResult.success();
+}
+
+// 사용 예시
+const emailValidation = validateEmail(email);
+if (!emailValidation.isValid) {
+  console.error(emailValidation.errors);
+}
+```
+
+## 부수 효과(Side Effect) 명확히 하기
+
+**Rule:** 함수는 이름이 암시하는 작업만 수행하고, 숨겨진 부수 효과를 피합니다.
+
+**Reasoning:**
+- 함수 이름만 보고 동작을 예측할 수 있습니다.
+- 예상치 못한 부수 효과로 인한 버그를 방지합니다.
+- 단일 책임 원칙(SRP)을 준수하여 테스트가 쉬워집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 숨겨진 부수 효과 (로깅, 메트릭, 알림이 숨어있음)
+async function getUserById(userId) {
+  // 사용자 조회만 할 것 같지만...
+  const user = await db.collection('users').doc(userId).get();
+  
+  // 숨겨진 부수 효과들
+  await logUserAccess(userId); // 로깅
+  await incrementMetric('user_views'); // 메트릭
+  await notifyAdmin(`User ${userId} was accessed`); // 알림
+  
+  return user.data();
+}
+
+// ✅ 부수 효과를 명시적으로 분리
+class UserService {
+  // 순수하게 조회만 수행
+  async getUserById(userId) {
+    const user = await db.collection('users').doc(userId).get();
+    if (!user.exists) {
+      const error = new Error('User not found');
+      error.code = 'NOT_FOUND';
+      throw error;
+    }
+    return user.data();
+  }
+  
+  // 부수 효과를 포함한 메서드는 명확한 이름 사용
+  async getUserByIdWithTracking(userId) {
+    const user = await this.getUserById(userId);
+    
+    // 명시적으로 부수 효과 수행
+    await this.trackUserAccess(userId);
+    
+    return user;
+  }
+  
+  async trackUserAccess(userId) {
+    await Promise.all([
+      this.logService.logUserAccess(userId),
+      this.metricsService.increment('user_views'),
+    ]);
+  }
+}
+
+// Controller에서 명시적으로 호출
+class UserController {
+  async getUserProfile(req, res) {
+    const { userId } = req.params;
+    
+    // 조회와 트래킹을 명시적으로 분리
+    const user = await userService.getUserById(userId);
+    await userService.trackUserAccess(userId); // 의도가 명확함
+    
+    res.json(successResponse(200, user));
+  }
+}
+```
+
+## Service 메서드는 항상 try-catch로 감싸기
+
+**Rule:** Service 계층의 모든 비동기 메서드는 적절한 에러 처리를 포함해야 합니다.
+
+**Reasoning:**
+- 예측 가능한 에러 처리로 시스템 안정성을 높입니다.
+- 에러 컨텍스트를 보존하여 디버깅이 쉬워집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ Service 메서드에서 에러를 적절히 변환
+class UserService {
+  async deleteUser(uid) {
+    try {
+      await admin.auth().deleteUser(uid);
+      await this.firestoreService.delete(uid);
+    } catch (error) {
+      console.error('Delete user error:', error.message);
+      
+      const wrappedError = new Error('Failed to delete user');
+      wrappedError.code = 'INTERNAL';
+      wrappedError.originalError = error;
+      throw wrappedError;
+    }
+  }
+}
+```
+
+## API 응답 형식 표준화
+
+**Rule:** 모든 API 엔드포인트는 동일한 응답 구조를 반환합니다.
+
+**Reasoning:**
+- 클라이언트가 응답 형식을 예측할 수 있어 파싱이 일관적입니다.
+- 에러와 성공 응답의 구조가 통일되어 처리가 간단해집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ helpers.js에 응답 포매터 정의
+function successResponse(status, data, message = null) {
+  const response = {
+    status,
+    success: true,
+    data,
+    timestamp: new Date().toISOString(),
+  };
+  
+  if (message) {
+    response.message = message;
+  }
+  
+  return response;
+}
+
+function errorResponse(status, code, message, details = null) {
+  const response = {
+    status,
+    success: false,
+    error: {
+      code,
+      message,
+    },
+    timestamp: new Date().toISOString(),
+  };
+  
+  if (details) {
+    response.error.details = details;
+  }
+  
+  return response;
+}
+
+// ✅ Controller에서 일관된 형식 사용
+class UserController {
+  async getAllUsers(req, res) {
+    try {
+      const users = await userService.getAllUsers();
+      res.json(successResponse(200, { users, count: users.length }));
+    } catch (error) {
+      return req.next(error);
+    }
+  }
+}
+
+// 모든 성공 응답:
+{
+  "status": 200,
+  "success": true,
+  "data": { ... },
+  "timestamp": "2025-10-12T10:30:00.000Z"
+}
+
+// 모든 에러 응답:
+{
+  "status": 404,
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "User not found"
+  },
+  "timestamp": "2025-10-12T10:30:00.000Z"
+}
+
+// ❌ 나쁜 예: 응답 형식이 혼재됨
+// 어떤 API는 successResponse 사용
+res.json(successResponse(200, users));
+
+// 다른 API는 직접 객체 반환
+res.json({
+  success: true,
+  data: users,
+  pagination: {...}
+});
+
+// ✅ 좋은 예: 모든 API가 동일한 헬퍼 사용
+res.json(successResponse(200, {
+  users,
+  pagination
+}));
+```
+
+# Cohesion
+
+관련된 코드를 함께 배치하고, 모듈이 명확하고 단일한 목적을 가지도록 보장합니다.
+
+## Promise 체이닝보다 async/await 사용
+
+**Rule:** 비동기 코드는 async/await을 사용하여 가독성을 높입니다.
+
+**Reasoning:**
+- 동기 코드처럼 위에서 아래로 읽히는 비동기 코드로 응집도가 높아집니다.
+- 에러 처리가 try-catch로 통일되어 관련 로직이 함께 배치됩니다.
+- 디버깅이 용이하고 스택 트레이스를 추적하기 쉽습니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ Promise 체이닝
+function getUserWithPosts(userId) {
+  return userService.getUserById(userId)
+    .then(user => {
+      return postService.getPostsByUserId(user.uid)
+        .then(posts => ({ user, posts }));
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      throw error;
+    });
+}
+
+// ✅ async/await
+async function getUserWithPosts(userId) {
+  try {
+    const user = await userService.getUserById(userId);
+    const posts = await postService.getPostsByUserId(user.uid);
+    return { user, posts };
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
+```
+
+## 병렬 처리 가능한 작업은 Promise.all 사용
+
+**Rule:** 서로 독립적인 비동기 작업은 병렬로 처리합니다.
+
+**Reasoning:**
+- 관련 있지만 독립적인 작업들을 그룹화하여 응집도를 높입니다.
+- 성능을 개선하면서도 코드의 의도를 명확히 드러냅니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 순차 처리 (느림)
+async function getUserDashboard(userId) {
+  const user = await userService.getUserById(userId);
+  const posts = await postService.getPostsByUserId(userId);
+  const missions = await missionService.getMissionsByUserId(userId);
+  const stats = await statsService.getUserStats(userId);
+  
+  return { user, posts, missions, stats };
+}
+
+// ✅ 병렬 처리 (빠름)
+async function getUserDashboard(userId) {
+  const [user, posts, missions, stats] = await Promise.all([
+    userService.getUserById(userId),
+    postService.getPostsByUserId(userId),
+    missionService.getMissionsByUserId(userId),
+    statsService.getUserStats(userId),
+  ]);
+  
+  return { user, posts, missions, stats };
+}
+```
+
+## 관련 상수는 도메인별로 그룹화
+
+**Rule:** 매직 넘버와 설정 값은 도메인/기능별로 그룹화하여 상수 파일로 분리합니다.
+
+**Reasoning:**
+- 관련된 상수들이 함께 배치되어 응집도가 높아집니다.
+- 도메인별로 상수를 관리하여 찾기 쉽고 유지보수가 편합니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ constants/userConstants.js - 사용자 도메인 관련 상수
+module.exports = {
+  // 스토리지 제한
+  DEFAULT_UPLOAD_QUOTA_BYTES: 1073741824, // 1GB
+  MAX_UPLOAD_QUOTA_BYTES: 5368709120, // 5GB
+  
+  // 레벨 시스템
+  DEFAULT_USER_LEVEL: 1,
+  MAX_USER_LEVEL: 100,
+  POINTS_PER_LEVEL: 1000,
+  
+  // 사용자 역할
+  USER_ROLES: {
+    USER: 'user',
+    MODERATOR: 'moderator',
+    ADMIN: 'admin',
+  },
+  
+  // 인증 타입
+  AUTH_TYPES: {
+    EMAIL: 'email',
+    SNS: 'sns',
+  },
+};
+
+// ✅ constants/orderConstants.js - 주문 도메인 관련 상수
+module.exports = {
+  ORDER_STATUS: {
+    PENDING: 'pending',
+    CONFIRMED: 'confirmed',
+    SHIPPED: 'shipped',
+    DELIVERED: 'delivered',
+    CANCELLED: 'cancelled',
+  },
+  
+  PAYMENT_METHODS: {
+    CARD: 'card',
+    BANK_TRANSFER: 'bank_transfer',
+    CASH: 'cash',
+  },
+  
+  MIN_ORDER_AMOUNT: 10000,
+  FREE_SHIPPING_THRESHOLD: 50000,
+};
+
+// ✅ constants/errorCodes.js - 에러 코드 통합 관리
+module.exports = {
+  // 인증 관련
+  AUTH: {
+    UNAUTHORIZED: 'UNAUTHORIZED',
+    INVALID_TOKEN: 'INVALID_TOKEN',
+    TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  },
+  
+  // 사용자 관련
+  USER: {
+    NOT_FOUND: 'USER_NOT_FOUND',
+    DUPLICATE_EMAIL: 'DUPLICATE_EMAIL',
+    INVALID_EMAIL: 'INVALID_EMAIL',
+  },
+  
+  // 일반
+  COMMON: {
+    BAD_REQUEST: 'BAD_REQUEST',
+    INTERNAL_ERROR: 'INTERNAL_ERROR',
+  },
+};
+```
+
+## 도메인별 Service 계층 분리
+
+**Rule:** Service 클래스는 단일 도메인의 비즈니스 로직만 처리합니다.
+
+**Reasoning:**
+- 도메인별로 응집도 높은 코드 구조를 만듭니다.
+- 각 Service가 명확한 책임을 가져 이해하고 유지보수하기 쉽습니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ UserService - 사용자 도메인만 처리
+class UserService {
+  constructor() {
+    this.firestoreService = new FirestoreService('users');
+  }
+  
+  async createUser(userData) { /* ... */ }
+  async getUserById(userId) { /* ... */ }
+  async updateUser(userId, updateData) { /* ... */ }
+  async deleteUser(userId) { /* ... */ }
+  async validateUserData(userData) { /* ... */ }
+}
+
+// ✅ OrderService - 주문 도메인만 처리
+class OrderService {
+  constructor() {
+    this.firestoreService = new FirestoreService('orders');
+  }
+  
+  async createOrder(orderData) { /* ... */ }
+  async getOrderById(orderId) { /* ... */ }
+  async updateOrderStatus(orderId, status) { /* ... */ }
+  async cancelOrder(orderId) { /* ... */ }
+}
+
+// ✅ PaymentService - 결제 도메인만 처리
+class PaymentService {
+  async processPayment(orderId, paymentData) { /* ... */ }
+  async refundPayment(paymentId) { /* ... */ }
+  async getPaymentHistory(userId) { /* ... */ }
+}
+
+// ❌ 나쁜 예: 여러 도메인이 혼재된 Service
+class BusinessService {
+  async createUser(userData) { /* ... */ }
+  async createOrder(orderData) { /* ... */ }
+  async processPayment(paymentData) { /* ... */ }
+  async sendEmail(emailData) { /* ... */ }
+  // 응집도가 낮고 책임이 불명확함
+}
+```
+
+# Coupling
+
+서로 다른 코드 부분 간의 의존성을 최소화합니다.
+
+## 명확하고 일관된 이름 사용
+
+**Rule:** 함수, 변수, 파라미터 이름은 그 목적과 역할을 명확히 드러내야 합니다.
+
+**Reasoning:**
+- 명확한 이름으로 코드 간 결합도를 낮추고 독립성을 높입니다.
+- 이름만으로 동작을 이해할 수 있어 다른 코드에 대한 의존성이 줄어듭니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ Controller 메서드: HTTP 동사 + 리소스명
+class UserController {
+  async createUser(req, res) { }
+  async getUserById(req, res) { }
+  async getAllUsers(req, res) { }
+  async updateUser(req, res) { }
+  async deleteUser(req, res) { }
+}
+
+// ✅ Service 메서드: 동사 + 명사
+class UserService {
+  async createUser(userData) { }
+  async getUserById(uid) { }
+  async updateUserPoints(uid, points) { }
+  async validateUserEmail(email) { }
+  async provisionUser(uid, userData) { } // 특정 비즈니스 로직은 도메인 용어 사용
+}
+
+// ✅ Boolean 변수: is, has, should 등의 접두사
+const isNewUser = true;
+const hasPermission = await checkPermission(userId);
+const shouldUpdateProfile = user.onBoardingComplete === false;
+
+// ✅ 상수: UPPER_SNAKE_CASE
+const MAX_UPLOAD_SIZE_BYTES = 1073741824; // 1GB
+const DEFAULT_USER_LEVEL = 1;
+const AUTH_ERROR_CODES = {
+  INVALID_TOKEN: 'auth/invalid-token',
+  TOKEN_EXPIRED: 'auth/token-expired',
+};
+```
+
+## 의존성 주입으로 결합도 낮추기
+
+**Rule:** 외부 의존성은 생성자나 파라미터를 통해 주입받습니다.
+
+**Reasoning:**
+- 구현체가 아닌 인터페이스에 의존하여 결합도를 낮춥니다.
+- 테스트 시 mock 객체를 주입하여 독립적인 테스트가 가능합니다.
+- 의존성 변경 시 수정 범위를 최소화할 수 있습니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 높은 결합도: Service가 직접 생성
+class UserService {
+  constructor() {
+    this.db = admin.firestore(); // Firebase에 강하게 결합됨
+    this.logger = new Logger(); // Logger 구현에 강하게 결합됨
+  }
+  
+  async createUser(userData) {
+    await this.db.collection('users').add(userData);
+    this.logger.info('User created');
+  }
+}
+
+// ✅ 낮은 결합도: 의존성 주입
+class UserService {
+  constructor(firestoreService = null, logger = null) {
+    // 기본값 제공하되, 주입도 가능하게
+    this.firestoreService = firestoreService || new FirestoreService('users');
+    this.logger = logger || console;
+  }
+  
+  async createUser(userData) {
+    const user = await this.firestoreService.create(userData);
+    this.logger.info('User created', { userId: user.id });
+    return user;
+  }
+}
+
+// ✅ 테스트에서 mock 주입 가능
+const mockFirestore = {
+  create: jest.fn().mockResolvedValue({ id: 'test-id' }),
+};
+const mockLogger = {
+  info: jest.fn(),
+};
+
+const userService = new UserService(mockFirestore, mockLogger);
+await userService.createUser({ name: 'Test' });
+
+expect(mockFirestore.create).toHaveBeenCalled();
+expect(mockLogger.info).toHaveBeenCalled();
+```
+
+## 공통 로직을 재사용 가능한 유틸리티로 추출
+
+**Rule:** 여러 곳에서 사용되는 로직은 독립적인 유틸리티 함수로 추출합니다.
+
+**Reasoning:**
+- 중복 코드를 제거하여 결합도를 낮춥니다.
+- 한 곳에서 수정하면 모든 곳에 반영되어 유지보수가 쉬워집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 중복 코드 (높은 결합도)
+class UserService {
+  async createUser(userData) {
+    const sanitized = {
+      ...userData,
+      password: undefined,
+      token: undefined,
+    };
+    console.log('Creating user:', sanitized);
+    // ...
+  }
+}
+
+class OrderService {
+  async createOrder(orderData) {
+    const sanitized = {
+      ...orderData,
+      creditCard: undefined,
+      cvv: undefined,
+    };
+    console.log('Creating order:', sanitized);
+    // ...
+  }
+}
+
+// ✅ 유틸리티 함수로 추출 (낮은 결합도)
+// utils/logger.js
+function sanitizeForLogging(data, sensitiveFields = []) {
+  const defaultSensitiveFields = ['password', 'token', 'creditCard', 'cvv', 'ssn'];
+  const allSensitiveFields = [...defaultSensitiveFields, ...sensitiveFields];
+  
+  const sanitized = { ...data };
+  for (const field of allSensitiveFields) {
+    if (sanitized[field]) {
+      sanitized[field] = '[REDACTED]';
+    }
+  }
+  
+  return sanitized;
+}
+
+function logInfo(message, data = null) {
+  const sanitized = data ? sanitizeForLogging(data) : null;
+  console.log(message, sanitized);
+}
+
+module.exports = { sanitizeForLogging, logInfo };
+
+// ✅ Service에서 유틸리티 사용
+const { logInfo } = require('../utils/logger');
+
+class UserService {
+  async createUser(userData) {
+    logInfo('Creating user:', userData);
+    // ...
+  }
+}
+
+class OrderService {
+  async createOrder(orderData) {
+    logInfo('Creating order:', orderData);
+    // ...
+  }
+}
+```
+
+## 단일 책임 원칙(SRP) 준수
+
+**Rule:** 각 함수는 하나의 명확한 책임만 가져야 합니다. (50줄 이하 권장)
+
+**Reasoning:**
+- 함수 간 결합도를 낮추고 독립적으로 수정/테스트할 수 있습니다.
+- 변경의 영향 범위를 최소화하여 유지보수성을 높입니다.
+- 긴 함수는 버그를 찾기 어렵고 이해하는 데 오래 걸립니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 나쁜 예: 200줄이 넘는 함수 (실제 프로젝트에서 발견)
+async function getPostById(req, res) {
+  try {
+    // 1. 커뮤니티 확인 (10줄)
+    // 2. 포스트 조회 (10줄)
+    // 3. 댓글 조회 (30줄)
+    // 4. 대댓글 배치 조회 (40줄)
+    // 5. 댓글 변환 로직 (60줄)
+    // 6. 대댓글 변환 로직 (50줄)
+    // 총 200줄 이상...
+  } catch (error) {
+    // ...
+  }
+}
+
+// ✅ 좋은 예: 작은 함수들로 분리
+async function getPostById(req, res) {
+  try {
+    const { communityId, postId } = req.params;
+    
+    await this.validateCommunityExists(communityId);
+    const post = await this.fetchPost(communityId, postId);
+    const comments = await this.fetchCommentsWithReplies(postId, post.authorId);
+    
+    res.json(successResponse(200, { ...post, replies: comments }));
+  } catch (error) {
+    return req.next(error);
+  }
+}
+
+async validateCommunityExists(communityId) {
+  const community = await firestoreService.getDocument('communities', communityId);
+  if (!community) {
+    const error = new Error('커뮤니티를 찾을 수 없습니다.');
+    error.code = 'NOT_FOUND';
+    throw error;
+  }
+}
+
+async fetchPost(communityId, postId) {
+  const post = await firestoreService.getDocument(`communities/${communityId}/posts`, postId);
+  if (!post) {
+    const error = new Error('게시글을 찾을 수 없습니다.');
+    error.code = 'NOT_FOUND';
+    throw error;
+  }
+  return post;
+}
+
+async fetchCommentsWithReplies(postId, authorId) {
+  const parentComments = await this.fetchParentComments(postId);
+  const allReplies = await this.fetchRepliesBatch(parentComments);
+  return this.formatComments(parentComments, allReplies, authorId);
+}
+
+// ❌ 여러 책임이 혼재
+async function updateUserProfile(userId, profileData) {
+  // 1. 유효성 검증
+  if (!profileData.name || profileData.name.length < 2) {
+    throw new Error('Invalid name');
+  }
+  
+  // 2. 이미지 업로드
+  if (profileData.imageFile) {
+    const imageUrl = await uploadImageToStorage(profileData.imageFile);
+    profileData.profileImageUrl = imageUrl;
+  }
+  
+  // 3. 포인트 업데이트
+  const currentPoints = await getUserPoints(userId);
+  await updatePoints(userId, currentPoints + 100);
+  
+  // 4. 프로필 저장
+  await saveUserProfile(userId, profileData);
+  
+  // 5. 알림 전송
+  await sendNotification(userId, 'Profile updated successfully');
+}
+
+// ✅ 각 책임을 분리한 함수들
+class UserService {
+  async updateUserProfile(userId, profileData) {
+    // 검증
+    this.validateProfileData(profileData);
+    
+    // 이미지 처리
+    if (profileData.imageFile) {
+      profileData.profileImageUrl = await this.imageService.uploadImage(profileData.imageFile);
+    }
+    
+    // 프로필 업데이트
+    const updatedUser = await this.firestoreService.update(userId, {
+      name: profileData.name,
+      profileImageUrl: profileData.profileImageUrl,
+    });
+    
+    // 부가 작업은 별도 메서드로
+    await this.handleProfileUpdateReward(userId);
+    
+    return updatedUser;
+  }
+  
+  validateProfileData(profileData) {
+    if (!profileData.name || profileData.name.length < 2) {
+      const error = new Error('Name must be at least 2 characters');
+      error.code = 'INVALID_NAME';
+      throw error;
+    }
+  }
+  
+  async handleProfileUpdateReward(userId) {
+    await this.rewardService.addPoints(userId, 100);
+    await this.notificationService.send(userId, 'Profile updated successfully');
+  }
+}
+```
+
+## 인터페이스 기반 설계로 교체 가능성 확보
+
+**Rule:** 구체적인 구현체 대신 추상화된 인터페이스에 의존합니다.
+
+**Reasoning:**
+- 구현체 변경 시 인터페이스를 사용하는 코드는 수정하지 않아도 됩니다.
+- 다양한 구현체를 교체하여 사용할 수 있어 유연성이 높아집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ 추상화된 인터페이스 정의
+// services/base/StorageService.js
+class StorageService {
+  async upload(file, path) {
+    throw new Error('upload() must be implemented');
+  }
+  
+  async download(path) {
+    throw new Error('download() must be implemented');
+  }
+  
+  async delete(path) {
+    throw new Error('delete() must be implemented');
+  }
+}
+
+// ✅ Firebase Storage 구현체
+class FirebaseStorageService extends StorageService {
+  constructor() {
+    super();
+    this.storage = admin.storage();
+  }
+  
+  async upload(file, path) {
+    const bucket = this.storage.bucket();
+    await bucket.file(path).save(file.buffer);
+    return `gs://${bucket.name}/${path}`;
+  }
+  
+  async download(path) {
+    const file = this.storage.bucket().file(path);
+    return await file.download();
+  }
+  
+  async delete(path) {
+    await this.storage.bucket().file(path).delete();
+  }
+}
+
+// ✅ S3 구현체 (나중에 필요하면 교체 가능)
+class S3StorageService extends StorageService {
+  constructor(s3Client) {
+    super();
+    this.s3 = s3Client;
+  }
+  
+  async upload(file, path) {
+    // S3 구현
+  }
+  
+  async download(path) {
+    // S3 구현
+  }
+  
+  async delete(path) {
+    // S3 구현
+  }
+}
+
+// ✅ ImageService는 StorageService 인터페이스에만 의존
+class ImageService {
+  constructor(storageService) {
+    // 구체적인 구현체가 아닌 인터페이스에 의존
+    this.storageService = storageService;
+  }
+  
+  async uploadImage(file, userId) {
+    const path = `images/${userId}/${file.name}`;
+    return await this.storageService.upload(file, path);
+  }
+  
+  async deleteImage(path) {
+    return await this.storageService.delete(path);
+  }
+}
+
+// 사용 시 구현체 주입
+const firebaseStorage = new FirebaseStorageService();
+const imageService = new ImageService(firebaseStorage);
+
+// 나중에 S3로 교체하려면
+const s3Storage = new S3StorageService(s3Client);
+const imageService = new ImageService(s3Storage); // ImageService 코드는 수정 불필요
+```
+
+# Firebase Best Practices
+
+Firebase와 Firestore를 효율적이고 안전하게 사용하기 위한 패턴입니다.
+
+## FirestoreService를 통한 데이터베이스 접근
+
+**Rule:** Firestore와 직접 상호작용하지 말고, FirestoreService를 통해 접근합니다.
+
+**Reasoning:**
+- 중복 코드를 제거하고 일관된 데이터 접근 패턴을 유지합니다.
+- 페이지네이션, 에러 처리, 타임스탬프 관리 등을 중앙에서 처리합니다.
+- 테스트 시 FirestoreService만 mock하면 되어 테스트가 쉬워집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 나쁜 예: Firestore를 직접 사용
+class UserService {
+  async getUserById(userId) {
+    const userDoc = await admin.firestore()
+      .collection('users')
+      .doc(userId)
+      .get();
+    
+    if (!userDoc.exists) {
+      throw new Error('User not found');
+    }
+    
+    return { id: userDoc.id, ...userDoc.data() };
+  }
+  
+  async getAllUsers() {
+    const snapshot = await admin.firestore()
+      .collection('users')
+      .get();
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  }
+  
+  async createUser(userData) {
+    const docRef = admin.firestore()
+      .collection('users')
+      .doc();
+    
+    await docRef.set({
+      ...userData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    return { id: docRef.id, ...userData };
+  }
+}
+
+// ✅ 좋은 예: FirestoreService 활용
+class UserService {
+  constructor() {
+    this.firestoreService = new FirestoreService('users');
+  }
+  
+  async getUserById(userId) {
+    try {
+      const user = await this.firestoreService.getById(userId);
+      if (!user) {
+        const error = new Error('User not found');
+        error.code = 'NOT_FOUND';
+        throw error;
+      }
+      return user;
+    } catch (error) {
+      console.error('Get user error:', error.message);
+      throw error;
+    }
+  }
+  
+  async getAllUsers() {
+    try {
+      return await this.firestoreService.getAll();
+    } catch (error) {
+      console.error('Get all users error:', error.message);
+      throw new Error('Failed to get users');
+    }
+  }
+  
+  async createUser(userData) {
+    const created = await this.firestoreService.create(userData);
+    return created;
+  }
+}
+
+// ✅ 서브컬렉션 접근
+class CommunityService {
+  constructor() {
+    this.communitiesService = new FirestoreService('communities');
+  }
+  
+  async getCommunityPosts(communityId, page = 0, size = 10) {
+    const postsService = new FirestoreService(`communities/${communityId}/posts`);
+    
+    const result = await postsService.getWithPagination({
+      page,
+      size,
+      orderBy: 'createdAt',
+      orderDirection: 'desc',
+    });
+    
+    return result;
+  }
+}
+
+// ✅ 조건부 쿼리
+async function getActiveUsers() {
+  const userService = new FirestoreService('users');
+  
+  const whereConditions = [
+    { field: 'status', operator: '==', value: 'active' },
+    { field: 'level', operator: '>=', value: 1 }
+  ];
+  
+  const result = await userService.getWithPagination({
+    page: 0,
+    size: 100,
+    where: whereConditions,
+    orderBy: 'createdAt',
+    orderDirection: 'desc'
+  });
+  
+  return result.content;
+}
+```
+
+**FirestoreService 주요 메서드:**
+- `getById(id)` - 단일 문서 조회
+- `getAll()` - 전체 문서 조회
+- `create(data, id?)` - 문서 생성
+- `update(id, data)` - 문서 업데이트
+- `delete(id)` - 문서 삭제
+- `getWithPagination(options)` - 페이지네이션 조회
+- `getDocument(collection, id)` - 특정 컬렉션 문서 조회
+- `getCollectionWhere(collection, field, operator, value)` - 조건부 조회
+- `getCollectionWhereIn(collection, field, values)` - IN 쿼리
+
+**예외적으로 직접 Firestore 접근이 필요한 경우:**
+- 트랜잭션 (Transaction)
+- 배치 작업 (Batch)
+- 실시간 리스너 (onSnapshot)
+
+```javascript
+// ✅ 예외: 트랜잭션은 직접 Firestore 사용
+async function transferPoints(fromUserId, toUserId, points) {
+  const db = admin.firestore();
+  
+  return db.runTransaction(async (transaction) => {
+    const fromRef = db.collection('users').doc(fromUserId);
+    const toRef = db.collection('users').doc(toUserId);
+    
+    const fromDoc = await transaction.get(fromRef);
+    const toDoc = await transaction.get(toRef);
+    
+    if (!fromDoc.exists || !toDoc.exists) {
+      throw new Error('User not found');
+    }
+    
+    const fromPoints = fromDoc.data().points;
+    if (fromPoints < points) {
+      throw new Error('Insufficient points');
+    }
+    
+    transaction.update(fromRef, { 
+      points: FieldValue.increment(-points) 
+    });
+    transaction.update(toRef, { 
+      points: FieldValue.increment(points) 
+    });
+    
+    return { success: true };
+  });
+}
+```
+
+## 입력 검증은 Service 계층에서 수행
+
+**Rule:** Controller는 최소한의 검증만 수행하고, 비즈니스 로직 검증은 Service에서 처리합니다.
+
+**Reasoning:**
+- 검증 로직이 Service에 응집되어 재사용하기 쉽습니다.
+- Controller는 HTTP 처리에만 집중하여 결합도가 낮아집니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ Service 계층에서 도메인 검증 수행
+class UserService {
+  async createUser(userData) {
+    // 필수 필드 검증
+    this.validateRequiredFields(userData, ['name', 'email', 'password']);
+    
+    // 도메인 규칙 검증
+    this.validateEmail(userData.email);
+    this.validatePassword(userData.password);
+    this.validateName(userData.name);
+    
+    // 비즈니스 로직 실행
+    const authUser = await admin.auth().createUser({
+      email: userData.email,
+      password: userData.password,
+      displayName: userData.name,
+    });
+    
+    // ...
+  }
+  
+  validateRequiredFields(data, requiredFields) {
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        const error = new Error(`${field} is required`);
+        error.code = 'BAD_REQUEST';
+        throw error;
+      }
+    }
+  }
+  
+  validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const error = new Error('Invalid email format');
+      error.code = 'INVALID_EMAIL';
+      throw error;
+    }
+  }
+  
+  validatePassword(password) {
+    if (password.length < 8) {
+      const error = new Error('Password must be at least 8 characters');
+      error.code = 'WEAK_PASSWORD';
+      throw error;
+    }
+  }
+}
+```
+
+## Firestore 배치 작업 활용
+
+**Rule:** 여러 문서를 동시에 작업할 때는 배치 또는 트랜잭션을 사용합니다.
+
+**Reasoning:**
+- 여러 작업을 원자적으로 처리하여 데이터 일관성을 보장합니다.
+- 네트워크 왕복 횟수를 줄여 성능이 향상됩니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 개별 작업 (느리고 일관성 문제 가능)
+async function updateUserAndPosts(userId, updates) {
+  await admin.firestore().collection('users').doc(userId).update(updates.user);
+  
+  for (const post of updates.posts) {
+    await admin.firestore().collection('posts').doc(post.id).update(post.data);
+  }
+}
+
+// ✅ 배치 작업 (빠르고 원자적)
+async function updateUserAndPosts(userId, updates) {
+  const batch = admin.firestore().batch();
+  
+  // 사용자 업데이트
+  const userRef = admin.firestore().collection('users').doc(userId);
+  batch.update(userRef, updates.user);
+  
+  // 포스트 업데이트
+  for (const post of updates.posts) {
+    const postRef = admin.firestore().collection('posts').doc(post.id);
+    batch.update(postRef, post.data);
+  }
+  
+  // 한 번에 커밋
+  await batch.commit();
+}
+
+// ✅ 트랜잭션 (읽기-쓰기가 필요한 경우)
+async function transferPoints(fromUserId, toUserId, points) {
+  const db = admin.firestore();
+  
+  return db.runTransaction(async (transaction) => {
+    const fromUserRef = db.collection('users').doc(fromUserId);
+    const toUserRef = db.collection('users').doc(toUserId);
+    
+    const fromUserDoc = await transaction.get(fromUserRef);
+    const toUserDoc = await transaction.get(toUserRef);
+    
+    if (!fromUserDoc.exists || !toUserDoc.exists) {
+      throw new Error('User not found');
+    }
+    
+    const fromUserPoints = fromUserDoc.data().points || 0;
+    if (fromUserPoints < points) {
+      throw new Error('Insufficient points');
+    }
+    
+    transaction.update(fromUserRef, { points: fromUserPoints - points });
+    transaction.update(toUserRef, { points: (toUserDoc.data().points || 0) + points });
+    
+    return { success: true };
+  });
+}
+```
+
+## FieldValue 사용으로 동시성 문제 방지
+
+**Rule:** 서버 시간, 증가/감소 연산은 FieldValue를 사용합니다.
+
+**Reasoning:**
+- 클라이언트-서버 시간 불일치 문제를 방지합니다.
+- 읽기-수정-쓰기 패턴의 경쟁 조건(race condition)을 방지합니다.
+- 원자적 연산으로 데이터 무결성을 보장합니다.
+
+#### Recommended Pattern:
+
+```javascript
+const { FieldValue } = require('firebase-admin/firestore');
+
+// ❌ 클라이언트 시간 사용 (시간대 문제 발생 가능)
+await userRef.update({
+  lastLogin: new Date(),
+  updatedAt: new Date().toISOString(),
+});
+
+// ✅ 서버 타임스탬프 사용
+await userRef.update({
+  lastLogin: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+
+// ❌ 읽기-수정-쓰기 패턴 (동시성 문제 발생 가능)
+const user = await userRef.get();
+const currentPoints = user.data().points;
+await userRef.update({ points: currentPoints + 100 });
+
+// ✅ 원자적 증가 연산
+await userRef.update({
+  points: FieldValue.increment(100),
+  postCount: FieldValue.increment(1),
+});
+
+// ✅ 배열 연산
+await userRef.update({
+  badges: FieldValue.arrayUnion('first_post'),
+  removedBadges: FieldValue.arrayRemove('temporary_badge'),
+});
+```
+
+# Documentation & Security
+
+코드 문서화 및 보안 관련 best practices입니다.
+
+## JSDoc으로 API 문서화
+
+**Rule:** 모든 public 메서드에는 JSDoc 주석을 추가합니다.
+
+**Reasoning:**
+- API 사용법을 명확히 전달하여 예측 가능성을 높입니다.
+- IDE의 자동 완성과 타입 힌트를 제공받을 수 있습니다.
+- 팀원들이 코드를 이해하는 시간을 줄입니다.
+
+#### Recommended Pattern:
+
+```javascript
+/**
+ * 사용자 정보 조회 API
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL 파라미터
+ * @param {string} req.params.userId - 조회할 사용자 ID
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ * 
+ * @throws {Error} NOT_FOUND - 사용자를 찾을 수 없는 경우
+ * @throws {Error} INTERNAL - 서버 내부 오류
+ * 
+ * @example
+ * GET /users/abc123
+ * 
+ * Response:
+ * {
+ *   "status": 200,
+ *   "success": true,
+ *   "data": {
+ *     "uid": "abc123",
+ *     "name": "홍길동",
+ *     "email": "hong@example.com"
+ *   }
+ * }
+ */
+async getUserById(req, res) {
+  try {
+    const { userId } = req.params;
+    const user = await userService.getUserById(userId);
+    
+    if (!user) {
+      const err = new Error('User not found');
+      err.code = 'NOT_FOUND';
+      throw err;
+    }
+    
+    res.json(successResponse(200, user));
+  } catch (error) {
+    return req.next ? req.next(error) : res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Firebase Auth 사용자 생성 또는 조회
+ * 
+ * @param {string} uid - 사용자 ID
+ * @param {Object} userData - 사용자 데이터
+ * @param {string} userData.name - 사용자 이름
+ * @param {string} [userData.email] - 사용자 이메일 (선택)
+ * @param {string} [userData.profileImageUrl] - 프로필 이미지 URL (선택)
+ * @returns {Promise<{isNewUser: boolean, user: Object}>} 사용자 정보와 신규 여부
+ * 
+ * @throws {Error} Failed to provision user - 사용자 생성/조회 실패
+ */
+async provisionUser(uid, userData = {}) {
+  // ...
+}
+```
+
+## 인증/인가 미들웨어 사용
+
+**Rule:** 보호된 엔드포인트는 반드시 인증 미들웨어를 거쳐야 합니다.
+
+**Reasoning:**
+- 중앙 집중식 인증으로 보안을 일관되게 적용합니다.
+- 인증 로직의 중복을 제거하여 결합도를 낮춥니다.
+- 권한 변경 시 미들웨어만 수정하면 되어 유지보수가 쉽습니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ authGuard.js
+const admin = require('firebase-admin');
+
+async function authGuard(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const error = new Error('Authorization header is required');
+      error.code = 'UNAUTHORIZED';
+      error.statusCode = 401;
+      throw error;
+    }
+    
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    
+    // req.user에 인증된 사용자 정보 저장
+    req.user = {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      role: decodedToken.role || 'user',
+    };
+    
+    next();
+  } catch (error) {
+    console.error('Auth guard error:', error);
+    error.code = error.code || 'UNAUTHORIZED';
+    error.statusCode = 401;
+    next(error);
+  }
+}
+
+// ✅ 라우트에서 사용
+const express = require('express');
+const router = express.Router();
+const authGuard = require('../middleware/authGuard');
+
+// 공개 엔드포인트
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// 보호된 엔드포인트
+router.get('/profile', authGuard, userController.getUserProfile);
+router.patch('/profile', authGuard, userController.updateProfile);
+router.delete('/account', authGuard, userController.deleteAccount);
+
+// 관리자 전용 엔드포인트
+router.get('/admin/users', authGuard, adminGuard, userController.getAllUsers);
+```
+
+## 민감한 정보 로깅 방지
+
+**Rule:** 비밀번호, 토큰 등 민감한 정보는 절대 로그에 남기지 않습니다.
+
+**Reasoning:**
+- 로그 파일 유출 시 보안 사고를 방지합니다.
+- 규정 준수 (GDPR, 개인정보보호법 등)를 위해 필수적입니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ 민감한 정보 로깅
+async function createUser(userData) {
+  console.log('Creating user:', userData); // password 포함!
+  // ...
+}
+
+// ✅ 민감한 정보 제외하고 로깅
+async function createUser(userData) {
+  const { password, ...safeData } = userData;
+  console.log('Creating user:', safeData);
+  
+  // 또는 유틸리티 함수 사용
+  console.log('Creating user:', sanitizeForLogging(userData));
+}
+
+function sanitizeForLogging(data) {
+  const sensitiveFields = ['password', 'token', 'secret', 'apiKey'];
+  const sanitized = { ...data };
+  
+  for (const field of sensitiveFields) {
+    if (sanitized[field]) {
+      sanitized[field] = '[REDACTED]';
+    }
+  }
+  
+  return sanitized;
+}
+```
+
+# Testing & Performance
+
+테스트 용이성 및 성능 최적화 관련 패턴입니다.
+
+## 테스트 가능한 코드 작성
+
+**Rule:** 의존성 주입을 활용하여 테스트하기 쉬운 코드를 작성합니다.
+
+**Reasoning:**
+- Mock 객체를 주입하여 외부 의존성 없이 테스트할 수 있습니다.
+- 결합도를 낮춰 각 모듈을 독립적으로 테스트합니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ✅ 의존성 주입으로 테스트 용이성 확보
+class UserService {
+  constructor(firestoreService = null, authService = null) {
+    // 의존성 주입 (테스트 시 mock 주입 가능)
+    this.firestoreService = firestoreService || new FirestoreService('users');
+    this.authService = authService || admin.auth();
+  }
+  
+  async createUser(userData) {
+    // 주입된 서비스 사용
+    const authUser = await this.authService.createUser({
+      email: userData.email,
+      password: userData.password,
+    });
+    
+    await this.firestoreService.create(userData, authUser.uid);
+    
+    return authUser;
+  }
+}
+
+// 테스트에서 사용
+const mockFirestoreService = {
+  create: jest.fn(),
+};
+const mockAuthService = {
+  createUser: jest.fn().mockResolvedValue({ uid: 'test-uid' }),
+};
+
+const userService = new UserService(mockFirestoreService, mockAuthService);
+```
+
+## N+1 쿼리 문제 방지
+
+**Rule:** 반복문 안에서 개별 쿼리를 실행하지 말고, 배치로 처리합니다.
+
+**Reasoning:**
+- 데이터베이스 왕복 횟수를 줄여 성능을 대폭 향상시킵니다.
+- 네트워크 오버헤드를 최소화합니다.
+
+#### Recommended Pattern:
+
+```javascript
+// ❌ N+1 쿼리 문제
+async function getPostsWithUserInfo(postIds) {
+  const posts = [];
+  
+  for (const postId of postIds) {
+    const post = await db.collection('posts').doc(postId).get();
+    const user = await db.collection('users').doc(post.data().userId).get(); // N개의 쿼리!
+    
+    posts.push({
+      ...post.data(),
+      user: user.data(),
+    });
+  }
+  
+  return posts;
+}
+
+// ✅ 배치 조회로 해결
+async function getPostsWithUserInfo(postIds) {
+  // 1. 포스트 일괄 조회
+  const postDocs = await Promise.all(
+    postIds.map(id => db.collection('posts').doc(id).get())
+  );
+  
+  // 2. 고유한 userId 추출
+  const userIds = [...new Set(postDocs.map(doc => doc.data().userId))];
+  
+  // 3. 사용자 일괄 조회
+  const userDocs = await Promise.all(
+    userIds.map(id => db.collection('users').doc(id).get())
+  );
+  
+  // 4. Map으로 빠른 조회
+  const userMap = new Map(
+    userDocs.map(doc => [doc.id, doc.data()])
+  );
+  
+  // 5. 결합
+  return postDocs.map(postDoc => ({
+    ...postDoc.data(),
+    user: userMap.get(postDoc.data().userId),
+  }));
+}
+```
+
+---
+
+# Summary
+
+이 가이드라인은 토스 프론트엔드 가이드라인의 4가지 핵심 원칙을 백엔드에 적용했습니다:
+
+## 1. Readability (가독성)
+
+코드의 명확성과 이해 용이성을 향상시킵니다.
+
+- Controller-Service-Database 레이어 명확히 분리
+- 복잡한 조건문을 명명된 변수로 추출
+- 매직 넘버에 이름 부여
+- async/await으로 비동기 코드 가독성 향상
+
+## 2. Predictability (예측 가능성)
+
+코드가 이름, 파라미터, 컨텍스트를 기반으로 예상대로 동작합니다.
+
+- 일관된 에러 처리 및 코드 부여
+- 일관된 반환 타입 사용
+- 부수 효과(Side Effect) 명확히 하기
+- API 응답 형식 표준화
+
+## 3. Cohesion (응집도)
+
+관련된 코드를 함께 배치하고, 명확한 단일 목적을 가집니다.
+
+- 도메인별로 상수 그룹화
+- 도메인별 Service 계층 분리
+- Promise.all로 관련 작업 그룹화
+- 비즈니스 로직은 Service에 응집
+
+## 4. Coupling (결합도)
+
+서로 다른 코드 부분 간의 의존성을 최소화합니다.
+
+- 의존성 주입으로 결합도 낮추기
+- 공통 로직을 재사용 가능한 유틸리티로 추출
+- 인터페이스 기반 설계로 교체 가능성 확보
+- 단일 책임 원칙(SRP) 준수
+
+## Code Review Checklist
+
+### Architecture & Design
+- [ ] Controller-Service-Database 레이어가 명확히 분리되어 있는가?
+- [ ] 각 함수가 하나의 책임만 가지는가? (50줄 이하 권장, 최대 100줄)
+- [ ] 의존성 주입을 활용하여 테스트 가능한 구조인가?
+- [ ] 도메인별로 Service가 분리되어 있는가?
+- [ ] 200줄 이상의 함수는 작은 함수들로 분리되어 있는가?
+
+### Error Handling & Security
+- [ ] 모든 async 함수에 try-catch가 있는가?
+- [ ] 모든 에러에 적절한 `error.code`가 부여되어 있는가?
+  - `BAD_REQUEST`, `NOT_FOUND`, `UNAUTHORIZED`, `INTERNAL` 등
+- [ ] 에러 메시지가 한국어로 사용자 친화적인가?
+- [ ] 비밀번호, API 키, 토큰이 로그나 응답에 포함되지 않는가?
+- [ ] 보호된 엔드포인트에 `authGuard`가 적용되어 있는가?
+- [ ] `console.error`를 사용하여 에러를 로깅하는가?
+
+### Code Quality & Readability
+- [ ] 복잡한 조건문이 명명된 변수로 추출되어 있는가?
+- [ ] 매직 넘버/문자열이 상수로 정의되어 있는가?
+  - 특히 시간 관련: 60, 3600, 86400 등 → `SECONDS_IN_HOUR` 등으로
+- [ ] 중복 코드가 유틸리티 함수로 추출되어 있는가?
+- [ ] 변수와 함수 이름이 그 역할을 명확히 드러내는가?
+- [ ] 헬퍼 함수(getTimeAgo, createPreview 등)가 적절히 분리되어 있는가?
+
+### Async & Performance
+- [ ] 비동기 처리에 `async/await`을 사용하는가?
+- [ ] 독립적인 작업은 `Promise.all()`로 병렬 처리하는가?
+- [ ] N+1 쿼리 문제가 없는가? (반복문 안에 쿼리가 없는가?)
+  - 대댓글 조회 시 배치 처리 사용 확인
+- [ ] Firebase 작업에 `FieldValue.increment/serverTimestamp`를 적절히 사용하는가?
+- [ ] 페이지네이션이 적용되어 있는가?
+
+### Consistency & Standards
+- [ ] **모든 API가** `successResponse` 헬퍼를 **일관되게** 사용하는가?
+  - ❌ 일부는 successResponse, 일부는 직접 객체 반환 금지
+- [ ] JSDoc 주석이 작성되어 있는가?
+- [ ] 한국어 에러 메시지가 일관적인가?
+- [ ] 스트림, 타이머, 리스너가 적절히 정리되는가?
+
+### Firebase Specific
+- [ ] **Firestore 접근 시 FirestoreService를 사용하는가?**
+  - ❌ `admin.firestore().collection('users')` 직접 사용 금지
+  - ✅ `new FirestoreService('users')` 사용
+- [ ] Firestore 서브컬렉션 경로가 올바른가? (`communities/${id}/posts`)
+- [ ] `FieldValue.increment`로 카운터 업데이트를 하는가?
+- [ ] 배치 조회 시 `getCollectionWhereIn`을 적절히 사용하는가?
+- [ ] 타임스탬프 필드에 `FieldValue.serverTimestamp()`를 사용하는가?
+- [ ] 트랜잭션/배치 작업 외에는 FirestoreService 사용하는가?
+
+### Testing
+- [ ] 새로운 기능에 테스트가 추가되었는가?
+- [ ] Edge case를 고려했는가?
+- [ ] Mock을 주입하여 독립적으로 테스트 가능한가?
+
+---
+
+모든 코드는 이 4가지 원칙(Readability, Predictability, Cohesion, Coupling)을 따라 작성되어야 하며,
+코드 리뷰 시 이 가이드라인을 기준으로 평가합니다.
