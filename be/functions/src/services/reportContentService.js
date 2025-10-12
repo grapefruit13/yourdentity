@@ -96,6 +96,10 @@ async checkDuplicateReport(reporterId, targetType, targetId) {
 
     const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(`Notion duplicate check failed: ${data.message || response.statusText}`);
+    }
+
     if (!data.results || data.results.length === 0) return null;
 
     const page = data.results[0];
