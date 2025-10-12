@@ -497,9 +497,15 @@ const options = {
               example: 200,
             },
             data: {
-              type: "object",
               description: "응답 데이터 (성공 시에만 포함)",
               nullable: true,
+              oneOf: [
+                {type: "object", additionalProperties: true},
+                {type: "array", items: {type: "object"}},
+                {type: "string"},
+                {type: "number"},
+                {type: "boolean"},
+              ],
             },
           },
         },

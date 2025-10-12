@@ -39,9 +39,13 @@ const generateId = () => {
  * 날짜 포맷팅
  * @param {Date|string} date - 날짜
  * @return {string} 포맷된 날짜 (YYYY-MM-DD)
+ * @throws {Error} 유효하지 않은 날짜인 경우
  */
 const formatDate = (date) => {
   const d = new Date(date);
+  if (isNaN(d.getTime())) {
+    throw new Error("유효하지 않은 날짜입니다");
+  }
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -53,11 +57,16 @@ const formatDate = (date) => {
  * @param {array} array - 분할할 배열
  * @param {number} size - 청크 크기
  * @return {array} 청크 배열
+ * @throws {Error} size가 1 이상의 정수가 아닌 경우
  */
 const chunkArray = (array, size) => {
+  const chunkSize = Number(size);
+  if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+    throw new Error("chunk size는 1 이상의 정수여야 합니다");
+  }
   const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize));
   }
   return chunks;
 };
