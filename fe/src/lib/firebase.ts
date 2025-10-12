@@ -10,6 +10,10 @@ import {
   getFirestore,
 } from "firebase/firestore";
 import {
+  getFunctions,
+  // connectFunctionsEmulator
+} from "firebase/functions";
+import {
   getMessaging,
   getToken,
   isSupported,
@@ -32,6 +36,7 @@ export const db = getFirestore(app);
 
 // 기본 SDK 인스턴스
 export const auth = getAuth(app);
+export const functions = getFunctions(app, "asia-northeast3");
 
 // // 로컬 개발 시 에뮬레이터 연결 (로컬 개발 시 주석처리)
 // if (typeof window !== "undefined") {
