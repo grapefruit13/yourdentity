@@ -12,7 +12,9 @@ const functions = require("firebase-functions");
 /**
  * Firebase Auth 사용자 생성 시 자동 실행되는 트리거
  * 최초 가입 시 Firestore users/{uid} 문서 생성
- * 이메일 중복 시 기존 문서에 provider 추가 (계정 통합)
+ * 
+ * ⚠️ 이메일 중복 체크는 프론트엔드에서 checkEmailAvailability() 호출로 사전 검증됨
+ * 이 트리거는 단순히 Firestore 문서 생성만 수행
  */
 exports.createUserDocument = functions
     .region("asia-northeast3")
@@ -41,45 +43,7 @@ exports.createUserDocument = functions
           }
         }
 
-        // 🔍 이메일로 기존 Firestore 문서 찾기 (중복 방지)
-        if (email) {
-          const existingUserQuery = await admin.firestore()
-              .collection("users")
-              .where("email", "==", email)
-              .limit(1)
-              .get();
-
-          if (!existingUserQuery.empty) {
-            // ⚠️ 기존 사용자 발견 → 중복 가입 차단
-            const existingDoc = existingUserQuery.docs[0];
-            const existingData = existingDoc.data();
-
-            console.log("⚠️ Auth Trigger: 이메일 중복 감지, 신규 계정 삭제", {
-              existingUID: existingDoc.id,
-              newUID: uid,
-              email,
-              existingProvider: existingData.authType,
-              newProvider: provider,
-            });
-
-            // 신규 생성된 Firebase Auth 계정 삭제
-            await admin.auth().deleteUser(uid);
-
-            console.log("✅ Auth Trigger: 중복 계정 삭제 완료", {
-              deletedUID: uid,
-              existingUID: existingDoc.id,
-            });
-
-            // 에러 반환 (프론트엔드에서 처리)
-            throw new functions.https.HttpsError(
-                "already-exists",
-                `이미 ${existingData.authType === "email" ? "이메일" : existingData.snsProvider}로 가입된 계정입니다.`,
-                {existingProvider: existingData.authType, email},
-            );
-          }
-        }
-
-        // 🆕 기존 사용자 없음 → 새 문서 생성
+        // 🆕 Firestore 사용자 문서 생성
         const userDoc = {
         // 기본 정보
           name: user.displayName || "사용자 이름", // 추후 온보딩에서 설정
