@@ -124,6 +124,14 @@ class UserService {
 
   /**
    * 사용자 생성 (Firebase Auth + Firestore)
+   * 
+   * ⚠️ **테스트용 메서드 - Firebase Admin SDK 방식**
+   * 
+   * **프로덕션에서는 사용하지 마세요!**
+   * - 실제 회원가입: 프론트엔드에서 Firebase Client SDK 사용
+   * - createUserWithEmailAndPassword(auth, email, password)
+   * - Auth Trigger가 자동으로 Firestore 문서 생성
+   * 
    * @param {Object} userData
    * @return {Promise<Object>} 생성된 사용자 데이터
    */

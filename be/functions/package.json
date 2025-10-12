@@ -10,7 +10,9 @@
     "logs": "firebase functions:log",
     "get:token": "node ./src/scripts/getIdToken.js --email=$EMAIL --password=$PASSWORD",
     "get:token:example": "EMAIL=hong@example.com PASSWORD=password123 pnpm run get:token",
-    "watch:token": "node ./src/scripts/getIdToken.js --email=$EMAIL --password=$PASSWORD && sleep 3500 && pnpm run watch:token"
+    "watch:token": "node ./src/scripts/getIdToken.js --email=$EMAIL --password=$PASSWORD && sleep 3500 && pnpm run watch:token",
+    "test:check-email": "node ./src/scripts/testCheckEmail.js",
+    "test:check-email:emu": "USE_EMULATOR=true node ./src/scripts/testCheckEmail.js"
   },
   "engines": {
     "node": "20"

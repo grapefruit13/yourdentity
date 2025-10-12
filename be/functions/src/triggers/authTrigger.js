@@ -12,6 +12,9 @@ const functions = require("firebase-functions");
 /**
  * Firebase Auth 사용자 생성 시 자동 실행되는 트리거
  * 최초 가입 시 Firestore users/{uid} 문서 생성
+ * 
+ * ⚠️ 이메일 중복 체크는 프론트엔드에서 checkEmailAvailability() 호출로 사전 검증됨
+ * 이 트리거는 단순히 Firestore 문서 생성만 수행
  */
 exports.createUserDocument = functions
     .region("asia-northeast3")
@@ -19,8 +22,9 @@ exports.createUserDocument = functions
     .onCreate(async (user) => {
       try {
         const uid = user.uid;
+        const email = user.email;
 
-        console.log("🔥 Auth Trigger: 사용자 생성 감지", {uid, email: user.email});
+        console.log("🔥 Auth Trigger: 사용자 생성 감지", {uid, email});
 
         // Provider ID 추출 및 정규화
         const providerId = user.providerData?.[0]?.providerId;
@@ -39,10 +43,11 @@ exports.createUserDocument = functions
           }
         }
 
+        // 🆕 Firestore 사용자 문서 생성
         const userDoc = {
         // 기본 정보
           name: user.displayName || "사용자 이름", // 추후 온보딩에서 설정
-          email: user.email || null,
+          email: email || null,
           profileImageUrl: user.photoURL || "",
           birthYear: null, // 추후 카카오 심사 후 제공
           phoneNumber: "",
@@ -76,7 +81,7 @@ exports.createUserDocument = functions
         const userRef = admin.firestore().collection("users").doc(uid);
         await userRef.set(userDoc);
 
-        console.log("✅ Auth Trigger: 사용자 문서 생성 완료", {uid});
+        console.log("✅ Auth Trigger: 새 사용자 문서 생성 완료", {uid});
 
         return {success: true, uid};
       } catch (error) {

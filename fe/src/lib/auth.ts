@@ -4,12 +4,15 @@
 import {
   OAuthProvider,
   signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   UserCredential,
   onAuthStateChanged,
   User,
   getIdToken,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { auth, functions } from "@/lib/firebase";
 
 /**
  * @description 카카오 OAuth 제공업체 생성
@@ -30,6 +33,50 @@ export const signInWithKakao = async (): Promise<UserCredential> => {
   const provider = createKakaoProvider();
   const result = await signInWithPopup(auth, provider);
   return result;
+};
+
+/**
+ * @description 이메일 회원가입
+ */
+export const signUpWithEmail = async (
+  email: string,
+  password: string
+): Promise<UserCredential> => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    console.log("이메일 회원가입 성공:", userCredential.user);
+    return userCredential;
+  } catch (error) {
+    console.error("이메일 회원가입 실패:", error);
+    throw error;
+  }
+};
+
+/**
+ * @description 이메일 로그인
+ */
+export const signInWithEmail = async (
+  email: string,
+  password: string
+): Promise<UserCredential> => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    console.log("이메일 로그인 성공:", userCredential.user);
+    return userCredential;
+  } catch (error) {
+    console.error("이메일 로그인 실패:", error);
+    throw error;
+  }
 };
 
 /**
@@ -63,4 +110,33 @@ export const getFirebaseIdToken = async () => {
     return await getIdToken(user);
   }
   return null;
+};
+
+/**
+ * @description 이메일 중복 체크 (회원가입 전 검증)
+ * 백엔드 Callable Function 호출
+ */
+export const checkEmailAvailability = async (
+  email: string
+): Promise<{
+  available: boolean;
+  existingProvider?: string;
+  existingAuthType?: string;
+}> => {
+  try {
+    const checkEmail = httpsCallable<
+      { email: string },
+      {
+        available: boolean;
+        existingProvider?: string;
+        existingAuthType?: string;
+      }
+    >(functions, "checkEmailAvailability");
+
+    const result = await checkEmail({ email });
+    return result.data;
+  } catch (error) {
+    console.error("이메일 중복 체크 실패:", error);
+    throw error;
+  }
 };
