@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { usePwaInstall } from "@/hooks/shared/usePwaInstall";
 import useToggle from "@/hooks/shared/useToggle";
+import { debug } from "@/utils/shared/debugger";
 import PwaDownloadBottomSheet from "./pwa-download-bottomsheet";
 
 const PWA_PROMPT_DISMISSED_KEY = "pwa_prompt_dismissed";
@@ -13,6 +16,7 @@ const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7일
  * @description PWA 설치 프롬프트를 관리하는 컴포넌트
  */
 const PwaInstallPrompt = () => {
+  const router = useRouter();
   const { isInstallable, isInstalled, promptInstall } = usePwaInstall();
   const { isOpen, open, close } = useToggle();
 
@@ -52,11 +56,18 @@ const PwaInstallPrompt = () => {
   }, [isInstallable, isInstalled, open]);
 
   const handleInstall = async () => {
-    const success = await promptInstall();
+    const result = await promptInstall();
 
-    if (success) {
+    if (result.success) {
       close();
       localStorage.setItem(PWA_PROMPT_DISMISSED_KEY, "true");
+    } else if (result.error === "no-prompt" || result.error === "unknown") {
+      // 팝업 오픈 실패: 가이드 페이지로 이동
+      debug.log(
+        "[PWA Install] 설치 프롬프트 오픈 실패. 가이드 페이지로 이동합니다."
+      );
+      close();
+      router.push(LINK_URL.DOWNLOAD);
     }
   };
 
