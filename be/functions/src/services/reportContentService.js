@@ -218,59 +218,59 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
 }
 
 
-/**
- * 신고 상세 조회 서비스
- */
-async getReportFromNotion({ targetType, targetId, targetUserId }) {
-  try {
-    const response = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        filter: {
-          and: [
-            { property: '신고 타입', title: { equals: targetType } },
-            { property: '신고 콘텐츠', rich_text: { equals: targetId } },
-            { property: '작성자', rich_text: { equals: targetUserId } },
-          ]
-        },
-        page_size: 1
-      })
-    });
+// /**
+//  * 신고 상세 조회 서비스
+//  */
+// async getReportFromNotion({ targetType, targetId, targetUserId }) {
+//   try {
+//     const response = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
+//       method: 'POST',
+//       headers: {
+//         'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+//         'Notion-Version': '2022-06-28',
+//         'Content-Type': 'application/json'
+//       },
+//       body: JSON.stringify({
+//         filter: {
+//           and: [
+//             { property: '신고 타입', title: { equals: targetType } },
+//             { property: '신고 콘텐츠', rich_text: { equals: targetId } },
+//             { property: '작성자', rich_text: { equals: targetUserId } },
+//           ]
+//         },
+//         page_size: 1
+//       })
+//     });
 
-    const data = await response.json();
+//     const data = await response.json();
 
-    if (!data.results || data.results.length === 0) {
-      return null; // 해당 신고 없음
-    }
+//     if (!data.results || data.results.length === 0) {
+//       return null; // 해당 신고 없음
+//     }
 
-    const page = data.results[0];
-    const props = page.properties;
+//     const page = data.results[0];
+//     const props = page.properties;
 
-    // 반환 데이터 구조
-    return {
-      notionPageId: page.id,
-      targetType: this.unmapTargetType(props['신고 타입']?.title?.[0]?.text?.content),
-      targetId: props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null,
-      targetUserId: props['작성자']?.rich_text?.[0]?.text?.content || null,
-      reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
-      reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
-      communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
-      status: props['상태']?.select?.name || null,
-      reportedAt: props['신고일시']?.date?.start || null,
-      syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
-      syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null,
-    };
+//     // 반환 데이터 구조
+//     return {
+//       notionPageId: page.id,
+//       targetType: this.unmapTargetType(props['신고 타입']?.title?.[0]?.text?.content),
+//       targetId: props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null,
+//       targetUserId: props['작성자']?.rich_text?.[0]?.text?.content || null,
+//       reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
+//       reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
+//       communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
+//       status: props['상태']?.select?.name || null,
+//       reportedAt: props['신고일시']?.date?.start || null,
+//       syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
+//       syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null,
+//     };
 
-  } catch (error) {
-    console.error("Notion 데이터 조회 실패:", error);
-    throw error;
-  }
-}
+//   } catch (error) {
+//     console.error("Notion 데이터 조회 실패:", error);
+//     throw error;
+//   }
+// }
 
 /**
  * Notion에 동기화
