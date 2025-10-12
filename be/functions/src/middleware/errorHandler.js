@@ -63,7 +63,7 @@ const errorHandler = (err, req, res, next) => {
 
   // 표준화된 에러 응답 반환
   if (typeof res.error === "function") {
-    return res.error(errorMessage, httpStatus);
+    return res.error(httpStatus, errorMessage);
   } else {
     console.warn("res.error를 사용할 수 없습니다. 기본 응답을 사용합니다");
     return res.status(httpStatus).json({

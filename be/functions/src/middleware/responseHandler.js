@@ -17,14 +17,14 @@ const responseHandler = (req, res, next) => {
   };
 
   // 에러 응답
-  res.error = (message, statusCode = 400) => {
-    if (!message || typeof message !== "string") {
-      message = "오류가 발생했습니다";
-    }
-
+  res.error = (statusCode = 400, message = "오류가 발생했습니다") => {
     if (typeof statusCode !== "number" || statusCode < 100 || statusCode > 599) {
       console.warn(`유효하지 않은 상태 코드: ${statusCode}, 500으로 대체`);
       statusCode = 500;
+    }
+
+    if (!message || typeof message !== "string") {
+      message = "오류가 발생했습니다";
     }
 
     return res.status(statusCode).json({
