@@ -48,6 +48,7 @@ export const signUpWithEmail = async (
       email,
       password
     );
+
     console.log("이메일 회원가입 성공:", userCredential.user);
     return userCredential;
   } catch (error) {
@@ -69,6 +70,7 @@ export const signInWithEmail = async (
       email,
       password
     );
+
     console.log("이메일 로그인 성공:", userCredential.user);
     return userCredential;
   } catch (error) {
