@@ -436,25 +436,22 @@ async syncResolvedReports() {
 
         if (targetType === "게시글") {
           const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
-          const communityRef = db.doc(`communities/${communityId}/posts/${targetId}`);
 
           await db.runTransaction(async (t) => {
             const postSnap = await t.get(postRef);
-            const communitySnap = await t.get(communityRef);
 
             // 안전하게 reportsCount 초기화
-            let reportsCount = communitySnap.exists ? communitySnap.data().reportsCount : 0;
+            let reportsCount = postSnap.exists ? postSnap.data().reportsCount : 0;
             if (typeof reportsCount !== 'number' || isNaN(reportsCount)) {
               reportsCount = 0;
             }
 
             if (status === "resolved") {
-              t.update(postRef, { isLocked: true });
-              t.update(communityRef, { reportsCount: reportsCount + 1 });
+              t.update(postRef, { isLocked: true, reportsCount: reportsCount + 1 });
             } else {
               t.update(postRef, { isLocked: false });
               if (reportsCount > 0) {
-                t.update(communityRef, { reportsCount: reportsCount - 1 });
+                t.update(postRef, { reportsCount: reportsCount - 1 });
               }
             }
 
