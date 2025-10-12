@@ -53,15 +53,3 @@
 :focus:not(:focus-visible) {
   outline: none;
 }
-
-/* Icon 마스크 유틸리티: 재사용 가능한 마스크 속성 (동적 값은 CSS 변수로 주입) */
-.icon-mask {
-  display: inline-block;
-  background-color: currentColor;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-}

@@ -48,17 +48,16 @@ const Page = () => {
 
         {/* 액션 버튼들 */}
         <ActionButtons />
+        {/* FIXME: 로그인 페이지 접근 위해 임시로 만든 버튼. 추후 삭제 예정. */}
+        <ButtonBase
+          onClick={handleLoginClick}
+          className="bg-primary-600 rounded-lg py-2"
+        >
+          <Typography font="noto" variant="body1B" className="text-white">
+            로그인
+          </Typography>
+        </ButtonBase>
       </main>
-
-      {/* FIXME: 로그인 페이지 접근 위해 임시로 만든 버튼. 추후 삭제 예정. */}
-      <ButtonBase
-        onClick={handleLoginClick}
-        className="bg-primary-600 w-full rounded-lg py-2"
-      >
-        <Typography font="noto" variant="body1B" className="text-white">
-          로그인
-        </Typography>
-      </ButtonBase>
     </div>
   );
 };
