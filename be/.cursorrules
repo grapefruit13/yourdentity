@@ -1,0 +1,133 @@
+# Backend Development Rules for Firebase Functions
+
+## 개요
+이 프로젝트는 Firebase Functions와 Express.js를 사용하는 Node.js 백엔드입니다.
+
+## 핵심 원칙
+
+### 1. 아키텍처 패턴
+- **Controller-Service-Database 3계층 분리** 엄수
+  - Controller: HTTP 요청/응답 처리만
+  - Service: 비즈니스 로직 처리
+  - FirestoreService: 데이터베이스 작업
+- 각 계층의 단일 책임 원칙(SRP) 준수
+
+### 2. 에러 처리
+- 모든 에러에 명확한 `error.code` 부여 (`BAD_REQUEST`, `NOT_FOUND`, `UNAUTHORIZED`, `INTERNAL` 등)
+- Service에서 발생한 에러를 Controller에서 catch하여 next()로 전달
+- 중앙 집중식 에러 핸들러 사용 (`errorHandler.js`)
+- 민감한 정보(password, token 등)는 로그에서 제외
+
+### 3. 비동기 처리
+- Promise 체이닝 대신 `async/await` 사용
+- 독립적인 작업은 `Promise.all()`로 병렬 처리
+- try-catch로 모든 비동기 에러 처리
+
+### 4. Firebase Best Practices
+- 서버 시간은 `FieldValue.serverTimestamp()` 사용
+- 증감 연산은 `FieldValue.increment()` 사용
+- 여러 문서 작업 시 `batch` 또는 `transaction` 활용
+- N+1 쿼리 문제 방지 (반복문 안에서 개별 쿼리 금지)
+
+### 5. 네이밍 컨벤션
+- Controller 메서드: `createUser`, `getUserById`, `updateUser`, `deleteUser`
+- Service 메서드: `validateUserData`, `provisionUser`, `getUserById`
+- Boolean 변수: `isNewUser`, `hasPermission`, `shouldUpdate`
+- 상수: `MAX_UPLOAD_SIZE_BYTES`, `DEFAULT_USER_LEVEL`, `AUTH_TYPES`
+
+### 6. 보안
+- 보호된 엔드포인트는 반드시 `authGuard` 미들웨어 사용
+- 관리자 전용 엔드포인트는 추가로 `adminGuard` 사용
+- Firebase ID Token 검증 필수
+- `req.user`에 인증된 사용자 정보 저장
+
+### 7. API 응답
+- 일관된 응답 형식 사용 (`successResponse`, `errorResponse` 헬퍼)
+- 성공: `{ status, success: true, data, timestamp }`
+- 실패: `{ status, success: false, error: { code, message }, timestamp }`
+
+### 8. 코드 품질
+- JSDoc으로 public 메서드 문서화
+- 매직 넘버는 상수로 분리 (`constants/` 디렉토리)
+- 하나의 함수는 하나의 책임만 (SRP)
+- 의존성 주입으로 테스트 가능성 확보
+- **Firestore 접근은 FirestoreService 사용** (직접 접근 금지)
+
+## 코드 예시
+
+### Controller 패턴
+```javascript
+class UserController {
+  async getUserById(req, res) {
+    try {
+      const { userId } = req.params;
+      const user = await userService.getUserById(userId);
+      res.json(successResponse(200, user));
+    } catch (error) {
+      return req.next ? req.next(error) : res.status(500).json({ error: error.message });
+    }
+  }
+}
+```
+
+### Service 패턴
+```javascript
+class UserService {
+  async getUserById(uid) {
+    try {
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        const error = new Error('User not found');
+        error.code = 'NOT_FOUND';
+        throw error;
+      }
+      return user;
+    } catch (error) {
+      console.error('Get user error:', error.message);
+      throw error;
+    }
+  }
+}
+```
+
+### 에러 처리
+```javascript
+// Service에서 에러 생성
+const error = new Error('User not found');
+error.code = 'NOT_FOUND';
+error.statusCode = 404;
+throw error;
+```
+
+### Firebase 작업
+```javascript
+// ✅ 좋은 예
+await userRef.update({
+  lastLogin: FieldValue.serverTimestamp(),
+  points: FieldValue.increment(100),
+  badges: FieldValue.arrayUnion('first_post'),
+});
+
+// ❌ 나쁜 예
+await userRef.update({
+  lastLogin: new Date(), // 클라이언트 시간 사용
+});
+```
+
+## 금지 사항
+- ❌ Controller에 비즈니스 로직 작성 금지
+- ❌ Firestore 직접 접근 금지 (`admin.firestore()` 대신 `FirestoreService` 사용)
+- ❌ 반복문 안에서 개별 Firestore 쿼리 금지 (N+1 문제)
+- ❌ 민감한 정보(password, token) 로깅 금지
+- ❌ 매직 넘버/문자열 직접 사용 금지
+- ❌ Promise 체이닝 금지 (async/await 사용)
+- ❌ 클라이언트 시간 사용 금지 (serverTimestamp 사용)
+
+## 추가 리소스
+- 상세 가이드: `be/rules/backend-guidelines.mdc`
+- Swagger 문서: `/api-docs`
+- 에러 코드 정의: `src/middleware/errorHandler.js`
+
+## Code Review 체크리스트
+상세 내용은 `backend-guidelines.mdc`의 Code Review Checklist 참조
+
