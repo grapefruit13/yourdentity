@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
 import { Typography } from "@/components/shared/typography";
@@ -186,35 +185,14 @@ const SettingsPage = () => {
 
   return (
     <div className="flex min-h-full w-full flex-col bg-gray-50">
-      {/* 헤더 */}
-      <header className="flex w-full items-center gap-4 p-4 pb-6">
-        <button
-          onClick={() => router.back()}
-          className="rounded-full p-2 transition-colors hover:bg-gray-100"
-          aria-label="뒤로 가기"
-        >
-          <ArrowLeft className="h-6 w-6 text-black" />
-        </button>
-        <Typography as="h1" font="noto" variant="title5">
-          설정
-        </Typography>
-      </header>
-
       {/* 메인 컨텐츠 */}
-      <main className="flex flex-1 flex-col gap-6 px-4">
+      <main className="flex flex-1 flex-col gap-6 px-4 pt-6">
         {/* 로그인/회원정보 섹션 */}
         <SettingsSection title="로그인/회원정보" items={loginSectionItems} />
 
         {/* 정책 및 약관 섹션 */}
         <SettingsSection title="정책 및 약관" items={policySectionItems} />
       </main>
-
-      {/* 버전 정보 */}
-      <footer className="p-4 pt-6">
-        <Typography font="noto" variant="body2R" className="text-gray-500">
-          현재 버전 1.03.004
-        </Typography>
-      </footer>
 
       {/* 로그아웃 모달 */}
       <LogoutModal
