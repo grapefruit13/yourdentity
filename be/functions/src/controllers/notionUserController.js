@@ -4,7 +4,6 @@ const {db} = require("../config/database");
 
 class NotionUserController {
 
-
   async syncActiveUsers(req, res, next) {
     try {
       const result = await notionUserService.syncActiveUsers();
