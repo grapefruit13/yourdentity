@@ -342,6 +342,8 @@ router.post("/my", authGuard, reportContentController.getMyReports);
  *     description: targetType, targetId, targetUserId를 기준으로 Notion DB에서 특정 신고 데이터를 조회합니다.
  *     tags:
  *       - Reports
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: targetType
@@ -416,12 +418,37 @@ router.post("/my", authGuard, reportContentController.getMyReports);
  *                       example: "2025-10-10T12:02:00Z"
  *       400:
  *         description: "필수 쿼리 파라미터 누락"
+ *       401:
+ *         description: "인증 필요"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Authorization header with Bearer token required"
+ *       403:
+ *         description: "권한 없음"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "사용자 정보를 찾을 수 없습니다."
  *       404:
  *         description: "신고 데이터 없음"
  *       500:
  *         description: "서버 내부 오류"
  */
-router.get("/", reportContentController.getReportById);
-
+router.get("/", authGuard, reportContentController.getReportById);
 
 module.exports = router;

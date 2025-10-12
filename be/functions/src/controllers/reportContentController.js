@@ -118,11 +118,21 @@ class ReportContentController {
   async getReportById(req, res) {
   try {
     const { targetType, targetId, targetUserId } = req.query;
+    const currentUserId = req.user.uid; // 인증된 사용자 ID
 
     if (!targetType || !targetId || !targetUserId) {
       return res.status(400).json({
         success: false,
         error: "targetType, targetId, targetUserId가 모두 필요합니다.",
+      });
+    }
+
+    // 현재 사용자가 users 컬렉션에 존재하는지 확인
+    const userDoc = await db.collection("users").doc(currentUserId).get();
+    if (!userDoc.exists) {
+      return res.status(403).json({
+        success: false,
+        error: "사용자 정보를 찾을 수 없습니다.",
       });
     }
 
