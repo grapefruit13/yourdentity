@@ -1,6 +1,31 @@
 import type { NextConfig } from "next";
-import withPWA from "next-pwa";
+import withPWAInit from "@ducanh2912/next-pwa";
 import { LINK_URL } from "@/constants/shared/_link-url";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: false, // 프로덕션에서도 PWA 활성화
+  register: true,
+  cacheOnFrontEndNav: true, // 페이지 네비게이션 시 캐싱 활성화
+  cacheStartUrl: true, // start_url 캐싱
+  workboxOptions: {
+    disableDevLogs: true, // 프로덕션 로그 최소화
+    skipWaiting: true, // Service Worker 즉시 활성화
+    clientsClaim: true, // 모든 클라이언트에서 즉시 활성화
+    runtimeCaching: [
+      {
+        urlPattern: /^https?.*/,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "offlineCache",
+          expiration: {
+            maxEntries: 200,
+          },
+        },
+      },
+    ],
+  },
+});
 
 const nextConfig: NextConfig = {
   images: {
@@ -18,21 +43,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  disable: false, // 프로덕션에서도 PWA 활성화
-  runtimeCaching: [
-    {
-      urlPattern: /^https?.*/,
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "offlineCache",
-        expiration: {
-          maxEntries: 200,
-        },
-      },
-    },
-  ],
-})(nextConfig);
+export default withPWA(nextConfig);
