@@ -112,43 +112,6 @@ class ReportContentController {
 
 
 
-  /**
-     * 신고 상세 조회
-     */
-  async getReportById(req, res) {
-  try {
-    const { targetType, targetId, targetUserId } = req.query;
-
-    if (!targetType || !targetId || !targetUserId) {
-      return res.status(400).json({
-        success: false,
-        error: "targetType, targetId, targetUserId가 모두 필요합니다.",
-      });
-    }
-
-    const report = await reportContentService.getReportFromNotion({
-      targetType,
-      targetId,
-      targetUserId,
-    });
-
-    if (!report) {
-      return res.status(404).json({
-        success: false,
-        error: "해당 신고 데이터를 찾을 수 없습니다.",
-      });
-    }
-
-    return res.json(successResponse(200, report));
-  } catch (error) {
-    console.error("Notion 신고 상세 조회 실패:", error);
-    return res.status(500).json({
-      success: false,
-      error: "서버 오류가 발생했습니다.",
-    });
-  }
-}
-
 
   // 노션 전체 DB를 Firebase reports 컬렉션으로 동기화
   async syncNotionReports(req, res) {
