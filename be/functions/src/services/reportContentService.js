@@ -447,12 +447,13 @@ async syncResolvedReports() {
             }
 
             if (status === "resolved") {
-              t.update(postRef, { isLocked: true, reportsCount: reportsCount + 1 });
+              t.update(postRef, { isLocked: true, reportsCount: FieldValue.increment(1) });
             } else {
-              t.update(postRef, { isLocked: false });
+              const updateData = { isLocked: false };
               if (reportsCount > 0) {
-                t.update(postRef, { reportsCount: reportsCount - 1 });
+                updateData.reportsCount = FieldValue.increment(-1);
               }
+              t.update(postRef, updateData);
             }
 
             console.log(`📄 [게시글] ${targetId} → ${status}, reportsCount: ${reportsCount}`);
