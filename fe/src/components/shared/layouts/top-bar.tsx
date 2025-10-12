@@ -21,11 +21,16 @@ const TopBar = () => {
     router.back();
   };
 
+  const handleNotificationClick = () => {
+    // TODO: 알림 페이지로 이동 또는 알림 모달 표시
+    router.push("/notifications");
+  };
+
   // 커뮤니티 페이지 체크
   const isCommunityPage = pathname?.startsWith("/community");
 
   return (
-    <div className="sticky top-0 left-0 flex h-12 w-full max-w-[375px] items-center justify-center border-b border-b-gray-200 bg-white px-5 py-3">
+    <div className="sticky top-0 left-0 flex h-12 w-full max-w-[470px] items-center justify-center border-b border-b-gray-200 bg-white px-5 py-3">
       <button
         onClick={handleClick}
         className="absolute left-4 hover:cursor-pointer"
@@ -41,7 +46,11 @@ const TopBar = () => {
         {currentTitle}
       </Typography>
       {isCommunityPage && (
-        <button className="absolute right-4 p-2 hover:cursor-pointer">
+        <button
+          onClick={handleNotificationClick}
+          className="absolute right-4 p-2 hover:cursor-pointer"
+          aria-label="알림"
+        >
           <svg
             className="h-6 w-6 text-gray-600"
             fill="none"
