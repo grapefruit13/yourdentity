@@ -21,20 +21,8 @@ const TopBar = () => {
     router.back();
   };
 
-  const handleNotificationClick = () => {
-    // TODO: 알림 페이지로 이동 또는 알림 모달 표시
-    router.push("/notifications");
-  };
-
-  const handleSettingsClick = () => {
-    router.push("/settings");
-  };
-
   // 커뮤니티 페이지 체크
   const isCommunityPage = pathname?.startsWith("/community");
-
-  // 마이페이지 체크
-  const isMyPage = pathname?.startsWith("/my-page");
 
   return (
     <div className="sticky top-0 left-0 flex h-12 w-full max-w-[375px] items-center justify-center border-b border-b-gray-200 bg-white px-5 py-3">
@@ -53,11 +41,7 @@ const TopBar = () => {
         {currentTitle}
       </Typography>
       {isCommunityPage && (
-        <button
-          onClick={handleNotificationClick}
-          className="absolute right-4 p-2 hover:cursor-pointer"
-          aria-label="알림"
-        >
+        <button className="absolute right-4 p-2 hover:cursor-pointer">
           <svg
             className="h-6 w-6 text-gray-600"
             fill="none"
@@ -71,15 +55,6 @@ const TopBar = () => {
               d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
             />
           </svg>
-        </button>
-      )}
-      {isMyPage && (
-        <button
-          onClick={handleSettingsClick}
-          className="absolute right-4 rounded-full p-2 transition-colors hover:bg-gray-100"
-          aria-label="설정"
-        >
-          <Settings className="h-6 w-6 text-black" />
         </button>
       )}
     </div>
