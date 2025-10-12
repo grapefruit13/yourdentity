@@ -9,12 +9,14 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-[100dvh] w-full flex-col">
-      <TopBar />
-      <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
-        {children}
-      </main>
-      <BottomNavigation />
+    <div className="flex min-h-[100dvh] w-full flex-col items-center bg-white">
+      <div className="flex min-h-[100dvh] w-full max-w-[375px] flex-col">
+        <TopBar />
+        <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
+          {children}
+        </main>
+        <BottomNavigation />
+      </div>
     </div>
   );
 }
