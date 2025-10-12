@@ -36,6 +36,7 @@ const PwaInstallPrompt = () => {
       if (Date.now() < dismissedUntil) {
         return;
       }
+      localStorage.removeItem(PWA_PROMPT_DISMISSED_UNTIL_KEY);
     }
 
     // 영구적으로 거부했는지 확인
@@ -63,12 +64,15 @@ const PwaInstallPrompt = () => {
       localStorage.setItem(PWA_PROMPT_DISMISSED_KEY, "true");
     } else if (result.error === "no-prompt" || result.error === "unknown") {
       // 팝업 오픈 실패: 가이드 페이지로 이동
-      debug.log(
-        "[PWA Install] 설치 프롬프트 오픈 실패. 가이드 페이지로 이동합니다."
+      debug.warn(
+        "[PWA Prompt] 설치 프롬프트 오픈 실패. 가이드 페이지로 이동합니다.",
+        { error: result.error }
       );
       close();
       router.push(LINK_URL.DOWNLOAD);
     }
+    // result.error === "user-dismissed"인 경우는 사용자가 거부한 것이므로
+    // 바텀시트를 그대로 유지하여 다시 시도 가능
   };
 
   const handleDismiss = () => {

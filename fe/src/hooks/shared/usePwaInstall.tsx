@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { debug } from "@/utils/shared/debugger";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -94,21 +95,36 @@ export const usePwaInstall = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const promptInstall = async () => {
+  const promptInstall = async (): Promise<{
+    success: boolean;
+    error?: "no-prompt" | "user-dismissed" | "unknown";
+  }> => {
+    // deferredPrompt가 없으면 설치 프롬프트를 열 수 없음
     if (!deferredPrompt) {
-      return false;
+      debug.warn(
+        "[PWA Install] 설치 프롬프트를 열 수 없습니다. deferredPrompt가 없습니다."
+      );
+      return { success: false, error: "no-prompt" };
     }
 
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    try {
+      // 설치 프롬프트 표시
+      await deferredPrompt.prompt();
 
-    if (outcome === "accepted") {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      return true;
+      // 사용자 선택 대기
+      const { outcome } = await deferredPrompt.userChoice;
+
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+        return { success: true };
+      }
+
+      return { success: false, error: "user-dismissed" };
+    } catch (error) {
+      debug.error("[PWA Install] 설치 프롬프트 오픈 중 에러 발생:", error);
+      return { success: false, error: "unknown" };
     }
-
-    return false;
   };
 
   return {
