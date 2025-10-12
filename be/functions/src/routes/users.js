@@ -77,8 +77,16 @@ router.post("/provision", authGuard, userController.provisionUser);
  * @swagger
  * /users:
  *   post:
- *     summary: 사용자 생성
- *     description: 새로운 사용자를 생성합니다
+ *     summary: 사용자 생성 (테스트용 - Admin SDK)
+ *     description: |
+ *       ⚠️ **테스트용 API** - Firebase Admin SDK 방식
+ *       
+ *       **프로덕션에서는 사용하지 마세요!**
+ *       - 실제 회원가입: 프론트엔드에서 Firebase Client SDK 사용
+ *       - `createUserWithEmailAndPassword(auth, email, password)`
+ *       - Auth Trigger가 자동으로 Firestore 문서 생성
+ *       
+ *       이 API는 백엔드 테스트 및 개발용으로만 사용됩니다.
  *     tags: [Users]
  *     requestBody:
  *       required: true
