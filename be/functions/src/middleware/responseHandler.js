@@ -1,10 +1,14 @@
 /**
  * Response Handler Middleware
  * Express res 객체에 표준화된 응답 메서드를 추가합니다.
- * 
+ *
  * 응답 형식:
  * - 성공: { status: 200, data: {...} }
  * - 실패: { status: 400, message: "..." }
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Express next
+ * @return {void}
  */
 const responseHandler = (req, res, next) => {
   // 성공 응답 (200)

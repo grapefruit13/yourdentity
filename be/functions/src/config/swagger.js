@@ -487,99 +487,104 @@ const options = {
             },
           },
         },
-        Error: {
+        StandardResponse: {
           type: "object",
+          required: ["status"],
           properties: {
-            error: {
-              type: "string",
-              description: "에러 메시지",
-              example: "Invalid request",
-            },
             status: {
               type: "number",
               description: "HTTP 상태 코드",
-              example: 400,
+              example: 200,
             },
-            timestamp: {
-              type: "string",
-              format: "date-time",
-              description: "에러 발생 시간",
+            data: {
+              type: "object",
+              description: "응답 데이터 (성공 시에만 포함)",
+              nullable: true,
             },
           },
         },
         ErrorResponse: {
           type: "object",
+          required: ["status", "message"],
           properties: {
-            success: {
-              type: "boolean",
-              example: false,
-            },
-            code: {
-              type: "string",
-              description: "에러 코드",
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 400,
             },
             message: {
               type: "string",
               description: "에러 메시지",
-            },
-            timestamp: {
-              type: "string",
-              format: "date-time",
-              description: "에러 발생 시간",
+              example: "잘못된 요청입니다",
             },
           },
         },
-        Success: {
+        PaginatedResponse: {
           type: "object",
+          required: ["status", "data", "pagination"],
           properties: {
             status: {
               type: "number",
-              example: 200,
               description: "HTTP 상태 코드",
+              example: 200,
             },
             data: {
-              type: "object",
-              description: "응답 데이터",
+              type: "array",
+              description: "응답 데이터 배열",
+              items: {
+                type: "object",
+              },
             },
-            message: {
-              type: "string",
-              description: "성공 메시지",
-              example: "Operation succeeded",
+            pagination: {
+              type: "object",
+              description: "페이지네이션 정보",
+              properties: {
+                page: {
+                  type: "number",
+                  description: "현재 페이지",
+                  example: 0,
+                },
+                size: {
+                  type: "number",
+                  description: "페이지당 항목 수",
+                  example: 20,
+                },
+                totalElements: {
+                  type: "number",
+                  description: "전체 항목 수",
+                  example: 100,
+                },
+                totalPages: {
+                  type: "number",
+                  description: "전체 페이지 수",
+                  example: 5,
+                },
+                hasNext: {
+                  type: "boolean",
+                  description: "다음 페이지 존재 여부",
+                  example: true,
+                },
+                hasPrevious: {
+                  type: "boolean",
+                  description: "이전 페이지 존재 여부",
+                  example: false,
+                },
+              },
             },
           },
         },
-        PaginationResponse: {
+        CreatedResponse: {
           type: "object",
+          required: ["status", "data"],
           properties: {
-            page: {
+            status: {
               type: "number",
-              description: "현재 페이지",
-              example: 1,
+              description: "HTTP 상태 코드",
+              example: 201,
             },
-            limit: {
-              type: "number",
-              description: "페이지당 항목 수",
-              example: 10,
-            },
-            total: {
-              type: "number",
-              description: "전체 항목 수",
-              example: 100,
-            },
-            totalPages: {
-              type: "number",
-              description: "전체 페이지 수",
-              example: 10,
-            },
-            hasNext: {
-              type: "boolean",
-              description: "다음 페이지 존재 여부",
-              example: true,
-            },
-            hasPrev: {
-              type: "boolean",
-              description: "이전 페이지 존재 여부",
-              example: false,
+            data: {
+              type: "object",
+              description: "생성된 리소스 데이터",
             },
           },
         },

@@ -1,6 +1,11 @@
 /**
  * Error Handler Middleware
  * 모든 에러를 표준화된 형식으로 변환하여 응답합니다.
+ * @param {Error} err - Error object
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Express next
+ * @return {void}
  */
 const errorHandler = (err, req, res, next) => {
   console.error("에러 발생:", err);
@@ -52,7 +57,6 @@ const errorHandler = (err, req, res, next) => {
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;
-
   }
 
   // 프로덕션 보안: 500 에러 시 상세 메시지 숨김
