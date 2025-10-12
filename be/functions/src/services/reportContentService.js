@@ -96,6 +96,10 @@ async checkDuplicateReport(reporterId, targetType, targetId) {
 
     const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(`Notion duplicate check failed: ${data.message || response.statusText}`);
+    }
+
     if (!data.results || data.results.length === 0) return null;
 
     const page = data.results[0];
@@ -218,59 +222,6 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
 }
 
 
-/**
- * 신고 상세 조회 서비스
- */
-async getReportFromNotion({ targetType, targetId, targetUserId }) {
-  try {
-    const response = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        filter: {
-          and: [
-            { property: '신고 타입', title: { equals: targetType } },
-            { property: '신고 콘텐츠', rich_text: { equals: targetId } },
-            { property: '작성자', rich_text: { equals: targetUserId } },
-          ]
-        },
-        page_size: 1
-      })
-    });
-
-    const data = await response.json();
-
-    if (!data.results || data.results.length === 0) {
-      return null; // 해당 신고 없음
-    }
-
-    const page = data.results[0];
-    const props = page.properties;
-
-    // 반환 데이터 구조
-    return {
-      notionPageId: page.id,
-      targetType: this.unmapTargetType(props['신고 타입']?.title?.[0]?.text?.content),
-      targetId: props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null,
-      targetUserId: props['작성자']?.rich_text?.[0]?.text?.content || null,
-      reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
-      reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
-      communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
-      status: props['상태']?.select?.name || null,
-      reportedAt: props['신고일시']?.date?.start || null,
-      syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
-      syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null,
-    };
-
-  } catch (error) {
-    console.error("Notion 데이터 조회 실패:", error);
-    throw error;
-  }
-}
 
 /**
  * Notion에 동기화
@@ -292,7 +243,7 @@ async syncToNotion(reportData) {
 async syncReportToNotion(reportData) {
   try {
     
-    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status} = reportData;
+    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = 'pending'} = reportData;
 
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
@@ -436,26 +387,24 @@ async syncResolvedReports() {
 
         if (targetType === "게시글") {
           const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
-          const communityRef = db.doc(`communities/${communityId}/posts/${targetId}`);
 
           await db.runTransaction(async (t) => {
             const postSnap = await t.get(postRef);
-            const communitySnap = await t.get(communityRef);
 
             // 안전하게 reportsCount 초기화
-            let reportsCount = communitySnap.exists ? communitySnap.data().reportsCount : 0;
+            let reportsCount = postSnap.exists ? postSnap.data().reportsCount : 0;
             if (typeof reportsCount !== 'number' || isNaN(reportsCount)) {
               reportsCount = 0;
             }
 
             if (status === "resolved") {
-              t.update(postRef, { isLocked: true });
-              t.update(communityRef, { reportsCount: reportsCount + 1 });
+              t.update(postRef, { isLocked: true, reportsCount: FieldValue.increment(1) });
             } else {
-              t.update(postRef, { isLocked: false });
+              const updateData = { isLocked: false };
               if (reportsCount > 0) {
-                t.update(communityRef, { reportsCount: reportsCount - 1 });
+                updateData.reportsCount = FieldValue.increment(-1);
               }
+              t.update(postRef, updateData);
             }
 
             console.log(`📄 [게시글] ${targetId} → ${status}, reportsCount: ${reportsCount}`);
