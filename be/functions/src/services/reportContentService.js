@@ -156,7 +156,7 @@ unmapTargetType(label) {
  * {
     "reporterId": "2JJJUVyFPyRRRiyOgGfEqIZS3123",  
     "size": 1,
-    "lastCreatedAt": "2025-10-09T12:06:22.296Z"  -> 다음 페이지를 조회하는 경우만 요청
+    "cursor" : "28a1f705-fa4a-80a7-9369-c7049596b9c2" -> 다음 페이지를 조회하는 경우만 요청
   }
  */
 async getReportsByReporter(reporterId, { size = 10, cursor }) {

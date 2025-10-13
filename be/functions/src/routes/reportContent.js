@@ -246,11 +246,10 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *                 type: integer
  *                 description: 한 번에 조회할 신고 개수
  *                 example: 10
- *               lastCreatedAt:
- *                 type: string
- *                 format: date-time
- *                 description: 이전 페이지 마지막 신고 createdAt 값 (다음 페이지 조회용)
- *                 example: "2025-10-08T20:31:33.028Z"
+ *               cursor:
+ *                   type: string
+ *                   description: 이전 페이지 마지막 cursor 값 (다음 페이지 조회용)
+ *                   example: "abc123cursor"
  *     responses:
  *       200:
  *         description: 신고 목록 조회 성공
