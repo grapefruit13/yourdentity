@@ -9,6 +9,7 @@ class NotionUserService {
       auth: process.env.NOTION_API_KEY,
     });
     
+    this.notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
     this.activeUserDB  = process.env.NOTION_ACTIVE_USER;
     this.withdrawUserDB = process.env.NOTION_WITHDRAWN_USER;
     this.pendingUserDB = process.env.NOTION_PENDING_USER;
@@ -113,13 +114,13 @@ async clearNotionDatabase(databaseId) {
    * ※ firebase구조 추가 고려라고 되어 있는 부분은 우선 컬럼은 다 추가함
    * 8. SMS광고 수신 여부, Push 광고 수신 여부 통일 고려 -> 현재는 push만 사용
    */
-  async syncActiveUsers() {
+  async syncUserAccounts() {
 
     //노션DB 초기화
-    await this.clearNotionDatabase(this.activeUserDB);
+    await this.clearNotionDatabase(this.notionUserAccountDB);
 
     const snapshot = await db.collection("users")
-        .where("status", "==", "active") // 활동회원만 조회
+        //.where("status", "==", "active") // 활동회원만 조회
         .get();
 
     let count = 0; // 동기화 카운트
@@ -155,23 +156,17 @@ async clearNotionDatabase(databaseId) {
             ],
             },
         "사용자 별명": { rich_text: [{ text: { content: user.multiProfiles?.[user.mainProfileId]?.nickname || "" } }] },
+        "상태" : { select: { name: (user.status || "NONE").toUpperCase() } },
         "역할": { select: { name: user.role || "user" } },
         "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
         "출생연도": { number: user.birthYear || null },
         "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
-        //지갑주소..??
-        //"가입완료 일시": { date: { start: user.createdAt?.toISOString() || null } },
         "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
         "가입 방법": { select: { name: user.authType || "email" } },
-        //"앱 첫 로그인": { date: { start: user.createdAt?.toISOString() || null } },
         "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-        //"최근 앱 활동 일시": { date: { start: user.lastLogin?.toISOString() || null } },
         "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-        "최초 접속 언어": { rich_text: [{ text: { content: user.initialLanguage || "" } }] },
-        "설정 언어": { rich_text: [{ text: { content: user.preferredLanguage || "" } }] },
         "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
-        "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
-        //"Push 광고 수신 여부": { checkbox: user.pushAdConsent || false },
+        "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },       
         "Push 광고 수신 여부": { select: { name: user.pushAdConsent || "미설정" } },
         "패널티 주기": { checkbox: user.penalty || false },
         //기획에는 없고 Firebase에만 있는 데이터 추가여부 고려
@@ -184,7 +179,7 @@ async clearNotionDatabase(databaseId) {
       };
 
       await this.notion.pages.create({
-        parent: { database_id: this.activeUserDB  },
+        parent: { database_id: this.notionUserAccountDB  },
         properties: notionPage,
       });
       count++; // 정상적으로 생성될 때마다 카운트 증가

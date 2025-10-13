@@ -4,10 +4,9 @@ const {db} = require("../config/database");
 
 class NotionUserController {
 
-  async syncActiveUsers(req, res, next) {
+  async syncUserAccounts(req, res, next) {
     try {
-      const result = await notionUserService.syncActiveUsers();
-      //res.json(successResponse("활동회원 동기화 완료", result));
+      const result = await notionUserService.syncUserAccounts();
       res.json(successResponse(`활동회원 동기화 완료: ${result.syncedCount}명`));
     } catch (error) {
       console.error("[Controller Error] syncActiveUsers:", error);
