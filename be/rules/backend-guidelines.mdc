@@ -8,7 +8,7 @@ alwaysApply: false
 # Backend Development Guidelines
 
 이 문서는 Firebase Functions + Express.js 백엔드 개발 시 따라야 할 핵심 원칙과 권장 패턴을 정리합니다.
-토스 프론트엔드 가이드라인의 4가지 핵심 원칙을 백엔드에 적용했습니다.
+토스 가이드라인의 4가지 핵심 원칙을 백엔드에 적용했습니다.
 
 # Readability
 
@@ -1018,42 +1018,19 @@ class OrderService {
   }
 }
 
-// ✅ 유틸리티 함수로 추출 (낮은 결합도)
-// utils/logger.js
-function sanitizeForLogging(data, sensitiveFields = []) {
-  const defaultSensitiveFields = ['password', 'token', 'creditCard', 'cvv', 'ssn'];
-  const allSensitiveFields = [...defaultSensitiveFields, ...sensitiveFields];
-  
-  const sanitized = { ...data };
-  for (const field of allSensitiveFields) {
-    if (sanitized[field]) {
-      sanitized[field] = '[REDACTED]';
-    }
-  }
-  
-  return sanitized;
-}
-
-function logInfo(message, data = null) {
-  const sanitized = data ? sanitizeForLogging(data) : null;
-  console.log(message, sanitized);
-}
-
-module.exports = { sanitizeForLogging, logInfo };
-
-// ✅ Service에서 유틸리티 사용
-const { logInfo } = require('../utils/logger');
-
+// ✅ 간단한 방법: 구조 분해로 민감 정보 제외
 class UserService {
   async createUser(userData) {
-    logInfo('Creating user:', userData);
+    const { password, ...safeData } = userData;
+    console.log('Creating user:', safeData);
     // ...
   }
 }
 
 class OrderService {
   async createOrder(orderData) {
-    logInfo('Creating order:', orderData);
+    const { creditCard, cvv, ...safeData } = orderData;
+    console.log('Creating order:', safeData);
     // ...
   }
 }
@@ -1804,26 +1781,27 @@ async function createUser(userData) {
   // ...
 }
 
-// ✅ 민감한 정보 제외하고 로깅
+// ✅ 구조 분해로 민감한 정보 제외
 async function createUser(userData) {
   const { password, ...safeData } = userData;
   console.log('Creating user:', safeData);
-  
-  // 또는 유틸리티 함수 사용
-  console.log('Creating user:', sanitizeForLogging(userData));
+  // ...
 }
 
-function sanitizeForLogging(data) {
-  const sensitiveFields = ['password', 'token', 'secret', 'apiKey'];
-  const sanitized = { ...data };
-  
-  for (const field of sensitiveFields) {
-    if (sanitized[field]) {
-      sanitized[field] = '[REDACTED]';
-    }
+// ✅ 여러 필드 제외
+async function loginUser(credentials) {
+  const { password, token, refreshToken, ...safeData } = credentials;
+  console.log('Login attempt:', safeData);
+  // ...
+}
+
+// ✅ 프로덕션 환경에서는 로깅 최소화
+async function sensitiveOperation(data) {
+  if (process.env.NODE_ENV === 'development') {
+    const { password, token, ...safeData } = data;
+    console.log('Operation data:', safeData);
   }
-  
-  return sanitized;
+  // ...
 }
 ```
 
