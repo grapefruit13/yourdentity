@@ -45,10 +45,10 @@ class UserController {
   async createUser(req, res, next) {
     try {
       const result = await userService.createUser(req.body);
-      res.json(successResponse(200, result));
+      return res.success(200, result);
     } catch (error) {
-      console.error('Create user error:', error);
-      return next ? next(error) : res.status(400).json({ error: error.message });
+      // 에러를 중앙 핸들러로 전달
+      return next(error);
     }
   }
 }
@@ -80,6 +80,7 @@ class UserService {
     if (!userData.name) {
       const error = new Error('name is required');
       error.code = 'BAD_REQUEST';
+      error.statusCode = 400;
       throw error;
     }
     // ... 추가 검증
@@ -272,32 +273,89 @@ class UserController {
     try {
       const { userId } = req.params;
       const user = await userService.getUserById(userId);
-      res.json(successResponse(200, user));
+      return res.success(200, user);
     } catch (error) {
       // 에러를 중앙 핸들러로 전달
-      return next ? next(error) : res.status(500).json({ error: error.message });
+      return next(error);
     }
   }
 }
 
-// ✅ 중앙 에러 핸들러 (errorHandler.js)
+// ✅ 중앙 에러 핸들러 (middleware/errorHandler.js)
 const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || ERROR_CODES[err.code]?.status || 500;
-  const code = err.code || 'INTERNAL_ERROR';
-  
-  console.error(`[${code}] ${err.message}`, {
-    path: req.path,
-    method: req.method,
-    stack: err.stack,
-  });
-  
-  res.status(statusCode).json({
-    status: statusCode,
-    code,
-    message: err.message,
-    timestamp: new Date().toISOString(),
-  });
+  // 에러 로깅
+  console.error("에러 발생:", err);
+  if (err.stack) console.error("스택 추적:", err.stack);
+
+  // HTTP 상태 코드와 메시지 초기화
+  let httpStatus = err.status || err.statusCode || 500;
+  let errorMessage = err.message || "서버 내부 오류가 발생했습니다";
+
+  // 에러 코드 매핑 (statusCode가 없을 경우 code로 매핑)
+  switch (err.code) {
+    case "VALIDATION_ERROR":
+    case "INVALID_INPUT":
+    case "MISSING_REQUIRED_FIELD":
+    case "BAD_REQUEST":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "잘못된 요청입니다";
+      break;
+
+    case "INVALID_TOKEN":
+    case "TOKEN_EXPIRED":
+    case "AUTHENTICATION_REQUIRED":
+    case "UNAUTHENTICATED":
+      httpStatus = 401;
+      if (!err.message) errorMessage = "인증이 필요합니다";
+      break;
+
+    case "PERMISSION_DENIED":
+    case "UNAUTHORIZED":
+    case "AUTHORIZATION_FAILED":
+    case "FORBIDDEN":
+    case "INSUFFICIENT_PERMISSION":
+      httpStatus = 403;
+      if (!err.message) errorMessage = "권한이 없습니다";
+      break;
+
+    case "NOT_FOUND":
+    case "USER_NOT_FOUND":
+    case "RESOURCE_NOT_FOUND":
+    case "COMMUNITY_NOT_FOUND":
+    case "POST_NOT_FOUND":
+    case "MISSION_NOT_FOUND":
+      httpStatus = 404;
+      if (!err.message) errorMessage = "리소스를 찾을 수 없습니다";
+      break;
+
+    case "RESOURCE_ALREADY_EXISTS":
+    case "USER_ALREADY_EXISTS":
+    case "EMAIL_ALREADY_EXISTS":
+      httpStatus = 409;
+      if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
+      break;
+  }
+
+  // 프로덕션 보안: 500 에러 시 상세 메시지 숨김
+  if (httpStatus >= 500 && process.env.NODE_ENV === "production") {
+    console.error("원본 에러 메시지 (프로덕션에서 숨김):", errorMessage);
+    errorMessage = "서버 내부 오류가 발생했습니다";
+  }
+
+  // 표준화된 에러 응답 반환 (res.error 미들웨어 사용)
+  if (typeof res.error === "function") {
+    return res.error(httpStatus, errorMessage);
+  } else {
+    // fallback: res.error가 없을 경우
+    console.warn("res.error를 사용할 수 없습니다. 기본 응답을 사용합니다");
+    return res.status(httpStatus).json({
+      status: httpStatus,
+      message: errorMessage,
+    });
+  }
 };
+
+module.exports = errorHandler;
 ```
 
 ## 일관된 반환 타입 사용
@@ -335,6 +393,7 @@ class UserService {
     if (!user.exists) {
       const error = new Error('User not found');
       error.code = 'NOT_FOUND';
+      error.statusCode = 404;
       throw error;
     }
     return user.data();
@@ -347,6 +406,7 @@ class PostService {
     if (!post.exists) {
       const error = new Error('Post not found');
       error.code = 'NOT_FOUND';
+      error.statusCode = 404;
       throw error;
     }
     return post.data();
@@ -429,6 +489,7 @@ class UserService {
     if (!user.exists) {
       const error = new Error('User not found');
       error.code = 'NOT_FOUND';
+      error.statusCode = 404;
       throw error;
     }
     return user.data();
@@ -454,14 +515,18 @@ class UserService {
 
 // Controller에서 명시적으로 호출
 class UserController {
-  async getUserProfile(req, res) {
-    const { userId } = req.params;
-    
-    // 조회와 트래킹을 명시적으로 분리
-    const user = await userService.getUserById(userId);
-    await userService.trackUserAccess(userId); // 의도가 명확함
-    
-    res.json(successResponse(200, user));
+  async getUserProfile(req, res, next) {
+    try {
+      const { userId } = req.params;
+      
+      // 조회와 트래킹을 명시적으로 분리
+      const user = await userService.getUserById(userId);
+      await userService.trackUserAccess(userId); // 의도가 명확함
+      
+      return res.success(200, user);
+    } catch (error) {
+      return next(error);
+    }
   }
 }
 ```
@@ -488,6 +553,7 @@ class UserService {
       
       const wrappedError = new Error('Failed to delete user');
       wrappedError.code = 'INTERNAL';
+      wrappedError.statusCode = 500;
       wrappedError.originalError = error;
       throw wrappedError;
     }
@@ -506,46 +572,57 @@ class UserService {
 #### Recommended Pattern:
 
 ```javascript
-// ✅ helpers.js에 응답 포매터 정의
-function successResponse(status, data, message = null) {
-  const response = {
-    status,
-    success: true,
-    data,
-    timestamp: new Date().toISOString(),
-  };
-  
-  if (message) {
-    response.message = message;
-  }
-  
-  return response;
-}
+// ✅ responseHandler.js 미들웨어로 표준 응답 메서드 제공
+// 모든 Express Response 객체에 res.success(), res.error(), res.paginate() 메서드 추가
 
-function errorResponse(status, code, message, details = null) {
-  const response = {
-    status,
-    success: false,
-    error: {
-      code,
-      message,
-    },
-    timestamp: new Date().toISOString(),
+// middleware/responseHandler.js
+const responseHandler = (req, res, next) => {
+  // 성공 응답
+  res.success = (status = 200, data = null, message = null) => {
+    const response = { status };
+    if (data !== null) response.data = data;
+    if (message) response.message = message;
+    return res.status(status).json(response);
   };
-  
-  if (details) {
-    response.error.details = details;
-  }
-  
-  return response;
-}
+
+  // 에러 응답
+  res.error = (status = 500, message = '서버 내부 오류가 발생했습니다') => {
+    return res.status(status).json({ status, message });
+  };
+
+  // 페이지네이션 응답
+  res.paginate = (status = 200, data, pagination) => {
+    return res.status(status).json({
+      status,
+      data,
+      pagination,
+    });
+  };
+
+  next();
+};
+
+module.exports = responseHandler;
+
+// ✅ index.js에서 미들웨어 등록
+const responseHandler = require('./src/middleware/responseHandler');
+app.use(responseHandler); // 모든 라우트보다 먼저 등록
 
 // ✅ Controller에서 일관된 형식 사용
 class UserController {
   async getAllUsers(req, res, next) {
     try {
       const users = await userService.getAllUsers();
-      res.json(successResponse(200, { users, count: users.length }));
+      return res.success(200, { users, count: users.length });
+    } catch (error) {
+      return next(error); // errorHandler 미들웨어가 처리
+    }
+  }
+  
+  async getUserById(req, res, next) {
+    try {
+      const user = await userService.getUserById(req.params.userId);
+      return res.success(200, user);
     } catch (error) {
       return next(error);
     }
@@ -555,38 +632,43 @@ class UserController {
 // 모든 성공 응답:
 {
   "status": 200,
-  "success": true,
+  "data": { ... }
+}
+
+// 메시지가 있는 성공 응답:
+{
+  "status": 200,
   "data": { ... },
-  "timestamp": "2025-10-12T10:30:00.000Z"
+  "message": "작업이 완료되었습니다"
+}
+
+// 페이지네이션 응답:
+{
+  "status": 200,
+  "data": [...],
+  "pagination": {
+    "currentPage": 0,
+    "totalPages": 10,
+    "totalElements": 100,
+    "size": 10
+  }
 }
 
 // 모든 에러 응답:
 {
   "status": 404,
-  "success": false,
-  "error": {
-    "code": "NOT_FOUND",
-    "message": "User not found"
-  },
-  "timestamp": "2025-10-12T10:30:00.000Z"
+  "message": "리소스를 찾을 수 없습니다"
 }
 
 // ❌ 나쁜 예: 응답 형식이 혼재됨
-// 어떤 API는 successResponse 사용
-res.json(successResponse(200, users));
+res.json({ success: true, data: users }); // 직접 객체 반환
+res.status(200).send(users); // send() 사용
+res.status(200).json(users); // json() 직접 사용
 
-// 다른 API는 직접 객체 반환
-res.json({
-  success: true,
-  data: users,
-  pagination: {...}
-});
-
-// ✅ 좋은 예: 모든 API가 동일한 헬퍼 사용
-res.json(successResponse(200, {
-  users,
-  pagination
-}));
+// ✅ 좋은 예: 모든 API가 res.success(), res.error(), res.paginate() 사용
+res.success(200, { users, count: users.length });
+res.success(200, user, '사용자 정보를 조회했습니다');
+res.paginate(200, posts, { currentPage: 0, totalPages: 5 });
 ```
 
 # Cohesion
@@ -1013,7 +1095,7 @@ async function getPostById(req, res, next) {
     const post = await this.fetchPost(communityId, postId);
     const comments = await this.fetchCommentsWithReplies(postId, post.authorId);
     
-    res.json(successResponse(200, { ...post, replies: comments }));
+    return res.success(200, { ...post, replies: comments });
   } catch (error) {
     return next(error);
   }
@@ -1024,6 +1106,7 @@ async validateCommunityExists(communityId) {
   if (!community) {
     const error = new Error('커뮤니티를 찾을 수 없습니다.');
     error.code = 'NOT_FOUND';
+    error.statusCode = 404;
     throw error;
   }
 }
@@ -1033,6 +1116,7 @@ async fetchPost(communityId, postId) {
   if (!post) {
     const error = new Error('게시글을 찾을 수 없습니다.');
     error.code = 'NOT_FOUND';
+    error.statusCode = 404;
     throw error;
   }
   return post;
@@ -1095,6 +1179,7 @@ class UserService {
     if (!profileData.name || profileData.name.length < 2) {
       const error = new Error('Name must be at least 2 characters');
       error.code = 'INVALID_NAME';
+      error.statusCode = 400;
       throw error;
     }
   }
@@ -1271,6 +1356,7 @@ class UserService {
       if (!user) {
         const error = new Error('User not found');
         error.code = 'NOT_FOUND';
+        error.statusCode = 404;
         throw error;
       }
       return user;
@@ -1422,6 +1508,7 @@ class UserService {
       if (!data[field]) {
         const error = new Error(`${field} is required`);
         error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
         throw error;
       }
     }
@@ -1432,6 +1519,7 @@ class UserService {
     if (!emailRegex.test(email)) {
       const error = new Error('Invalid email format');
       error.code = 'INVALID_EMAIL';
+      error.statusCode = 400;
       throw error;
     }
   }
@@ -1440,6 +1528,7 @@ class UserService {
     if (password.length < 8) {
       const error = new Error('Password must be at least 8 characters');
       error.code = 'WEAK_PASSWORD';
+      error.statusCode = 400;
       throw error;
     }
   }
@@ -1607,12 +1696,13 @@ async getUserById(req, res, next) {
     if (!user) {
       const err = new Error('User not found');
       err.code = 'NOT_FOUND';
+      err.statusCode = 404;
       throw err;
     }
     
-    res.json(successResponse(200, user));
+    return res.success(200, user);
   } catch (error) {
-    return next ? next(error) : res.status(500).json({ error: error.message });
+    return next(error);
   }
 }
 
@@ -1685,7 +1775,7 @@ const authGuard = require('../middleware/authGuard');
 
 // 공개 엔드포인트
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.success(200, { status: 'ok' });
 });
 
 // 보호된 엔드포인트
@@ -1894,7 +1984,12 @@ async function getPostsWithUserInfo(postIds) {
 ### Error Handling & Security
 - [ ] 모든 async 함수에 try-catch가 있는가?
 - [ ] 모든 에러에 적절한 `error.code`가 부여되어 있는가?
-  - `BAD_REQUEST`, `NOT_FOUND`, `UNAUTHORIZED`, `INTERNAL` 등
+  - `BAD_REQUEST`, `NOT_FOUND`, `UNAUTHORIZED`, `FORBIDDEN`, `INTERNAL` 등
+- [ ] 모든 에러에 `error.statusCode`가 명시적으로 설정되어 있는가?
+  - 400, 401, 403, 404, 409, 500 등
+- [ ] Controller에서 에러를 `next(error)`로 중앙 핸들러에 전달하는가?
+  - ❌ `res.status(400).json({ error: ... })` 직접 사용 금지
+  - ✅ `return next(error)` 사용
 - [ ] 에러 메시지가 한국어로 사용자 친화적인가?
 - [ ] 비밀번호, API 키, 토큰이 로그나 응답에 포함되지 않는가?
 - [ ] 보호된 엔드포인트에 `authGuard`가 적용되어 있는가?
@@ -1917,8 +2012,13 @@ async function getPostsWithUserInfo(postIds) {
 - [ ] 페이지네이션이 적용되어 있는가?
 
 ### Consistency & Standards
-- [ ] **모든 API가** `successResponse` 헬퍼를 **일관되게** 사용하는가?
-  - ❌ 일부는 successResponse, 일부는 직접 객체 반환 금지
+- [ ] **모든 API가** `res.success()`, `res.error()`, `res.paginate()` 미들웨어 메서드를 **일관되게** 사용하는가?
+  - ❌ `res.json()`, `res.send()`, `res.status().json()` 직접 사용 금지
+  - ✅ `res.success(200, data)`, `res.error(400, message)` 사용
+- [ ] 응답 형식이 표준을 따르는가?
+  - 성공: `{status, data, message?}`
+  - 에러: `{status, message}`
+  - 페이지네이션: `{status, data, pagination}`
 - [ ] JSDoc 주석이 작성되어 있는가?
 - [ ] 한국어 에러 메시지가 일관적인가?
 - [ ] 스트림, 타이머, 리스너가 적절히 정리되는가?
