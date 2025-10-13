@@ -391,16 +391,16 @@ class CommentService {
         throw error;
       }
 
-      // 기존 좋아요 확인
-      const existingLikes = await this.firestoreService.getCollectionWhere(
+      // 기존 좋아요 확인 (복합 쿼리로 최적화)
+      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
         "likes",
-        "targetId",
-        "==",
-        commentId,
+        [
+          { field: "targetId", operator: "==", value: commentId },
+          { field: "userId", operator: "==", value: userId },
+          { field: "type", operator: "==", value: "COMMENT" },
+        ]
       );
-      const userLike = existingLikes.find(
-        (like) => like.userId === userId && like.type === "COMMENT",
-      );
+      const userLike = userLikes[0];
 
       let isLiked = false;
 

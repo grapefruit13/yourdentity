@@ -384,6 +384,40 @@ class FirestoreService {
 
     return items;
   }
+
+  /**
+   * 여러 조건으로 복합 쿼리 수행 (compound where)
+   * @param {string} collectionName - 컬렉션 이름
+   * @param {Array} conditions - 조건 배열 [{field, operator, value}, ...]
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getCollectionWhereMultiple(collectionName, conditions) {
+    if (!conditions || conditions.length === 0) return [];
+
+    let query = db.collection(collectionName);
+    
+    // 모든 조건을 쿼리에 적용
+    conditions.forEach((condition) => {
+      query = query.where(condition.field, condition.operator, condition.value);
+    });
+
+    const snapshot = await query.get();
+    const items = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt:
+          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    return items;
+  }
 }
 
 module.exports = FirestoreService;
