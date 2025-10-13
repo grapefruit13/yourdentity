@@ -57,22 +57,30 @@ const PwaInstallPrompt = () => {
   }, [isInstallable, isInstalled, open]);
 
   const handleInstall = async () => {
-    const result = await promptInstall();
+    try {
+      const result = await promptInstall();
 
-    if (result.success) {
-      close();
-      localStorage.setItem(PWA_PROMPT_DISMISSED_KEY, "true");
-    } else if (result.error === "no-prompt" || result.error === "unknown") {
-      // 팝업 오픈 실패: 가이드 페이지로 이동
-      debug.warn(
-        "[PWA Prompt] 설치 프롬프트 오픈 실패. 가이드 페이지로 이동합니다.",
-        { error: result.error }
-      );
+      if (result.success) {
+        close();
+        localStorage.setItem(PWA_PROMPT_DISMISSED_KEY, "true");
+      } else if (result.error === "no-prompt" || result.error === "unknown") {
+        // 팝업 오픈 실패: 가이드 페이지로 이동
+        debug.warn(
+          "[PWA Prompt] 설치 프롬프트 오픈 실패. 가이드 페이지로 이동합니다.",
+          { error: result.error }
+        );
+        close();
+        router.push(LINK_URL.DOWNLOAD);
+      }
+      // result.error === "user-dismissed"인 경우는 사용자가 거부한 것이므로
+      // 바텀시트를 그대로 유지하여 다시 시도 가능
+    } catch (error) {
+      debug.error("[PWA Prompt] 설치 중 예상치 못한 에러가 발생했습니다.", {
+        error,
+      });
       close();
       router.push(LINK_URL.DOWNLOAD);
     }
-    // result.error === "user-dismissed"인 경우는 사용자가 거부한 것이므로
-    // 바텀시트를 그대로 유지하여 다시 시도 가능
   };
 
   const handleDismiss = () => {
