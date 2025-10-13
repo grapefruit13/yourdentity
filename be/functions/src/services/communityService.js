@@ -470,9 +470,11 @@ class CommunityService {
 
       // 조회수 증가
       const newViewCount = (post.viewCount || 0) + 1;
-      await postsService.updateDocument(`communities/${communityId}/posts`, postId, {
+      postsService.updateDocument(`communities/${communityId}/posts`, postId, {
         viewCount: newViewCount,
         updatedAt: new Date(),
+      }).catch(error => {
+        console.error("조회수 증가 실패:", error);
       });
 
       // 커뮤니티 정보 추가

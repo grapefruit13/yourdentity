@@ -79,9 +79,11 @@ class GatheringService {
 
       // 조회수 증가
       const newViewCount = (gathering.viewCount || 0) + 1;
-      await this.firestoreService.updateDocument("gatherings", gatheringId, {
+      this.firestoreService.updateDocument("gatherings", gatheringId, {
         viewCount: newViewCount,
         updatedAt: Date.now(),
+      }).catch(error => {
+        console.error("조회수 증가 실패:", error);
       });
 
       // Q&A 조회

@@ -80,9 +80,11 @@ class RoutineService {
 
       // 조회수 증가
       const newViewCount = (routine.viewCount || 0) + 1;
-      await this.firestoreService.updateDocument("routines", routineId, {
+      this.firestoreService.updateDocument("routines", routineId, {
         viewCount: newViewCount,
         updatedAt: Date.now(),
+      }).catch(error => {
+        console.error("조회수 증가 실패:", error);
       });
 
       // Q&A 조회

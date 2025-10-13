@@ -79,9 +79,11 @@ class TmiService {
 
       // 조회수 증가
       const newViewCount = (tmi.viewCount || 0) + 1;
-      await this.firestoreService.updateDocument("tmis", tmiId, {
+      this.firestoreService.updateDocument("tmis", tmiId, {
         viewCount: newViewCount,
         updatedAt: Date.now(),
+      }).catch(error => {
+        console.error("조회수 증가 실패:", error);
       });
 
       // Q&A 조회

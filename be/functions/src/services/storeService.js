@@ -82,9 +82,11 @@ class StoreService {
 
       // 조회수 증가
       const newViewCount = (product.view_count || 0) + 1;
-      await this.firestoreService.updateDocument("products", productId, {
+      this.firestoreService.updateDocument("products", productId, {
         view_count: newViewCount,
         updatedAt: Date.now(),
+      }).catch(error => {
+        console.error("조회수 증가 실패:", error);
       });
 
       // Q&A 조회
