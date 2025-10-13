@@ -1,4 +1,8 @@
 const {admin} = require("../config/database");
+const FirestoreService = require("./firestoreService");
+
+// FirestoreService 인스턴스 생성
+const usersService = new FirestoreService("users");
 
 /**
  * 이메일 중복 체크 (회원가입 전 사전 검증)
@@ -17,33 +21,27 @@ const checkEmailAvailability = async (email) => {
       throw new Error("이메일이 필요합니다.");
     }
 
-    // Firestore에서 이메일 중복 체크
-    const existingUserQuery = await admin
-        .firestore()
-        .collection("users")
-        .where("email", "==", email)
-        .limit(1)
-        .get();
+    // FirestoreService를 통한 이메일 중복 체크
+    const existingUsers = await usersService.getWhere("email", "==", email);
 
-    if (!existingUserQuery.empty) {
+    if (existingUsers.length > 0) {
       // 중복된 이메일 발견
-      const existingDoc = existingUserQuery.docs[0];
-      const existingData = existingDoc.data();
+      const existingUser = existingUsers[0];
 
       console.log("📧 이메일 중복 감지:", {
         email,
-        existingUID: existingDoc.id,
-        authType: existingData.authType,
-        snsProvider: existingData.snsProvider,
+        existingUID: existingUser.id,
+        authType: existingUser.authType,
+        snsProvider: existingUser.snsProvider,
       });
 
       return {
         available: false,
-        existingAuthType: existingData.authType, // "email" or "sns"
+        existingAuthType: existingUser.authType, // "email" or "sns"
         existingProvider:
-          existingData.authType === "email"
+          existingUser.authType === "email"
             ? "email"
-            : existingData.snsProvider, // "kakao", "google" etc
+            : existingUser.snsProvider, // "kakao", "google" etc
       };
     }
 
@@ -58,7 +56,45 @@ const checkEmailAvailability = async (email) => {
   }
 };
 
+/**
+ * 로그아웃 - Refresh Token 무효화
+ * 
+ * @description
+ * 사용자의 모든 Refresh Token을 무효화하여 기존 토큰 사용 불가능하게 함
+ * - revokeRefreshTokens()로 모든 디바이스의 토큰 무효화
+ * - authGuard에서 tokensValidAfterTime 체크로 로그아웃된 토큰 거부
+ * 
+ * @param {string} uid - 사용자 UID
+ * @returns {{ success: boolean, revokedAt: string }}
+ */
+const logout = async (uid) => {
+  try {
+    if (!uid) {
+      throw new Error("UID가 필요합니다.");
+    }
+
+    // 모든 Refresh Token 무효화
+    await admin.auth().revokeRefreshTokens(uid);
+
+    // tokensValidAfterTime 업데이트됨 (현재 시간)
+    const user = await admin.auth().getUser(uid);
+
+    console.log(`✅ AuthService: Logout - Tokens revoked at ${user.tokensValidAfterTime}`, {
+      uid,
+    });
+
+    return {
+      success: true,
+      revokedAt: user.tokensValidAfterTime,
+    };
+  } catch (error) {
+    console.error("❌ AuthService: Logout 실패:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   checkEmailAvailability,
+  logout,
 };
 
