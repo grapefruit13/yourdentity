@@ -441,7 +441,8 @@ class CommunityService {
         updatedAt: new Date(),
       };
 
-      const postId = await postsService.addDocument(`communities/${communityId}/posts`, newPost);
+      const result = await postsService.create(newPost);
+      const postId = result.id;
 
       return {
         id: postId,
@@ -469,7 +470,7 @@ class CommunityService {
   async getPostById(communityId, postId) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const post = await postsService.getDocument(`communities/${communityId}/posts`, postId);
+      const post = await postsService.getById(postId);
 
       if (!post) {
         const error = new Error("Post not found");
@@ -479,7 +480,7 @@ class CommunityService {
 
       // 조회수 증가
       const newViewCount = (post.viewCount || 0) + 1;
-      postsService.updateDocument(`communities/${communityId}/posts`, postId, {
+      postsService.update(postId, {
         viewCount: newViewCount,
         updatedAt: new Date(),
       }).catch(error => {
@@ -517,7 +518,7 @@ class CommunityService {
   async updatePost(communityId, postId, updateData) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const post = await postsService.getDocument(`communities/${communityId}/posts`, postId);
+      const post = await postsService.getById(postId);
 
       if (!post) {
         const error = new Error("Post not found");
@@ -530,7 +531,7 @@ class CommunityService {
         updatedAt: new Date(),
       };
 
-      await postsService.updateDocument(`communities/${communityId}/posts`, postId, updatedData);
+      await postsService.update(postId, updatedData);
 
       return {
         id: postId,
@@ -555,7 +556,7 @@ class CommunityService {
   async deletePost(communityId, postId) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const post = await postsService.getDocument(`communities/${communityId}/posts`, postId);
+      const post = await postsService.getById(postId);
 
       if (!post) {
         const error = new Error("Post not found");
@@ -563,7 +564,7 @@ class CommunityService {
         throw error;
       }
 
-      await postsService.deleteDocument(`communities/${communityId}/posts`, postId);
+      await postsService.delete(postId);
     } catch (error) {
       console.error("Delete post error:", error.message);
       if (error.code === "NOT_FOUND") {
@@ -583,7 +584,7 @@ class CommunityService {
   async togglePostLike(communityId, postId, userId) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const post = await postsService.getDocument(`communities/${communityId}/posts`, postId);
+      const post = await postsService.getById(postId);
 
       if (!post) {
         const error = new Error("Post not found");
@@ -610,7 +611,7 @@ class CommunityService {
         isLiked = false;
 
         // 게시글 좋아요 수 감소
-        await postsService.updateDocument(`communities/${communityId}/posts`, postId, {
+        await postsService.update(postId, {
           likesCount: FieldValue.increment(-1),
           updatedAt: new Date(),
         });
@@ -625,14 +626,14 @@ class CommunityService {
         isLiked = true;
 
         // 게시글 좋아요 수 증가
-        await postsService.updateDocument(`communities/${communityId}/posts`, postId, {
+        await postsService.update(postId, {
           likesCount: FieldValue.increment(1),
           updatedAt: new Date(),
         });
       }
 
       // 업데이트된 게시글 정보 조회
-      const updatedPost = await postsService.getDocument(`communities/${communityId}/posts`, postId);
+      const updatedPost = await postsService.getById(postId);
 
       return {
         postId,
