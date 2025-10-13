@@ -526,7 +526,7 @@ class GatheringService {
         qnaId,
         userId,
         isLiked,
-        likeCount: updatedQna.likesCount || 0,
+        likesCount: updatedQna.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle QnA like error:", error.message);
@@ -624,7 +624,7 @@ class GatheringService {
         gatheringId,
         userId,
         isLiked,
-        likeCount: updatedGathering.likesCount || 0,
+        likesCount: updatedGathering.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle gathering like error:", error.message);

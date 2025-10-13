@@ -523,7 +523,7 @@ class RoutineService {
         qnaId,
         userId,
         isLiked,
-        likeCount: updatedQna.likesCount || 0,
+        likesCount: updatedQna.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle QnA like error:", error.message);
@@ -615,16 +615,13 @@ class RoutineService {
       }
 
       // 업데이트된 루틴 정보 조회
-      const updatedRoutine = await this.firestoreService.getDocument(
-        "routines",
-        routineId,
-      );
+      const updatedRoutine = await this.firestoreService.getDocument("routines", routineId);
 
       return {
         routineId,
         userId,
         isLiked,
-        likeCount: updatedRoutine.likesCount || 0,
+        likesCount: updatedRoutine.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle routine like error:", error.message);

@@ -489,7 +489,7 @@ class TmiService {
         qnaId,
         userId,
         isLiked,
-        likeCount: updatedQna.likesCount || 0,
+        likesCount: updatedQna.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle Q&A like error:", error.message);
@@ -587,7 +587,7 @@ class TmiService {
         tmiId,
         userId,
         isLiked,
-        likeCount: updatedTmi.likesCount || 0,
+        likesCount: updatedTmi.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle TMI project like error:", error.message);

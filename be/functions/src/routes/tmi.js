@@ -666,7 +666,7 @@ router.post("/:projectId/apply", authGuard, tmiController.applyToTmiProject);
  *                     isLiked:
  *                       type: boolean
  *                       example: true
- *                     likeCount:
+ *                     likesCount:
  *                       type: integer
  *                       example: 5
  *                 message:
@@ -898,7 +898,7 @@ router.post("/qna/:qnaId/answer", authGuard, tmiController.createQnAAnswer);
  *                     isLiked:
  *                       type: boolean
  *                       example: true
- *                     likeCount:
+ *                     likesCount:
  *                       type: integer
  *                       example: 3
  *                 message:

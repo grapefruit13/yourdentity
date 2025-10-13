@@ -281,7 +281,7 @@ class StoreService {
         productId,
         userId,
         isLiked,
-        likeCount: updatedProduct.likesCount || 0,
+        likesCount: updatedProduct.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle product like error:", error.message);
@@ -565,7 +565,7 @@ class StoreService {
         qnaId,
         userId,
         isLiked,
-        likeCount: updatedQna.likesCount || 0,
+        likesCount: updatedQna.likesCount || 0,
       };
     } catch (error) {
       console.error("Toggle product Q&A like error:", error.message);
