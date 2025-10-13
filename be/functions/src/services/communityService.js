@@ -215,7 +215,7 @@ class CommunityService {
   }
 
   /**
-   * 전체 커뮤니티 게시글 조회 (기존 방식 - 인덱스 불필요)
+   * 전체 커뮤니티 게시글 조회 (개선된 방식 - 효율적인 페이지네이션)
    * @param {Object} options - 조회 옵션
    * @return {Promise<Object>} 게시글 목록
    */
@@ -226,6 +226,8 @@ class CommunityService {
         page = 0,
         size = 10,
         includeContent = false,
+        orderBy = "createdAt",
+        orderDirection = "desc",
       } = options;
 
       // filter에 따른 게시글 타입 매핑
@@ -235,25 +237,28 @@ class CommunityService {
         tmi: "TMI",
       };
 
-      // 1. 모든 커뮤니티 조회
+      // 1. 커뮤니티 목록 조회
       const communities = await this.firestoreService.getWithPagination({
         page: 0,
-        size: 1000, // 모든 커뮤니티 조회
+        size: 10,
+        orderBy: "createdAt",
+        orderDirection: "desc",
       });
 
       let allPosts = [];
+      const postsPerCommunity = Math.max(1, Math.floor(size * 2 / (communities.content?.length || 1)));
 
-      // 2. 각 커뮤니티에서 개별적으로 posts 조회
+      // 2. 각 커뮤니티에서 게시글 조회
       for (const community of communities.content || []) {
         const postsService = new FirestoreService(`communities/${community.id}/posts`);
         const posts = await postsService.getWithPagination({
           page: 0,
-          size: 100, // 각 커뮤니티에서 최대 100개씩
-          orderBy: "createdAt",
-          orderDirection: "desc",
+          size: postsPerCommunity,
+          orderBy: orderBy,
+          orderDirection: orderDirection,
         });
 
-        // 3. 메모리에서 필터링
+        // 3. 메모리에서 타입 필터링
         let filteredPosts = posts.content || [];
         if (type && postTypeMapping[type]) {
           filteredPosts = filteredPosts.filter(
@@ -289,8 +294,12 @@ class CommunityService {
         allPosts = allPosts.concat(postsWithCommunity);
       }
 
-      // 5. 전체 게시글을 생성일 기준으로 정렬
-      allPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // 5. 전체 게시글을 정렬
+      allPosts.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return orderDirection === "desc" ? dateB - dateA : dateA - dateB;
+      });
 
       // 6. 메모리에서 페이지네이션
       const startIndex = parseInt(page) * parseInt(size);
