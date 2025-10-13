@@ -88,10 +88,30 @@ export const getCurrentUser = (): User | null => {
 
 /**
  * @description 로그아웃
+ * Firebase 로그아웃 + 백엔드 Refresh Token 무효화
  */
 export const signOut = async (): Promise<void> => {
-  await auth.signOut();
-  // TODO: 로그아웃 시 getFirebaseIdToken 시 null로만 옴. 카카오 로그아웃 기능도 필요
+  try {
+    // 1. 백엔드 API 호출 (Refresh Token 무효화)
+    const token = await getFirebaseIdToken();
+    if (token) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      await fetch(`${apiUrl}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+
+    // 2. Firebase 로그아웃 (localStorage 자동 삭제)
+    await auth.signOut();
+  } catch (error) {
+    console.error("로그아웃 실패:", error);
+    // 에러가 나도 로컬 로그아웃은 진행
+    await auth.signOut();
+  }
 };
 
 /**

@@ -11,6 +11,7 @@ const logger = require("./src/middleware/logger");
 const errorHandler = require("./src/middleware/errorHandler");
 
 // 라우터
+const authRoutes = require("./src/routes/auth");
 const userRoutes = require("./src/routes/users");
 const missionRoutes = require("./src/routes/missions");
 const imageRoutes = require("./src/routes/images");
@@ -177,6 +178,7 @@ app.post("/echo", (req, res) => {
 });
 
 // API 라우트 등록
+app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/missions", missionRoutes);
 app.use("/images", imageRoutes);
