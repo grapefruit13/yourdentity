@@ -352,16 +352,17 @@ const createProductQnA = async (req, res, next) => {
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("content is required");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // 상품 존재 확인
     const product = await firestoreService.getDocument("products", productId);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "상품을 찾을 수 없습니다.",
-      });
+      const err = new Error("상품을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (자동으로 처리)
@@ -410,7 +411,7 @@ const createProductQnA = async (req, res, next) => {
 
     const qnaId = await firestoreService.addDocument("qnas", qnaData);
 
-    res.status(201).json({
+    return res.created({
       qnaId,
       productId,
       userId: qnaData.userId,
@@ -423,7 +424,7 @@ const createProductQnA = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error creating product QnA:", error);
-    res.status(500).json({error: "Failed to create QnA"});
+    return next(error);
   }
 };
 
@@ -434,13 +435,17 @@ const updateProductQnA = async (req, res, next) => {
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("content is required");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("QnA not found");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리
@@ -483,7 +488,7 @@ const updateProductQnA = async (req, res, next) => {
 
     await firestoreService.updateDocument("qnas", qnaId, updatedData);
 
-    res.json({
+    return res.success({
       qnaId,
       productId,
       userId: qna.userId,
@@ -496,7 +501,7 @@ const updateProductQnA = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error updating product QnA:", error);
-    res.status(500).json({error: "Failed to update QnA"});
+    return next(error);
   }
 };
 
@@ -508,10 +513,9 @@ const toggleProductQnALike = async (req, res, next) => {
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({
-        success: false,
-        message: "QnA를 찾을 수 없습니다.",
-      });
+      const err = new Error("QnA를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -556,22 +560,15 @@ const toggleProductQnALike = async (req, res, next) => {
     // 업데이트된 QnA 정보 조회
     const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
-    res.json({
-      success: true,
-      data: {
-        qnaId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedQna.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
+    return res.success({
+      qnaId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedQna.likesCount || 0,
     });
   } catch (error) {
     console.error("Error toggling product QnA like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
@@ -583,15 +580,17 @@ const deleteProductQnA = async (req, res, next) => {
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("QnA not found");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+    return res.noContent();
   } catch (error) {
     console.error("Error deleting product QnA:", error);
-    res.status(500).json({error: "Failed to delete QnA"});
+    return next(error);
   }
 };
 
