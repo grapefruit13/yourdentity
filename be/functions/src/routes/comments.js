@@ -93,9 +93,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -290,9 +290,9 @@ router.get(
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   type: object
  *                   properties:
@@ -453,9 +453,9 @@ router.post(
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -566,25 +566,47 @@ router.put("/:commentId", authGuard, commentController.updateComment);
  *           type: string
  *         description: 댓글 ID
  *     responses:
- *       200:
+ *       204:
  *         description: 댓글 삭제 성공
+ *       403:
+ *         description: 권한 없음
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 403
  *                 message:
  *                   type: string
- *                   example: "댓글이 성공적으로 삭제되었습니다."
- *       403:
- *         description: 권한 없음
+ *                   example: "권한이 없습니다"
  *       404:
  *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "댓글을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/:commentId", authGuard, commentController.deleteComment);
 
@@ -611,9 +633,9 @@ router.delete("/:commentId", authGuard, commentController.deleteComment);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:

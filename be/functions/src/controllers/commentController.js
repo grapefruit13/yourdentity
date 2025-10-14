@@ -3,17 +3,16 @@ const firestoreService = new FirestoreService("comments");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 댓글 생성 API
-const createComment = async (req, res) => {
+const createComment = async (req, res, next) => {
   try {
     const {communityId, postId} = req.params;
     const {content = [], parentId = null} = req.body;
 
     // 필수 필드 검증
     if (!content || content.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "댓글 내용은 필수입니다.",
-      });
+      const err = new Error("댓글 내용은 필수입니다");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     // content 배열 검증
@@ -22,10 +21,9 @@ const createComment = async (req, res) => {
           item.type === "text" && item.content && item.content.trim().length > 0,
     );
     if (!hasTextContent) {
-      return res.status(400).json({
-        success: false,
-        message: "댓글에 텍스트 내용이 필요합니다.",
-      });
+      const err = new Error("댓글에 텍스트 내용이 필요합니다");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     // 사용자 인증 정보에서 유저 ID 추출
@@ -162,25 +160,20 @@ const createComment = async (req, res) => {
         },
     );
 
-    res.status(201).json({
-      success: true,
-      data: {
-        ...commentData,
-        id: commentId,
-      },
-      message: "댓글이 성공적으로 작성되었습니다.",
-    });
+    const responseData = {
+      ...commentData,
+      id: commentId,
+    };
+
+    return res.created(responseData);
   } catch (error) {
     console.error("Error creating comment:", error);
-    res.status(500).json({
-      success: false,
-      message: "댓글 작성 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 댓글 목록 조회 API
-const getComments = async (req, res) => {
+const getComments = async (req, res, next) => {
   try {
     const {communityId, postId} = req.params;
     const {page = 0, size = 20} = req.query;
@@ -333,22 +326,15 @@ const getComments = async (req, res) => {
       return comment;
     });
 
-    res.json({
-      success: true,
-      data: commentsWithReplies,
-      pagination: result.pagination || {},
-    });
+    return res.paginate(commentsWithReplies, result.pagination || {});
   } catch (error) {
     console.error("Error getting comments:", error);
-    res.status(500).json({
-      success: false,
-      message: "댓글 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 댓글 수정 API
-const updateComment = async (req, res) => {
+const updateComment = async (req, res, next) => {
   try {
     const {commentId} = req.params;
     const {content = []} = req.body;
@@ -464,22 +450,15 @@ const updateComment = async (req, res) => {
         commentId,
     );
 
-    res.json({
-      success: true,
-      data: updatedComment,
-      message: "댓글이 성공적으로 수정되었습니다.",
-    });
+    return res.success(updatedComment);
   } catch (error) {
     console.error("Error updating comment:", error);
-    res.status(500).json({
-      success: false,
-      message: "댓글 수정 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 댓글 삭제 API
-const deleteComment = async (req, res) => {
+const deleteComment = async (req, res, next) => {
   try {
     const {commentId} = req.params;
 
@@ -550,21 +529,15 @@ const deleteComment = async (req, res) => {
       );
     }
 
-    res.json({
-      success: true,
-      message: "댓글이 성공적으로 삭제되었습니다.",
-    });
+    return res.noContent();
   } catch (error) {
     console.error("Error deleting comment:", error);
-    res.status(500).json({
-      success: false,
-      message: "댓글 삭제 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 댓글 좋아요 토글 API
-const toggleCommentLike = async (req, res) => {
+const toggleCommentLike = async (req, res, next) => {
   try {
     const {commentId} = req.params;
     const userId = req.user.uid;
@@ -611,12 +584,14 @@ const toggleCommentLike = async (req, res) => {
       // 업데이트된 댓글 정보 조회
       const updatedComment = await firestoreService.getDocument("comments", commentId);
 
-      res.json({
-        success: true,
-        message: "좋아요가 취소되었습니다.",
+      const responseData = {
+        commentId,
+        userId,
         isLiked: false,
         likesCount: updatedComment.likesCount || 0,
-      });
+      };
+
+      return res.success(responseData);
     } else {
       // 좋아요 등록
       const likeData = {
@@ -637,19 +612,18 @@ const toggleCommentLike = async (req, res) => {
       // 업데이트된 댓글 정보 조회
       const updatedComment = await firestoreService.getDocument("comments", commentId);
 
-      res.json({
-        success: true,
-        message: "좋아요가 등록되었습니다.",
+      const responseData = {
+        commentId,
+        userId,
         isLiked: true,
         likesCount: updatedComment.likesCount || 0,
-      });
+      };
+
+      return res.success(responseData);
     }
   } catch (error) {
     console.error("Error toggling comment like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
