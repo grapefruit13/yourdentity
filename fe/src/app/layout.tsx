@@ -254,26 +254,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <head>
-        {/* Service Worker 등록 스크립트 */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
-                    });
-                });
-              }
-            `,
-          }}
-        />
-      </head>
       <body
         className={cn(notoSansKr.variable, "flex h-screen w-full flex-col")}
       >
