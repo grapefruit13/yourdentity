@@ -22,7 +22,7 @@ const getCommunityMapping = async (communityId) => {
 };
 
 // 커뮤니티 목록 조회 API
-const getCommunities = async (req, res) => {
+const getCommunities = async (req, res, next) => {
   try {
     const {type, page = 0, size = 10} = req.query;
 
@@ -45,22 +45,15 @@ const getCommunities = async (req, res) => {
       where: whereConditions,
     });
 
-    res.json({
-      success: true,
-      data: result.content || [],
-      pagination: result.pagination || {},
-    });
+    return res.paginate(result.content || [], result.pagination || {});
   } catch (error) {
     console.error("Error getting communities:", error);
-    res.status(500).json({
-      success: false,
-      message: "커뮤니티 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 상세 조회 API
-const getCommunityById = async (req, res) => {
+const getCommunityById = async (req, res, next) => {
   try {
     const {communityId} = req.params;
 
@@ -70,10 +63,9 @@ const getCommunityById = async (req, res) => {
     );
 
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 멤버 수 조회
@@ -92,21 +84,15 @@ const getCommunityById = async (req, res) => {
         .get();
     community.postsCount = postsSnapshot.size;
 
-    res.json({
-      success: true,
-      data: community,
-    });
+    return res.success(community);
   } catch (error) {
     console.error("Error getting community:", error);
-    res.status(500).json({
-      success: false,
-      message: "커뮤니티 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 멤버 목록 조회 API
-const getCommunityMembers = async (req, res) => {
+const getCommunityMembers = async (req, res, next) => {
   try {
     const {communityId} = req.params;
     const {page = 0, size = 20} = req.query;
@@ -117,10 +103,9 @@ const getCommunityMembers = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     const membersService = new FirestoreService(`communities/${communityId}/members`);
@@ -131,17 +116,10 @@ const getCommunityMembers = async (req, res) => {
       orderDirection: "desc",
     });
 
-    res.json({
-      success: true,
-      data: result.content || [],
-      pagination: result.pagination || {},
-    });
+    return res.paginate(result.content || [], result.pagination || {});
   } catch (error) {
     console.error("Error getting community members:", error);
-    res.status(500).json({
-      success: false,
-      message: "멤버 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
@@ -215,7 +193,7 @@ const createPreview = (post) => {
 };
 
 // 전체 커뮤니티 포스트 조회 API (모든 커뮤니티의 게시글을 통합 조회)
-const getAllCommunityPosts = async (req, res) => {
+const getAllCommunityPosts = async (req, res, next) => {
   try {
     const {page = 0, size = 10, filter} = req.query;
 
@@ -292,29 +270,24 @@ const getAllCommunityPosts = async (req, res) => {
       timeAgo: getTimeAgo(new Date(post.createdAt)),
     }));
 
-    res.json({
-      success: true,
-      data: simplifiedPosts,
-      pagination: {
-        page: parseInt(page),
-        size: parseInt(size),
-        totalElements: allPosts.length,
-        totalPages: Math.ceil(allPosts.length / parseInt(size)),
-        hasNext: endIndex < allPosts.length,
-        hasPrevious: parseInt(page) > 0,
-      },
-    });
+    const pagination = {
+      page: parseInt(page),
+      size: parseInt(size),
+      totalElements: allPosts.length,
+      totalPages: Math.ceil(allPosts.length / parseInt(size)),
+      hasNext: endIndex < allPosts.length,
+      hasPrevious: parseInt(page) > 0,
+    };
+
+    return res.paginate(simplifiedPosts, pagination);
   } catch (error) {
     console.error("Error getting all community posts:", error);
-    res.status(500).json({
-      success: false,
-      message: "전체 게시글 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 게시글 목록 조회 API
-const getCommunityPosts = async (req, res) => {
+const getCommunityPosts = async (req, res, next) => {
   try {
     const {communityId} = req.params;
     const {page = 0, size = 10} = req.query;
@@ -325,10 +298,9 @@ const getCommunityPosts = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     const postsService = new FirestoreService(`communities/${communityId}/posts`);
@@ -360,22 +332,15 @@ const getCommunityPosts = async (req, res) => {
       timeAgo: getTimeAgo(new Date(post.createdAt)),
     }));
 
-    res.json({
-      success: true,
-      data: simplifiedPosts,
-      pagination: result.pagination || {},
-    });
+    return res.paginate(simplifiedPosts, result.pagination || {});
   } catch (error) {
     console.error("Error getting community posts:", error);
-    res.status(500).json({
-      success: false,
-      message: "게시글 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 게시글 작성 API (새로운 구조)
-const createPost = async (req, res) => {
+const createPost = async (req, res, next) => {
   try {
     const {communityId} = req.params;
     const {
@@ -390,10 +355,9 @@ const createPost = async (req, res) => {
 
     // 필수 필드 검증
     if (!title) {
-      return res.status(400).json({
-        success: false,
-        message: "title은 필수입니다.",
-      });
+      const err = new Error("title은 필수입니다");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     // 사용자 인증 정보에서 유저 ID 추출
@@ -408,19 +372,17 @@ const createPost = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 커뮤니티 매핑 정보 조회
     const mapping = await getCommunityMapping(communityId);
     if (!mapping) {
-      return res.status(400).json({
-        success: false,
-        message: "유효하지 않은 커뮤니티입니다.",
-      });
+      const err = new Error("유효하지 않은 커뮤니티입니다");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     // refId 설정 (루틴 인증글의 경우)
@@ -510,25 +472,20 @@ const createPost = async (req, res) => {
         postData,
     );
 
-    res.status(201).json({
-      success: true,
-      data: {
-        ...postData,
-        id: savedPost,
-      },
-      message: "게시글이 성공적으로 작성되었습니다.",
-    });
+    const responseData = {
+      ...postData,
+      id: savedPost,
+    };
+
+    return res.created(responseData);
   } catch (error) {
     console.error("Error creating post:", error);
-    res.status(500).json({
-      success: false,
-      message: "게시글 작성 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 게시글 상세 조회 API
-const getPostById = async (req, res) => {
+const getPostById = async (req, res, next) => {
   try {
     const {communityId, postId} = req.params;
 
@@ -538,10 +495,9 @@ const getPostById = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     const post = await firestoreService.getDocument(
@@ -550,10 +506,9 @@ const getPostById = async (req, res) => {
     );
 
     if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: "게시글을 찾을 수 없습니다.",
-      });
+      const err = new Error("게시글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 댓글 조회 (부모 댓글만 먼저 조회)
@@ -687,21 +642,15 @@ const getPostById = async (req, res) => {
       replies: commentsWithReplies,
     };
 
-    res.json({
-      success: true,
-      data: postWithReplies,
-    });
+    return res.success(postWithReplies);
   } catch (error) {
     console.error("Error getting post:", error);
-    res.status(500).json({
-      success: false,
-      message: "게시글 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 게시글 수정 API
-const updatePost = async (req, res) => {
+const updatePost = async (req, res, next) => {
   try {
     const {communityId, postId} = req.params;
     const {
@@ -723,10 +672,9 @@ const updatePost = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 게시글 조회
@@ -735,18 +683,16 @@ const updatePost = async (req, res) => {
         postId,
     );
     if (!existingPost) {
-      return res.status(404).json({
-        success: false,
-        message: "게시글을 찾을 수 없습니다.",
-      });
+      const err = new Error("게시글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 작성자 권한 확인
     if (existingPost.authorId !== authorId) {
-      return res.status(403).json({
-        success: false,
-        message: "게시글을 수정할 권한이 없습니다.",
-      });
+      const err = new Error("게시글을 수정할 권한이 없습니다");
+      err.code = "FORBIDDEN";
+      throw err;
     }
 
     // content에서 미디어 추출하여 별도 media 배열 생성
@@ -828,22 +774,15 @@ const updatePost = async (req, res) => {
         postId,
     );
 
-    res.json({
-      success: true,
-      data: updatedPost,
-      message: "게시글이 성공적으로 수정되었습니다.",
-    });
+    return res.success(updatedPost);
   } catch (error) {
     console.error("Error updating post:", error);
-    res.status(500).json({
-      success: false,
-      message: "게시글 수정 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 게시글 삭제 API
-const deletePost = async (req, res) => {
+const deletePost = async (req, res, next) => {
   try {
     const {communityId, postId} = req.params;
 
@@ -856,10 +795,9 @@ const deletePost = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 게시글 조회
@@ -868,18 +806,16 @@ const deletePost = async (req, res) => {
         postId,
     );
     if (!existingPost) {
-      return res.status(404).json({
-        success: false,
-        message: "게시글을 찾을 수 없습니다.",
-      });
+      const err = new Error("게시글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 작성자 권한 확인
     if (existingPost.authorId !== authorId) {
-      return res.status(403).json({
-        success: false,
-        message: "게시글을 삭제할 권한이 없습니다.",
-      });
+      const err = new Error("게시글을 삭제할 권한이 없습니다");
+      err.code = "FORBIDDEN";
+      throw err;
     }
 
     // Firestore에서 삭제
@@ -888,21 +824,15 @@ const deletePost = async (req, res) => {
         postId,
     );
 
-    res.json({
-      success: true,
-      message: "게시글이 성공적으로 삭제되었습니다.",
-    });
+    return res.noContent();
   } catch (error) {
     console.error("Error deleting post:", error);
-    res.status(500).json({
-      success: false,
-      message: "게시글 삭제 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 커뮤니티 게시글 좋아요 토글 API
-const togglePostLike = async (req, res) => {
+const togglePostLike = async (req, res, next) => {
   try {
     const {communityId, postId} = req.params;
     const userId = req.user.uid;
@@ -913,10 +843,9 @@ const togglePostLike = async (req, res) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 게시글 조회
@@ -925,10 +854,9 @@ const togglePostLike = async (req, res) => {
         postId,
     );
     if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: "게시글을 찾을 수 없습니다.",
-      });
+      const err = new Error("게시글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -962,12 +890,14 @@ const togglePostLike = async (req, res) => {
           postId,
       );
 
-      res.json({
-        success: true,
-        message: "좋아요가 취소되었습니다.",
+      const responseData = {
+        postId,
+        userId,
         isLiked: false,
         likesCount: updatedPost.likesCount || 0,
-      });
+      };
+
+      return res.success(responseData);
     } else {
       // 좋아요 등록
       const likeData = {
@@ -995,19 +925,18 @@ const togglePostLike = async (req, res) => {
           postId,
       );
 
-      res.json({
-        success: true,
-        message: "좋아요가 등록되었습니다.",
+      const responseData = {
+        postId,
+        userId,
         isLiked: true,
         likesCount: updatedPost.likesCount || 0,
-      });
+      };
+
+      return res.success(responseData);
     }
   } catch (error) {
     console.error("Error toggling post like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
