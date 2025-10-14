@@ -47,7 +47,7 @@ const router = express.Router();
  *                   properties:
  *                     message:
  *                       type: string
- *                       example: Logout successful
+ *                       example: 로그아웃 성공
  *                     revokedAt:
  *                       type: string
  *                       format: date-time
@@ -106,7 +106,7 @@ router.post("/logout", authGuard, authController.logout);
  *                   properties:
  *                     message:
  *                       type: string
- *                       example: Token is valid
+ *                       example: 토큰이 유효합니다
  *                     user:
  *                       type: object
  *                       properties:
