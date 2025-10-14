@@ -75,6 +75,86 @@ router.post("/provision", authGuard, userController.provisionUser);
 
 /**
  * @swagger
+ * /users/me/onboarding:
+ *   patch:
+ *     summary: 온보딩 정보 업데이트 (본인)
+ *     description: 이름/닉네임/출생년도/생년월일/전화번호 등 온보딩 정보를 업데이트합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               nickname:
+ *                 type: string
+ *               birthYear:
+ *                 type: number
+ *               birthDate:
+ *                 type: string
+ *                 example: 2000-01-31
+ *               phoneNumber:
+ *                 type: string
+ *             example:
+ *               name: 홍길동
+ *               nickname: gildong
+ *               birthYear: 1998
+ *               birthDate: 1998-01-02
+ *               phoneNumber: 010-1234-5678
+ *     responses:
+ *       200:
+ *         description: 온보딩 업데이트 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     onboardingCompleted:
+ *                       type: boolean
+ *                       example: true
+ *                 message:
+ *                   type: string
+ *                   example: ONBOARDING_UPDATED
+ *       400:
+ *         description: 잘못된 입력 (필드 형식 오류/필수값 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: 닉네임 중복 등 충돌(NICKNAME_TAKEN)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.patch("/me/onboarding", authGuard, userController.updateOnboarding);
+
+/**
+ * @swagger
  * /users:
  *   post:
  *     summary: 사용자 생성 (테스트용 - Admin SDK)

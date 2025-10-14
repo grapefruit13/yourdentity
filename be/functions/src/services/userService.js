@@ -15,6 +15,144 @@ class UserService {
   constructor() {
     this.firestoreService = new FirestoreService("users");
   }
+
+  /**
+   * 온보딩 업데이트
+   * - 허용 필드만 부분 업데이트
+   * - 제공자별 필수값 검증
+   * - 닉네임 중복 방지(트랜잭션, nicknames/{lowerNick})
+   * - 완료 조건 충족 시 onboardingCompleted=true
+   * @param {Object} params
+   * @param {string} params.uid
+   * @param {Object} params.payload
+   * @return {Promise<{onboardingCompleted:boolean}>}
+   */
+  async updateOnboarding({uid, payload}) {
+    const db = admin.firestore();
+
+    // 1) 현재 사용자 문서 조회
+    const userRef = db.collection("users").doc(uid);
+    const snap = await userRef.get();
+    if (!snap.exists) {
+      const e = new Error("User document not found");
+      e.code = "NOT_FOUND";
+      throw e;
+    }
+    const existing = snap.data() || {};
+
+    // 2) 허용 필드 화이트리스트 적용
+    const allowedFields = [
+      "name",
+      "nickname",
+      "birthYear",
+      "birthDate",
+      "phoneNumber",
+    ];
+    const update = {};
+    for (const key of allowedFields) {
+      if (payload[key] !== undefined) update[key] = payload[key];
+    }
+
+    // 3) 유효성 검증
+    const currentYear = new Date().getFullYear();
+    if (update.birthYear !== undefined) {
+      const y = Number(update.birthYear);
+      if (!Number.isInteger(y) || y < 1900 || y > currentYear) {
+        const e = new Error("INVALID_BIRTH_YEAR");
+        e.code = "INVALID_INPUT";
+        throw e;
+      }
+      update.birthYear = y;
+    }
+    if (update.birthDate !== undefined) {
+      const re = /^\d{4}-\d{2}-\d{2}$/;
+      if (!re.test(String(update.birthDate))) {
+        const e = new Error("INVALID_BIRTH_DATE_FORMAT");
+        e.code = "INVALID_INPUT";
+        throw e;
+      }
+      const d = new Date(update.birthDate);
+      // Date 유효성: toString() NaN 체크 및 월/일 보정
+      const [yy, mm, dd] = String(update.birthDate).split("-").map(Number);
+      if (
+        Number.isNaN(d.getTime()) ||
+        d.getUTCFullYear() !== yy ||
+        d.getUTCMonth() + 1 !== mm ||
+        d.getUTCDate() !== dd
+      ) {
+        const e = new Error("INVALID_BIRTH_DATE_VALUE");
+        e.code = "INVALID_INPUT";
+        throw e;
+      }
+    }
+    if (update.phoneNumber !== undefined) {
+      const normalized = String(update.phoneNumber).replace(/[^0-9+]/g, "");
+      if (normalized.length < 9) {
+        const e = new Error("INVALID_PHONE_NUMBER");
+        e.code = "INVALID_INPUT";
+        throw e;
+      }
+      update.phoneNumber = normalized;
+    }
+
+    // 4) 제공자별 필수값 계산 (기존값+업데이트 병합 후 판단)
+    const merged = {...existing, ...update};
+    const isEmail = (existing.authType || existing.providerId) === "email" || existing.snsProvider === null || existing.providerId === "password";
+    const requiredForEmail = ["name", "nickname", "birthYear", "birthDate", "phoneNumber"];
+    const requiredForKakao = ["nickname"]; // 현 정책
+    const required = isEmail ? requiredForEmail : requiredForKakao;
+
+    const missing = required.filter((f) => !merged[f]);
+    if (missing.length > 0) {
+      const e = new Error(`REQUIRE_FIELDS_MISSING: ${missing.join(",")}`);
+      e.code = "REQUIRE_FIELDS_MISSING";
+      e.status = 400;
+      throw e;
+    }
+
+    // 5) 닉네임 점유 트랜잭션 (닉네임이 존재할 때만)
+    const nickname = update.nickname;
+    const doNicknameReservation = typeof nickname === "string" && nickname.trim().length > 0;
+
+    const result = await db.runTransaction(async (tx) => {
+      let onboardingCompleted = false;
+
+      // 닉네임 처리
+      if (doNicknameReservation) {
+        const lower = nickname.toLowerCase();
+        const nickRef = db.collection("nicknames").doc(lower);
+        const nickDoc = await tx.get(nickRef);
+        if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
+          const e = new Error("NICKNAME_TAKEN");
+          e.code = "NICKNAME_TAKEN";
+          e.status = 409;
+          throw e;
+        }
+        tx.set(nickRef, {uid});
+
+        // 기존 닉네임과 다르면 이전 키 해제 (선택적)
+        const prevNick = existing.nickname;
+        if (prevNick && prevNick.toLowerCase() !== lower) {
+          const prevRef = db.collection("nicknames").doc(prevNick.toLowerCase());
+          tx.delete(prevRef);
+        }
+      }
+
+      // 온보딩 완료 여부
+      const completed = required.every((f) => !!merged[f]);
+      onboardingCompleted = completed;
+
+      tx.update(userRef, {
+        ...update,
+        onboardingCompleted,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return {onboardingCompleted};
+    });
+
+    return result;
+  }
   /**
    * Firebase Auth 사용자 생성 또는 조회
    * @param {string} uid - 사용자 ID
