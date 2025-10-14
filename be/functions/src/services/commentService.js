@@ -173,18 +173,24 @@ class CommentService {
       );
 
       // 메모리에서 필터링 (부모 댓글만, 삭제되지 않은 것)
-      const parentComments = postComments
-        .filter(comment => comment.parentId === null && !comment.isDeleted)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(parseInt(page) * parseInt(size), (parseInt(page) + 1) * parseInt(size));
+      const pageNumber = parseInt(page);
+      const pageSize = parseInt(size);
+      const parentCommentsFiltered = postComments
+        .filter((comment) => comment.parentId === null && !comment.isDeleted)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const totalParentCount = parentCommentsFiltered.length;
+      const parentComments = parentCommentsFiltered.slice(
+        pageNumber * pageSize,
+        (pageNumber + 1) * pageSize,
+      );
 
       const result = {
         content: parentComments,
         pageable: {
-          pageNumber: parseInt(page),
-          pageSize: parseInt(size),
-          totalElements: parentComments.length,
-          totalPages: Math.ceil(parentComments.length / parseInt(size)),
+          pageNumber,
+          pageSize,
+          totalElements: totalParentCount,
+          totalPages: Math.ceil(totalParentCount / pageSize),
         }
       };
 
