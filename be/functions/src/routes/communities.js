@@ -198,9 +198,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -377,15 +377,37 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   $ref: '#/components/schemas/Community'
  *       404:
  *         description: 커뮤니티를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "커뮤니티를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:communityId", communityController.getCommunityById);
 
@@ -461,9 +483,9 @@ router.get("/:communityId/members", communityController.getCommunityMembers);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -624,9 +646,9 @@ router.get("/:communityId/posts", communityController.getCommunityPosts);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   type: object
  *                   properties:
@@ -768,9 +790,9 @@ router.post("/:communityId/posts", authGuard, communityController.createPost);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   allOf:
  *                     - $ref: '#/components/schemas/CommunityPost'
@@ -887,9 +909,9 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -1026,14 +1048,60 @@ router.put("/:communityId/posts/:postId", authGuard, communityController.updateP
  *           type: string
  *         description: 게시글 ID
  *     responses:
- *       200:
+ *       204:
  *         description: 게시글 삭제 성공
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "잘못된 요청입니다"
  *       403:
  *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 403
+ *                 message:
+ *                   type: string
+ *                   example: "권한이 없습니다"
  *       404:
  *         description: 게시글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "게시글을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/:communityId/posts/:postId", authGuard, communityController.deletePost);
 
@@ -1066,20 +1134,54 @@ router.delete("/:communityId/posts/:postId", authGuard, communityController.dele
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     postId:
+ *                       type: string
+ *                       description: 게시글 ID
+ *                       example: "45Sb6iETW1lNgyHBVS75"
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                       example: "Z0brK3uiqrVBf4mWNCtRgXDzIbtP"
+ *                     isLiked:
+ *                       type: boolean
+ *                       description: 좋아요 여부
+ *                       example: true
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *                       example: 1
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
  *                 message:
  *                   type: string
- *                   example: "좋아요가 등록되었습니다."
- *                 isLiked:
- *                   type: boolean
- *                   example: true
- *                 likesCount:
- *                   type: integer
- *                   example: 5
+ *                   example: "잘못된 요청입니다"
  *       404:
  *         description: 게시글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "게시글을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
  */
