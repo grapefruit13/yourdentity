@@ -3,7 +3,7 @@ const firestoreService = new FirestoreService("gatherings");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 소모임 목록 조회 - 페이지네이션 지원 (간소화된 정보만 반환)
-const getAllGatherings = async (req, res) => {
+const getAllGatherings = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 0;
     const size = parseInt(req.query.size) || 10;
@@ -36,22 +36,15 @@ const getAllGatherings = async (req, res) => {
       }));
     }
 
-    res.json({
-      success: true,
-      data: result.content || [],
-      pagination: result.pageable || {},
-    });
+    return res.paginate(result.content || [], result.pageable || {});
   } catch (error) {
     console.error("Error getting gatherings:", error);
-    res.status(500).json({
-      success: false,
-      message: "소모임 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 소모임 상세 조회 (신청페이지 전용)
-const getGatheringById = async (req, res) => {
+const getGatheringById = async (req, res, next) => {
   try {
     const {gatheringId} = req.params;
     const gathering = await firestoreService.getDocument(
@@ -60,17 +53,15 @@ const getGatheringById = async (req, res) => {
     );
 
     if (!gathering) {
-      return res.status(404).json({
-        success: false,
-        message: "소모임을 찾을 수 없습니다.",
-      });
+      const err = new Error("소모임을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
-    // 조회수 증가
-    const newViewCount = (gathering.viewCount || 0) + 1;
+    // 조회수 증가 (원자적 업데이트)
     await firestoreService.updateDocument("gatherings", gatheringId, {
-      viewCount: newViewCount,
-      updatedAt: Date.now(),
+      viewCount: FieldValue.increment(1),
+      updatedAt: new Date(),
     });
 
     // Q&A 조회
@@ -144,7 +135,7 @@ const getGatheringById = async (req, res) => {
       currency: gathering.currency,
       stockCount: gathering.stockCount,
       soldCount: gathering.soldCount,
-      viewCount: newViewCount,
+      viewCount: (gathering.viewCount || 0) + 1,
       buyable: gathering.buyable,
       sellerId: gathering.sellerId,
       sellerName: gathering.sellerName,
@@ -161,21 +152,15 @@ const getGatheringById = async (req, res) => {
       communityPosts: communityPosts,
     };
 
-    res.json({
-      success: true,
-      data: response,
-    });
+    return res.success(response);
   } catch (error) {
     console.error("Error getting gathering:", error);
-    res.status(500).json({
-      success: false,
-      message: "소모임 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 소모임 신청하기
-const applyToGathering = async (req, res) => {
+const applyToGathering = async (req, res, next) => {
   try {
     const {gatheringId} = req.params;
     const {
@@ -193,18 +178,16 @@ const applyToGathering = async (req, res) => {
         gatheringId,
     );
     if (!gathering) {
-      return res.status(404).json({
-        success: false,
-        message: "소모임을 찾을 수 없습니다.",
-      });
+      const err = new Error("소모임을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 재고 확인
     if (gathering.stockCount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "소모임이 품절되었습니다.",
-      });
+      const err = new Error("소모임이 품절되었습니다");
+      err.code = "OUT_OF_STOCK";
+      throw err;
     }
 
     const applicationData = {
@@ -233,40 +216,37 @@ const applyToGathering = async (req, res) => {
       updatedAt: new Date(),
     });
 
-    res.status(201).json({
-      success: true,
-      data: {
-        applicationId,
-        type: "GATHERING",
-        targetId: gatheringId,
-        userId,
-        status: "PENDING",
-        selectedVariant,
-        quantity,
-        targetName: gathering.name,
-        targetPrice: gathering.price,
-        customFieldsResponse,
-        appliedAt: applicationData.appliedAt.toISOString(),
-      },
-      message: "소모임 신청이 완료되었습니다.",
-    });
+    const responseData = {
+      applicationId,
+      type: "GATHERING",
+      targetId: gatheringId,
+      userId,
+      status: "PENDING",
+      selectedVariant,
+      quantity,
+      targetName: gathering.name,
+      targetPrice: gathering.price,
+      customFieldsResponse,
+      appliedAt: applicationData.appliedAt.toISOString(),
+    };
+
+    return res.created(responseData);
   } catch (error) {
     console.error("Error applying to gathering:", error);
-    res.status(500).json({
-      success: false,
-      message: "소모임 신청 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // QnA 질문 작성
-const createQnA = async (req, res) => {
+const createQnA = async (req, res, next) => {
   try {
     const {gatheringId} = req.params;
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("content is required");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
@@ -315,7 +295,7 @@ const createQnA = async (req, res) => {
 
     const qnaId = await firestoreService.addDocument("qnas", qnaData);
 
-    res.status(201).json({
+    const responseData = {
       qnaId,
       gatheringId,
       userId: qnaData.userId,
@@ -325,27 +305,33 @@ const createQnA = async (req, res) => {
       answerMedia: [],
       likesCount: 0,
       createdAt: qnaData.createdAt,
-    });
+    };
+
+    return res.created(responseData);
   } catch (error) {
     console.error("Error creating QnA:", error);
-    res.status(500).json({error: "Failed to create QnA"});
+    return next(error);
   }
 };
 
 // QnA 질문 수정
-const updateQnA = async (req, res) => {
+const updateQnA = async (req, res, next) => {
   try {
     const {gatheringId, qnaId} = req.params;
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("content is required");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("QnA not found");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
@@ -388,7 +374,7 @@ const updateQnA = async (req, res) => {
 
     await firestoreService.updateDocument("qnas", qnaId, updatedData);
 
-    res.json({
+    const responseData = {
       qnaId,
       gatheringId,
       userId: qna.userId,
@@ -398,27 +384,33 @@ const updateQnA = async (req, res) => {
       answerMedia: qna.answerMedia || [],
       likesCount: qna.likesCount || 0,
       updatedAt: updatedData.updatedAt,
-    });
+    };
+
+    return res.success(responseData);
   } catch (error) {
     console.error("Error updating QnA:", error);
-    res.status(500).json({error: "Failed to update QnA"});
+    return next(error);
   }
 };
 
 // QnA 답변 작성
-const createQnAAnswer = async (req, res) => {
+const createQnAAnswer = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
     const {content = [], media = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("content is required");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("QnA not found");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     const updatedData = {
@@ -431,7 +423,7 @@ const createQnAAnswer = async (req, res) => {
 
     await firestoreService.updateDocument("qnas", qnaId, updatedData);
 
-    res.json({
+    const responseData = {
       qnaId,
       content: qna.content,
       media: qna.media || [],
@@ -441,25 +433,26 @@ const createQnAAnswer = async (req, res) => {
       likesCount: qna.likesCount || 0,
       createdAt: qna.createdAt,
       answerCreatedAt: updatedData.answerCreatedAt,
-    });
+    };
+
+    return res.success(responseData);
   } catch (error) {
     console.error("Error creating QnA answer:", error);
-    res.status(500).json({error: "Failed to create QnA answer"});
+    return next(error);
   }
 };
 
 // QnA 좋아요 토글
-const toggleQnALike = async (req, res) => {
+const toggleQnALike = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({
-        success: false,
-        message: "QnA를 찾을 수 없습니다.",
-      });
+      const err = new Error("QnA를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -504,47 +497,44 @@ const toggleQnALike = async (req, res) => {
     // 업데이트된 QnA 정보 조회
     const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
-    res.json({
-      success: true,
-      data: {
-        qnaId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedQna.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
-    });
+    const responseData = {
+      qnaId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedQna.likesCount || 0,
+    };
+
+    return res.success(responseData);
   } catch (error) {
     console.error("Error toggling QnA like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // QnA 삭제
-const deleteQnA = async (req, res) => {
+const deleteQnA = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("QnA not found");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+    return res.noContent();
   } catch (error) {
     console.error("Error deleting QnA:", error);
-    res.status(500).json({error: "Failed to delete QnA"});
+    return next(error);
   }
 };
 
 // 소모임 좋아요 토글
-const toggleGatheringLike = async (req, res) => {
+const toggleGatheringLike = async (req, res, next) => {
   try {
     const {gatheringId} = req.params;
 
@@ -554,10 +544,9 @@ const toggleGatheringLike = async (req, res) => {
         gatheringId,
     );
     if (!gathering) {
-      return res.status(404).json({
-        success: false,
-        message: "소모임을 찾을 수 없습니다.",
-      });
+      const err = new Error("소모임을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -603,22 +592,17 @@ const toggleGatheringLike = async (req, res) => {
     // 업데이트된 소모임 정보 조회
     const updatedGathering = await firestoreService.getDocument("gatherings", gatheringId);
 
-    res.json({
-      success: true,
-      data: {
-        gatheringId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedGathering.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
-    });
+    const responseData = {
+      gatheringId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedGathering.likesCount || 0,
+    };
+
+    return res.success(responseData);
   } catch (error) {
     console.error("Error toggling gathering like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
