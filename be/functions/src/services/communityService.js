@@ -184,8 +184,10 @@ class CommunityService {
    * @return {Object} 프리뷰 객체
    */
   createPreview(post) {
+    const contentArr = Array.isArray(post.content) ? post.content : [];
+    const mediaArr = Array.isArray(post.media) ? post.media : [];
     // 텍스트 content에서 첫 2줄 추출
-    const textContents = post.content.filter(
+    const textContents = contentArr.filter(
       (item) => item.type === "text" && item.text && item.text.trim(),
     );
     const description = textContents.length > 0 ?
@@ -194,8 +196,8 @@ class CommunityService {
       "";
 
     // 첫 번째 이미지 미디어 찾기
-    const firstImage = post.media.find((item) => item.type === "image") ||
-      post.content.find((item) => item.type === "image");
+    const firstImage = mediaArr.find((item) => item.type === "image") ||
+      contentArr.find((item) => item.type === "image");
 
     const thumbnail = firstImage ? {
       url: firstImage.url || firstImage.src,
@@ -209,8 +211,8 @@ class CommunityService {
     return {
       description,
       thumbnail,
-      hasMedia: post.media.length > 0,
-      mediaCount: post.media.length,
+      hasMedia: mediaArr.length > 0,
+      mediaCount: mediaArr.length,
     };
   }
 
