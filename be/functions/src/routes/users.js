@@ -362,7 +362,7 @@ router.put("/:userId", userController.updateUser);
  *                   properties:
  *                     message:
  *                       type: string
- *                       example: "User deleted successfully from both Firebase Auth and Firestore"
+ *                       example: 사용자가 성공적으로 삭제되었습니다
  *                     data:
  *                       type: object
  *                       properties:

@@ -117,8 +117,8 @@ class UserService {
         },
       };
     } catch (error) {
-      console.error("User provision error:", error.message);
-      throw new Error("Failed to provision user");
+      console.error("사용자 프로비저닝 에러:", error.message);
+      throw new Error("사용자 프로비저닝에 실패했습니다");
     }
   }
 
