@@ -325,9 +325,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -361,6 +361,17 @@ const authGuard = require("../middleware/authGuard");
  *                       example: true
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/products", storeController.getProducts);
 
@@ -387,9 +398,9 @@ router.get("/products", storeController.getProducts);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -621,8 +632,30 @@ router.get("/products", storeController.getProducts);
  *                           likesCount: 1
  *       404:
  *         description: 상품을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "상품을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/products/:productId", storeController.getProductById);
 
@@ -673,20 +706,50 @@ router.get("/products/:productId", storeController.getProductById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   $ref: '#/components/schemas/Purchase'
- *                 message:
- *                   type: string
- *                   example: "상품 구매 신청이 완료되었습니다."
  *       400:
  *         description: 잘못된 요청 또는 품절
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "잘못된 요청입니다"
  *       404:
  *         description: 상품을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "상품을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/purchase", authGuard, storeController.purchaseProduct);
 
@@ -713,9 +776,9 @@ router.post("/purchase", authGuard, storeController.purchaseProduct);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -729,13 +792,32 @@ router.post("/purchase", authGuard, storeController.purchaseProduct);
  *                     likesCount:
  *                       type: integer
  *                       example: 5
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: 상품을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "상품을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/products/:productId/like", authGuard, storeController.toggleProductLike);
 
@@ -795,16 +877,80 @@ router.post("/products/:productId/like", authGuard, storeController.toggleProduc
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                 productId:
- *                   type: string
- *                 userId:
- *                   type: string
- *                 content:
- *                   type: array
- *                 media:
- *                   type: array
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       description: Q&A ID
+ *                       example: "qna_123"
+ *                     productId:
+ *                       type: string
+ *                       description: 상품 ID
+ *                       example: "CP:ONLINE_GIFT_30K"
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일들
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           url:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                             enum: [image, video]
+ *                           order:
+ *                             type: integer
+ *                           width:
+ *                             type: integer
+ *                           height:
+ *                             type: integer
+ *                           blurHash:
+ *                             type: string
+ *                           thumbUrl:
+ *                             type: string
+ *                           videoSource:
+ *                             type: string
+ *                           provider:
+ *                             type: string
+ *                           duration:
+ *                             type: number
+ *                           sizeBytes:
+ *                             type: integer
+ *                           mimeType:
+ *                             type: string
+ *                           processingStatus:
+ *                             type: string
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용 (초기에는 null)
+ *                       example: null
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어 (초기에는 빈 배열)
+ *                       example: []
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 생성일시
+ *                       example: "2025-01-16T10:30:00.000Z"
  *                 likesCount:
  *                   type: integer
  *                   example: 0
@@ -875,10 +1021,55 @@ router.post("/products/:productId/qna", authGuard, storeController.createProduct
  *     responses:
  *       200:
  *         description: Q&A 질문 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "잘못된 요청입니다"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.put("/products/:productId/qna/:qnaId", authGuard, storeController.updateProductQnA);
 
@@ -915,10 +1106,98 @@ router.put("/products/:productId/qna/:qnaId", authGuard, storeController.updateP
  *     responses:
  *       200:
  *         description: Q&A 답변 작성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       description: Q&A ID
+ *                       example: "qna_123"
+ *                     content:
+ *                       type: array
+ *                       description: 원본 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 원본 질문 미디어
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       description: 답변 내용
+ *                       items:
+ *                         type: object
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       items:
+ *                         type: object
+ *                     answerUserId:
+ *                       type: string
+ *                       description: 답변자 ID
+ *                       example: "user_456"
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 질문 생성일시
+ *                       example: "2025-01-16T10:30:00.000Z"
+ *                     answerCreatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 답변 생성일시
+ *                       example: "2025-01-16T11:00:00.000Z"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "잘못된 요청입니다"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAnswer);
 
@@ -945,9 +1224,9 @@ router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAns
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -961,9 +1240,6 @@ router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAns
  *                     likesCount:
  *                       type: integer
  *                       example: 3
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: Q&A를 찾을 수 없음
  *       500:
@@ -987,20 +1263,47 @@ router.post("/qna/:qnaId/like", authGuard, storeController.toggleProductQnALike)
  *           type: string
  *         description: Q&A ID
  *     responses:
- *       200:
+ *       204:
  *         description: Q&A 삭제 성공
+ *       400:
+ *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
  *                 message:
  *                   type: string
- *                   example: "QnA가 성공적으로 삭제되었습니다"
+ *                   example: "잘못된 요청입니다"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/qna/:qnaId", storeController.deleteProductQnA);
 
