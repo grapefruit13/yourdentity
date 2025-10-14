@@ -50,7 +50,7 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               allOf:
- *                 - $ref: '#/components/schemas/Success'
+ *                 - $ref: '#/components/schemas/StandardResponse'
  *                 - type: object
  *                   properties:
  *                     data:
@@ -63,13 +63,13 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/provision", authGuard, userController.provisionUser);
 
@@ -131,7 +131,7 @@ router.post("/provision", authGuard, userController.provisionUser);
  *           application/json:
  *             schema:
  *               allOf:
- *                 - $ref: '#/components/schemas/Success'
+ *                 - $ref: '#/components/schemas/StandardResponse'
  *                 - type: object
  *                   properties:
  *                     data:
@@ -141,13 +141,13 @@ router.post("/provision", authGuard, userController.provisionUser);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/", userController.createUser);
 
@@ -165,7 +165,7 @@ router.post("/", userController.createUser);
  *           application/json:
  *             schema:
  *               allOf:
- *                 - $ref: '#/components/schemas/Success'
+ *                 - $ref: '#/components/schemas/StandardResponse'
  *                 - type: object
  *                   properties:
  *                     data:
@@ -183,7 +183,7 @@ router.post("/", userController.createUser);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/", userController.getAllUsers);
 
@@ -209,7 +209,7 @@ router.get("/", userController.getAllUsers);
  *           application/json:
  *             schema:
  *               allOf:
- *                 - $ref: '#/components/schemas/Success'
+ *                 - $ref: '#/components/schemas/StandardResponse'
  *                 - type: object
  *                   properties:
  *                     data:
@@ -219,13 +219,13 @@ router.get("/", userController.getAllUsers);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/:userId", userController.getUserById);
 
@@ -264,7 +264,7 @@ router.get("/:userId", userController.getUserById);
  *           application/json:
  *             schema:
  *               allOf:
- *                 - $ref: '#/components/schemas/Success'
+ *                 - $ref: '#/components/schemas/StandardResponse'
  *                 - type: object
  *                   properties:
  *                     data:
@@ -274,13 +274,13 @@ router.get("/:userId", userController.getUserById);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.put("/:userId", userController.updateUser);
 
@@ -306,7 +306,7 @@ router.put("/:userId", userController.updateUser);
  *           application/json:
  *             schema:
  *               allOf:
- *                 - $ref: '#/components/schemas/Success'
+ *                 - $ref: '#/components/schemas/StandardResponse'
  *                 - type: object
  *                   properties:
  *                     message:
@@ -323,13 +323,13 @@ router.put("/:userId", userController.updateUser);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:userId", userController.deleteUser);
 
