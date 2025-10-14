@@ -7,10 +7,18 @@ export const AUTH_MESSAGE = {
       "로그인에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.",
     BUTTON: "로그인",
     LOADING: "로그인 중...",
-    EMAIL_LABEL: "아이디 (이메일)",
-    EMAIL_PLACEHOLDER: "이메일을 입력하세요",
-    PASSWORD_LABEL: "비밀번호",
-    PASSWORD_PLACEHOLDER: "비밀번호를 입력하세요",
+    EMAIL: {
+      MIN: "이메일을 입력해주세요",
+      REGEX: "올바른 이메일 형식을 입력해주세요",
+      LABEL: "이메일",
+      PLACEHOLDER: "이메일을 입력하세요",
+    },
+    PASSWORD: {
+      LABEL: "비밀번호",
+      PLACEHOLDER: "비밀번호를 입력하세요",
+      MIN: "비밀번호를 입력해주세요",
+      REGEX: "비밀번호는 문자, 숫자를 포함하여 6글자 이상이어야 합니다",
+    },
   },
 } as const;
 

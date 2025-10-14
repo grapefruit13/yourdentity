@@ -88,13 +88,13 @@ const EmailLoginPage = () => {
       <div className="flex h-fit flex-col gap-6">
         <div className="flex flex-col gap-3">
           <Typography font="noto" variant="body2M">
-            {AUTH_MESSAGE.LOGIN.EMAIL_LABEL}
+            {AUTH_MESSAGE.LOGIN.EMAIL.LABEL}
           </Typography>
           <div className="flex flex-col gap-1">
             <Input
               {...register("email")}
               type="email"
-              placeholder={AUTH_MESSAGE.LOGIN.EMAIL_PLACEHOLDER}
+              placeholder={AUTH_MESSAGE.LOGIN.EMAIL.PLACEHOLDER}
               className={cn(
                 "font-noto rounded-md border px-3 py-2 text-base leading-1.5 font-normal shadow-xs",
                 errors.email ? "border-red-500" : "border-gray-200"
@@ -113,22 +113,14 @@ const EmailLoginPage = () => {
         </div>
         <div className="flex flex-col gap-3">
           <Typography font="noto" variant="body2M">
-            {AUTH_MESSAGE.LOGIN.PASSWORD_LABEL}
+            {AUTH_MESSAGE.LOGIN.PASSWORD.LABEL}
           </Typography>
           <div className="flex flex-col gap-1">
             <div className="relative">
               <Input
-                {...register("password", {
-                  required: "비밀번호를 입력해주세요",
-                  pattern: {
-                    value:
-                      /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
-                    message:
-                      "비밀번호는 문자, 숫자, 특수문자를 포함하여 8글자 이상이어야 합니다",
-                  },
-                })}
+                {...register("password")}
                 type={isOpen ? "text" : "password"}
-                placeholder={AUTH_MESSAGE.LOGIN.PASSWORD_PLACEHOLDER}
+                placeholder={AUTH_MESSAGE.LOGIN.PASSWORD.PLACEHOLDER}
                 className={cn(
                   "font-noto w-full rounded-md border px-3 py-2 pr-10 text-base leading-1.5 font-normal shadow-xs",
                   errors.password ? "border-red-500" : "border-gray-200"
