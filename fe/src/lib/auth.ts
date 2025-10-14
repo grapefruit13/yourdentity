@@ -13,6 +13,8 @@ import {
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "@/lib/firebase";
+import { ErrorResponse, Result } from "@/types/shared/response";
+import { debug } from "@/utils/shared/debugger";
 
 /**
  * @description 카카오 OAuth 제공업체 생성
@@ -49,11 +51,11 @@ export const signUpWithEmail = async (
       password
     );
 
-    console.log("이메일 회원가입 성공:", userCredential.user);
+    debug.log("이메일 회원가입 성공:", userCredential.user);
     return userCredential;
-  } catch (error) {
-    console.error("이메일 회원가입 실패:", error);
-    throw error;
+  } catch (err) {
+    debug.warn("이메일 회원가입 실패");
+    throw err;
   }
 };
 
@@ -63,7 +65,7 @@ export const signUpWithEmail = async (
 export const signInWithEmail = async (
   email: string,
   password: string
-): Promise<UserCredential> => {
+): Promise<Result<UserCredential> | ErrorResponse> => {
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -71,11 +73,13 @@ export const signInWithEmail = async (
       password
     );
 
-    console.log("이메일 로그인 성공:", userCredential.user);
-    return userCredential;
-  } catch (error) {
-    console.error("이메일 로그인 실패:", error);
-    throw error;
+    debug.log("이메일 로그인 성공:", userCredential.user);
+    return { data: userCredential, status: 200 };
+  } catch {
+    return {
+      status: 401,
+      message: "계정 아이디(이메일) 또는 비밀번호를 다시 확인해주세요.",
+    };
   }
 };
 
@@ -107,8 +111,8 @@ export const signOut = async (): Promise<void> => {
 
     // 2. Firebase 로그아웃 (localStorage 자동 삭제)
     await auth.signOut();
-  } catch (error) {
-    console.error("로그아웃 실패:", error);
+  } catch {
+    debug.warn("로그아웃 실패");
     // 에러가 나도 로컬 로그아웃은 진행
     await auth.signOut();
   }
@@ -156,7 +160,7 @@ export const checkEmailAvailability = async (
     const result = await checkEmail({ email });
     return result.data;
   } catch (error) {
-    console.error("이메일 중복 체크 실패:", error);
+    debug.warn("이메일 중복 체크 실패");
     throw error;
   }
 };
