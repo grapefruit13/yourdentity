@@ -376,52 +376,6 @@ const updateQnA = async (req, res, next) => {
   }
 };
 
-// QnA 답변 작성
-const createQnAAnswer = async (req, res, next) => {
-  try {
-    const {qnaId} = req.params;
-    const {content = [], media = []} = req.body;
-
-    if (!content || content.length === 0) {
-      const err = new Error("답변 내용이 필요합니다");
-      err.code = "BAD_REQUEST";
-      throw err;
-    }
-
-    const qna = await firestoreService.getDocument("qnas", qnaId);
-
-    if (!qna) {
-      const err = new Error("Q&A를 찾을 수 없습니다");
-      err.code = "NOT_FOUND";
-      throw err;
-    }
-
-    const updatedData = {
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: req.user.uid,
-      answerCreatedAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await firestoreService.updateDocument("qnas", qnaId, updatedData);
-
-    return res.success({
-      qnaId,
-      content: qna.content,
-      media: qna.media || [],
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: updatedData.answerUserId,
-      likesCount: qna.likesCount || 0,
-      createdAt: qna.createdAt,
-      answerCreatedAt: updatedData.answerCreatedAt,
-    });
-  } catch (error) {
-    console.error("Error creating QnA answer:", error);
-    return next(error);
-  }
-};
 
 // QnA 좋아요 토글
 const toggleQnALike = async (req, res, next) => {
@@ -590,7 +544,6 @@ module.exports = {
   applyForRoutine: applyToRoutine, // 별칭 추가
   createQnA,
   updateQnA,
-  createQnAAnswer,
   toggleQnALike,
   deleteQnA,
   toggleRoutineLike,
