@@ -25,4 +25,8 @@ export interface ExtendedRecordMap {
   collection_query?: Record<string, AnyObject>;
   /** 서명된 URL 데이터 (선택적) */
   signed_urls?: Record<string, string>;
+  /** Notion 워크스페이스 데이터 (선택적) */
+  space?: Record<string, AnyObject>;
+  /** 미리보기 이미지 데이터 (선택적) */
+  preview_images?: Record<string, AnyObject>;
 }

@@ -14,8 +14,6 @@ const NotionTestPage = () => {
         <h1 className="mb-4 text-2xl font-bold">Notion 렌더링 테스트</h1>
         <NotionPageRenderer
           recordMap={MOCK_NOTION_HOME}
-          fullPage={false}
-          darkMode={false}
           className="notion-test"
         />
       </div>
