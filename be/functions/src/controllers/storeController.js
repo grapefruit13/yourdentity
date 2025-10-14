@@ -2,7 +2,7 @@ const FirestoreService = require("../services/firestoreService");
 const firestoreService = new FirestoreService("products");
 const {FieldValue} = require("firebase-admin/firestore");
 
-const getProducts = async (req, res) => {
+const getProducts = async (req, res, next) => {
   try {
     const {page = 0, size = 10, status = "onSale"} = req.query;
 
@@ -43,38 +43,29 @@ const getProducts = async (req, res) => {
       }));
     }
 
-    res.json({
-      success: true,
-      data: result.content || [],
-      pagination: result.pageable || {},
-    });
+    return res.paginate(result.content || [], result.pageable || {});
   } catch (error) {
     console.error("Error getting products:", error);
-    res.status(500).json({
-      success: false,
-      message: "상품 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
-const getProductById = async (req, res) => {
+const getProductById = async (req, res, next) => {
   try {
     const {productId} = req.params;
 
     const product = await firestoreService.getDocument("products", productId);
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "상품을 찾을 수 없습니다.",
-      });
+      const err = new Error("상품을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
-    // 조회수 증가
-    const newViewCount = (product.view_count || 0) + 1;
-    await firestoreService.updateDocument("products", productId, {
-      view_count: newViewCount,
-      updatedAt: Date.now(),
+    // 조회수 증가 (원자적 업데이트)
+    firestoreService.updateDocument("products", productId, {
+      view_count: FieldValue.increment(1),
+      updatedAt: new Date(),
     });
 
     // Q&A 조회
@@ -101,26 +92,20 @@ const getProductById = async (req, res) => {
     // 상품 상세 정보 반환 (루틴과 동일한 구조)
     const response = {
       ...product,
-      viewCount: newViewCount,
+      viewCount: (product.view_count || 0) + 1,
       qna: formattedQnas,
       content: product.content || [],
       media: product.media || [],
     };
 
-    res.json({
-      success: true,
-      data: response,
-    });
+    return res.success(response);
   } catch (error) {
     console.error("Error getting product:", error);
-    res.status(500).json({
-      success: false,
-      message: "상품 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
-const purchaseProduct = async (req, res) => {
+const purchaseProduct = async (req, res, next) => {
   try {
     const {
       productId,
@@ -135,19 +120,17 @@ const purchaseProduct = async (req, res) => {
     const userWalletBalance = 500; // TODO: 실제로는 사용자 지갑에서 잔액 조회
 
     if (!productId) {
-      return res.status(400).json({
-        success: false,
-        message: "productId는 필수입니다.",
-      });
+      const err = new Error("productId는 필수입니다");
+      err.code = "INVALID_REQUEST";
+      throw err;
     }
 
     // 상품 정보 조회 (동시성 문제 해결을 위해 트랜잭션 사용)
     const product = await firestoreService.getDocument("products", productId);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "상품을 찾을 수 없습니다.",
-      });
+      const err = new Error("상품을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 상품 변형 확인 (옵션이 있는 경우)
@@ -160,18 +143,16 @@ const purchaseProduct = async (req, res) => {
           (variant) => variant.id === variantId,
       );
       if (!selectedVariant) {
-        return res.status(400).json({
-          success: false,
-          message: "선택한 상품 옵션을 찾을 수 없습니다.",
-        });
+        const err = new Error("선택한 상품 옵션을 찾을 수 없습니다");
+        err.code = "INVALID_REQUEST";
+        throw err;
       }
 
       // 재고 확인
       if (selectedVariant.stockCount < quantity) {
-        return res.status(400).json({
-          success: false,
-          message: "재고가 부족합니다.",
-        });
+        const err = new Error("재고가 부족합니다");
+        err.code = "OUT_OF_STOCK";
+        throw err;
       }
 
       // 옵션이 있는 경우 옵션별 가격 계산
@@ -179,10 +160,9 @@ const purchaseProduct = async (req, res) => {
     } else {
       // 옵션이 없는 경우 전체 상품 재고 확인
       if (product.stockCount < quantity) {
-        return res.status(400).json({
-          success: false,
-          message: "재고가 부족합니다.",
-        });
+        const err = new Error("재고가 부족합니다");
+        err.code = "OUT_OF_STOCK";
+        throw err;
       }
 
       // 옵션이 없는 경우 기본 가격 계산
@@ -200,10 +180,9 @@ const purchaseProduct = async (req, res) => {
 
     // 사용자 지갑 잔액 확인
     if (userWalletBalance < requiredPoints) {
-      return res.status(400).json({
-        success: false,
-        message: `포인트가 부족합니다. 필요: ${requiredPoints}원, 보유: ${userWalletBalance}원`,
-      });
+      const err = new Error(`포인트가 부족합니다. 필요: ${requiredPoints}원, 보유: ${userWalletBalance}원`);
+      err.code = "INSUFFICIENT_FUNDS";
+      throw err;
     }
 
     // 구매 신청 데이터 생성
@@ -261,38 +240,33 @@ const purchaseProduct = async (req, res) => {
     // 사용자 지갑에서 포인트 차감 (실제로는 별도 지갑 시스템에서 처리)
     const remainingBalance = userWalletBalance - requiredPoints;
 
-    res.status(201).json({
-      success: true,
-      data: {
-        applicationId,
-        type: "PRODUCT",
-        targetId: productId,
-        variantId: variantId || null,
-        userId,
-        status: "PENDING",
-        quantity,
-        totalPrice: totalPrice,
-        requiredPoints: requiredPoints,
-        remainingBalance: remainingBalance,
-        customFieldsResponse: customFields,
-        shippingAddress: shippingAddress || null,
-        phoneNumber: phoneNumber || null,
-        appliedAt: purchaseData.appliedAt,
-        targetName: product.name,
-        additionalFees: product.additionalFees || [],
-      },
-      message: `상품 구매 신청이 완료되었습니다. (총 ${totalPrice}원, 포인트 ${requiredPoints}원 사용)`,
-    });
+    const responseData = {
+      applicationId,
+      type: "PRODUCT",
+      targetId: productId,
+      variantId: variantId || null,
+      userId,
+      status: "PENDING",
+      quantity,
+      totalPrice: totalPrice,
+      requiredPoints: requiredPoints,
+      remainingBalance: remainingBalance,
+      customFieldsResponse: customFields,
+      shippingAddress: shippingAddress || null,
+      phoneNumber: phoneNumber || null,
+      appliedAt: purchaseData.appliedAt,
+      targetName: product.name,
+      additionalFees: product.additionalFees || [],
+    };
+
+    return res.created(responseData);
   } catch (error) {
     console.error("Error purchasing product:", error);
-    res.status(500).json({
-      success: false,
-      message: "상품 구매 신청 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
-const toggleProductLike = async (req, res) => {
+const toggleProductLike = async (req, res, next) => {
   try {
     const {productId} = req.params;
     const userId = req.user.uid;
@@ -300,10 +274,9 @@ const toggleProductLike = async (req, res) => {
     // 상품 존재 확인
     const product = await firestoreService.getDocument("products", productId);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "상품을 찾을 수 없습니다.",
-      });
+      const err = new Error("상품을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -330,12 +303,14 @@ const toggleProductLike = async (req, res) => {
       // 업데이트된 상품 정보 조회
       const updatedProduct = await firestoreService.getDocument("products", productId);
 
-      res.json({
-        success: true,
-        message: "좋아요가 취소되었습니다.",
+      const responseData = {
+        productId,
+        userId,
         isLiked: false,
         likesCount: updatedProduct.likesCount || 0,
-      });
+      };
+
+      return res.success(responseData);
     } else {
       // 좋아요 등록
       const likeData = {
@@ -356,23 +331,22 @@ const toggleProductLike = async (req, res) => {
       // 업데이트된 상품 정보 조회
       const updatedProduct = await firestoreService.getDocument("products", productId);
 
-      res.json({
-        success: true,
-        message: "좋아요가 등록되었습니다.",
+      const responseData = {
+        productId,
+        userId,
         isLiked: true,
         likesCount: updatedProduct.likesCount || 0,
-      });
+      };
+
+      return res.success(responseData);
     }
   } catch (error) {
     console.error("Error toggling product like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
-const createProductQnA = async (req, res) => {
+const createProductQnA = async (req, res, next) => {
   try {
     const {productId} = req.params;
     const {content = []} = req.body;
@@ -454,7 +428,7 @@ const createProductQnA = async (req, res) => {
 };
 
 // 상품 QnA 질문 수정
-const updateProductQnA = async (req, res) => {
+const updateProductQnA = async (req, res, next) => {
   try {
     const {productId, qnaId} = req.params;
     const {content = []} = req.body;
@@ -526,83 +500,8 @@ const updateProductQnA = async (req, res) => {
   }
 };
 
-// 상품 QnA 답변 작성
-const createProductQnAAnswer = async (req, res) => {
-  try {
-    const {qnaId} = req.params;
-    const {content = []} = req.body;
-
-    if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
-    }
-
-    // content 배열에서 미디어만 분리 (자동으로 처리)
-    const mediaItems = content.filter(
-        (item) => item.type === "image" || item.type === "video",
-    );
-
-    // media 배열 형식으로 변환
-    const media = mediaItems.map((item, index) => {
-      const mediaItem = {
-        url: item.src,
-        type: item.type,
-        order: index + 1,
-        width: item.width,
-        height: item.height,
-      };
-
-      // undefined가 아닌 값만 추가
-      if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
-      if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-      if (item.videoSource !== undefined) {
-        mediaItem.videoSource = item.videoSource;
-      }
-      if (item.provider !== undefined) mediaItem.provider = item.provider;
-      if (item.duration !== undefined) mediaItem.duration = item.duration;
-      if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
-      if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-      if (item.processingStatus !== undefined) {
-        mediaItem.processingStatus = item.processingStatus;
-      }
-
-      return mediaItem;
-    });
-
-    const qna = await firestoreService.getDocument("qnas", qnaId);
-
-    if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
-    }
-
-    const updatedData = {
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: req.user.uid,
-      answerCreatedAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await firestoreService.updateDocument("qnas", qnaId, updatedData);
-
-    res.json({
-      qnaId,
-      content: qna.content,
-      media: qna.media || [],
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: updatedData.answerUserId,
-      likesCount: qna.likesCount || 0,
-      createdAt: qna.createdAt,
-      answerCreatedAt: updatedData.answerCreatedAt,
-    });
-  } catch (error) {
-    console.error("Error creating product QnA answer:", error);
-    res.status(500).json({error: "Failed to create QnA answer"});
-  }
-};
-
 // 상품 QnA 좋아요 토글
-const toggleProductQnALike = async (req, res) => {
+const toggleProductQnALike = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
@@ -677,7 +576,7 @@ const toggleProductQnALike = async (req, res) => {
 };
 
 // 상품 QnA 삭제
-const deleteProductQnA = async (req, res) => {
+const deleteProductQnA = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
@@ -703,7 +602,6 @@ module.exports = {
   toggleProductLike,
   createProductQnA,
   updateProductQnA,
-  createProductQnAAnswer,
   toggleProductQnALike,
   deleteProductQnA,
 };

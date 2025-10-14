@@ -325,9 +325,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -335,10 +335,10 @@ const authGuard = require("../middleware/authGuard");
  *                 pagination:
  *                   type: object
  *                   properties:
- *                     pageNumber:
+ *                     page:
  *                       type: integer
  *                       example: 0
- *                     pageSize:
+ *                     size:
  *                       type: integer
  *                       example: 10
  *                     totalElements:
@@ -353,14 +353,19 @@ const authGuard = require("../middleware/authGuard");
  *                     hasPrevious:
  *                       type: boolean
  *                       example: false
- *                     isFirst:
- *                       type: boolean
- *                       example: true
- *                     isLast:
- *                       type: boolean
- *                       example: true
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/products", storeController.getProducts);
 
@@ -387,9 +392,9 @@ router.get("/products", storeController.getProducts);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -673,20 +678,50 @@ router.get("/products/:productId", storeController.getProductById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   $ref: '#/components/schemas/Purchase'
- *                 message:
- *                   type: string
- *                   example: "상품 구매 신청이 완료되었습니다."
  *       400:
  *         description: 잘못된 요청 또는 품절
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "재고가 부족합니다"
  *       404:
  *         description: 상품을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "상품을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/purchase", authGuard, storeController.purchaseProduct);
 
@@ -713,9 +748,9 @@ router.post("/purchase", authGuard, storeController.purchaseProduct);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -729,13 +764,32 @@ router.post("/purchase", authGuard, storeController.purchaseProduct);
  *                     likeCount:
  *                       type: integer
  *                       example: 5
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: 상품을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "상품을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/products/:productId/like", authGuard, storeController.toggleProductLike);
 
@@ -795,26 +849,74 @@ router.post("/products/:productId/like", authGuard, storeController.toggleProduc
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                 productId:
- *                   type: string
- *                 userId:
- *                   type: string
- *                 content:
- *                   type: array
- *                 media:
- *                   type: array
- *                 likesCount:
+ *                 status:
  *                   type: integer
- *                   example: 0
- *                 createdAt:
- *                   type: string
- *                   format: date-time
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       example: "qna_123"
+ *                     productId:
+ *                       type: string
+ *                       example: "product_123"
+ *                     userId:
+ *                       type: string
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       items:
+ *                         type: object
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       items:
+ *                         type: object
+ *                     likesCount:
+ *                       type: integer
+ *                       example: 0
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "content is required"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/products/:productId/qna", authGuard, storeController.createProductQnA);
 
@@ -875,52 +977,77 @@ router.post("/products/:productId/qna", authGuard, storeController.createProduct
  *     responses:
  *       200:
  *         description: Q&A 질문 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                     productId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     content:
+ *                       type: array
+ *                     media:
+ *                       type: array
+ *                     answerContent:
+ *                       type: array
+ *                     answerMedia:
+ *                       type: array
+ *                     likesCount:
+ *                       type: integer
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "content is required"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "QnA not found"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.put("/products/:productId/qna/:qnaId", authGuard, storeController.updateProductQnA);
-
-// 상품 QnA 답변 작성
-/**
- * @swagger
- * /store/qna/{qnaId}/answer:
- *   post:
- *     tags: [Store]
- *     summary: 상품 Q&A 답변 작성
- *     description: 특정 Q&A에 답변 작성
- *     parameters:
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: array
- *                 description: 답변 내용
- *               media:
- *                 type: array
- *                 description: 답변 미디어
- *     responses:
- *       200:
- *         description: Q&A 답변 작성 성공
- *       404:
- *         description: Q&A를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAnswer);
 
 // 상품 QnA 좋아요 토글
 /**
@@ -945,9 +1072,9 @@ router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAns
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -961,13 +1088,32 @@ router.post("/qna/:qnaId/answer", authGuard, storeController.createProductQnAAns
  *                     likeCount:
  *                       type: integer
  *                       example: 3
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "QnA를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/qna/:qnaId/like", authGuard, storeController.toggleProductQnALike);
 
@@ -987,20 +1133,34 @@ router.post("/qna/:qnaId/like", authGuard, storeController.toggleProductQnALike)
  *           type: string
  *         description: Q&A ID
  *     responses:
- *       200:
+ *       204:
  *         description: Q&A 삭제 성공
+ *       404:
+ *         description: Q&A를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "QnA가 성공적으로 삭제되었습니다"
- *       404:
- *         description: Q&A를 찾을 수 없음
+ *                   example: "QnA not found"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/qna/:qnaId", storeController.deleteProductQnA);
 
