@@ -1,4 +1,4 @@
-import { ExtendedRecordMap } from "notion-types";
+import type { ExtendedRecordMap } from "@/types/shared/notion-extended-record-map";
 
 /**
  * @description Notion 홈 페이지 Mock 데이터
