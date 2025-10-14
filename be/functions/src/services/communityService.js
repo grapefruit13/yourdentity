@@ -217,7 +217,7 @@ class CommunityService {
   }
 
   /**
-   * 전체 커뮤니티 게시글 조회 (개선된 방식 - 효율적인 페이지네이션)
+   * 전체 커뮤니티 게시글 조회 (Collection Group + 복합 인덱스 - 최적화)
    * @param {Object} options - 조회 옵션
    * @return {Promise<Object>} 게시글 목록
    */
@@ -239,87 +239,81 @@ class CommunityService {
         tmi: "TMI",
       };
 
-      // 1. 커뮤니티 목록 조회
-      const communities = await this.firestoreService.getWithPagination({
-        page: 0,
-        size: 10,
-        orderBy: "createdAt",
-        orderDirection: "desc",
-      });
-
-      let allPosts = [];
-      const postsPerCommunity = Math.max(1, Math.floor(size * 2 / (communities.content?.length || 1)));
-
-      // 2. 각 커뮤니티에서 게시글 조회
-      for (const community of communities.content || []) {
-        const postsService = new FirestoreService(`communities/${community.id}/posts`);
-        const posts = await postsService.getWithPagination({
-          page: 0,
-          size: postsPerCommunity,
-          orderBy: orderBy,
-          orderDirection: orderDirection,
+      // 1. Collection Group으로 모든 커뮤니티의 posts 조회 (단일 쿼리)
+      const whereConditions = [];
+      if (type && postTypeMapping[type]) {
+        whereConditions.push({
+          field: "type",
+          operator: "==",
+          value: postTypeMapping[type],
         });
-
-        // 3. 메모리에서 타입 필터링
-        let filteredPosts = posts.content || [];
-        if (type && postTypeMapping[type]) {
-          filteredPosts = filteredPosts.filter(
-            (post) => post.type === postTypeMapping[type],
-          );
-        }
-
-        // 4. 커뮤니티 정보를 각 게시글에 추가
-        const postsWithCommunity = filteredPosts.map((post) => {
-          const processedPost = {
-            ...post,
-            timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
-            community: {
-              id: community.id,
-              name: community.name,
-              type: community.type,
-            },
-          };
-
-          // 내용 포함 여부에 따른 처리
-          if (includeContent) {
-            processedPost.content = post.content || [];
-            processedPost.media = post.media || [];
-          } else {
-            processedPost.preview = this.createPreview(post);
-            delete processedPost.content;
-            delete processedPost.media;
-          }
-
-          return processedPost;
-        });
-
-        allPosts = allPosts.concat(postsWithCommunity);
       }
 
-      // 5. 전체 게시글을 정렬
-      allPosts.sort((a, b) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
-        return orderDirection === "desc" ? dateB - dateA : dateA - dateB;
+
+      const result = await this.firestoreService.getCollectionGroup("posts", {
+        page: parseInt(page),
+        size: parseInt(size),
+        orderBy: orderBy || "createdAt",
+        orderDirection: orderDirection || "desc",
+        where: whereConditions.length > 0 ? whereConditions : [],
       });
 
-      // 6. 메모리에서 페이지네이션
-      const startIndex = parseInt(page) * parseInt(size);
-      const endIndex = startIndex + parseInt(size);
-      const paginatedPosts = allPosts.slice(startIndex, endIndex);
+      // 2. 커뮤니티 정보 조회 (필요한 커뮤니티만)
+      const communityIds = [...new Set(result.content.map(post => post.communityId))].filter(id => id && id !== undefined);
+      
+      let communities = [];
+      if (communityIds.length > 0) {
+        communities = await this.firestoreService.getCollectionWhereIn(
+          "communities",
+          "id",
+          communityIds
+        );
+      }
+
+      // 3. 커뮤니티 정보 매핑
+      const communityMap = {};
+      communities.forEach(community => {
+        communityMap[community.id] = community;
+      });
+
+      // 4. 게시글 데이터 가공
+      const processedPosts = result.content.map((post) => {
+        const community = communityMap[post.communityId] || {
+          id: post.communityId,
+          name: "알 수 없는 커뮤니티",
+          type: "UNKNOWN",
+        };
+
+        const processedPost = {
+          ...post,
+          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
+          community: {
+            id: community.id,
+            name: community.name,
+            type: community.type,
+          },
+        };
+
+        // 내용 포함 여부에 따른 처리
+        if (includeContent) {
+          processedPost.content = post.content || [];
+          processedPost.media = post.media || [];
+        } else {
+          processedPost.preview = this.createPreview(post);
+          delete processedPost.content;
+          delete processedPost.media;
+        }
+
+        // Collection Group에서 추가된 필드 제거
+        delete processedPost.path;
+        delete processedPost.communityId;
+
+        return processedPost;
+      });
 
       return {
-        content: paginatedPosts,
-        pagination: {
-          pageNumber: parseInt(page),
-          pageSize: parseInt(size),
-          totalElements: allPosts.length,
-          totalPages: Math.ceil(allPosts.length / parseInt(size)),
-          hasNext: endIndex < allPosts.length,
-          hasPrevious: parseInt(page) > 0,
-          isFirst: parseInt(page) === 0,
-          isLast: endIndex >= allPosts.length,
-        },
+        content: processedPosts,
+        pagination: result.pageable || {},
       };
     } catch (error) {
       console.error("Get all community posts error:", error.message);
