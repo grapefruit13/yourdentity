@@ -427,9 +427,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -457,6 +457,17 @@ const authGuard = require("../middleware/authGuard");
  *                       example: false
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/", routineController.getAllRoutines);
 
@@ -483,15 +494,37 @@ router.get("/", routineController.getAllRoutines);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   $ref: '#/components/schemas/RoutineDetail'
  *       404:
  *         description: 루틴을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "루틴을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:routineId", routineController.getRoutineById);
 
@@ -543,20 +576,50 @@ router.get("/:routineId", routineController.getRoutineById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   $ref: '#/components/schemas/ApplicationResponse'
- *                 message:
- *                   type: string
- *                   example: "루틴 신청이 완료되었습니다."
  *       400:
  *         description: 잘못된 요청 또는 품절
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "루틴이 품절되었습니다"
  *       404:
  *         description: 루틴을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "루틴을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:routineId/apply", authGuard, routineController.applyToRoutine);
 
@@ -583,18 +646,37 @@ router.post("/:routineId/apply", authGuard, routineController.applyToRoutine);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   $ref: '#/components/schemas/LikeToggleResponse'
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: 루틴을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "루틴을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:routineId/like", authGuard, routineController.toggleRoutineLike);
 
@@ -654,47 +736,75 @@ router.post("/:routineId/like", authGuard, routineController.toggleRoutineLike);
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                   example: "qna_123"
- *                 routineId:
- *                   type: string
- *                   example: "routine_123"
- *                 userId:
- *                   type: string
- *                   example: "user_123"
- *                 content:
- *                   type: array
- *                   description: 질문 내용
- *                   items:
- *                     type: object
- *                 media:
- *                   type: array
- *                   description: 미디어 파일
- *                   items:
- *                     type: object
- *                 answerContent:
- *                   type: array
- *                   nullable: true
- *                   description: 답변 내용
- *                   items:
- *                     type: object
- *                 answerMedia:
- *                   type: array
- *                   description: 답변 미디어
- *                   items:
- *                     type: object
- *                 likesCount:
+ *                 status:
  *                   type: integer
- *                   example: 0
- *                 createdAt:
- *                   type: string
- *                   format: date-time
- *                   example: "2024-01-01T00:00:00.000Z"
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       example: "qna_123"
+ *                     routineId:
+ *                       type: string
+ *                       example: "routine_123"
+ *                     userId:
+ *                       type: string
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       items:
+ *                         type: object
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       items:
+ *                         type: object
+ *                     likesCount:
+ *                       type: integer
+ *                       example: 0
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-01T00:00:00.000Z"
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "content is required"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:routineId/qna", authGuard, routineController.createQnA);
 
@@ -760,132 +870,91 @@ router.post("/:routineId/qna", authGuard, routineController.createQnA);
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                   example: "qna_123"
- *                 routineId:
- *                   type: string
- *                   example: "routine_123"
- *                 userId:
- *                   type: string
- *                   example: "user_123"
- *                 content:
- *                   type: array
- *                   description: 수정된 질문 내용
- *                   items:
- *                     type: object
- *                 media:
- *                   type: array
- *                   description: 미디어 파일
- *                   items:
- *                     type: object
- *                 answerContent:
- *                   type: array
- *                   nullable: true
- *                   description: 답변 내용
- *                   items:
- *                     type: object
- *                 answerMedia:
- *                   type: array
- *                   description: 답변 미디어
- *                   items:
- *                     type: object
- *                 likesCount:
+ *                 status:
  *                   type: integer
- *                   example: 0
- *                 updatedAt:
- *                   type: string
- *                   format: date-time
- *                   example: "2024-01-01T00:00:00.000Z"
- *       404:
- *         description: Q&A를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.put("/:routineId/qna/:qnaId", authGuard, routineController.updateQnA);
-
-// 루틴 QnA 답변 작성
-/**
- * @swagger
- * /routines/qna/{qnaId}/answer:
- *   post:
- *     tags: [Routines]
- *     summary: 루틴 Q&A 답변 작성
- *     description: 특정 Q&A에 답변 작성
- *     parameters:
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: array
- *                 description: 답변 내용
- *               media:
- *                 type: array
- *                 description: 답변 미디어
- *     responses:
- *       200:
- *         description: Q&A 답변 작성 성공
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       example: "qna_123"
+ *                     routineId:
+ *                       type: string
+ *                       example: "routine_123"
+ *                     userId:
+ *                       type: string
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 수정된 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       items:
+ *                         type: object
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       items:
+ *                         type: object
+ *                     likesCount:
+ *                       type: integer
+ *                       example: 0
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-01T00:00:00.000Z"
+ *       400:
+ *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                   example: "qna_123"
- *                 content:
- *                   type: array
- *                   description: 원본 질문 내용
- *                   items:
- *                     type: object
- *                 media:
- *                   type: array
- *                   description: 원본 질문 미디어
- *                   items:
- *                     type: object
- *                 answerContent:
- *                   type: array
- *                   description: 답변 내용
- *                   items:
- *                     type: object
- *                 answerMedia:
- *                   type: array
- *                   description: 답변 미디어
- *                   items:
- *                     type: object
- *                 answerUserId:
- *                   type: string
- *                   description: 답변자 ID
- *                   example: "user_456"
- *                 likesCount:
+ *                 status:
  *                   type: integer
- *                   example: 0
- *                 createdAt:
+ *                   example: 400
+ *                 message:
  *                   type: string
- *                   format: date-time
- *                   example: "2024-01-01T00:00:00.000Z"
- *                 answerCreatedAt:
- *                   type: string
- *                   format: date-time
- *                   example: "2024-01-02T00:00:00.000Z"
+ *                   example: "content is required"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
-router.post("/qna/:qnaId/answer", authGuard, routineController.createQnAAnswer);
+router.put("/:routineId/qna/:qnaId", authGuard, routineController.updateQnA);
+
 
 // 루틴 QnA 좋아요 토글
 /**
@@ -910,18 +979,37 @@ router.post("/qna/:qnaId/answer", authGuard, routineController.createQnAAnswer);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   $ref: '#/components/schemas/QnALikeToggleResponse'
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/qna/:qnaId/like", authGuard, routineController.toggleQnALike);
 
@@ -941,20 +1029,34 @@ router.post("/qna/:qnaId/like", authGuard, routineController.toggleQnALike);
  *           type: string
  *         description: Q&A ID
  *     responses:
- *       200:
+ *       204:
  *         description: Q&A 삭제 성공
+ *       404:
+ *         description: Q&A를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "QnA가 성공적으로 삭제되었습니다"
- *       404:
- *         description: Q&A를 찾을 수 없음
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/qna/:qnaId", routineController.deleteQnA);
 
