@@ -33,9 +33,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -57,6 +57,17 @@ const authGuard = require("../middleware/authGuard");
  *                       type: boolean
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/", gatheringController.getAllGatherings);
 
@@ -83,15 +94,37 @@ router.get("/", gatheringController.getAllGatherings);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   $ref: '#/components/schemas/GatheringDetail'
  *       404:
  *         description: 소모임을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "소모임을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:gatheringId", gatheringController.getGatheringById);
 
@@ -143,9 +176,9 @@ router.get("/:gatheringId", gatheringController.getGatheringById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   type: object
  *                   properties:
@@ -161,15 +194,45 @@ router.get("/:gatheringId", gatheringController.getGatheringById);
  *                     status:
  *                       type: string
  *                       example: "PENDING"
- *                 message:
- *                   type: string
- *                   example: "소모임 신청이 완료되었습니다."
  *       400:
  *         description: 잘못된 요청 또는 품절
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "소모임이 품절되었습니다"
  *       404:
  *         description: 소모임을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "소모임을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:gatheringId/apply", authGuard, gatheringController.applyToGathering);
 
@@ -196,9 +259,9 @@ router.post("/:gatheringId/apply", authGuard, gatheringController.applyToGatheri
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -212,13 +275,32 @@ router.post("/:gatheringId/apply", authGuard, gatheringController.applyToGatheri
  *                     likesCount:
  *                       type: integer
  *                       example: 5
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: 소모임을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "소모임을 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:gatheringId/like", authGuard, gatheringController.toggleGatheringLike);
 
@@ -278,26 +360,78 @@ router.post("/:gatheringId/like", authGuard, gatheringController.toggleGathering
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                 gatheringId:
- *                   type: string
- *                 userId:
- *                   type: string
- *                 content:
- *                   type: array
- *                 media:
- *                   type: array
- *                 likesCount:
+ *                 status:
  *                   type: integer
- *                   example: 0
- *                 createdAt:
- *                   type: string
- *                   format: date-time
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       description: Q&A ID
+ *                       example: "qna_123"
+ *                     gatheringId:
+ *                       type: string
+ *                       description: 소모임 ID
+ *                       example: "gathering_123"
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       example: null
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       example: []
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 생성일
+ *                       example: "2024-01-01T00:00:00.000Z"
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "content is required"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:gatheringId/qna", authGuard, gatheringController.createQnA);
 
@@ -358,52 +492,98 @@ router.post("/:gatheringId/qna", authGuard, gatheringController.createQnA);
  *     responses:
  *       200:
  *         description: Q&A 질문 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       description: Q&A ID
+ *                       example: "qna_123"
+ *                     gatheringId:
+ *                       type: string
+ *                       description: 소모임 ID
+ *                       example: "gathering_123"
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 수정된 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       example: null
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       example: []
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 수정일
+ *                       example: "2024-01-01T00:00:00.000Z"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "content is required"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.put("/:gatheringId/qna/:qnaId", authGuard, gatheringController.updateQnA);
-
-// 소모임 QnA 답변 작성
-/**
- * @swagger
- * /gatherings/qna/{qnaId}/answer:
- *   post:
- *     tags: [Gatherings]
- *     summary: 소모임 Q&A 답변 작성
- *     description: 특정 Q&A에 답변 작성
- *     parameters:
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: array
- *                 description: 답변 내용
- *               media:
- *                 type: array
- *                 description: 답변 미디어
- *     responses:
- *       200:
- *         description: Q&A 답변 작성 성공
- *       404:
- *         description: Q&A를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.post("/qna/:qnaId/answer", authGuard, gatheringController.createQnAAnswer);
 
 // 소모임 QnA 좋아요 토글
 /**
@@ -428,9 +608,9 @@ router.post("/qna/:qnaId/answer", authGuard, gatheringController.createQnAAnswer
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -444,13 +624,32 @@ router.post("/qna/:qnaId/answer", authGuard, gatheringController.createQnAAnswer
  *                     likesCount:
  *                       type: integer
  *                       example: 3
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/qna/:qnaId/like", authGuard, gatheringController.toggleQnALike);
 
@@ -470,20 +669,34 @@ router.post("/qna/:qnaId/like", authGuard, gatheringController.toggleQnALike);
  *           type: string
  *         description: Q&A ID
  *     responses:
- *       200:
+ *       204:
  *         description: Q&A 삭제 성공
+ *       404:
+ *         description: Q&A를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "QnA가 성공적으로 삭제되었습니다"
- *       404:
- *         description: Q&A를 찾을 수 없음
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/qna/:qnaId", gatheringController.deleteQnA);
 
