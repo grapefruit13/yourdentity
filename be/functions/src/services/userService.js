@@ -138,13 +138,19 @@ class UserService {
   async createUser(userData) {
     const {name, email, password, profileImageUrl, birthYear, authType = "email", snsProvider = null} = userData;
     if (!name) {
-      const e = new Error("name is required"); e.code = "BAD_REQUEST"; throw e;
+      const e = new Error("이름이 필요합니다");
+      e.code = "BAD_REQUEST";
+      throw e;
     }
     if (!email) {
-      const e = new Error("email is required"); e.code = "BAD_REQUEST"; throw e;
+      const e = new Error("이메일이 필요합니다");
+      e.code = "BAD_REQUEST";
+      throw e;
     }
     if (!password) {
-      const e = new Error("password is required"); e.code = "BAD_REQUEST"; throw e;
+      const e = new Error("비밀번호가 필요합니다");
+      e.code = "BAD_REQUEST";
+      throw e;
     }
 
     // Firebase Auth 사용자 생성
@@ -187,8 +193,8 @@ class UserService {
     try {
       return await this.firestoreService.getAll();
     } catch (error) {
-      console.error("Get all users error:", error.message);
-      throw new Error("Failed to get users");
+      console.error("사용자 목록 조회 에러:", error.message);
+      throw new Error("사용자 목록을 조회할 수 없습니다");
     }
   }
 
@@ -201,10 +207,8 @@ class UserService {
     try {
       return await this.firestoreService.getById(uid);
     } catch (error) {
-      console.error("Get user error:", error.message);
-      const e = new Error("Failed to get user");
-      e.code = "INTERNAL";
-      throw e;
+      console.error("사용자 조회 에러:", error.message);
+      throw new Error("사용자를 조회할 수 없습니다");
     }
   }
 
@@ -221,8 +225,9 @@ class UserService {
       const userDoc = await userRef.get();
 
       if (!userDoc.exists) {
-        throw new Error(
-            "User document not found. Auth trigger may have failed.");
+        const e = new Error("사용자 문서를 찾을 수 없습니다. Auth Trigger 실패 가능성 있음");
+        e.code = "NOT_FOUND";
+        throw e;
       }
 
       // 업데이트할 정보만 필터링
@@ -248,7 +253,7 @@ class UserService {
         user: updatedDoc.data(),
       };
     } catch (error) {
-      console.error("User update error:", error);
+      console.error("사용자 정보 업데이트 에러:", error);
       throw error;
     }
   }
@@ -269,10 +274,8 @@ class UserService {
 
       return await this.firestoreService.update(uid, updatePayload);
     } catch (error) {
-      console.error("Update user error:", error.message);
-      const e = new Error("Failed to update user");
-      e.code = "INTERNAL";
-      throw e;
+      console.error("사용자 업데이트 에러:", error.message);
+      throw new Error("사용자 정보를 업데이트할 수 없습니다");
     }
   }
 
@@ -286,10 +289,8 @@ class UserService {
       await admin.auth().deleteUser(uid);
       await this.firestoreService.delete(uid);
     } catch (error) {
-      console.error("Delete user error:", error.message);
-      const e = new Error("Failed to delete user");
-      e.code = "INTERNAL";
-      throw e;
+      console.error("사용자 삭제 에러:", error.message);
+      throw new Error("사용자를 삭제할 수 없습니다");
     }
   }
 }
