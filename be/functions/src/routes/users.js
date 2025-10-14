@@ -15,8 +15,20 @@ const router = express.Router();
  * @swagger
  * /users/provision:
  *   post:
- *     summary: 사용자 프로비저닝
- *     description: Auth Trigger로 생성된 사용자 문서를 업데이트
+ *     summary: 사용자 프로비저닝 (개발/테스트용)
+ *     description: |
+ *       ⚠️ **개발/테스트용 API**
+ *       
+ *       Auth Trigger로 생성된 사용자 문서를 수동으로 업데이트할 때 사용
+ *       
+ *       **실제 프로덕션 플로우:**
+ *       1. FE에서 회원가입 (Firebase Client SDK)
+ *       2. authTrigger 자동 실행 → Firestore 문서 생성
+ *       3. 온보딩 API로 추가 정보 입력
+ *       
+ *       **이 API 사용 시나리오 (개발/테스트만):**
+ *       - authTrigger 실패 시 수동 복구
+ *       - 테스트 데이터 수정
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -31,18 +43,23 @@ const router = express.Router();
  *                 type: string
  *                 format: email
  *                 example: user@example.com
- *               displayName:
+ *               name:
  *                 type: string
  *                 example: 홍길동
- *               photoURL:
+ *               profileImageUrl:
  *                 type: string
  *                 example: https://example.com/photo.jpg
- *               providerId:
- *                 type: string
- *                 example: oidc.kakao
  *               birthYear:
  *                 type: number
  *                 example: 1990
+ *               authType:
+ *                 type: string
+ *                 enum: [email, sns]
+ *                 example: sns
+ *               snsProvider:
+ *                 type: string
+ *                 enum: [kakao, google]
+ *                 example: kakao
  *     responses:
  *       200:
  *         description: 프로비저닝 성공
@@ -233,8 +250,13 @@ router.get("/:userId", userController.getUserById);
  * @swagger
  * /users/{userId}:
  *   put:
- *     summary: 사용자 정보 수정
- *     description: 사용자의 닉네임이나 프로필 이미지를 수정합니다
+ *     summary: 사용자 정보 수정 (관리자용)
+ *     description: |
+ *       사용자의 다양한 정보를 수정합니다
+ *       
+ *       ⚠️ **주의:**
+ *       - nickname은 authTrigger에 없음 (온보딩 브랜치에서 추가됨)
+ *       - 현재 브랜치에서는 name, profileImageUrl 등만 수정 가능
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -251,12 +273,41 @@ router.get("/:userId", userController.getUserById);
  *           schema:
  *             type: object
  *             properties:
- *               nickname:
+ *               name:
  *                 type: string
- *                 example: 새로운닉네임
+ *                 example: 홍길동
  *               profileImageUrl:
  *                 type: string
  *                 example: https://example.com/new-profile.jpg
+ *               birthYear:
+ *                 type: number
+ *                 example: 1990
+ *               rewardPoints:
+ *                 type: number
+ *                 example: 1000
+ *               level:
+ *                 type: number
+ *                 example: 5
+ *               badges:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["first_mission", "early_bird"]
+ *               points:
+ *                 type: string
+ *                 example: "1500"
+ *               mainProfileId:
+ *                 type: string
+ *                 example: profile_abc123
+ *               onBoardingComplete:
+ *                 type: boolean
+ *                 example: true
+ *               uploadQuotaBytes:
+ *                 type: number
+ *                 example: 1073741824
+ *               usedStorageBytes:
+ *                 type: number
+ *                 example: 52428800
  *     responses:
  *       200:
  *         description: 사용자 정보 수정 성공
