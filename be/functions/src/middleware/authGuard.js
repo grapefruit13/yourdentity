@@ -17,19 +17,13 @@ const authGuard = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        status: 401,
-        error: "Authorization header with Bearer token required",
-      });
+      return res.error(401, "Bearer 토큰이 필요합니다");
     }
 
     const idToken = authHeader.split("Bearer ")[1];
 
     if (!idToken) {
-      return res.status(401).json({
-        status: 401,
-        error: "Invalid authorization header format",
-      });
+      return res.error(401, "잘못된 인증 헤더 형식입니다");
     }
 
     // Firebase ID 토큰 검증
@@ -49,10 +43,7 @@ const authGuard = async (req, res, next) => {
           tokensRevokedAt: new Date(tokensRevokedAt).toISOString(),
         });
 
-        return res.status(401).json({
-          status: 401,
-          error: "Token has been revoked (user logged out)",
-        });
+        return res.error(401, "토큰이 무효화되었습니다 (로그아웃됨)");
       }
     }
 
@@ -69,23 +60,14 @@ const authGuard = async (req, res, next) => {
     console.error("AuthGuard error:", error.message);
 
     if (error.code === "auth/id-token-expired") {
-      return res.status(401).json({
-        status: 401,
-        error: "Token expired",
-      });
+      return res.error(401, "토큰이 만료되었습니다");
     }
 
     if (error.code === "auth/invalid-id-token") {
-      return res.status(401).json({
-        status: 401,
-        error: "Invalid token",
-      });
+      return res.error(401, "유효하지 않은 토큰입니다");
     }
 
-    return res.status(401).json({
-      status: 401,
-      error: "Authentication failed",
-    });
+    return res.error(401, "인증에 실패했습니다");
   }
 };
 

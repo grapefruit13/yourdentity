@@ -18,27 +18,22 @@ class AuthController {
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async logout(req, res) {
+  async logout(req, res, next) {
     try {
       const uid = req.user.uid; // authGuard에서 설정된 사용자 정보
 
       // authService를 통한 로그아웃 처리
       const result = await authService.logout(uid);
 
-      res.json({
-        status: 200,
-        data: {
-          message: "Logout successful",
-          revokedAt: result.revokedAt,
-        },
+      return res.success({
+        message: "로그아웃 성공",
+        revokedAt: result.revokedAt,
       });
     } catch (error) {
-      console.error("Logout error:", error);
-      res.status(500).json({
-        status: 500,
-        error: "Internal server error",
-      });
+      console.error("로그아웃 에러:", error);
+      return next(error);
     }
   }
 
@@ -48,23 +43,18 @@ class AuthController {
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async verifyToken(req, res) {
+  async verifyToken(req, res, next) {
     try {
       // authGuard에서 이미 검증 완료
-      res.json({
-        status: 200,
-        data: {
-          message: "Token is valid",
-          user: req.user,
-        },
+      return res.success({
+        message: "토큰이 유효합니다",
+        user: req.user,
       });
     } catch (error) {
-      console.error("Verify token error:", error);
-      res.status(500).json({
-        status: 500,
-        error: "Internal server error",
-      });
+      console.error("토큰 검증 에러:", error);
+      return next(error);
     }
   }
 }

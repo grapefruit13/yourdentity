@@ -1,5 +1,4 @@
 const UserService = require("../services/userService");
-const {successResponse} = require("../utils/helpers");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
@@ -26,15 +25,15 @@ class UserController {
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async createUser(req, res) {
+  async createUser(req, res, next) {
     try {
       const result = await userService.createUser(req.body);
-      res.json(successResponse(200, result));
+      return res.success(result);
     } catch (error) {
-      console.error("Create user error:", error);
-      error.code = error.code || "BAD_REQUEST";
-      return req.next ? req.next(error) : res.status(400).json({status: 400, error: error.message});
+      console.error("사용자 생성 에러:", error);
+      return next(error);
     }
   }
 
@@ -42,13 +41,14 @@ class UserController {
    * 모든 사용자 조회 API
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async getAllUsers(req, res) {
+  async getAllUsers(req, res, next) {
     try {
       const users = await userService.getAllUsers();
-      res.json(successResponse(200, {users, count: users.length}));
+      return res.success({users, count: users.length});
     } catch (error) {
-      return req.next ? req.next(error) : res.status(500).json({status: 500, error: error.message});
+      return next(error);
     }
   }
 
@@ -56,19 +56,20 @@ class UserController {
      * 사용자 정보 조회 API
      * @param {Object} req - Express request object
      * @param {Object} res - Express response object
+     * @param {Function} next - Express next function
      */
-  async getUserById(req, res) {
+  async getUserById(req, res, next) {
     try {
       const {userId} = req.params;
       const user = await userService.getUserById(userId);
       if (!user) {
-        const err = new Error("User not found");
+        const err = new Error("사용자를 찾을 수 없습니다");
         err.code = "NOT_FOUND";
         throw err;
       }
-      res.json(successResponse(200, user));
+      return res.success(user);
     } catch (error) {
-      return req.next ? req.next(error) : res.status(500).json({status: 500, error: error.message});
+      return next(error);
     }
   }
 
@@ -82,8 +83,9 @@ class UserController {
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async provisionUser(req, res) {
+  async provisionUser(req, res, next) {
     try {
       // authGuard 미들웨어에서 설정한 req.user 사용
       const {uid} = req.user;
@@ -99,17 +101,20 @@ class UserController {
         authType,
         snsProvider,
       });
-      res.json(successResponse(200, {user: result.user}));
+      return res.success({user: result.user});
     } catch (error) {
-      console.error("Provision user error:", error);
-      return req.next ? req.next(error) : res.status(500).json({
-        status: 500,
-        error: error.message || "Failed to provision user",
-      });
+      console.error("사용자 프로비저닝 에러:", error);
+      return next(error);
     }
   }
 
-  async updateUser(req, res) {
+  /**
+   * 사용자 정보 수정 API
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async updateUser(req, res, next) {
     try {
       const {userId} = req.params;
       const {
@@ -155,19 +160,16 @@ class UserController {
       }
 
       if (Object.keys(updateData).length === 0) {
-        const err = new Error("No valid fields to update");
+        const err = new Error("업데이트할 유효한 필드가 없습니다");
         err.code = "BAD_REQUEST";
         throw err;
       }
 
       const result = await userService.updateUser(userId, updateData);
 
-      res.json(successResponse(200, result));
+      return res.success(result);
     } catch (error) {
-      return req.next ? req.next(error) : res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
+      return next(error);
     }
   }
 
@@ -175,20 +177,18 @@ class UserController {
    * 사용자 삭제 API
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async deleteUser(req, res) {
+  async deleteUser(req, res, next) {
     try {
       const {userId} = req.params;
 
       await userService.deleteUser(userId);
 
-      res.json(successResponse(200, {userId}, "User deleted successfully from both Firebase Auth and Firestore"));
+      return res.success({userId});
     } catch (error) {
-      console.error("Delete user error:", error);
-      return req.next ? req.next(error) : res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
+      console.error("사용자 삭제 에러:", error);
+      return next(error);
     }
   }
 }
