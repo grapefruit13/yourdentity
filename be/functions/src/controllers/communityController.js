@@ -38,6 +38,7 @@ class CommunityController {
     try {
       const {
         type,
+        filter,  // filter 파라미터 추가
         channel,
         communityId,
         page = 0,
@@ -45,8 +46,11 @@ class CommunityController {
         includeContent = false,
       } = req.query;
 
+      // filter 파라미터를 type으로 매핑 (하위 호환성)
+      const finalType = type || filter;
+
       const result = await communityService.getAllCommunityPosts({
-        type,
+        type: finalType,
         channel,
         communityId,
         page,
