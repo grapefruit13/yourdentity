@@ -1,83 +1,166 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import ButtonBase from "@/components/shared/base/button-base";
-import InputBase from "@/components/shared/base/input-base";
+import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
+import AlertDialog from "@/components/shared/ui/dialog";
+import { AUTH_MESSAGE } from "@/constants/auth/_message";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useEmailLogin } from "@/hooks/auth/useEmailLogin";
 import useToggle from "@/hooks/shared/useToggle";
+import { loginFormSchema } from "@/lib/schema/auth";
+import { TLoginForm } from "@/types/auth/form";
+import { ErrorResponse } from "@/types/shared/response";
 import { cn } from "@/utils/shared/cn";
+import { debug } from "@/utils/shared/debugger";
 
 /**
  * @description 이메일 로그인 페이지
  */
 const EmailLoginPage = () => {
-  const { isOpen, toggle } = useToggle();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const router = useRouter();
-  const isLoginValidate = email && password;
+  const { isOpen, toggle } = useToggle();
+  const { isOpen: isAlertDialogOpen, toggle: toggleAlertDialog } = useToggle();
+  const [alertMessage, setAlertMessage] = useState<string>("");
 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    setError,
+  } = useForm<TLoginForm>({
+    mode: "onChange",
+    resolver: zodResolver(loginFormSchema),
+  });
+
+  const { mutate: loginMutate, isPending: isLoginPending } = useEmailLogin();
   /**
    * @description 로그인 제출
-   * @param e - 폼 이벤트
+   * @param data - 폼 데이터
    */
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    alert("로그인 제출");
-    // TODO: 메인 홈으로 이동. 현재는 미정.
-    router.push(LINK_URL.MISSION);
+  const onSubmit = (data: TLoginForm) => {
+    loginMutate(
+      {
+        email: data.email,
+        password: data.password,
+      },
+      {
+        onSuccess: (result) => {
+          if (result.status === 200) {
+            debug.log("로그인 성공:", result); // 성공: Result 형태 { data, status }
+            router.push(LINK_URL.MISSION);
+          } else {
+            debug.error("로그인 실패:", result); // 실패: ErrorResponse 형태 { status, message }
+            setError("email", { message: (result as ErrorResponse).message });
+            setError("password", {
+              message: (result as ErrorResponse).message,
+            });
+            setAlertMessage(
+              (result as ErrorResponse).message ??
+                AUTH_MESSAGE.LOGIN.INVALID_CREDENTIALS
+            );
+            toggleAlertDialog();
+          }
+        },
+        onError: (error) => {
+          debug.error("로그인 실패:", error);
+          setAlertMessage(AUTH_MESSAGE.LOGIN.NETWORK_ERROR);
+          toggleAlertDialog();
+        },
+      }
+    );
   };
+
+  const isLoginEnabled = isValid && !isLoginPending;
 
   return (
     <form
       className="flex h-full flex-col bg-white px-5 py-6"
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(onSubmit)}
     >
       <div className="flex h-fit flex-col gap-6">
         <div className="flex flex-col gap-3">
           <Typography font="noto" variant="body2M">
-            아이디 (이메일)
+            {AUTH_MESSAGE.LOGIN.EMAIL_LABEL}
           </Typography>
-          <InputBase
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            placeholder="이메일을 입력하세요"
-            className="font-noto rounded-md border border-gray-200 px-3 py-2 text-base leading-1.5 font-normal shadow-xs"
-          />
+          <div className="flex flex-col gap-1">
+            <Input
+              {...register("email")}
+              type="email"
+              placeholder={AUTH_MESSAGE.LOGIN.EMAIL_PLACEHOLDER}
+              className={cn(
+                "font-noto rounded-md border px-3 py-2 text-base leading-1.5 font-normal shadow-xs",
+                errors.email ? "border-red-500" : "border-gray-200"
+              )}
+            />
+            {errors.email && (
+              <Typography
+                font="noto"
+                variant="label1R"
+                className="text-red-500"
+              >
+                {errors.email.message}
+              </Typography>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-3">
           <Typography font="noto" variant="body2M">
-            비밀번호
+            {AUTH_MESSAGE.LOGIN.PASSWORD_LABEL}
           </Typography>
-          <div className="relative">
-            <InputBase
-              onChange={(e) => setPassword(e.target.value)}
-              type={isOpen ? "text" : "password"}
-              placeholder="비밀번호를 입력하세요"
-              className="font-noto w-full rounded-md border border-gray-200 px-3 py-2 pr-10 text-base leading-1.5 font-normal shadow-xs"
-            />
-            <ButtonBase type="button" onClick={toggle}>
-              <Image
-                src={
-                  isOpen
-                    ? IMAGE_URL.ICON.eye.on.url
-                    : IMAGE_URL.ICON.eye.off.url
-                }
-                alt={
-                  isOpen
-                    ? IMAGE_URL.ICON.eye.on.alt
-                    : IMAGE_URL.ICON.eye.off.alt
-                }
-                width={20}
-                height={20}
-                className="absolute top-1/2 right-3 -translate-y-1/2"
+          <div className="flex flex-col gap-1">
+            <div className="relative">
+              <Input
+                {...register("password", {
+                  required: "비밀번호를 입력해주세요",
+                  pattern: {
+                    value:
+                      /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
+                    message:
+                      "비밀번호는 문자, 숫자, 특수문자를 포함하여 8글자 이상이어야 합니다",
+                  },
+                })}
+                type={isOpen ? "text" : "password"}
+                placeholder={AUTH_MESSAGE.LOGIN.PASSWORD_PLACEHOLDER}
+                className={cn(
+                  "font-noto w-full rounded-md border px-3 py-2 pr-10 text-base leading-1.5 font-normal shadow-xs",
+                  errors.password ? "border-red-500" : "border-gray-200"
+                )}
               />
-            </ButtonBase>
+              <ButtonBase type="button" onClick={toggle}>
+                <Image
+                  src={
+                    isOpen
+                      ? IMAGE_URL.ICON.eye.on.url
+                      : IMAGE_URL.ICON.eye.off.url
+                  }
+                  alt={
+                    isOpen
+                      ? IMAGE_URL.ICON.eye.on.alt
+                      : IMAGE_URL.ICON.eye.off.alt
+                  }
+                  width={20}
+                  height={20}
+                  className="absolute top-1/2 right-3 -translate-y-1/2"
+                />
+              </ButtonBase>
+            </div>
+            {errors.password && (
+              <Typography
+                font="noto"
+                variant="label1R"
+                className="text-red-500"
+              >
+                {errors.password.message}
+              </Typography>
+            )}
           </div>
         </div>
       </div>
@@ -95,16 +178,41 @@ const EmailLoginPage = () => {
       </div>
       <ButtonBase
         type="submit"
-        disabled={!isLoginValidate}
+        disabled={!isLoginEnabled}
         className={cn(
-          "bg-primary-600 mt-auto w-full rounded-lg py-2",
-          !isLoginValidate && "opacity-50"
+          "bg-primary-600 mt-auto w-full rounded-lg py-2 hover:cursor-pointer",
+          !isLoginEnabled && "opacity-50"
         )}
       >
         <Typography font="noto" variant="body1B" className="text-white">
-          로그인
+          {isLoginPending
+            ? AUTH_MESSAGE.LOGIN.LOADING
+            : AUTH_MESSAGE.LOGIN.BUTTON}
         </Typography>
       </ButtonBase>
+      {isAlertDialogOpen && (
+        <AlertDialog
+          isOpen={isAlertDialogOpen}
+          title={AUTH_MESSAGE.LOGIN.TITLE_FAILURE}
+          description={alertMessage}
+        >
+          <div className="flex gap-3 pt-2">
+            <ButtonBase
+              type="button"
+              className="bg-primary-600 flex-1 rounded-lg px-4 py-2 active:opacity-70"
+              onClick={toggleAlertDialog}
+            >
+              <Typography
+                font="noto"
+                variant="body2M"
+                className="text-neutral-50"
+              >
+                확인
+              </Typography>
+            </ButtonBase>
+          </div>
+        </AlertDialog>
+      )}
     </form>
   );
 };
