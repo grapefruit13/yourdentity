@@ -624,7 +624,7 @@ router.delete("/:commentId", authGuard, commentController.deleteComment);
  *                     isLiked:
  *                       type: boolean
  *                       example: true
- *                     likeCount:
+ *                     likesCount:
  *                       type: integer
  *                       example: 3
  *                 message:

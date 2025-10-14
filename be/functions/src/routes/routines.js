@@ -372,7 +372,7 @@ const authGuard = require("../middleware/authGuard");
  *           type: boolean
  *           description: 좋아요 여부
  *           example: true
- *         likeCount:
+ *         likesCount:
  *           type: integer
  *           description: 좋아요 수
  *           example: 5
@@ -392,7 +392,7 @@ const authGuard = require("../middleware/authGuard");
  *           type: boolean
  *           description: 좋아요 여부
  *           example: true
- *         likeCount:
+ *         likesCount:
  *           type: integer
  *           description: 좋아요 수
  *           example: 3
@@ -558,7 +558,7 @@ router.get("/:routineId", routineController.getRoutineById);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:routineId/apply", authGuard, routineController.applyForRoutine);
+router.post("/:routineId/apply", authGuard, routineController.applyToRoutine);
 
 // 루틴 좋아요 토글
 /**

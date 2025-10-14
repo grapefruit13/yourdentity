@@ -209,7 +209,7 @@ router.post("/:gatheringId/apply", authGuard, gatheringController.applyToGatheri
  *                     isLiked:
  *                       type: boolean
  *                       example: true
- *                     likeCount:
+ *                     likesCount:
  *                       type: integer
  *                       example: 5
  *                 message:
@@ -441,7 +441,7 @@ router.post("/qna/:qnaId/answer", authGuard, gatheringController.createQnAAnswer
  *                     isLiked:
  *                       type: boolean
  *                       example: true
- *                     likeCount:
+ *                     likesCount:
  *                       type: integer
  *                       example: 3
  *                 message:

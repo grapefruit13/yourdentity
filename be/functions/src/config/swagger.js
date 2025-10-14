@@ -1754,7 +1754,7 @@ const options = {
               description: "좋아요 여부",
               example: true,
             },
-            likeCount: {
+            likesCount: {
               type: "integer",
               description: "좋아요 수",
               example: 5,
@@ -1779,7 +1779,7 @@ const options = {
               description: "좋아요 여부",
               example: true,
             },
-            likeCount: {
+            likesCount: {
               type: "integer",
               description: "좋아요 수",
               example: 3,

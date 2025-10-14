@@ -384,6 +384,113 @@ class FirestoreService {
 
     return items;
   }
+
+  /**
+   * 여러 조건으로 복합 쿼리 수행 (compound where)
+   * @param {string} collectionName - 컬렉션 이름
+   * @param {Array} conditions - 조건 배열 [{field, operator, value}, ...]
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getCollectionWhereMultiple(collectionName, conditions) {
+    if (!conditions || conditions.length === 0) return [];
+
+    let query = db.collection(collectionName);
+    
+    // 모든 조건을 쿼리에 적용
+    conditions.forEach((condition) => {
+      query = query.where(condition.field, condition.operator, condition.value);
+    });
+
+    const snapshot = await query.get();
+    const items = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt:
+          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    return items;
+  }
+
+  /**
+   * Collection Group 쿼리 (모든 하위 컬렉션에서 검색)
+   * @param {string} collectionId - 컬렉션 ID (예: "posts")
+   * @param {Object} options - 쿼리 옵션
+   * @return {Promise<Object>} 페이지네이션 결과
+   */
+  async getCollectionGroup(collectionId, options = {}) {
+    const {
+      page = 0,
+      size = 10,
+      orderBy = "createdAt",
+      orderDirection = "desc",
+      where = [],
+    } = options;
+
+
+    let query = db.collectionGroup(collectionId);
+
+    // 필터 조건 적용
+    if (where && Array.isArray(where) && where.length > 0) {
+      where.forEach((condition) => {
+        if (condition && condition.field && condition.operator && condition.value !== undefined) {
+          query = query.where(condition.field, condition.operator, condition.value);
+        }
+      });
+    }
+
+    // 정렬 적용
+    const finalOrderBy = orderBy || "createdAt";
+    const finalOrderDirection = orderDirection || "desc";
+    query = query.orderBy(finalOrderBy, finalOrderDirection).orderBy("id", "desc");
+
+    // 페이지네이션 적용
+    const safePage = isNaN(page) ? 0 : page;
+    const safeSize = isNaN(size) ? 10 : size;
+    const offset = safePage * safeSize;
+    query = query.offset(offset).limit(safeSize);
+
+    const snapshot = await query.get();
+    const items = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    // 전체 개수 조회 (총 페이지 수 계산을 위해) - 임시로 간단하게 처리
+    const totalCount = items.length; // 현재 페이지의 아이템 수를 사용
+
+    const totalPages = Math.ceil(totalCount / safeSize);
+    const hasNext = safePage < totalPages - 1;
+    const hasPrevious = safePage > 0;
+
+    return {
+      content: items,
+      pageable: {
+        pageNumber: safePage,
+        pageSize: safeSize,
+        totalElements: totalCount,
+        totalPages: totalPages,
+        hasNext: hasNext,
+        hasPrevious: hasPrevious,
+        isFirst: safePage === 0,
+        isLast: safePage === totalPages - 1,
+      },
+    };
+  }
 }
 
 module.exports = FirestoreService;
