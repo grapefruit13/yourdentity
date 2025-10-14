@@ -13,12 +13,6 @@ import {
   getFunctions,
   // connectFunctionsEmulator
 } from "firebase/functions";
-import {
-  getMessaging,
-  getToken,
-  isSupported,
-  Messaging,
-} from "firebase/messaging";
 import { debug } from "@/utils/shared/debugger";
 
 const firebaseConfig = {
@@ -56,10 +50,13 @@ export const functions = getFunctions(app, "asia-northeast3");
 //   }
 // }
 
-export const getClientMessaging = async (): Promise<Messaging | null> => {
+export const getClientMessaging = async () => {
   try {
-    const supported = await isSupported();
-    return supported ? getMessaging(app) : null;
+    // 브라우저 전용 Firebase Messaging을 동적 import로 변경해 SSR 번들에서 배제
+    if (typeof window === "undefined") return null;
+    const messagingMod = await import("firebase/messaging");
+    const supported = await messagingMod.isSupported();
+    return supported ? messagingMod.getMessaging(app) : null;
   } catch (error) {
     debug.error("Failed to get messaging instance:", error);
     return null;
@@ -74,6 +71,7 @@ export const fetchToken = async () => {
     const fcmMessaging = await getClientMessaging();
     if (!fcmMessaging) return null;
 
+    const { getToken } = await import("firebase/messaging");
     const token = await getToken(fcmMessaging, {
       vapidKey: process.env.FCM_VAPID_KEY,
     });
