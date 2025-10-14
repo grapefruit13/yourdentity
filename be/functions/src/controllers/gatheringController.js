@@ -393,54 +393,6 @@ const updateQnA = async (req, res, next) => {
   }
 };
 
-// QnA 답변 작성
-const createQnAAnswer = async (req, res, next) => {
-  try {
-    const {qnaId} = req.params;
-    const {content = [], media = []} = req.body;
-
-    if (!content || content.length === 0) {
-      const err = new Error("content is required");
-      err.code = "INVALID_REQUEST";
-      throw err;
-    }
-
-    const qna = await firestoreService.getDocument("qnas", qnaId);
-
-    if (!qna) {
-      const err = new Error("QnA not found");
-      err.code = "NOT_FOUND";
-      throw err;
-    }
-
-    const updatedData = {
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: req.user.uid,
-      answerCreatedAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await firestoreService.updateDocument("qnas", qnaId, updatedData);
-
-    const responseData = {
-      qnaId,
-      content: qna.content,
-      media: qna.media || [],
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: updatedData.answerUserId,
-      likesCount: qna.likesCount || 0,
-      createdAt: qna.createdAt,
-      answerCreatedAt: updatedData.answerCreatedAt,
-    };
-
-    return res.success(responseData);
-  } catch (error) {
-    console.error("Error creating QnA answer:", error);
-    return next(error);
-  }
-};
 
 // QnA 좋아요 토글
 const toggleQnALike = async (req, res, next) => {
@@ -612,7 +564,6 @@ module.exports = {
   applyToGathering,
   createQnA,
   updateQnA,
-  createQnAAnswer,
   toggleQnALike,
   deleteQnA,
   toggleGatheringLike,
