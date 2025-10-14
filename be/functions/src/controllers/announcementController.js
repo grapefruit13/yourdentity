@@ -4,12 +4,10 @@ exports.syncAnnouncement = async (req, res, next) => {
   try {
     const {pageId} = req.params;
     if (!pageId) {
-      const err = new Error("페이지 ID가 필요합니다");
-      err.status = 400;
-      return next(err);
+      return res.error(400, "페이지 ID가 필요합니다");
     }
     const result = await announcementService.synchronizeAnnouncement(pageId);
-    return res.status(200).json({status: 200, data: result});
+    return res.success(result);
   } catch (error) {
     return next(error);
   }
@@ -19,12 +17,10 @@ exports.softDeleteAnnouncement = async (req, res, next) => {
   try {
     const {pageId} = req.params;
     if (!pageId) {
-      const err = new Error("페이지 ID가 필요합니다");
-      err.status = 400;
-      return next(err);
+      return res.error(400, "페이지 ID가 필요합니다");
     }
     const updated = await announcementService.markAsDeleted(pageId);
-    return res.status(200).json({status: 200, data: updated});
+    return res.success(updated);
   } catch (error) {
     return next(error);
   }
@@ -51,12 +47,10 @@ exports.getAnnouncementDetail = async (req, res, next) => {
   try {
     const {pageId} = req.params;
     if (!pageId) {
-      const err = new Error("페이지 ID가 필요합니다");
-      err.status = 400;
-      return next(err);
+      return res.error(400, "페이지 ID가 필요합니다");
     }
     const announcement = await announcementService.getAnnouncementDetail(pageId);
-    return res.status(200).json({status: 200, data: announcement});
+    return res.success(announcement);
   } catch (error) {
     return next(error);
   }

@@ -101,10 +101,8 @@ router.get("/", announcementController.getAnnouncementList);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
- *               success: false
- *               code: "MISSING_PAGE_ID"
+ *               status: 400
  *               message: "페이지 ID가 필요합니다"
- *               timestamp: "2024-01-01T00:00:00.000Z"
  *       500:
  *         description: 서버 내부 오류 또는 노션 API 오류
  *         content:
@@ -112,10 +110,8 @@ router.get("/", announcementController.getAnnouncementList);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
- *               success: false
- *               code: "NOTION_API_ERROR"
+ *               status: 500
  *               message: "노션 API 키가 설정되지 않았습니다"
- *               timestamp: "2024-01-01T00:00:00.000Z"
  */
 router.get("/:pageId/sync", announcementController.syncAnnouncement);
 
@@ -154,16 +150,17 @@ router.get("/:pageId/sync", announcementController.syncAnnouncement);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
- *               success: false
- *               code: "MISSING_PAGE_ID"
+ *               status: 400
  *               message: "페이지 ID가 필요합니다"
- *               timestamp: "2024-01-01T00:00:00.000Z"
  *       500:
  *         description: 서버 내부 오류
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 500
+ *               message: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:pageId/delete", announcementController.softDeleteAnnouncement);
 
@@ -215,10 +212,8 @@ router.get("/:pageId/delete", announcementController.softDeleteAnnouncement);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
- *               success: false
- *               code: "MISSING_PAGE_ID"
+ *               status: 400
  *               message: "페이지 ID가 필요합니다"
- *               timestamp: "2024-01-01T00:00:00.000Z"
  *       404:
  *         description: 공지사항을 찾을 수 없음
  *         content:
@@ -226,16 +221,17 @@ router.get("/:pageId/delete", announcementController.softDeleteAnnouncement);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
- *               success: false
- *               code: "ANNOUNCEMENT_NOT_FOUND"
+ *               status: 404
  *               message: "공지사항을 찾을 수 없습니다"
- *               timestamp: "2024-01-01T00:00:00.000Z"
  *       500:
  *         description: 서버 내부 오류
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 500
+ *               message: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:pageId", announcementController.getAnnouncementDetail);
 
