@@ -109,6 +109,32 @@ class UserController {
     }
   }
 
+  /**
+   * 온보딩 정보 업데이트
+   * PATCH /users/me/onboarding
+   */
+  async updateOnboarding(req, res) {
+    try {
+      const {uid} = req.user;
+      const {name, nickname, birthYear, birthDate, phoneNumber} = req.body || {};
+
+      const result = await userService.updateOnboarding({
+        uid,
+        payload: {name, nickname, birthYear, birthDate, phoneNumber},
+      });
+
+      return res.json(
+          successResponse(200, {onboardingCompleted: result.onboardingCompleted},
+              "ONBOARDING_UPDATED"),
+      );
+    } catch (error) {
+      return req.next ? req.next(error) : res.status(500).json({
+        status: 500,
+        error: error.message || "Failed to update onboarding",
+      });
+    }
+  }
+
   async updateUser(req, res) {
     try {
       const {userId} = req.params;
