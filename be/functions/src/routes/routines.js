@@ -1058,6 +1058,6 @@ router.post("/qna/:qnaId/like", authGuard, routineController.toggleQnALike);
  *                   type: string
  *                   example: "서버 내부 오류가 발생했습니다"
  */
-router.delete("/qna/:qnaId", routineController.deleteQnA);
+router.delete("/qna/:qnaId", authGuard, routineController.deleteQnA);
 
 module.exports = router;
