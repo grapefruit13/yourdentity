@@ -7,7 +7,7 @@ class NotionUserController {
   async syncUserAccounts(req, res, next) {
     try {
       const result = await notionUserService.syncUserAccounts();
-      res.json(successResponse(`활동회원 동기화 완료: ${result.syncedCount}명`));
+      res.json(successResponse(`회원 동기화 완료: ${result.syncedCount}명`));
     } catch (error) {
       console.error("[Controller Error] syncActiveUsers:", error);
       res.status(500).json({ message: "활동회원 동기화 중 오류가 발생했습니다.", error: error.message });
