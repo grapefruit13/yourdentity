@@ -33,7 +33,6 @@ class AuthController {
       });
     } catch (error) {
       console.error("로그아웃 에러:", error);
-      error.code = error.code || "INTERNAL_SERVER_ERROR";
       return next(error);
     }
   }
@@ -55,7 +54,6 @@ class AuthController {
       });
     } catch (error) {
       console.error("토큰 검증 에러:", error);
-      error.code = error.code || "INTERNAL_SERVER_ERROR";
       return next(error);
     }
   }

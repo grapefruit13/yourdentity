@@ -33,7 +33,6 @@ class UserController {
       return res.success(result);
     } catch (error) {
       console.error("사용자 생성 에러:", error);
-      error.code = error.code || "BAD_REQUEST";
       return next(error);
     }
   }
@@ -105,7 +104,6 @@ class UserController {
       return res.success({user: result.user});
     } catch (error) {
       console.error("사용자 프로비저닝 에러:", error);
-      error.code = error.code || "INTERNAL_SERVER_ERROR";
       return next(error);
     }
   }
