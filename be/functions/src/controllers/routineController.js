@@ -3,7 +3,7 @@ const firestoreService = new FirestoreService("routines");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // 루틴 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원
-const getAllRoutines = async (req, res) => {
+const getAllRoutines = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 0;
     const size = parseInt(req.query.size) || 10;
@@ -36,31 +36,23 @@ const getAllRoutines = async (req, res) => {
       }));
     }
 
-    res.json({
-      success: true,
-      data: result.content || [],
-      pagination: result.pageable || {},
-    });
+    return res.paginate(result.content || [], result.pageable || {});
   } catch (error) {
     console.error("Error getting routines:", error);
-    res.status(500).json({
-      success: false,
-      message: "루틴 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 루틴 상세 조회 (신청페이지 전용)
-const getRoutineById = async (req, res) => {
+const getRoutineById = async (req, res, next) => {
   try {
     const {routineId} = req.params;
     const routine = await firestoreService.getDocument("routines", routineId);
 
     if (!routine) {
-      return res.status(404).json({
-        success: false,
-        message: "루틴을 찾을 수 없습니다.",
-      });
+      const err = new Error("루틴을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 조회수 증가
@@ -152,21 +144,15 @@ const getRoutineById = async (req, res) => {
       communityPosts: communityPosts,
     };
 
-    res.json({
-      success: true,
-      data: response,
-    });
+    return res.success(response);
   } catch (error) {
     console.error("Error getting routine:", error);
-    res.status(500).json({
-      success: false,
-      message: "루틴 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // 루틴 신청하기
-const applyToRoutine = async (req, res) => {
+const applyToRoutine = async (req, res, next) => {
   try {
     const {routineId} = req.params;
     const {
@@ -181,18 +167,16 @@ const applyToRoutine = async (req, res) => {
     // 루틴 정보 조회
     const routine = await firestoreService.getDocument("routines", routineId);
     if (!routine) {
-      return res.status(404).json({
-        success: false,
-        message: "루틴을 찾을 수 없습니다.",
-      });
+      const err = new Error("루틴을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 재고 확인
     if (routine.stockCount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "루틴이 품절되었습니다.",
-      });
+      const err = new Error("루틴이 품절되었습니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const applicationData = {
@@ -221,40 +205,35 @@ const applyToRoutine = async (req, res) => {
       updatedAt: Date.now(),
     });
 
-    res.status(201).json({
-      success: true,
-      data: {
-        applicationId,
-        type: "ROUTINE",
-        targetId: routineId,
-        userId,
-        status: "PENDING",
-        selectedVariant,
-        quantity,
-        customFieldsResponse,
-        appliedAt: applicationData.appliedAt,
-        targetName: routine.name,
-        targetPrice: routine.price,
-      },
-      message: "루틴 신청이 완료되었습니다.",
+    return res.created({
+      applicationId,
+      type: "ROUTINE",
+      targetId: routineId,
+      userId,
+      status: "PENDING",
+      selectedVariant,
+      quantity,
+      customFieldsResponse,
+      appliedAt: applicationData.appliedAt,
+      targetName: routine.name,
+      targetPrice: routine.price,
     });
   } catch (error) {
     console.error("Error applying to routine:", error);
-    res.status(500).json({
-      success: false,
-      message: "루틴 신청 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // QnA 질문 작성
-const createQnA = async (req, res) => {
+const createQnA = async (req, res, next) => {
   try {
     const {routineId} = req.params;
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("질문 내용이 필요합니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
@@ -303,7 +282,7 @@ const createQnA = async (req, res) => {
 
     const qnaId = await firestoreService.addDocument("qnas", qnaData);
 
-    res.status(201).json({
+    return res.created({
       qnaId,
       routineId,
       userId: qnaData.userId,
@@ -316,24 +295,28 @@ const createQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA:", error);
-    res.status(500).json({error: "Failed to create QnA"});
+    return next(error);
   }
 };
 
 // QnA 질문 수정
-const updateQnA = async (req, res) => {
+const updateQnA = async (req, res, next) => {
   try {
     const {routineId, qnaId} = req.params;
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("질문 내용이 필요합니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
@@ -376,7 +359,7 @@ const updateQnA = async (req, res) => {
 
     await firestoreService.updateDocument("qnas", qnaId, updatedData);
 
-    res.json({
+    return res.success({
       qnaId,
       routineId,
       userId: qna.userId,
@@ -389,24 +372,28 @@ const updateQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating QnA:", error);
-    res.status(500).json({error: "Failed to update QnA"});
+    return next(error);
   }
 };
 
 // QnA 답변 작성
-const createQnAAnswer = async (req, res) => {
+const createQnAAnswer = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
     const {content = [], media = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("답변 내용이 필요합니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     const updatedData = {
@@ -419,7 +406,7 @@ const createQnAAnswer = async (req, res) => {
 
     await firestoreService.updateDocument("qnas", qnaId, updatedData);
 
-    res.json({
+    return res.success({
       qnaId,
       content: qna.content,
       media: qna.media || [],
@@ -432,22 +419,21 @@ const createQnAAnswer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA answer:", error);
-    res.status(500).json({error: "Failed to create QnA answer"});
+    return next(error);
   }
 };
 
 // QnA 좋아요 토글
-const toggleQnALike = async (req, res) => {
+const toggleQnALike = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({
-        success: false,
-        message: "QnA를 찾을 수 없습니다.",
-      });
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -492,47 +478,42 @@ const toggleQnALike = async (req, res) => {
     // 업데이트된 QnA 정보 조회
     const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
-    res.json({
-      success: true,
-      data: {
-        qnaId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedQna.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
+    return res.success({
+      qnaId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedQna.likesCount || 0,
     });
   } catch (error) {
     console.error("Error toggling QnA like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // QnA 삭제
-const deleteQnA = async (req, res) => {
+const deleteQnA = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+    return res.noContent();
   } catch (error) {
     console.error("Error deleting QnA:", error);
-    res.status(500).json({error: "Failed to delete QnA"});
+    return next(error);
   }
 };
 
 // 루틴 좋아요 토글
-const toggleRoutineLike = async (req, res) => {
+const toggleRoutineLike = async (req, res, next) => {
   try {
     const {routineId} = req.params;
 
@@ -540,10 +521,9 @@ const toggleRoutineLike = async (req, res) => {
     const routine = await firestoreService.getDocument("routines", routineId);
 
     if (!routine) {
-      return res.status(404).json({
-        success: false,
-        message: "루틴을 찾을 수 없습니다.",
-      });
+      const err = new Error("루틴을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -592,22 +572,15 @@ const toggleRoutineLike = async (req, res) => {
         routineId,
     );
 
-    res.json({
-      success: true,
-      data: {
-        routineId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedRoutine.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
+    return res.success({
+      routineId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedRoutine.likesCount || 0,
     });
   } catch (error) {
     console.error("Error toggling routine like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
