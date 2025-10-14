@@ -36,10 +36,9 @@ const createComment = async (req, res, next) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 게시글 존재 확인
@@ -48,10 +47,9 @@ const createComment = async (req, res, next) => {
         postId,
     );
     if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: "게시글을 찾을 수 없습니다.",
-      });
+      const err = new Error("게시글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 부모 댓글 확인 (대댓글인 경우)
@@ -63,20 +61,18 @@ const createComment = async (req, res, next) => {
           parentId,
       );
       if (!parentComment) {
-        return res.status(404).json({
-          success: false,
-          message: "부모 댓글을 찾을 수 없습니다.",
-        });
+        const err = new Error("부모 댓글을 찾을 수 없습니다");
+        err.code = "NOT_FOUND";
+        throw err;
       }
       depth = parentComment.depth + 1;
       isReply = true;
 
       // 대댓글은 1단계까지만 허용
       if (depth > 1) {
-        return res.status(400).json({
-          success: false,
-          message: "대댓글은 1단계까지만 작성할 수 있습니다.",
-        });
+        const err = new Error("대댓글은 1단계까지만 작성할 수 있습니다");
+        err.code = "BAD_REQUEST";
+        throw err;
       }
     }
 
@@ -184,10 +180,9 @@ const getComments = async (req, res, next) => {
         communityId,
     );
     if (!community) {
-      return res.status(404).json({
-        success: false,
-        message: "커뮤니티를 찾을 수 없습니다.",
-      });
+      const err = new Error("커뮤니티를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 게시글 존재 확인
@@ -196,10 +191,9 @@ const getComments = async (req, res, next) => {
         postId,
     );
     if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: "게시글을 찾을 수 없습니다.",
-      });
+      const err = new Error("게시글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 댓글 조회 (부모 댓글만 먼저 조회)
@@ -341,10 +335,9 @@ const updateComment = async (req, res, next) => {
 
     // 필수 필드 검증
     if (!content || content.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "댓글 내용은 필수입니다.",
-      });
+      const err = new Error("댓글 내용은 필수입니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // content 배열 검증
@@ -353,10 +346,9 @@ const updateComment = async (req, res, next) => {
           item.type === "text" && item.content && item.content.trim().length > 0,
     );
     if (!hasTextContent) {
-      return res.status(400).json({
-        success: false,
-        message: "댓글에 텍스트 내용이 필요합니다.",
-      });
+      const err = new Error("댓글에 텍스트 내용이 필요합니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // 사용자 인증 정보에서 유저 ID 추출
@@ -368,26 +360,23 @@ const updateComment = async (req, res, next) => {
         commentId,
     );
     if (!existingComment) {
-      return res.status(404).json({
-        success: false,
-        message: "댓글을 찾을 수 없습니다.",
-      });
+      const err = new Error("댓글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 삭제된 댓글인지 확인
     if (existingComment.deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "삭제된 댓글입니다.",
-      });
+      const err = new Error("삭제된 댓글입니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // 작성자 권한 확인
     if (existingComment.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "댓글을 수정할 권한이 없습니다.",
-      });
+      const err = new Error("댓글을 수정할 권한이 없습니다");
+      err.code = "FORBIDDEN";
+      throw err;
     }
 
     // content에서 미디어 추출하여 별도 mediaBlocks 배열 생성
@@ -471,26 +460,23 @@ const deleteComment = async (req, res, next) => {
         commentId,
     );
     if (!existingComment) {
-      return res.status(404).json({
-        success: false,
-        message: "댓글을 찾을 수 없습니다.",
-      });
+      const err = new Error("댓글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 삭제된 댓글인지 확인
     if (existingComment.deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "이미 삭제된 댓글입니다.",
-      });
+      const err = new Error("이미 삭제된 댓글입니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // 작성자 권한 확인
     if (existingComment.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "댓글을 삭제할 권한이 없습니다.",
-      });
+      const err = new Error("댓글을 삭제할 권한이 없습니다");
+      err.code = "FORBIDDEN";
+      throw err;
     }
 
     // 댓글 소프트 삭제 (실제로는 삭제하지 않고 deleted 플래그 설정)
@@ -545,18 +531,16 @@ const toggleCommentLike = async (req, res, next) => {
     // 댓글 조회
     const comment = await firestoreService.getDocument("comments", commentId);
     if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "댓글을 찾을 수 없습니다.",
-      });
+      const err = new Error("댓글을 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 삭제된 댓글인지 확인
     if (comment.deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "삭제된 댓글입니다.",
-      });
+      const err = new Error("삭제된 댓글입니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // 기존 좋아요 확인
