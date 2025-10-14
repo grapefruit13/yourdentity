@@ -58,8 +58,8 @@ const getGatheringById = async (req, res, next) => {
       throw err;
     }
 
-    // 조회수 증가 (원자적 업데이트)
-    await firestoreService.updateDocument("gatherings", gatheringId, {
+
+    firestoreService.updateDocument("gatherings", gatheringId, {
       viewCount: FieldValue.increment(1),
       updatedAt: new Date(),
     });
