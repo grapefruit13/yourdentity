@@ -9,7 +9,7 @@ import { ErrorResponse, Result } from "@/types/shared/response";
  * @returns React Query mutation 객체
  */
 export const useEmailLogin = () =>
-  useMutation<Result<UserCredential> | ErrorResponse, void, TLoginRequest>({
+  useMutation<Result<UserCredential>, ErrorResponse, TLoginRequest>({
     mutationFn: (request: TLoginRequest) =>
       signInWithEmail(request.email, request.password),
   });

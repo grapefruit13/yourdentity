@@ -53,25 +53,17 @@ const EmailLoginPage = () => {
       },
       {
         onSuccess: (result) => {
-          if (result.status === 200) {
-            debug.log("로그인 성공:", result); // 성공: Result 형태 { data, status }
-            router.push(LINK_URL.MISSION);
-          } else {
-            debug.error("로그인 실패:", result); // 실패: ErrorResponse 형태 { status, message }
-            setError("email", { message: (result as ErrorResponse).message });
-            setError("password", {
-              message: (result as ErrorResponse).message,
-            });
-            setAlertMessage(
-              (result as ErrorResponse).message ??
-                AUTH_MESSAGE.LOGIN.INVALID_CREDENTIALS
-            );
-            toggleAlertDialog();
-          }
+          debug.log("로그인 성공:", result); // 성공: Result 형태 { data, status }
+          router.push(LINK_URL.MISSION);
         },
         onError: (error) => {
           debug.error("로그인 실패:", error);
-          setAlertMessage(AUTH_MESSAGE.LOGIN.NETWORK_ERROR);
+          const message =
+            (error as ErrorResponse).message ??
+            AUTH_MESSAGE.LOGIN.INVALID_CREDENTIALS;
+          setError("email", { message });
+          setError("password", { message });
+          setAlertMessage(message);
           toggleAlertDialog();
         },
       }
