@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ExtendedRecordMap } from "notion-types";
+import type { ExtendedRecordMap } from "@/types/shared/notion-extended-record-map";
 import type {
   NotionBlock,
   NotionCollection,
