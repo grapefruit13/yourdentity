@@ -16,7 +16,10 @@ export const parseNotionData = (
     );
 
     if (!pageId) {
-      console.error("페이지 블록을 찾을 수 없습니다.");
+      // 개발 환경에서만 에러 로깅
+      if (process.env.NODE_ENV === "development") {
+        console.error("페이지 블록을 찾을 수 없습니다.");
+      }
       return null;
     }
 
@@ -131,7 +134,10 @@ export const parseNotionData = (
 
     return result as NotionPageData;
   } catch (error) {
-    console.error("Notion 데이터 파싱 실패:", error);
+    // 개발 환경에서만 에러 로깅
+    if (process.env.NODE_ENV === "development") {
+      console.error("Notion 데이터 파싱 실패:", error);
+    }
     return null;
   }
 };

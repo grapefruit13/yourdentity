@@ -1,6 +1,6 @@
 /**
- * @description Notion Property 매핑 상수
- * Notion API의 property 이름을 애플리케이션 데이터 키로 매핑
+ * @fileoverview Notion Property 매핑 상수
+ * @description Notion API의 property 이름을 애플리케이션 데이터 키로 매핑
  */
 
 export type PropertyType = "text" | "number" | "checkbox" | "tags" | "image";
@@ -18,6 +18,7 @@ export interface PropertyMapping {
 
 /**
  * @description Notion Property 매핑 설정
+ * @constant {PropertyMapping[]} NOTION_PROPERTY_MAPPINGS
  * 새로운 필드를 추가하거나 Notion property 이름이 변경될 때 여기만 수정하면 됩니다.
  */
 export const NOTION_PROPERTY_MAPPINGS: PropertyMapping[] = [

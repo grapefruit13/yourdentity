@@ -19,6 +19,8 @@ export const RoutineDetailPage = ({ data }: RoutineDetailPageProps) => {
             src={data.detailImage}
             alt={data.title}
             className="h-auto w-full object-cover"
+            loading="lazy"
+            decoding="async"
           />
         </div>
       )}
@@ -41,6 +43,7 @@ export const RoutineDetailPage = ({ data }: RoutineDetailPageProps) => {
               alt={`${data.title} 대표 이미지`}
               className="h-auto w-full object-cover"
               loading="lazy"
+              decoding="async"
             />
           </div>
         )}

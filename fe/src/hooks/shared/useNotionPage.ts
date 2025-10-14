@@ -54,8 +54,6 @@ export const useNotionPage = ({
         setIsLoading(true);
         setError(null);
 
-        console.log("Notion 페이지 로딩 시작:", pageId);
-
         // TODO: BE에서 Notion API 구현 후 실제 엔드포인트로 변경 필요
         // 임시 엔드포인트: /api/notion/pages/:pageId
         const response = await get<NotionApiResponse>(
@@ -68,11 +66,12 @@ export const useNotionPage = ({
             response.data.error || "올바른 데이터를 받지 못했습니다."
           );
         }
-
-        console.log("Notion 페이지 로딩 성공:", response.data.data);
         setData(response.data.data);
       } catch (err) {
-        console.error("Notion 페이지 로드 실패:", err);
+        // 에러 로깅은 개발 환경에서만
+        if (process.env.NODE_ENV === "development") {
+          console.error("Notion 페이지 로드 실패:", err);
+        }
 
         // AxiosError 처리
         if (err instanceof AxiosError) {

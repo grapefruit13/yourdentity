@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   HomeContentData,
@@ -15,10 +16,14 @@ interface HomeContentProps {
  * @description 홈 컨텐츠 렌더링 컴포넌트
  */
 export const HomeContent = ({ data }: HomeContentProps) => {
-  // 섹션을 순서대로 정렬
-  const sortedSections = [...data.sections]
-    .filter((section) => section.isActive)
-    .sort((a, b) => a.order - b.order);
+  // 섹션을 순서대로 정렬 (성능 최적화)
+  const sortedSections = useMemo(
+    () =>
+      [...data.sections]
+        .filter((section) => section.isActive)
+        .sort((a, b) => a.order - b.order),
+    [data.sections]
+  );
 
   const renderBannerItem = (item: BannerItem) => {
     const ImageComponent = (
@@ -28,6 +33,7 @@ export const HomeContent = ({ data }: HomeContentProps) => {
           alt={item.title || "배너 이미지"}
           className="h-auto w-full"
           loading="lazy"
+          decoding="async"
         />
       </div>
     );
