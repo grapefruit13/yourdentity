@@ -3,7 +3,7 @@ const firestoreService = new FirestoreService("tmis");
 const {FieldValue} = require("firebase-admin/firestore");
 
 // TMI 프로젝트 목록 조회 (신청/진행/종료 모두 포함) - 페이지네이션 지원
-const getAllTmiProjects = async (req, res) => {
+const getAllTmiProjects = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 0;
     const size = parseInt(req.query.size) || 10;
@@ -36,31 +36,23 @@ const getAllTmiProjects = async (req, res) => {
       }));
     }
 
-    res.json({
-      success: true,
-      data: result.content || [],
-      pagination: result.pageable || {},
-    });
+    return res.paginate(result.content || [], result.pageable || {});
   } catch (error) {
     console.error("Error getting TMI projects:", error);
-    res.status(500).json({
-      success: false,
-      message: "TMI 프로젝트 목록 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // TMI 프로젝트 상세 조회 (신청페이지 전용)
-const getTmiProjectById = async (req, res) => {
+const getTmiProjectById = async (req, res, next) => {
   try {
     const {projectId} = req.params;
     const project = await firestoreService.getDocument("tmis", projectId);
 
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "TMI 프로젝트를 찾을 수 없습니다.",
-      });
+      const err = new Error("TMI 프로젝트를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 조회수 증가 (원자적 업데이트)
@@ -157,21 +149,15 @@ const getTmiProjectById = async (req, res) => {
       communityPosts: communityPosts,
     };
 
-    res.json({
-      success: true,
-      data: response,
-    });
+    return res.success(response);
   } catch (error) {
     console.error("Error getting TMI project:", error);
-    res.status(500).json({
-      success: false,
-      message: "TMI 프로젝트 조회 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // TMI 프로젝트 신청하기
-const applyToTmiProject = async (req, res) => {
+const applyToTmiProject = async (req, res, next) => {
   try {
     const {projectId} = req.params;
     const {
@@ -186,18 +172,16 @@ const applyToTmiProject = async (req, res) => {
     // TMI 프로젝트 정보 조회
     const project = await firestoreService.getDocument("tmis", projectId);
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "TMI 프로젝트를 찾을 수 없습니다.",
-      });
+      const err = new Error("TMI 프로젝트를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 재고 확인
     if (project.stockCount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "TMI 프로젝트가 품절되었습니다.",
-      });
+      const err = new Error("TMI 프로젝트가 품절되었습니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const applicationData = {
@@ -226,40 +210,35 @@ const applyToTmiProject = async (req, res) => {
       updatedAt: new Date(),
     });
 
-    res.status(201).json({
-      success: true,
-      data: {
-        applicationId,
-        type: "TMI",
-        targetId: projectId,
-        userId,
-        status: "PENDING",
-        selectedVariant,
-        quantity,
-        customFieldsResponse,
-        appliedAt: applicationData.appliedAt,
-        targetName: project.name,
-        targetPrice: project.price,
-      },
-      message: "TMI 프로젝트 신청이 완료되었습니다.",
+    return res.created({
+      applicationId,
+      type: "TMI",
+      targetId: projectId,
+      userId,
+      status: "PENDING",
+      selectedVariant,
+      quantity,
+      customFieldsResponse,
+      appliedAt: applicationData.appliedAt,
+      targetName: project.name,
+      targetPrice: project.price,
     });
   } catch (error) {
     console.error("Error applying to TMI project:", error);
-    res.status(500).json({
-      success: false,
-      message: "TMI 프로젝트 신청 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // QnA 질문 작성
-const createQnA = async (req, res) => {
+const createQnA = async (req, res, next) => {
   try {
     const {projectId} = req.params;
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("질문 내용이 필요합니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
@@ -308,7 +287,7 @@ const createQnA = async (req, res) => {
 
     const qnaId = await firestoreService.addDocument("qnas", qnaData);
 
-    res.status(201).json({
+    return res.created({
       qnaId,
       projectId,
       userId: qnaData.userId,
@@ -321,24 +300,28 @@ const createQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating QnA:", error);
-    res.status(500).json({error: "Failed to create QnA"});
+    return next(error);
   }
 };
 
 // QnA 질문 수정
-const updateQnA = async (req, res) => {
+const updateQnA = async (req, res, next) => {
   try {
     const {projectId, qnaId} = req.params;
     const {content = []} = req.body;
 
     if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
+      const err = new Error("질문 내용이 필요합니다");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // content 배열에서 미디어만 분리 (content는 그대로 유지)
@@ -381,7 +364,7 @@ const updateQnA = async (req, res) => {
 
     await firestoreService.updateDocument("qnas", qnaId, updatedData);
 
-    res.json({
+    return res.success({
       qnaId,
       projectId,
       userId: qna.userId,
@@ -394,65 +377,22 @@ const updateQnA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating QnA:", error);
-    res.status(500).json({error: "Failed to update QnA"});
+    return next(error);
   }
 };
 
-// QnA 답변 작성
-const createQnAAnswer = async (req, res) => {
-  try {
-    const {qnaId} = req.params;
-    const {content = [], media = []} = req.body;
-
-    if (!content || content.length === 0) {
-      return res.status(400).json({error: "content is required"});
-    }
-
-    const qna = await firestoreService.getDocument("qnas", qnaId);
-
-    if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
-    }
-
-    const updatedData = {
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: req.user.uid,
-      answerCreatedAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await firestoreService.updateDocument("qnas", qnaId, updatedData);
-
-    res.json({
-      qnaId,
-      content: qna.content,
-      media: qna.media || [],
-      answerContent: content,
-      answerMedia: media,
-      answerUserId: updatedData.answerUserId,
-      likesCount: qna.likesCount || 0,
-      createdAt: qna.createdAt,
-      answerCreatedAt: updatedData.answerCreatedAt,
-    });
-  } catch (error) {
-    console.error("Error creating QnA answer:", error);
-    res.status(500).json({error: "Failed to create QnA answer"});
-  }
-};
 
 // QnA 좋아요 토글
-const toggleQnALike = async (req, res) => {
+const toggleQnALike = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({
-        success: false,
-        message: "QnA를 찾을 수 없습니다.",
-      });
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -497,47 +437,42 @@ const toggleQnALike = async (req, res) => {
     // 업데이트된 QnA 정보 조회
     const updatedQna = await firestoreService.getDocument("qnas", qnaId);
 
-    res.json({
-      success: true,
-      data: {
-        qnaId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedQna.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
+    return res.success({
+      qnaId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedQna.likesCount || 0,
     });
   } catch (error) {
     console.error("Error toggling QnA like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
 // QnA 삭제
-const deleteQnA = async (req, res) => {
+const deleteQnA = async (req, res, next) => {
   try {
     const {qnaId} = req.params;
 
     const qna = await firestoreService.getDocument("qnas", qnaId);
 
     if (!qna) {
-      return res.status(404).json({error: "QnA not found"});
+      const err = new Error("Q&A를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     await firestoreService.deleteDocument("qnas", qnaId);
 
-    res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+    return res.noContent();
   } catch (error) {
     console.error("Error deleting QnA:", error);
-    res.status(500).json({error: "Failed to delete QnA"});
+    return next(error);
   }
 };
 
 // TMI 프로젝트 좋아요 토글
-const toggleTmiProjectLike = async (req, res) => {
+const toggleTmiProjectLike = async (req, res, next) => {
   try {
     const {projectId} = req.params;
 
@@ -545,10 +480,9 @@ const toggleTmiProjectLike = async (req, res) => {
     const project = await firestoreService.getDocument("tmis", projectId);
 
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "TMI 프로젝트를 찾을 수 없습니다.",
-      });
+      const err = new Error("TMI 프로젝트를 찾을 수 없습니다");
+      err.code = "NOT_FOUND";
+      throw err;
     }
 
     // 기존 좋아요 확인
@@ -594,22 +528,15 @@ const toggleTmiProjectLike = async (req, res) => {
     // 업데이트된 프로젝트 정보 조회
     const updatedProject = await firestoreService.getDocument("tmis", projectId);
 
-    res.json({
-      success: true,
-      data: {
-        projectId,
-        userId: req.user.uid,
-        isLiked,
-        likeCount: updatedProject.likesCount || 0,
-      },
-      message: isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
+    return res.success({
+      projectId,
+      userId: req.user.uid,
+      isLiked,
+      likeCount: updatedProject.likesCount || 0,
     });
   } catch (error) {
     console.error("Error toggling TMI project like:", error);
-    res.status(500).json({
-      success: false,
-      message: "좋아요 처리 중 오류가 발생했습니다.",
-    });
+    return next(error);
   }
 };
 
@@ -619,7 +546,6 @@ module.exports = {
   applyToTmiProject,
   createQnA,
   updateQnA,
-  createQnAAnswer,
   toggleQnALike,
   deleteQnA,
   toggleTmiProjectLike,

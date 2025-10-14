@@ -289,9 +289,9 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: array
  *                   items:
@@ -325,6 +325,17 @@ const authGuard = require("../middleware/authGuard");
  *                       example: true
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/", tmiController.getAllTmiProjects);
 
@@ -351,9 +362,9 @@ router.get("/", tmiController.getAllTmiProjects);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -547,8 +558,30 @@ router.get("/", tmiController.getAllTmiProjects);
  *                       example: []
  *       404:
  *         description: TMI 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "TMI 프로젝트를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:projectId", tmiController.getTmiProjectById);
 
@@ -600,9 +633,9 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 data:
  *                   type: object
  *                   properties:
@@ -618,15 +651,45 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *                     status:
  *                       type: string
  *                       example: "PENDING"
- *                 message:
- *                   type: string
- *                   example: "TMI 프로젝트 신청이 완료되었습니다."
  *       400:
  *         description: 잘못된 요청 또는 품절
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "TMI 프로젝트가 품절되었습니다"
  *       404:
  *         description: TMI 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "TMI 프로젝트를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:projectId/apply", authGuard, tmiController.applyToTmiProject);
 
@@ -653,9 +716,9 @@ router.post("/:projectId/apply", authGuard, tmiController.applyToTmiProject);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -669,13 +732,32 @@ router.post("/:projectId/apply", authGuard, tmiController.applyToTmiProject);
  *                     likeCount:
  *                       type: integer
  *                       example: 5
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: TMI 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "TMI 프로젝트를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:projectId/like", authGuard, tmiController.toggleTmiProjectLike);
 
@@ -735,26 +817,75 @@ router.post("/:projectId/like", authGuard, tmiController.toggleTmiProjectLike);
  *             schema:
  *               type: object
  *               properties:
- *                 qnaId:
- *                   type: string
- *                 projectId:
- *                   type: string
- *                 userId:
- *                   type: string
- *                 content:
- *                   type: array
- *                 media:
- *                   type: array
- *                 likesCount:
+ *                 status:
  *                   type: integer
- *                   example: 0
- *                 createdAt:
- *                   type: string
- *                   format: date-time
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       example: "qna_123"
+ *                     projectId:
+ *                       type: string
+ *                       example: "tmi_123"
+ *                     userId:
+ *                       type: string
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       items:
+ *                         type: object
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       items:
+ *                         type: object
+ *                     likesCount:
+ *                       type: integer
+ *                       example: 0
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-01T00:00:00.000Z"
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "질문 내용이 필요합니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:projectId/qna", authGuard, tmiController.createQnA);
 
@@ -815,52 +946,83 @@ router.post("/:projectId/qna", authGuard, tmiController.createQnA);
  *     responses:
  *       200:
  *         description: Q&A 질문 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qnaId:
+ *                       type: string
+ *                       example: "qna_123"
+ *                     projectId:
+ *                       type: string
+ *                       example: "tmi_123"
+ *                     userId:
+ *                       type: string
+ *                       example: "user_123"
+ *                     content:
+ *                       type: array
+ *                       description: 수정된 질문 내용
+ *                       items:
+ *                         type: object
+ *                     media:
+ *                       type: array
+ *                       description: 미디어 파일
+ *                       items:
+ *                         type: object
+ *                     answerContent:
+ *                       type: array
+ *                       nullable: true
+ *                       description: 답변 내용
+ *                       items:
+ *                         type: object
+ *                     answerMedia:
+ *                       type: array
+ *                       description: 답변 미디어
+ *                       items:
+ *                         type: object
+ *                     likesCount:
+ *                       type: integer
+ *                       example: 0
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-01T00:00:00.000Z"
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.put("/:projectId/qna/:qnaId", authGuard, tmiController.updateQnA);
 
-// TMI 프로젝트 QnA 답변 작성
-/**
- * @swagger
- * /tmis/qna/{qnaId}/answer:
- *   post:
- *     tags: [TMI]
- *     summary: TMI 프로젝트 Q&A 답변 작성
- *     description: 특정 Q&A에 답변 작성
- *     parameters:
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: array
- *                 description: 답변 내용
- *               media:
- *                 type: array
- *                 description: 답변 미디어
- *     responses:
- *       200:
- *         description: Q&A 답변 작성 성공
- *       404:
- *         description: Q&A를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.post("/qna/:qnaId/answer", authGuard, tmiController.createQnAAnswer);
 
 // TMI 프로젝트 QnA 좋아요 토글
 /**
@@ -885,9 +1047,9 @@ router.post("/qna/:qnaId/answer", authGuard, tmiController.createQnAAnswer);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -901,13 +1063,32 @@ router.post("/qna/:qnaId/answer", authGuard, tmiController.createQnAAnswer);
  *                     likeCount:
  *                       type: integer
  *                       example: 3
- *                 message:
- *                   type: string
- *                   example: "좋아요를 추가했습니다."
  *       404:
  *         description: Q&A를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.post("/qna/:qnaId/like", authGuard, tmiController.toggleQnALike);
 
@@ -927,20 +1108,34 @@ router.post("/qna/:qnaId/like", authGuard, tmiController.toggleQnALike);
  *           type: string
  *         description: Q&A ID
  *     responses:
- *       200:
+ *       204:
  *         description: Q&A 삭제 성공
+ *       404:
+ *         description: Q&A를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "QnA가 성공적으로 삭제되었습니다"
- *       404:
- *         description: Q&A를 찾을 수 없음
+ *                   example: "Q&A를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/qna/:qnaId", tmiController.deleteQnA);
 
