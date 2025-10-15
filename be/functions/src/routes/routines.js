@@ -1031,6 +1031,19 @@ router.post("/qna/:qnaId/like", authGuard, routineController.toggleQnALike);
  *     responses:
  *       204:
  *         description: Q&A 삭제 성공
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 403
+ *                 message:
+ *                   type: string
+ *                   example: "Q&A 삭제 권한이 없습니다"
  *       404:
  *         description: Q&A를 찾을 수 없음
  *         content:

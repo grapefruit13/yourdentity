@@ -151,8 +151,9 @@ class StoreController {
   async deleteProductQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
+      const userId = req.user.uid;
 
-      await storeService.deleteProductQnA(qnaId);
+      await storeService.deleteProductQnA(qnaId, userId);
       return res.noContent();
     } catch (error) {
       return next(error);

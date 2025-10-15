@@ -128,8 +128,9 @@ class GatheringController {
   async deleteQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
+      const userId = req.user.uid;
 
-      await gatheringService.deleteQnA(qnaId);
+      await gatheringService.deleteQnA(qnaId, userId);
       return res.noContent();
     } catch (error) {
       return next(error);

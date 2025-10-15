@@ -187,8 +187,9 @@ class CommunityController {
   async deletePost(req, res, next) {
     try {
       const {communityId, postId} = req.params;
+      const userId = req.user.uid;
 
-      await communityService.deletePost(communityId, postId);
+      await communityService.deletePost(communityId, postId, userId);
       return res.noContent();
     } catch (error) {
       return next(error);

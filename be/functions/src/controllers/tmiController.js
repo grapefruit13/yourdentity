@@ -129,8 +129,9 @@ class TmiController {
   async deleteQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
+      const userId = req.user.uid;
 
-      await tmiService.deleteQnA(qnaId);
+      await tmiService.deleteQnA(qnaId, userId);
       return res.noContent();
     } catch (error) {
       return next(error);

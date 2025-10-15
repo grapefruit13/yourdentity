@@ -331,14 +331,22 @@ class CommentService {
   /**
    * 댓글 삭제
    * @param {string} commentId - 댓글 ID
+   * @param {string} userId - 사용자 ID (소유권 검증용)
    * @return {Promise<void>}
    */
-  async deleteComment(commentId) {
+  async deleteComment(commentId, userId) {
     try {
       const comment = await this.firestoreService.getDocument("comments", commentId);
       if (!comment) {
         const error = new Error("댓글을 찾을 수 없습니다.");
         error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 소유권 검증
+      if (comment.userId !== userId) {
+        const error = new Error("댓글 삭제 권한이 없습니다");
+        error.code = "FORBIDDEN";
         throw error;
       }
 
@@ -368,7 +376,7 @@ class CommentService {
       );
     } catch (error) {
       console.error("Delete comment error:", error.message);
-      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND") {
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to delete comment");

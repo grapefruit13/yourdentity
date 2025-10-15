@@ -547,9 +547,10 @@ class CommunityService {
    * 게시글 삭제
    * @param {string} communityId - 커뮤니티 ID
    * @param {string} postId - 게시글 ID
+   * @param {string} userId 
    * @return {Promise<void>}
    */
-  async deletePost(communityId, postId) {
+  async deletePost(communityId, postId, userId) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       const post = await postsService.getById(postId);
@@ -560,10 +561,16 @@ class CommunityService {
         throw error;
       }
 
+      if (post.authorId !== userId) {
+        const error = new Error("게시글 삭제 권한이 없습니다");
+        error.code = "FORBIDDEN";
+        throw error;
+      }
+
       await postsService.delete(postId);
     } catch (error) {
       console.error("Delete post error:", error.message);
-      if (error.code === "NOT_FOUND") {
+      if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to delete post");
