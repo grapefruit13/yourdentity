@@ -46,6 +46,10 @@ const options = {
         name: "FAQs",
         description: "FAQ 관련 API",
       },
+      {
+        name: "FCM",
+        description: "FCM 푸시 알림 토큰 관리 API",
+      },
     ],
     servers: [
       {
@@ -1923,6 +1927,105 @@ const options = {
                   example: "2024-01-01T00:00:00.000Z",
                 },
               },
+            },
+          },
+        },
+        FCMToken: {
+          type: "object",
+          required: ["userId", "token"],
+          properties: {
+            userId: {
+              type: "string",
+              description: "사용자 ID",
+              example: "user_123",
+            },
+            token: {
+              type: "string",
+              description: "FCM 토큰",
+              example: "fcm_token_example_123456789",
+            },
+            deviceInfo: {
+              type: "string",
+              description: "디바이스 정보 (브라우저 userAgent, 모바일 deviceId 등)",
+              example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+            deviceType: {
+              type: "string",
+              enum: ["pwa", "mobile", "web"],
+              description: "디바이스 타입",
+              default: "pwa",
+              example: "pwa",
+            },
+          },
+        },
+        FCMTokenResponse: {
+          type: "object",
+          properties: {
+            deviceId: {
+              type: "string",
+              description: "디바이스 ID",
+              example: "device_abc123def456",
+            },
+            message: {
+              type: "string",
+              description: "응답 메시지",
+              example: "토큰 저장 완료",
+            },
+          },
+        },
+        FCMTokenListResponse: {
+          type: "object",
+          properties: {
+            tokens: {
+              type: "array",
+              description: "FCM 토큰 목록",
+              items: {
+                type: "object",
+                properties: {
+                  id: {
+                    type: "string",
+                    description: "토큰 ID",
+                    example: "token_abc123",
+                  },
+                  token: {
+                    type: "string",
+                    description: "FCM 토큰",
+                    example: "fcm_token_example_123456789",
+                  },
+                  deviceType: {
+                    type: "string",
+                    description: "디바이스 타입",
+                    example: "pwa",
+                  },
+                  deviceInfo: {
+                    type: "string",
+                    description: "디바이스 정보",
+                    example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                  },
+                  lastUsed: {
+                    type: "string",
+                    format: "date-time",
+                    description: "마지막 사용 시간",
+                    example: "2024-01-01T00:00:00.000Z",
+                  },
+                  createdAt: {
+                    type: "string",
+                    format: "date-time",
+                    description: "생성 시간",
+                    example: "2024-01-01T00:00:00.000Z",
+                  },
+                },
+              },
+            },
+          },
+        },
+        FCMDeleteResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              description: "삭제 결과 메시지",
+              example: "토큰이 삭제되었습니다.",
             },
           },
         },
