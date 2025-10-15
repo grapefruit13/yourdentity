@@ -4,13 +4,7 @@ const { db, FieldValue } = require("../config/database");
 
 
 class NotionUserService {
-  // constructor() {
-  //   this.notion = new Client({
-  //     auth: process.env.NOTION_API_KEY,
-  //   });
-    
-  //   this.notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
-  // }
+
   constructor() {
     const {
       NOTION_API_KEY,
@@ -33,21 +27,6 @@ class NotionUserService {
   }
 
 
-//   async archiveNotionPage(pageId, notionToken) {
-//   const url = `https://api.notion.com/v1/pages/${pageId}`;
-//   const res = await fetch(url, {
-//     method: 'PATCH',
-//     headers: {
-//       'Authorization': `Bearer ${notionToken}`,
-//       'Notion-Version': '2022-06-28',
-//       'Content-Type': 'application/json'
-//     },
-//     body: JSON.stringify({ archived: true })
-//   });
-
-//   const data = await res.json();
-//   console.log(`페이지 아카이브 완료: ${pageId}`, data);
-// }
 
 
   /**
