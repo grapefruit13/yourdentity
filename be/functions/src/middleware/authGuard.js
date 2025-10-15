@@ -13,6 +13,11 @@ if (!admin.apps.length) {
  * @param {Function} next - Express next function
  */
 const authGuard = async (req, res, next) => {
+  // CORS preflight (OPTIONS) 요청은 토큰 검증 없이 통과
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   try {
     const authHeader = req.headers.authorization;
 
