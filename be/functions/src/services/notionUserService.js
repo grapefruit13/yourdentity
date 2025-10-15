@@ -162,6 +162,7 @@ async getNotionUsers(databaseId) {
         start_cursor: startCursor,
       }),
     });
+    
 
     if (!res.ok) {
             const text = await res.text();
