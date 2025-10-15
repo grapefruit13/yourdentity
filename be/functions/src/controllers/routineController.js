@@ -8,24 +8,17 @@ class RoutineController {
    * 루틴 목록 조회 (페이지네이션 지원)
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async getAllRoutines(req, res) {
+  async getAllRoutines(req, res, next) {
     try {
       const page = parseInt(req.query.page) || 0;
       const size = parseInt(req.query.size) || 10;
 
       const result = await routineService.getAllRoutines({page, size});
-      res.json({
-        success: true,
-        data: result.content,
-        pagination: result.pagination,
-      });
+      return res.paginate(result.content, result.pagination);
     } catch (error) {
-      console.error("Get all routines error:", error);
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "루틴 목록 조회 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -33,28 +26,15 @@ class RoutineController {
    * 루틴 상세 조회
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async getRoutineById(req, res) {
+  async getRoutineById(req, res, next) {
     try {
       const {routineId} = req.params;
       const routine = await routineService.getRoutineById(routineId);
-
-      res.json({
-        success: true,
-        data: routine,
-      });
+      return res.success(routine);
     } catch (error) {
-      console.error("Get routine by ID error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "루틴을 찾을 수 없습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "루틴 조회 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -62,38 +42,18 @@ class RoutineController {
    * 루틴 신청하기
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async applyToRoutine(req, res) {
+  async applyToRoutine(req, res, next) {
     try {
       const {routineId} = req.params;
       const {uid: userId} = req.user;
       const applicationData = req.body;
 
       const result = await routineService.applyToRoutine(routineId, userId, applicationData);
-
-      res.status(201).json({
-        success: true,
-        data: result,
-        message: "루틴 신청이 완료되었습니다.",
-      });
+      return res.created(result);
     } catch (error) {
-      console.error("Apply to routine error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "루틴을 찾을 수 없습니다.",
-        });
-      }
-      if (error.code === "OUT_OF_STOCK") {
-        return res.status(400).json({
-          success: false,
-          message: "루틴이 품절되었습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "루틴 신청 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -101,22 +61,22 @@ class RoutineController {
    * QnA 질문 작성
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async createQnA(req, res) {
+  async createQnA(req, res, next) {
     try {
       const {routineId} = req.params;
       const {content} = req.body;
       const {uid: userId} = req.user;
 
-      const result = await routineService.createQnA(routineId, userId, content);
-
-      res.status(201).json(result);
-    } catch (error) {
-      console.error("Create QnA error:", error);
-      if (error.code === "BAD_REQUEST") {
-        return res.status(400).json({error: "content is required"});
+      if (!content) {
+        return res.error(400, "content is required");
       }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to create QnA"});
+
+      const result = await routineService.createQnA(routineId, userId, content);
+      return res.created(result);
+    } catch (error) {
+      return next(error);
     }
   }
 
@@ -124,82 +84,41 @@ class RoutineController {
    * QnA 질문 수정
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async updateQnA(req, res) {
+  async updateQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
       const {content} = req.body;
+      const userId = req.user.uid;
 
-      const result = await routineService.updateQnA(qnaId, content);
+      if (!content) {
+        return res.error(400, "content is required");
+      }
 
-      res.json(result);
+      const result = await routineService.updateQnA(qnaId, content, userId);
+      return res.success(result);
     } catch (error) {
-      console.error("Update QnA error:", error);
-      if (error.code === "BAD_REQUEST") {
-        return res.status(400).json({error: "content is required"});
-      }
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({error: "QnA not found"});
-      }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to update QnA"});
+      return next(error);
     }
   }
 
-  /**
-   * QnA 답변 작성
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   */
-  async createQnAAnswer(req, res) {
-    try {
-      const {qnaId} = req.params;
-      const {content, media = []} = req.body;
-      const {uid: userId} = req.user;
-
-      const result = await routineService.createQnAAnswer(qnaId, userId, content, media);
-
-      res.json(result);
-    } catch (error) {
-      console.error("Create QnA answer error:", error);
-      if (error.code === "BAD_REQUEST") {
-        return res.status(400).json({error: "content is required"});
-      }
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({error: "QnA not found"});
-      }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to create QnA answer"});
-    }
-  }
 
   /**
    * QnA 좋아요 토글
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async toggleQnALike(req, res) {
+  async toggleQnALike(req, res, next) {
     try {
       const {qnaId} = req.params;
       const {uid: userId} = req.user;
 
       const result = await routineService.toggleQnALike(qnaId, userId);
-
-      res.json({
-        success: true,
-        data: result,
-        message: result.isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
-      });
+      return res.success(result);
     } catch (error) {
-      console.error("Toggle QnA like error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "QnA를 찾을 수 없습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "좋아요 처리 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -207,20 +126,17 @@ class RoutineController {
    * QnA 삭제
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async deleteQnA(req, res) {
+  async deleteQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
+      const userId = req.user.uid;
 
-      await routineService.deleteQnA(qnaId);
-
-      res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+      await routineService.deleteQnA(qnaId, userId);
+      return res.noContent();
     } catch (error) {
-      console.error("Delete QnA error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({error: "QnA not found"});
-      }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to delete QnA"});
+      return next(error);
     }
   }
 
@@ -228,31 +144,17 @@ class RoutineController {
    * 루틴 좋아요 토글
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async toggleRoutineLike(req, res) {
+  async toggleRoutineLike(req, res, next) {
     try {
       const {routineId} = req.params;
       const {uid: userId} = req.user;
 
       const result = await routineService.toggleRoutineLike(routineId, userId);
-
-      res.json({
-        success: true,
-        data: result,
-        message: result.isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
-      });
+      return res.success(result);
     } catch (error) {
-      console.error("Toggle routine like error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "루틴을 찾을 수 없습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "좋아요 처리 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 }

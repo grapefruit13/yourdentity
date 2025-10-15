@@ -338,9 +338,10 @@ class GatheringService {
    * QnA 질문 수정
    * @param {string} qnaId - QnA ID
    * @param {Array} content - 수정할 내용
+   * @param {string} userId - 사용자 ID (소유권 검증용)
    * @return {Promise<Object>} 수정된 QnA
    */
-  async updateQnA(qnaId, content) {
+  async updateQnA(qnaId, content, userId) {
     try {
       if (!content || content.length === 0) {
         const error = new Error("Content is required");
@@ -352,6 +353,13 @@ class GatheringService {
       if (!qna) {
         const error = new Error("QnA not found");
         error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 소유권 검증
+      if (qna.userId !== userId) {
+        const error = new Error("QnA 수정 권한이 없습니다");
+        error.code = "FORBIDDEN";
         throw error;
       }
 
@@ -406,7 +414,7 @@ class GatheringService {
       };
     } catch (error) {
       console.error("Update QnA error:", error.message);
-      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND") {
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to update QnA");
@@ -542,9 +550,10 @@ class GatheringService {
   /**
    * QnA 삭제
    * @param {string} qnaId - QnA ID
+   * @param {string} userId - 사용자 ID (소유권 검증용)
    * @return {Promise<void>}
    */
-  async deleteQnA(qnaId) {
+  async deleteQnA(qnaId, userId) {
     try {
       const qna = await this.firestoreService.getDocument("qnas", qnaId);
       if (!qna) {
@@ -553,10 +562,17 @@ class GatheringService {
         throw error;
       }
 
+      // 소유권 검증
+      if (qna.userId !== userId) {
+        const error = new Error("QnA 삭제 권한이 없습니다");
+        error.code = "FORBIDDEN";
+        throw error;
+      }
+
       await this.firestoreService.deleteDocument("qnas", qnaId);
     } catch (error) {
       console.error("Delete QnA error:", error.message);
-      if (error.code === "NOT_FOUND") {
+      if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to delete QnA");

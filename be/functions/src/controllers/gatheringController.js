@@ -8,25 +8,17 @@ class GatheringController {
    * 소모임 목록 조회 (페이지네이션 지원)
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async getAllGatherings(req, res) {
+  async getAllGatherings(req, res, next) {
     try {
       const page = parseInt(req.query.page) || 0;
       const size = parseInt(req.query.size) || 10;
 
       const result = await gatheringService.getAllGatherings({page, size});
-
-      res.json({
-        success: true,
-        data: result.content,
-        pagination: result.pagination,
-      });
+      return res.paginate(result.content, result.pagination);
     } catch (error) {
-      console.error("Get all gatherings error:", error);
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "소모임 목록 조회 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -34,28 +26,15 @@ class GatheringController {
    * 소모임 상세 조회
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async getGatheringById(req, res) {
+  async getGatheringById(req, res, next) {
     try {
       const {gatheringId} = req.params;
       const gathering = await gatheringService.getGatheringById(gatheringId);
-
-      res.json({
-        success: true,
-        data: gathering,
-      });
+      return res.success(gathering);
     } catch (error) {
-      console.error("Get gathering by ID error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "소모임을 찾을 수 없습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "소모임 조회 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -63,38 +42,18 @@ class GatheringController {
    * 소모임 신청하기
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async applyToGathering(req, res) {
+  async applyToGathering(req, res, next) {
     try {
       const {gatheringId} = req.params;
       const {uid: userId} = req.user;
       const applicationData = req.body;
 
       const result = await gatheringService.applyToGathering(gatheringId, userId, applicationData);
-
-      res.status(201).json({
-        success: true,
-        data: result,
-        message: "소모임 신청이 완료되었습니다.",
-      });
+      return res.created(result);
     } catch (error) {
-      console.error("Apply to gathering error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "소모임을 찾을 수 없습니다.",
-        });
-      }
-      if (error.code === "OUT_OF_STOCK") {
-        return res.status(400).json({
-          success: false,
-          message: "소모임이 품절되었습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "소모임 신청 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -102,22 +61,22 @@ class GatheringController {
    * QnA 질문 작성
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async createQnA(req, res) {
+  async createQnA(req, res, next) {
     try {
       const {gatheringId} = req.params;
       const {content} = req.body;
       const {uid: userId} = req.user;
 
-      const result = await gatheringService.createQnA(gatheringId, userId, content);
-
-      res.status(201).json(result);
-    } catch (error) {
-      console.error("Create QnA error:", error);
-      if (error.code === "BAD_REQUEST") {
-        return res.status(400).json({error: "content is required"});
+      if (!content) {
+        return res.error(400, "content is required");
       }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to create QnA"});
+
+      const result = await gatheringService.createQnA(gatheringId, userId, content);
+      return res.created(result);
+    } catch (error) {
+      return next(error);
     }
   }
 
@@ -125,82 +84,39 @@ class GatheringController {
    * QnA 질문 수정
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async updateQnA(req, res) {
+  async updateQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
       const {content} = req.body;
+      const userId = req.user.uid;
 
-      const result = await gatheringService.updateQnA(qnaId, content);
+      if (!content) {
+        return res.error(400, "content is required");
+      }
 
-      res.json(result);
+      const result = await gatheringService.updateQnA(qnaId, content, userId);
+      return res.success(result);
     } catch (error) {
-      console.error("Update QnA error:", error);
-      if (error.code === "BAD_REQUEST") {
-        return res.status(400).json({error: "content is required"});
-      }
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({error: "QnA not found"});
-      }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to update QnA"});
+      return next(error);
     }
   }
-
-  /**
-   * QnA 답변 작성
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   */
-  async createQnAAnswer(req, res) {
-    try {
-      const {qnaId} = req.params;
-      const {content, media = []} = req.body;
-      const {uid: userId} = req.user;
-
-      const result = await gatheringService.createQnAAnswer(qnaId, userId, content, media);
-
-      res.json(result);
-    } catch (error) {
-      console.error("Create QnA answer error:", error);
-      if (error.code === "BAD_REQUEST") {
-        return res.status(400).json({error: "content is required"});
-      }
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({error: "QnA not found"});
-      }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to create QnA answer"});
-    }
-  }
-
   /**
    * QnA 좋아요 토글
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async toggleQnALike(req, res) {
+  async toggleQnALike(req, res, next) {
     try {
       const {qnaId} = req.params;
       const {uid: userId} = req.user;
 
       const result = await gatheringService.toggleQnALike(qnaId, userId);
-
-      res.json({
-        success: true,
-        data: result,
-        message: result.isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
-      });
+      return res.success(result);
     } catch (error) {
-      console.error("Toggle QnA like error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "QnA를 찾을 수 없습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "좋아요 처리 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 
@@ -208,20 +124,17 @@ class GatheringController {
    * QnA 삭제
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async deleteQnA(req, res) {
+  async deleteQnA(req, res, next) {
     try {
       const {qnaId} = req.params;
+      const userId = req.user.uid;
 
-      await gatheringService.deleteQnA(qnaId);
-
-      res.json({message: "QnA가 성공적으로 삭제되었습니다"});
+      await gatheringService.deleteQnA(qnaId, userId);
+      return res.noContent();
     } catch (error) {
-      console.error("Delete QnA error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({error: "QnA not found"});
-      }
-      return req.next ? req.next(error) : res.status(500).json({error: "Failed to delete QnA"});
+      return next(error);
     }
   }
 
@@ -229,31 +142,17 @@ class GatheringController {
    * 소모임 좋아요 토글
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
    */
-  async toggleGatheringLike(req, res) {
+  async toggleGatheringLike(req, res, next) {
     try {
       const {gatheringId} = req.params;
       const {uid: userId} = req.user;
 
       const result = await gatheringService.toggleGatheringLike(gatheringId, userId);
-
-      res.json({
-        success: true,
-        data: result,
-        message: result.isLiked ? "좋아요를 추가했습니다." : "좋아요를 취소했습니다.",
-      });
+      return res.success(result);
     } catch (error) {
-      console.error("Toggle gathering like error:", error);
-      if (error.code === "NOT_FOUND") {
-        return res.status(404).json({
-          success: false,
-          message: "소모임을 찾을 수 없습니다.",
-        });
-      }
-      return req.next ? req.next(error) : res.status(500).json({
-        success: false,
-        message: "좋아요 처리 중 오류가 발생했습니다.",
-      });
+      return next(error);
     }
   }
 }

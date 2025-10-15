@@ -509,9 +509,10 @@ class CommunityService {
    * @param {string} communityId - 커뮤니티 ID
    * @param {string} postId - 게시글 ID
    * @param {Object} updateData - 수정할 데이터
+   * @param {string} userId - 사용자 ID (소유권 검증용)
    * @return {Promise<Object>} 수정된 게시글
    */
-  async updatePost(communityId, postId, updateData) {
+  async updatePost(communityId, postId, updateData, userId) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       const post = await postsService.getById(postId);
@@ -519,6 +520,13 @@ class CommunityService {
       if (!post) {
         const error = new Error("Post not found");
         error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 소유권 검증
+      if (post.authorId !== userId) {
+        const error = new Error("게시글 수정 권한이 없습니다");
+        error.code = "FORBIDDEN";
         throw error;
       }
 
@@ -536,7 +544,7 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Update post error:", error.message);
-      if (error.code === "NOT_FOUND") {
+      if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to update post");
@@ -547,9 +555,10 @@ class CommunityService {
    * 게시글 삭제
    * @param {string} communityId - 커뮤니티 ID
    * @param {string} postId - 게시글 ID
+   * @param {string} userId 
    * @return {Promise<void>}
    */
-  async deletePost(communityId, postId) {
+  async deletePost(communityId, postId, userId) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       const post = await postsService.getById(postId);
@@ -560,10 +569,16 @@ class CommunityService {
         throw error;
       }
 
+      if (post.authorId !== userId) {
+        const error = new Error("게시글 삭제 권한이 없습니다");
+        error.code = "FORBIDDEN";
+        throw error;
+      }
+
       await postsService.delete(postId);
     } catch (error) {
       console.error("Delete post error:", error.message);
-      if (error.code === "NOT_FOUND") {
+      if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to delete post");
