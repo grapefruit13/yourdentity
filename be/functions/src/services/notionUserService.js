@@ -163,7 +163,6 @@ async getNotionUsers(databaseId) {
       }),
     });
 
-    
     if (!res.ok) {
             const text = await res.text();
             throw new Error(`Notion query failed (${res.status}): ${text}`);
