@@ -170,8 +170,9 @@ class CommunityController {
     try {
       const {communityId, postId} = req.params;
       const updateData = req.body;
+      const userId = req.user.uid;
 
-      const result = await communityService.updatePost(communityId, postId, updateData);
+      const result = await communityService.updatePost(communityId, postId, updateData, userId);
       return res.success(result);
     } catch (error) {
       return next(error);

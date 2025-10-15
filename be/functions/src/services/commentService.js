@@ -240,9 +240,10 @@ class CommentService {
    * 댓글 수정
    * @param {string} commentId - 댓글 ID
    * @param {Object} updateData - 수정할 데이터
+   * @param {string} userId - 사용자 ID (소유권 검증용)
    * @return {Promise<Object>} 수정된 댓글
    */
-  async updateComment(commentId, updateData) {
+  async updateComment(commentId, updateData, userId) {
     try {
       const {content} = updateData;
 
@@ -251,6 +252,13 @@ class CommentService {
       if (!comment) {
         const error = new Error("댓글을 찾을 수 없습니다.");
         error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 소유권 검증
+      if (comment.userId !== userId) {
+        const error = new Error("댓글 수정 권한이 없습니다");
+        error.code = "FORBIDDEN";
         throw error;
       }
 
@@ -321,7 +329,7 @@ class CommentService {
       };
     } catch (error) {
       console.error("Update comment error:", error.message);
-      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND") {
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to update comment");

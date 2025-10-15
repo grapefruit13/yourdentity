@@ -52,8 +52,9 @@ class CommentController {
     try {
       const {commentId} = req.params;
       const updateData = req.body;
+      const userId = req.user.uid;
 
-      const result = await commentService.updateComment(commentId, updateData);
+      const result = await commentService.updateComment(commentId, updateData, userId);
       return res.success(result);
     } catch (error) {
       return next(error);

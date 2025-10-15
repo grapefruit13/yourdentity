@@ -377,9 +377,10 @@ class StoreService {
    * 상품 Q&A 질문 수정
    * @param {string} qnaId - Q&A ID
    * @param {Array} content - 수정할 내용
+   * @param {string} userId - 사용자 ID (소유권 검증용)
    * @return {Promise<Object>} 수정된 Q&A
    */
-  async updateProductQnA(qnaId, content) {
+  async updateProductQnA(qnaId, content, userId) {
     try {
       if (!content || content.length === 0) {
         const error = new Error("Content is required");
@@ -391,6 +392,13 @@ class StoreService {
       if (!qna) {
         const error = new Error("Q&A not found");
         error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 소유권 검증
+      if (qna.userId !== userId) {
+        const error = new Error("Q&A 수정 권한이 없습니다");
+        error.code = "FORBIDDEN";
         throw error;
       }
 
@@ -445,7 +453,7 @@ class StoreService {
       };
     } catch (error) {
       console.error("Update product Q&A error:", error.message);
-      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND") {
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw new Error("Failed to update product Q&A");

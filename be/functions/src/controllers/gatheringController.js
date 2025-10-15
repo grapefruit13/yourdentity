@@ -90,12 +90,13 @@ class GatheringController {
     try {
       const {qnaId} = req.params;
       const {content} = req.body;
+      const userId = req.user.uid;
 
       if (!content) {
         return res.error(400, "content is required");
       }
 
-      const result = await gatheringService.updateQnA(qnaId, content);
+      const result = await gatheringService.updateQnA(qnaId, content, userId);
       return res.success(result);
     } catch (error) {
       return next(error);
