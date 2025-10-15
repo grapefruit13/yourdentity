@@ -66,22 +66,29 @@ jobs:
           echo "NODE_ENV=test" > .env
           
           # GitHub Secret의 환경변수를 .env에 주입
-          # 주석(#으로 시작하는 줄)과 빈 줄은 제외
+          # 주석/빈 줄/CRLF 제거 후 key=value 라인만 반영
           if [ -n "${ENV_VARS:-}" ]; then
-            echo "$ENV_VARS" | grep -v '^\s*#' | grep -v '^\s*$' >> .env
+            appended_count=$(
+              printf '%s\n' "$ENV_VARS" \
+              | tr -d '\r' \
+              | grep -Ev '^[[:space:]]*#|^[[:space:]]*$' \
+              | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' \
+              | tee -a .env \
+              | wc -l | tr -d ' '
+            )
           else
             echo "❌ 오류: ENV_VARS Secret이 비어있습니다" >&2
             exit 1
           fi
           
-          # .env 파일 생성 완료 확인
-          line_count=$(wc -l < .env | tr -d ' ')
-          if [ "$line_count" -lt 2 ]; then
-            echo "❌ 오류: .env 파일이 제대로 생성되지 않았습니다" >&2
+          # .env 파일 생성 완료 확인 (실제 환경변수 라인이 최소 1개 존재해야 함)
+          if [ "${appended_count:-0}" -lt 1 ]; then
+            echo "❌ 오류: 유효한 ENV_VARS 항목이 없습니다 (주석/빈 줄 제외 시 0개)" >&2
             exit 1
           fi
           
-          echo "✅ .env 생성 완료 (${line_count}줄)"
+          line_count=$(wc -l < .env | tr -d ' ')
+          echo "✅ .env 생성 완료: 총 ${line_count}줄 (ENV ${appended_count}개)"
 
       - name: 🔨 빌드 테스트
         working-directory: be/functions
