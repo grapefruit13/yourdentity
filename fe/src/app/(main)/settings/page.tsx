@@ -6,6 +6,9 @@ import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
+import { LINK_URL } from "@/constants/shared/_link-url";
+import { useLogout } from "@/hooks/auth/useLogout";
+import { debug } from "@/utils/shared/debugger";
 
 /**
  * @description 설정 페이지
@@ -20,46 +23,23 @@ const SettingsPage = () => {
     setIsLogoutModalOpen(true);
   };
 
-  const handleLogoutConfirm = async () => {
-    try {
-      // 1. 서버 세션 무효화
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        console.warn("서버 로그아웃 실패, 클라이언트 사이드 정리만 진행");
-      }
-
-      // 2. 로컬 스토리지 정리
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // 3. 쿠키 정리
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-
-      // 4. 모달 닫기
-      setIsLogoutModalOpen(false);
-
-      // 5. 로그인 페이지로 리다이렉트
-      router.push("/login");
-
-      console.log("로그아웃 완료");
-    } catch (error) {
-      console.error("로그아웃 중 오류 발생:", error);
-
-      // 오류 발생 시에도 클라이언트 사이드 정리
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // 오류가 발생해도 로그인 페이지로 이동
-      router.push("/login");
-    }
+  const { mutate: logoutMutate } = useLogout();
+  /**
+   * @description 로그아웃 모달 '확인' 클릭 시
+   */
+  const handleLogoutConfirm = () => {
+    logoutMutate(undefined, {
+      onSuccess: () => {
+        router.push(LINK_URL.LOGIN);
+      },
+      onError: (error) => {
+        // TODO: 로그아웃 오류 발생 시 어떻게 처리?. 오류 시에도 login 페이지로 이동?
+        debug.error("로그아웃 오류 발생:", error);
+      },
+      onSettled: () => {
+        setIsLogoutModalOpen(false);
+      },
+    });
   };
 
   const handleLogoutCancel = () => {

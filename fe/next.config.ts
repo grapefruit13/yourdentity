@@ -4,7 +4,8 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: false, // 프로덕션에서도 PWA 활성화
+  // disable: false, // 프로덕션에서도 PWA 활성화
+  disable: true, // 프로덕션에서도 PWA 활성화
   register: true,
   cacheOnFrontEndNav: true, // 페이지 네비게이션 시 캐싱 활성화
   cacheStartUrl: true, // start_url 캐싱
