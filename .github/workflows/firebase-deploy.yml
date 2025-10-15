@@ -42,34 +42,83 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
+      - name: 배포용 .env 생성
+        working-directory: be/functions
+        shell: bash
+        env:
+          ENV_VARS: ${{ secrets.ENV_VARS }}
+        run: |
+          set -euo pipefail
+          
+          echo "📝 배포용 .env 생성 시작"
+          
+          # 파일 권한 제한 (보안)
+          umask 077
+          
+          # 기존 .env 파일 제거 후 새로 생성
+          rm -f .env
+          touch .env
+          chmod 600 .env
+          
+          # 기본 환경 설정
+          echo "NODE_ENV=production" > .env
+          
+          # GitHub Secret의 환경변수를 .env에 주입
+          # 주석(#으로 시작하는 줄)과 빈 줄은 제외
+          if [ -n "${ENV_VARS:-}" ]; then
+            echo "$ENV_VARS" | grep -v '^\s*#' | grep -v '^\s*$' >> .env
+          else
+            echo "❌ 오류: ENV_VARS Secret이 비어있습니다" >&2
+            exit 1
+          fi
+          
+          # .env 파일 생성 완료 확인
+          line_count=$(wc -l < .env | tr -d ' ')
+          if [ "$line_count" -lt 2 ]; then
+            echo "❌ 오류: .env 파일이 제대로 생성되지 않았습니다" >&2
+            exit 1
+          fi
+          
+          echo "✅ .env 생성 완료 (${line_count}줄)"
+
       - name: 빌드 테스트
         working-directory: be/functions
         run: |
+          echo "📦 의존성 설치 시작"
           pnpm install --frozen-lockfile
-          echo "Firebase 에뮬레이터 빌드 테스트 시작!"
+          
+          echo "🔨 빌드 테스트 시작"
           pnpm run build
-          echo "빌드 테스트 완료 "
+          
+          echo "✅ 빌드 테스트 완료"
 
       - name: Firebase Functions 배포
         working-directory: be/functions
         id: deploy
         run: |
+          echo "🚀 Firebase Functions 배포 시작"
           firebase deploy --only functions
           echo "deploy-success=true" >> $GITHUB_OUTPUT
 
       - name: 배포 성공 로그
         if: success()
         run: |
-          echo "Firebase Functions 배포가 성공적으로 완료되었습니다."
-          echo "Commit: ${GITHUB_SHA:0:7}"
-          echo "Branch: ${GITHUB_REF#refs/heads/}"
-          echo "배포 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
+          echo " ================================"
+          echo " Firebase Functions 배포 성공!"
+          echo " ================================"
+          echo " Commit: ${GITHUB_SHA:0:7}"
+          echo " Branch: ${GITHUB_REF#refs/heads/}"
+          echo " 배포 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
+          echo " Repository: ${{ github.repository }}"
 
       - name: 배포 실패 로그
         if: failure()
         run: |
-          echo "Firebase Functions 배포가 실패했습니다. "
-          echo "Commit: ${GITHUB_SHA:0:7}"
-          echo "Branch: ${GITHUB_REF#refs/heads/}"
-          echo "실패 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
-          echo "워크플로우 로그: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo " ================================"
+          echo " Firebase Functions 배포 실패"
+          echo " ================================"
+          echo " Commit: ${GITHUB_SHA:0:7}"
+          echo " Branch: ${GITHUB_REF#refs/heads/}"
+          echo " 실패 시간: $(date '+%Y-%m-%d %H:%M:%S KST')"
+          echo " 워크플로우 로그:"
+          echo "   ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
