@@ -4,33 +4,50 @@ const { db, FieldValue } = require("../config/database");
 
 
 class NotionUserService {
-  constructor() {
-    this.notion = new Client({
-      auth: process.env.NOTION_API_KEY,
-    });
+  // constructor() {
+  //   this.notion = new Client({
+  //     auth: process.env.NOTION_API_KEY,
+  //   });
     
-    this.notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
-    this.activeUserDB  = process.env.NOTION_ACTIVE_USER;
-    this.withdrawUserDB = process.env.NOTION_WITHDRAWN_USER;
-    this.pendingUserDB = process.env.NOTION_PENDING_USER;
+  //   this.notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
+  // }
+  constructor() {
+    const {
+      NOTION_API_KEY,
+      NOTION_USER_ACCOUNT_DB_ID,
+    } = process.env;
+
+    // --- 환경 변수 검증 ---
+    if (!NOTION_API_KEY) throw new Error("Missing NOTION_API_KEY");
+    if (!NOTION_USER_ACCOUNT_DB_ID)
+      throw new Error("Missing NOTION_USER_ACCOUNT_DB_ID");
+
+    // --- Notion 클라이언트 초기화 (v5.x 호환) ---
+    this.notion = new Client({
+      auth: NOTION_API_KEY,
+      notionVersion: "2022-06-28", // 최신 버전 명시 (SDK v5.x 기준)
+    });
+
+    // --- Notion 데이터베이스 ID 매핑 ---
+    this.notionUserAccountDB = NOTION_USER_ACCOUNT_DB_ID;
   }
 
 
-  async archiveNotionPage(pageId, notionToken) {
-  const url = `https://api.notion.com/v1/pages/${pageId}`;
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${notionToken}`,
-      'Notion-Version': '2022-06-28',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ archived: true })
-  });
+//   async archiveNotionPage(pageId, notionToken) {
+//   const url = `https://api.notion.com/v1/pages/${pageId}`;
+//   const res = await fetch(url, {
+//     method: 'PATCH',
+//     headers: {
+//       'Authorization': `Bearer ${notionToken}`,
+//       'Notion-Version': '2022-06-28',
+//       'Content-Type': 'application/json'
+//     },
+//     body: JSON.stringify({ archived: true })
+//   });
 
-  const data = await res.json();
-  console.log(`페이지 아카이브 완료: ${pageId}`, data);
-}
+//   const data = await res.json();
+//   console.log(`페이지 아카이브 완료: ${pageId}`, data);
+// }
 
 
   /**
@@ -112,7 +129,16 @@ class NotionUserService {
           "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
           "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
           "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
-          "Push 광고 수신 여부": { select: { name: user.pushAdConsent || "미설정" } },
+          "Push 광고 수신 여부": {
+                        select: {
+                          name:
+                            user.pushAdConsent === true
+                              ? "동의"
+                              : user.pushAdConsent === false
+                              ? "거부"
+                              : "미설정",
+                        },
+                      },
           "패널티 주기": { checkbox: user.penalty || false },
           "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
         };
@@ -157,6 +183,11 @@ async getNotionUsers(databaseId) {
         start_cursor: startCursor,
       }),
     });
+
+    if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Notion query failed (${res.status}): ${text}`);
+          }
 
     const data = await res.json();
     results = results.concat(data.results);
