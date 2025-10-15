@@ -1,5 +1,7 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
+const fcmHelper = require("../utils/fcmHelper");
+const UserService = require("./userService");
 
 /**
  * Comment Service (비즈니스 로직 계층)
@@ -8,6 +10,7 @@ const FirestoreService = require("./firestoreService");
 class CommentService {
   constructor() {
     this.firestoreService = new FirestoreService("comments");
+    this.userService = new UserService();
   }
 
   /**
@@ -52,10 +55,7 @@ class CommentService {
       }
 
       // 게시글 존재 확인
-      const post = await this.firestoreService.getDocument(
-        `communities/${communityId}/posts`,
-        postId,
-      );
+      const post = await this.firestoreService.getDocument(`communities/${communityId}/posts`, postId);
       if (!post) {
         const error = new Error("게시글을 찾을 수 없습니다.");
         error.code = "NOT_FOUND";
@@ -80,9 +80,7 @@ class CommentService {
       }
 
       // content 배열에서 미디어 분리
-      const mediaItems = content.filter(
-        (item) => item.type === "image" || item.type === "video",
-      );
+      const mediaItems = content.filter( (item) => item.type === "image" || item.type === "video");
 
       // media 배열 형식으로 변환
       const media = mediaItems.map((item, index) => {
@@ -127,6 +125,19 @@ class CommentService {
         commentsCount: FieldValue.increment(1),
         updatedAt: new Date(),
       });
+
+      if (post.authorId !== userId) {
+        fcmHelper.sendNotification(
+          post.authorId,
+          "새로운 댓글이 달렸습니다",
+          `게시글 "${post.title}"에 새로운 댓글이 달렸습니다.`,
+          "community",
+          postId,
+          `/community/${communityId}/posts/${postId}`
+        ).catch(error => {
+          console.error("댓글 알림 전송 실패:", error);
+        });
+      }
 
       return {
         id: commentId,
@@ -451,6 +462,32 @@ class CommentService {
           likesCount: FieldValue.increment(1),
           updatedAt: new Date(),
         });
+
+        if (comment.userId !== userId) {
+          try {
+            const liker = await this.userService.getUserById(userId);
+            const likerName = liker?.name || "사용자";
+
+            const textContent = comment.content.find(item => item.type === "text");
+            const commentPreview = textContent ? textContent.content : "댓글";
+            const preview = commentPreview.length > 50 ? 
+              commentPreview.substring(0, 50) + "..." : 
+              commentPreview;
+
+            fcmHelper.sendNotification(
+              comment.userId,
+              "댓글에 좋아요가 달렸습니다",
+              `${likerName}님이 "${preview}" 댓글에 좋아요를 눌렀습니다`,
+              "community",
+              commentId,
+              `/community/${comment.communityId}/posts/${comment.postId}`
+            ).catch(error => {
+              console.error("댓글 좋아요 알림 전송 실패:", error);
+            });
+          } catch (error) {
+            console.error("댓글 좋아요 알림 처리 실패:", error);
+          }
+        }
       }
 
       // 업데이트된 댓글 정보 조회
