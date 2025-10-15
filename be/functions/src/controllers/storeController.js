@@ -12,7 +12,9 @@ class StoreController {
    */
   async getProducts(req, res, next) {
     try {
-      const {page = 0, size = 10, status = "onSale"} = req.query;
+      const page = parseInt(req.query.page, 10) || 0;
+      const size = parseInt(req.query.size, 10) || 10;
+      const {status = "onSale"} = req.query;
 
       const result = await storeService.getProducts({page, size, status});
       return res.paginate(result.content, result.pagination);
@@ -116,29 +118,6 @@ class StoreController {
       }
 
       const result = await storeService.updateProductQnA(qnaId, content);
-      return res.success(result);
-    } catch (error) {
-      return next(error);
-    }
-  }
-
-  /**
-   * 상품 Q&A 답변 작성
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-  async createProductQnAAnswer(req, res, next) {
-    try {
-      const {qnaId} = req.params;
-      const {content, media = []} = req.body;
-      const {uid: userId} = req.user;
-
-      if (!content) {
-        return res.error(400, "content is required");
-      }
-
-      const result = await storeService.createProductQnAAnswer(qnaId, userId, content, media);
       return res.success(result);
     } catch (error) {
       return next(error);

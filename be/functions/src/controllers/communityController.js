@@ -12,7 +12,9 @@ class CommunityController {
    */
   async getCommunities(req, res, next) {
     try {
-      const {type, page = 0, size = 10} = req.query;
+      const {type} = req.query;
+      const page = parseInt(req.query.page, 10) || 0;
+      const size = parseInt(req.query.size, 10) || 10;
 
       const result = await communityService.getCommunities({type, page, size});
       return res.paginate(result.content, result.pagination);
@@ -34,10 +36,10 @@ class CommunityController {
         filter,  // filter 파라미터 추가
         channel,
         communityId,
-        page = 0,
-        size = 10,
         includeContent = false,
       } = req.query;
+      const page = parseInt(req.query.page, 10) || 0;
+      const size = parseInt(req.query.size, 10) || 10;
 
       // filter 파라미터를 type으로 매핑 (하위 호환성)
       const finalType = type || filter;
@@ -82,7 +84,8 @@ class CommunityController {
   async getCommunityMembers(req, res, next) {
     try {
       const {communityId} = req.params;
-      const {page = 0, size = 20} = req.query;
+      const page = parseInt(req.query.page, 10) || 0;
+      const size = parseInt(req.query.size, 10) || 20;
 
       const result = await communityService.getCommunityMembers(communityId, {page, size});
       return res.paginate(result.content, result.pagination);
@@ -103,10 +106,10 @@ class CommunityController {
       const {
         type,
         channel,
-        page = 0,
-        size = 10,
         includeContent = false,
       } = req.query;
+      const page = parseInt(req.query.page, 10) || 0;
+      const size = parseInt(req.query.size, 10) || 10;
 
       const result = await communityService.getCommunityPosts(communityId, {
         type,

@@ -32,7 +32,8 @@ class CommentController {
   async getComments(req, res, next) {
     try {
       const {communityId, postId} = req.params;
-      const {page = 0, size = 10} = req.query;
+      const page = parseInt(req.query.page, 10) || 0;
+      const size = parseInt(req.query.size, 10) || 10;
 
       const result = await commentService.getComments(communityId, postId, {page, size});
       return res.paginate(result.content, result.pagination);
