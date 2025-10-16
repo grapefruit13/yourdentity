@@ -4,14 +4,14 @@ const FirestoreService = require("./firestoreService");
 const {FieldValue} = require("../config/database");
 
 let fcmAdmin = admin;
-if (!admin.apps.find(app => app.name === 'fcm-app')) {
+if (!admin.apps.find((app) => app.name === "fcm-app")) {
   let serviceAccount;
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
       fcmAdmin = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-      }, 'fcm-app');
+      }, "fcm-app");
     } catch (error) {
       console.error("Firebase 서비스 계정 키 파싱 실패:", error);
       throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT environment variable");
@@ -37,13 +37,13 @@ class FCMService {
    */
   async saveToken(userId, token, deviceInfo, deviceType = "pwa") {
     try {
-      const deviceId = deviceType === "mobile" 
-        ? deviceInfo 
-        : this.generateDeviceId(deviceInfo);
-    
+      const deviceId = deviceType === "mobile" ?
+        deviceInfo :
+        this.generateDeviceId(deviceInfo);
+
       const existingTokens = await this.getUserTokens(userId);
 
-      const existingToken = existingTokens.find(t => t.token === token);
+      const existingToken = existingTokens.find((t) => t.token === token);
       if (existingToken) {
         await this.updateTokenLastUsed(userId, existingToken.id);
         return {deviceId: existingToken.id, message: "토큰 업데이트 완료"};
@@ -68,9 +68,9 @@ class FCMService {
       };
 
       await this.firestoreService.setDocument(
-        `users/${userId}/fcmTokens`,
-        deviceId,
-        tokenData
+          `users/${userId}/fcmTokens`,
+          deviceId,
+          tokenData,
       );
 
       return {deviceId, message: "토큰 저장 완료"};
@@ -128,9 +128,9 @@ class FCMService {
   async updateTokenLastUsed(userId, deviceId) {
     try {
       await this.firestoreService.updateDocument(
-        `users/${userId}/fcmTokens`, 
-        deviceId, 
-        {lastUsed: FieldValue.serverTimestamp()}
+          `users/${userId}/fcmTokens`,
+          deviceId,
+          {lastUsed: FieldValue.serverTimestamp()},
       );
     } catch (error) {
       console.error("토큰 lastUsed 업데이트 실패:", error);
@@ -150,7 +150,7 @@ class FCMService {
         return {sentCount: 0, failedCount: 0};
       }
 
-      const tokenList = tokens.map(t => t.token);
+      const tokenList = tokens.map((t) => t.token);
       const result = await this.sendToTokens(tokenList, notification);
 
       return {
@@ -174,9 +174,9 @@ class FCMService {
    */
   async sendToUsers(userIds, notification) {
     try {
-      const tokenPromises = userIds.map(userId => this.getUserTokens(userId));
+      const tokenPromises = userIds.map((userId) => this.getUserTokens(userId));
       const tokenResults = await Promise.all(tokenPromises);
-      const allTokens = tokenResults.flatMap(tokens => tokens.map(t => t.token));
+      const allTokens = tokenResults.flatMap((tokens) => tokens.map((t) => t.token));
 
       if (allTokens.length === 0) {
         return {sentCount: 0, failedCount: 0};
@@ -243,12 +243,11 @@ class FCMService {
    */
   generateDeviceId(deviceInfo) {
     const hash = crypto
-      .createHash('sha256')
-      .update(deviceInfo)
-      .digest('hex');
+        .createHash("sha256")
+        .update(deviceInfo)
+        .digest("hex");
     return hash.substring(0, 20);
   }
-
 }
 
 module.exports = FCMService;
