@@ -63,8 +63,9 @@ class CommentService {
       }
 
       // 부모 댓글 존재 확인 (대댓글인 경우)
+      let parentComment = null;
       if (parentId) {
-        const parentComment = await this.firestoreService.getDocument("comments", parentId);
+        parentComment = await this.firestoreService.getDocument("comments", parentId);
         if (!parentComment) {
           const error = new Error("부모 댓글을 찾을 수 없습니다.");
           error.code = "NOT_FOUND";
@@ -136,6 +137,28 @@ class CommentService {
           `/community/${communityId}/posts/${postId}`
         ).catch(error => {
           console.error("댓글 알림 전송 실패:", error);
+        });
+      }
+
+      
+      if (parentId && parentComment && parentComment.userId !== userId) {
+        // 부모 댓글 내용 미리보기 생성
+        const textContent = parentComment.content.find(item => item.type === "text");
+        const commentPreview = textContent ? textContent.content : "댓글";
+        const preview = commentPreview.length > 30 ? 
+          commentPreview.substring(0, 30) + "..." : 
+          commentPreview;
+
+        console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
+        fcmHelper.sendNotification(
+          parentComment.userId,
+          "새로운 답글이 달렸습니다",
+          `"${preview}"에 새로운 답글이 달렸습니다.`,
+          "community",
+          commentId,
+          `/community/${communityId}/posts/${postId}`
+        ).catch(error => {
+          console.error("대댓글 알림 전송 실패:", error);
         });
       }
 
