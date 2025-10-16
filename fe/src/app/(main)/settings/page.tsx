@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
-import { Typography } from "@/components/shared/typography";
-import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useLogout } from "@/hooks/auth/useLogout";
 import { debug } from "@/utils/shared/debugger";
