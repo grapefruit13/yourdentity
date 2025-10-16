@@ -209,6 +209,12 @@ const authGuard = require("../middleware/authGuard");
  *                         hasPrevious:
  *                           type: boolean
  *                           example: false
+ *                         isFirst:
+ *                           type: boolean
+ *                           example: true
+ *                         isLast:
+ *                           type: boolean
+ *                           example: false
  *       404:
  *         description: 게시글을 찾을 수 없음
  *       500:

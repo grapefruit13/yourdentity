@@ -265,6 +265,10 @@ const authGuard = require("../middleware/authGuard");
  *                           type: boolean
  *                         hasPrevious:
  *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
  *       500:
  *         description: 서버 오류
  *         content:
@@ -395,6 +399,10 @@ router.get("/", communityController.getCommunities);
  *                           type: boolean
  *                           example: true
  *                         hasPrevious:
+ *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
  *                           type: boolean
  *                           example: false
  *       500:
@@ -541,6 +549,10 @@ router.get("/:communityId", communityController.getCommunityById);
  *                           example: true
  *                         hasPrevious:
  *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
  *                           example: false
  *       404:
  *         description: 커뮤니티를 찾을 수 없음
@@ -680,6 +692,10 @@ router.get("/:communityId/members", communityController.getCommunityMembers);
  *                         hasNext:
  *                           type: boolean
  *                         hasPrevious:
+ *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
  *                           type: boolean
  *       404:
  *         description: 커뮤니티를 찾을 수 없음

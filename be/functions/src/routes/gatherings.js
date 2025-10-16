@@ -58,6 +58,10 @@ const authGuard = require("../middleware/authGuard");
  *                           type: boolean
  *                         hasPrevious:
  *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
  *       500:
  *         description: 서버 오류
  *         content:
