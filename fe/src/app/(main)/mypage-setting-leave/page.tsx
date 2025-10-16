@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
 import { AlertTriangle } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
 
 /**
  * @description 계정 삭제 페이지
