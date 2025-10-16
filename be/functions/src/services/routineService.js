@@ -189,49 +189,71 @@ class RoutineService {
         customFieldsResponse = {},
       } = applicationData;
 
-      // 루틴 정보 조회
-      const routine = await this.firestoreService.getDocument("routines", routineId);
-      if (!routine) {
-        const error = new Error("Routine not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const routineRef = this.firestoreService.db.collection("routines").doc(routineId);
+        const routineDoc = await transaction.get(routineRef);
+        
+        if (!routineDoc.exists) {
+          const error = new Error("Routine not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 재고 확인
-      if (routine.stockCount <= 0) {
-        const error = new Error("Routine is out of stock");
-        error.code = "OUT_OF_STOCK";
-        throw error;
-      }
+        const existingApplicationQuery = await this.firestoreService.db
+          .collection("applications")
+          .where("targetId", "==", routineId)
+          .where("userId", "==", userId)
+          .where("type", "==", "ROUTINE")
+          .limit(1)
+          .get();
 
-      const applicationPayload = {
-        type: "ROUTINE",
-        targetId: routineId,
-        userId,
-        status: "PENDING",
-        selectedVariant,
-        quantity,
-        targetName: routine.name,
-        targetPrice: routine.price,
-        customFieldsResponse,
-        appliedAt: new Date(),
-        updatedAt: new Date(),
-      };
+        if (!existingApplicationQuery.empty) {
+          const error = new Error("Already applied to this routine");
+          error.code = "ALREADY_APPLIED";
+          throw error;
+        }
 
-      const applicationId = await this.firestoreService.addDocument(
-        "applications",
-        applicationPayload,
-      );
+        const routine = routineDoc.data();
+        const currentStockCount = routine.stockCount || 0;
 
-      // 루틴 카운트 업데이트 (신청 시 즉시 반영)
-      await this.firestoreService.updateDocument("routines", routineId, {
-        soldCount: (routine.soldCount || 0) + quantity,
-        stockCount: Math.max(0, (routine.stockCount || 0) - quantity),
-        updatedAt: Date.now(),
+        if (currentStockCount < quantity) {
+          const error = new Error("Routine is out of stock");
+          error.code = "OUT_OF_STOCK";
+          throw error;
+        }
+
+        const applicationPayload = {
+          type: "ROUTINE",
+          targetId: routineId,
+          userId,
+          status: "PENDING",
+          selectedVariant,
+          quantity,
+          targetName: routine.name,
+          targetPrice: routine.price,
+          customFieldsResponse,
+          appliedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const applicationRef = this.firestoreService.db.collection("applications").doc();
+        transaction.set(applicationRef, applicationPayload);
+
+        transaction.update(routineRef, {
+          soldCount: (routine.soldCount || 0) + quantity,
+          stockCount: currentStockCount - quantity,
+          updatedAt: new Date(),
+        });
+
+        return {
+          applicationId: applicationRef.id,
+          routine,
+          applicationPayload,
+        };
       });
 
       return {
-        applicationId,
+        applicationId: result.applicationId,
         type: "ROUTINE",
         targetId: routineId,
         userId,
@@ -239,13 +261,13 @@ class RoutineService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        appliedAt: applicationPayload.appliedAt,
-        targetName: routine.name,
-        targetPrice: routine.price,
+        appliedAt: result.applicationPayload.appliedAt,
+        targetName: result.routine.name,
+        targetPrice: result.routine.price,
       };
     } catch (error) {
       console.error("Apply to routine error:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK") {
+      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_APPLIED") {
         throw error;
       }
       throw new Error("Failed to apply to routine");
@@ -479,62 +501,66 @@ class RoutineService {
    */
   async toggleQnALike(qnaId, userId) {
     try {
-      const qna = await this.firestoreService.getDocument("qnas", qnaId);
-      if (!qna) {
-        const error = new Error("QnA not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const qnaRef = this.firestoreService.db.collection("qnas").doc(qnaId);
+        const qnaDoc = await transaction.get(qnaRef);
+        
+        if (!qnaDoc.exists) {
+          const error = new Error("QnA not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인 (복합 쿼리로 최적화)
-      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
-        "likes",
-        [
-          { field: "targetId", operator: "==", value: qnaId },
-          { field: "userId", operator: "==", value: userId },
-          { field: "type", operator: "==", value: "QNA" },
-        ]
-      );
-      const userLike = userLikes[0];
+        // 기존 좋아요 확인 (트랜잭션 내에서)
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", qnaId)
+          .where("userId", "==", userId)
+          .where("type", "==", "QNA")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          // 좋아요 취소
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // QnA 좋아요 수 감소
-        await this.firestoreService.updateDocument("qnas", qnaId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "QNA",
-          targetId: qnaId,
+          transaction.update(qnaRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          // 좋아요 등록
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "QNA",
+            targetId: qnaId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(qnaRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const qna = qnaDoc.data();
+        const currentLikesCount = qna.likesCount || 0;
+
+        return {
+          qnaId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // QnA 좋아요 수 증가
-        await this.firestoreService.updateDocument("qnas", qnaId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 QnA 정보 조회
-      const updatedQna = await this.firestoreService.getDocument("qnas", qnaId);
-
-      return {
-        qnaId,
-        userId,
-        isLiked,
-        likesCount: updatedQna.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle QnA like error:", error.message);
       if (error.code === "NOT_FOUND") {
@@ -582,63 +608,66 @@ class RoutineService {
    */
   async toggleRoutineLike(routineId, userId) {
     try {
-      // 루틴 존재 확인
-      const routine = await this.firestoreService.getDocument("routines", routineId);
-      if (!routine) {
-        const error = new Error("Routine not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const routineRef = this.firestoreService.db.collection("routines").doc(routineId);
+        const routineDoc = await transaction.get(routineRef);
+        
+        if (!routineDoc.exists) {
+          const error = new Error("Routine not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인
-      const existingLikes = await this.firestoreService.getCollectionWhere(
-        "likes",
-        "targetId",
-        "==",
-        routineId,
-      );
-      const userLike = existingLikes.find(
-        (like) => like.userId === userId && like.type === "ROUTINE",
-      );
+        // 기존 좋아요 확인 (트랜잭션 내에서)
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", routineId)
+          .where("userId", "==", userId)
+          .where("type", "==", "ROUTINE")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          // 좋아요 취소
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // 루틴 좋아요 수 감소
-        await this.firestoreService.updateDocument("routines", routineId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "ROUTINE",
-          targetId: routineId,
+          transaction.update(routineRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          // 좋아요 등록
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "ROUTINE",
+            targetId: routineId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(routineRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const routine = routineDoc.data();
+        const currentLikesCount = routine.likesCount || 0;
+
+        return {
+          routineId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // 루틴 좋아요 수 증가
-        await this.firestoreService.updateDocument("routines", routineId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 루틴 정보 조회
-      const updatedRoutine = await this.firestoreService.getDocument("routines", routineId);
-
-      return {
-        routineId,
-        userId,
-        isLiked,
-        likesCount: updatedRoutine.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle routine like error:", error.message);
       if (error.code === "NOT_FOUND") {
