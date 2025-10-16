@@ -16,6 +16,7 @@ import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "@/lib/firebase";
 import { ErrorResponse, Result } from "@/types/shared/response";
 import { debug } from "@/utils/shared/debugger";
+import { post } from "./axios";
 
 /**
  * @description 카카오 OAuth 제공업체 생성
@@ -121,14 +122,7 @@ export const signOut = async (): Promise<void> => {
     // 1. 백엔드 API 호출 (Refresh Token 무효화)
     const token = await getFirebaseIdToken();
     if (token) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-      await fetch(`${apiUrl}/auth/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await post("auth/logout");
     }
 
     // 2. Firebase 로그아웃 (localStorage 자동 삭제)
