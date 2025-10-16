@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { AlertTriangle } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { auth } from "@/lib/firebase";
+import { signOut } from "@/lib/auth";
 import { getCsrfToken } from "@/utils/shared/csrf";
 
 /**
@@ -62,11 +63,15 @@ const MyPageSettingLeavePage = () => {
     try {
       // 1. CSRF 토큰 동기화 (double-submit cookie)
       const csrfToken = getCsrfToken();
-      await fetch("/api/csrf", {
+      const csrfResponse = await fetch("/api/csrf", {
         method: "GET",
         headers: { "X-CSRF-Token": csrfToken },
         credentials: "include",
       });
+
+      if (!csrfResponse.ok) {
+        throw new Error("CSRF 토큰 동기화에 실패했습니다. 다시 시도해주세요.");
+      }
 
       // 2. 서버에 계정 삭제 요청 전송 (CSRF 토큰 포함)
       const response = await fetch("/api/user/delete", {
@@ -98,8 +103,8 @@ const MyPageSettingLeavePage = () => {
       }
 
       // 3. 서버 삭제 성공 후 클라이언트 사이드 정리
-      // 3-1) Firebase 클라이언트 인증 상태 초기화 (IndexedDB 포함)
-      await signOut(auth);
+      // 3-1) Firebase 클라이언트 인증 상태 초기화 + 백엔드 Refresh Token 무효화
+      await signOut();
 
       // 3-2) 로컬 스토리지: 명시적인 Firebase 인증 키만 제거
       const allKeys = Object.keys(localStorage);
