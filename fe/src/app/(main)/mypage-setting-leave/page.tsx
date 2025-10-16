@@ -8,6 +8,7 @@ import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 /**
  * @description 계정 삭제 페이지
@@ -19,15 +20,20 @@ const MyPageSettingLeavePage = () => {
   const [actualUserName, setActualUserName] = useState<string | null>(null);
   const [nameError, setNameError] = useState("");
 
-  // Firebase Auth에서 사용자 이름 가져오기
+  // Firebase Auth에서 사용자 이름 가져오기 (비동기)
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        setActualUserName(null);
+        return;
+      }
       // displayName이 있으면 사용, 없으면 email의 @ 앞부분 사용
       const name =
         currentUser.displayName || currentUser.email?.split("@")[0] || null;
       setActualUserName(name);
-    }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleDeleteAccount = () => {
@@ -214,7 +220,9 @@ const MyPageSettingLeavePage = () => {
         <ButtonBase
           onClick={handleDeleteAccount}
           className="relative w-full rounded-lg bg-[#FF006C] py-4 transition-colors hover:bg-[#e6005a] disabled:bg-[#FF006C] disabled:after:absolute disabled:after:inset-0 disabled:after:rounded-lg disabled:after:bg-white/70 disabled:after:content-['']"
-          disabled={!userName.trim() || nameError !== ""}
+          disabled={
+            !userName.trim() || nameError !== "" || actualUserName === null
+          }
         >
           <Typography
             font="noto"
