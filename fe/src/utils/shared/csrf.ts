@@ -8,6 +8,9 @@ const CSRF_TOKEN_KEY = "csrf_token";
  * CSRF 토큰 생성
  */
 export function generateCsrfToken(): string {
+  if (typeof window === "undefined" || !crypto?.getRandomValues) {
+    throw new Error("crypto.getRandomValues is not available");
+  }
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
