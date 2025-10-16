@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
-import { Typography } from "@/components/shared/typography";
 import ButtonBase from "@/components/shared/base/button-base";
+import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 
 /**
