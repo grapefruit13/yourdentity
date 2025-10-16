@@ -85,7 +85,6 @@ const MyPageSettingLeavePage = () => {
 
       // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
       localStorage.clear();
-      sessionStorage.clear();
 
       // 3. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
       const clearCookie = (name: string) => {
