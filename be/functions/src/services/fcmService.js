@@ -50,8 +50,11 @@ class FCMService {
       }
 
       if (existingTokens.length >= this.maxTokensPerUser) {
-        const sortedTokens = [...existingTokens].sort((a, b) => 
-          new Date(a.lastUsed) - new Date(b.lastUsed));
+        const sortedTokens = [...existingTokens].sort((a, b) => {
+          const dateA = a.lastUsed?.toDate ? a.lastUsed.toDate() : new Date(a.lastUsed);
+          const dateB = b.lastUsed?.toDate ? b.lastUsed.toDate() : new Date(b.lastUsed);
+          return dateA - dateB;
+        });
         const oldestToken = sortedTokens[0];
         await this.deleteToken(userId, oldestToken.id);
       }
