@@ -144,7 +144,7 @@ class FCMService {
     try {
       const tokens = await this.getUserTokens(userId);
       if (tokens.length === 0) {
-        return null;
+        return {sentCount: 0, failedCount: 0};
       }
 
       const tokenList = tokens.map(t => t.token);
@@ -176,13 +176,14 @@ class FCMService {
       const allTokens = tokenResults.flatMap(tokens => tokens.map(t => t.token));
 
       if (allTokens.length === 0) {
-        return null;
+        return {sentCount: 0, failedCount: 0};
       }
 
       const result = await this.sendToTokens(allTokens, notification);
       return {
         sentCount: result.successCount,
-        failedCount: result.failureCount};
+        failedCount: result.failureCount,
+      };
     } catch (error) {
       console.error("다중 사용자 알림 전송 실패:", error);
       const fcmError = new Error("다중 사용자 알림 전송에 실패했습니다.");
@@ -207,12 +208,15 @@ class FCMService {
       const message = {
         notification: {
           title: notification.title,
-          body: notification.message},
+          body: notification.message,
+        },
         data: {
           type: notification.type || "general",
           relatedId: notification.relatedId || "",
-          link: notification.link || ""},
-        tokens: tokens};
+          link: notification.link || "",
+        },
+        tokens: tokens,
+      };
 
       const response = await fcmAdmin.messaging().sendEachForMulticast(message);
 
