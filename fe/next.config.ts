@@ -48,7 +48,8 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api-proxy/:path*",
-        destination: `${process.env.NEXT_PUBLIC_BASE_URL}/:path*`,
+        destination:
+          "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api/:path*",
       },
     ];
   },
