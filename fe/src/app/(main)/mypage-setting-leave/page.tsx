@@ -60,8 +60,15 @@ const MyPageSettingLeavePage = () => {
     setIsDeleting(true);
 
     try {
-      // 1. 서버에 계정 삭제 요청 전송 (CSRF 토큰 포함)
+      // 1. CSRF 토큰 동기화 (double-submit cookie)
       const csrfToken = getCsrfToken();
+      await fetch("/api/csrf", {
+        method: "GET",
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: "include",
+      });
+
+      // 2. 서버에 계정 삭제 요청 전송 (CSRF 토큰 포함)
       const response = await fetch("/api/user/delete", {
         method: "DELETE",
         headers: {
@@ -90,23 +97,25 @@ const MyPageSettingLeavePage = () => {
         );
       }
 
-      // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
-      // Firebase 인증 관련 키만 선택적으로 삭제 (PWA 설정 등은 보존)
-      const authKeyPatterns = ["firebase:", "auth", "user", "token", "session"];
-      Object.keys(localStorage).forEach((key) => {
-        // 인증 관련 패턴과 매칭되는 키만 삭제
-        const isAuthRelated = authKeyPatterns.some((pattern) =>
-          key.toLowerCase().includes(pattern)
-        );
-        // PWA 관련 키는 제외
-        const isPWAKey = key.startsWith("pwa_");
+      // 3. 서버 삭제 성공 후 클라이언트 사이드 정리
+      // 3-1) Firebase 클라이언트 인증 상태 초기화 (IndexedDB 포함)
+      await signOut(auth);
 
-        if (isAuthRelated && !isPWAKey) {
+      // 3-2) 로컬 스토리지: 명시적인 Firebase 인증 키만 제거
+      const allKeys = Object.keys(localStorage);
+      allKeys.forEach((key) => {
+        // firebase:authUser:[PROJECT_ID] 형식 처리
+        if (
+          key.startsWith("firebase:authUser:") ||
+          key.startsWith("firebase:refreshToken:") ||
+          key.startsWith("firebase:host:") ||
+          key.startsWith("firebase:heartbeat:")
+        ) {
           localStorage.removeItem(key);
         }
       });
 
-      // 3. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
+      // 4. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
       const clearCookie = (name: string) => {
         const paths = ["/", window.location.pathname];
         const domains = [
@@ -127,13 +136,13 @@ const MyPageSettingLeavePage = () => {
         clearCookie(name);
       });
 
-      // 4. 모달 닫기
+      // 5. 모달 닫기
       setIsDeleteModalOpen(false);
 
-      // 5. 성공 메시지 표시
+      // 6. 성공 메시지 표시
       alert("계정이 성공적으로 삭제되었습니다.");
 
-      // 6. 로그인 페이지로 리다이렉트
+      // 7. 로그인 페이지로 리다이렉트
       router.push(LINK_URL.LOGIN);
       router.refresh(); // Next.js 라우터 캐시 새로고침
     } catch (error) {
