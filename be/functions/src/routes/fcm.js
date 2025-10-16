@@ -19,7 +19,6 @@ const authGuard = require("../middleware/authGuard");
  *           schema:
  *             $ref: '#/components/schemas/FCMToken'
  *           example:
- *             userId: "user_123"
  *             token: "fcm_token_example_123456789"
  *             deviceInfo: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
  *             deviceType: "pwa"
@@ -58,21 +57,13 @@ router.post("/token", authGuard, fcmController.saveToken.bind(fcmController));
 
 /**
  * @swagger
- * /fcm/tokens/{userId}:
+ * /fcm/tokens:
  *   get:
  *     summary: 사용자 FCM 토큰 목록 조회
- *     description: 특정 사용자의 모든 FCM 토큰 목록을 조회합니다.
+ *     description: 현재 로그인한 사용자의 모든 FCM 토큰 목록을 조회합니다.
  *     tags: [FCM]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: "user_123"
  *     responses:
  *       200:
  *         description: 토큰 목록 조회 성공
@@ -104,25 +95,18 @@ router.post("/token", authGuard, fcmController.saveToken.bind(fcmController));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/tokens/:userId", authGuard, fcmController.getUserTokens.bind(fcmController));
+router.get("/tokens", authGuard, fcmController.getUserTokens.bind(fcmController));
 
 /**
  * @swagger
- * /fcm/token/{userId}/{deviceId}:
+ * /fcm/token/{deviceId}:
  *   delete:
- *     summary: FCM 토큰 삭제
- *     description: 특정 사용자의 특정 디바이스 FCM 토큰을 삭제합니다.
+ *     summary: FCM 토큰 삭제(관리자 전용)
+ *     description: 현재 로그인한 사용자의 특정 디바이스 FCM 토큰을 삭제합니다.
  *     tags: [FCM]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: "user_123"
  *       - in: path
  *         name: deviceId
  *         required: true
@@ -161,7 +145,7 @@ router.get("/tokens/:userId", authGuard, fcmController.getUserTokens.bind(fcmCon
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/token/:userId/:deviceId", authGuard, fcmController.deleteToken.bind(fcmController));
+router.delete("/token/:deviceId", authGuard, fcmController.deleteToken.bind(fcmController));
 
 
 module.exports = router;

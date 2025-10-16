@@ -7,10 +7,11 @@ class FCMController {
 
   async saveToken(req, res) {
     try {
-      const {userId, token, deviceInfo, deviceType = "pwa"} = req.body;
+      const {token, deviceInfo, deviceType = "pwa"} = req.body;
+      const userId = req.user.uid;
 
-      if (!userId || !token) {
-        return res.error(400, "사용자 ID와 FCM 토큰이 필요합니다.");
+      if (!token) {
+        return res.error(400, "FCM 토큰이 필요합니다.");
       }
 
       const result = await this.fcmService.saveToken(userId, token, deviceInfo, deviceType);
@@ -26,11 +27,7 @@ class FCMController {
 
   async getUserTokens(req, res) {
     try {
-      const {userId} = req.params;
-
-      if (!userId) {
-        return res.error(400, "사용자 ID가 필요합니다.");
-      }
+      const userId = req.user.uid;
 
       const tokens = await this.fcmService.getUserTokens(userId);
       if (!tokens) {
@@ -45,10 +42,11 @@ class FCMController {
 
   async deleteToken(req, res) {
     try {
-      const {userId, deviceId} = req.params;
+      const {deviceId} = req.params;
+      const userId = req.user.uid;
 
-      if (!userId || !deviceId) {
-        return res.error(400, "사용자 ID와 디바이스 ID가 필요합니다.");
+      if (!deviceId) {
+        return res.error(400, "디바이스 ID가 필요합니다.");
       }
 
       await this.fcmService.deleteToken(userId, deviceId);
