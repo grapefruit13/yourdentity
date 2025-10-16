@@ -37,24 +37,27 @@ const authGuard = require("../middleware/authGuard");
  *                   type: integer
  *                   example: 200
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/GatheringListItem'
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     page:
- *                       type: integer
- *                     size:
- *                       type: integer
- *                     totalElements:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
- *                     hasNext:
- *                       type: boolean
- *                     hasPrevious:
- *                       type: boolean
+ *                     gatherings:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/GatheringListItem'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         size:
+ *                           type: integer
+ *                         totalElements:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         hasNext:
+ *                           type: boolean
+ *                         hasPrevious:
+ *                           type: boolean
  *       500:
  *         description: 서버 오류
  *         content:

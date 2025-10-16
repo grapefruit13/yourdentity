@@ -329,36 +329,39 @@ const authGuard = require("../middleware/authGuard");
  *                   type: integer
  *                   example: 200
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/ProductListItem'
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     pageNumber:
- *                       type: integer
- *                       example: 0
- *                     pageSize:
- *                       type: integer
- *                       example: 10
- *                     totalElements:
- *                       type: integer
- *                       example: 3
- *                     totalPages:
- *                       type: integer
- *                       example: 1
- *                     hasNext:
- *                       type: boolean
- *                       example: false
- *                     hasPrevious:
- *                       type: boolean
- *                       example: false
- *                     isFirst:
- *                       type: boolean
- *                       example: true
- *                     isLast:
- *                       type: boolean
- *                       example: true
+ *                     products:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ProductListItem'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                           example: 0
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 3
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 1
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: false
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: false
+ *                         isFirst:
+ *                           type: boolean
+ *                           example: true
+ *                         isLast:
+ *                           type: boolean
+ *                           example: true
  *       500:
  *         description: 서버 오류
  *         content:

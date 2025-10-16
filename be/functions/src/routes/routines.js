@@ -431,30 +431,33 @@ const authGuard = require("../middleware/authGuard");
  *                   type: integer
  *                   example: 200
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/RoutineListItem'
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     page:
- *                       type: integer
- *                       example: 0
- *                     size:
- *                       type: integer
- *                       example: 10
- *                     totalElements:
- *                       type: integer
- *                       example: 100
- *                     totalPages:
- *                       type: integer
- *                       example: 10
- *                     hasNext:
- *                       type: boolean
- *                       example: true
- *                     hasPrevious:
- *                       type: boolean
- *                       example: false
+ *                     routines:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/RoutineListItem'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                           example: 0
+ *                         size:
+ *                           type: integer
+ *                           example: 10
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 100
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 10
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: false
  *       500:
  *         description: 서버 오류
  *         content:

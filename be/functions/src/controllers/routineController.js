@@ -16,7 +16,13 @@ class RoutineController {
       const size = parseInt(req.query.size) || 10;
 
       const result = await routineService.getAllRoutines({page, size});
-      return res.paginate(result.content, result.pagination);
+      
+      const responseData = {
+        routines: result.content || [],
+        pagination: result.pagination || {}
+      };
+      
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }

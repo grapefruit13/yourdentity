@@ -17,7 +17,14 @@ class StoreController {
       const {status = "onSale"} = req.query;
 
       const result = await storeService.getProducts({page, size, status});
-      return res.paginate(result.content, result.pagination);
+      
+      // data 객체 안에 products 배열과 pagination 객체 분리
+      const responseData = {
+        products: result.content || [],
+        pagination: result.pagination || {}
+      };
+      
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }
