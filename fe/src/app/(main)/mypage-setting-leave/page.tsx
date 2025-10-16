@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
+import { LINK_URL } from "@/constants/shared/_link-url";
 
 /**
  * @description 계정 삭제 페이지
@@ -59,11 +60,25 @@ const MyPageSettingLeavePage = () => {
       localStorage.clear();
       sessionStorage.clear();
 
-      // 3. 쿠키 정리
+      // 3. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
+      const clearCookie = (name: string) => {
+        const paths = ["/", window.location.pathname];
+        const domains = [
+          window.location.hostname,
+          "." + window.location.hostname,
+        ];
+
+        paths.forEach((path) => {
+          domains.forEach((domain) => {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
+          });
+        });
+      };
+
       document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        const name = c.split("=")[0].trim();
+        clearCookie(name);
       });
 
       // 4. 모달 닫기
@@ -73,10 +88,8 @@ const MyPageSettingLeavePage = () => {
       alert("계정이 성공적으로 삭제되었습니다.");
 
       // 6. 로그인 페이지로 리다이렉트
-      router.push("/login");
-
-      // 7. 완전한 페이지 새로고침
-      window.location.reload();
+      router.push(LINK_URL.LOGIN);
+      router.refresh(); // Next.js 라우터 캐시 새로고침
 
       console.log("계정 삭제 완료");
     } catch (error) {
