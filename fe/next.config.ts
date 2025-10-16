@@ -42,6 +42,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // API 프록시 설정 - HTTPS에서 HTTP 백엔드로 안전하게 요청
+  // eslint-disable-next-line require-await
+  async rewrites() {
+    return [
+      {
+        source: "/api-proxy/:path*",
+        destination: `${process.env.NEXT_PUBLIC_BASE_URL}/:path*`,
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);
