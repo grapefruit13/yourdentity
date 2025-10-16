@@ -157,49 +157,71 @@ class StoreService {
         customFieldsResponse = {},
       } = purchaseData;
 
-      // 상품 정보 조회
-      const product = await this.firestoreService.getDocument("products", productId);
-      if (!product) {
-        const error = new Error("Product not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const productRef = this.firestoreService.db.collection("products").doc(productId);
+        const productDoc = await transaction.get(productRef);
+        
+        if (!productDoc.exists) {
+          const error = new Error("Product not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 재고 확인
-      if (product.stockCount <= 0) {
-        const error = new Error("Product is out of stock");
-        error.code = "OUT_OF_STOCK";
-        throw error;
-      }
+        const existingPurchaseQuery = await this.firestoreService.db
+          .collection("purchases")
+          .where("targetId", "==", productId)
+          .where("userId", "==", userId)
+          .where("type", "==", "PRODUCT")
+          .limit(1)
+          .get();
 
-      const purchasePayload = {
-        type: "PRODUCT",
-        targetId: productId,
-        userId,
-        status: "PENDING",
-        selectedVariant,
-        quantity,
-        targetName: product.name,
-        targetPrice: product.price,
-        customFieldsResponse,
-        purchasedAt: new Date(),
-        updatedAt: new Date(),
-      };
+        if (!existingPurchaseQuery.empty) {
+          const error = new Error("Already purchased this product");
+          error.code = "ALREADY_PURCHASED";
+          throw error;
+        }
 
-      const purchaseId = await this.firestoreService.addDocument(
-        "purchases",
-        purchasePayload,
-      );
+        const product = productDoc.data();
+        const currentStockCount = product.stockCount || 0;
 
-      // 상품 카운트 업데이트 (구매 시 즉시 반영)
-      await this.firestoreService.updateDocument("products", productId, {
-        soldCount: (product.soldCount || 0) + quantity,
-        stockCount: Math.max(0, (product.stockCount || 0) - quantity),
-        updatedAt: Date.now(),
+        if (currentStockCount < quantity) {
+          const error = new Error("Product is out of stock");
+          error.code = "OUT_OF_STOCK";
+          throw error;
+        }
+
+        const purchasePayload = {
+          type: "PRODUCT",
+          targetId: productId,
+          userId,
+          status: "PENDING",
+          selectedVariant,
+          quantity,
+          targetName: product.name,
+          targetPrice: product.price,
+          customFieldsResponse,
+          purchasedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const purchaseRef = this.firestoreService.db.collection("purchases").doc();
+        transaction.set(purchaseRef, purchasePayload);
+
+        transaction.update(productRef, {
+          soldCount: (product.soldCount || 0) + quantity,
+          stockCount: currentStockCount - quantity,
+          updatedAt: new Date(),
+        });
+
+        return {
+          purchaseId: purchaseRef.id,
+          product,
+          purchasePayload,
+        };
       });
 
       return {
-        purchaseId,
+        purchaseId: result.purchaseId,
         type: "PRODUCT",
         targetId: productId,
         userId,
@@ -207,13 +229,13 @@ class StoreService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        purchasedAt: purchasePayload.purchasedAt,
-        targetName: product.name,
-        targetPrice: product.price,
+        purchasedAt: result.purchasePayload.purchasedAt,
+        targetName: result.product.name,
+        targetPrice: result.product.price,
       };
     } catch (error) {
       console.error("Purchase product error:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK") {
+      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_PURCHASED") {
         throw error;
       }
       throw new Error("Failed to purchase product");
@@ -228,63 +250,63 @@ class StoreService {
    */
   async toggleProductLike(productId, userId) {
     try {
-      // 상품 존재 확인
-      const product = await this.firestoreService.getDocument("products", productId);
-      if (!product) {
-        const error = new Error("Product not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const productRef = this.firestoreService.db.collection("products").doc(productId);
+        const productDoc = await transaction.get(productRef);
+        
+        if (!productDoc.exists) {
+          const error = new Error("Product not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인
-      const existingLikes = await this.firestoreService.getCollectionWhere(
-        "likes",
-        "targetId",
-        "==",
-        productId,
-      );
-      const userLike = existingLikes.find(
-        (like) => like.userId === userId && like.type === "PRODUCT",
-      );
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", productId)
+          .where("userId", "==", userId)
+          .where("type", "==", "PRODUCT")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // 상품 좋아요 수 감소
-        await this.firestoreService.updateDocument("products", productId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "PRODUCT",
-          targetId: productId,
+          transaction.update(productRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "PRODUCT",
+            targetId: productId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(productRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const product = productDoc.data();
+        const currentLikesCount = product.likesCount || 0;
+
+        return {
+          productId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // 상품 좋아요 수 증가
-        await this.firestoreService.updateDocument("products", productId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 상품 정보 조회
-      const updatedProduct = await this.firestoreService.getDocument("products", productId);
-
-      return {
-        productId,
-        userId,
-        isLiked,
-        likesCount: updatedProduct.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle product like error:", error.message);
       if (error.code === "NOT_FOUND") {
@@ -521,62 +543,63 @@ class StoreService {
    */
   async toggleProductQnALike(qnaId, userId) {
     try {
-      const qna = await this.firestoreService.getDocument("qnas", qnaId);
-      if (!qna) {
-        const error = new Error("Q&A not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const qnaRef = this.firestoreService.db.collection("qnas").doc(qnaId);
+        const qnaDoc = await transaction.get(qnaRef);
+        
+        if (!qnaDoc.exists) {
+          const error = new Error("Q&A not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인 (복합 쿼리로 최적화)
-      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
-        "likes",
-        [
-          { field: "targetId", operator: "==", value: qnaId },
-          { field: "userId", operator: "==", value: userId },
-          { field: "type", operator: "==", value: "QNA" },
-        ]
-      );
-      const userLike = userLikes[0];
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", qnaId)
+          .where("userId", "==", userId)
+          .where("type", "==", "QNA")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // Q&A 좋아요 수 감소
-        await this.firestoreService.updateDocument("qnas", qnaId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "QNA",
-          targetId: qnaId,
+          transaction.update(qnaRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "QNA",
+            targetId: qnaId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(qnaRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const qna = qnaDoc.data();
+        const currentLikesCount = qna.likesCount || 0;
+
+        return {
+          qnaId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // Q&A 좋아요 수 증가
-        await this.firestoreService.updateDocument("qnas", qnaId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 Q&A 정보 조회
-      const updatedQna = await this.firestoreService.getDocument("qnas", qnaId);
-
-      return {
-        qnaId,
-        userId,
-        isLiked,
-        likesCount: updatedQna.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle product Q&A like error:", error.message);
       if (error.code === "NOT_FOUND") {

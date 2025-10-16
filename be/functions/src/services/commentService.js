@@ -399,69 +399,69 @@ class CommentService {
    */
   async toggleCommentLike(commentId, userId) {
     try {
-      const comment = await this.firestoreService.getDocument("comments", commentId);
-      if (!comment) {
-        const error = new Error("댓글을 찾을 수 없습니다.");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
+        const commentDoc = await transaction.get(commentRef);
+        
+        if (!commentDoc.exists) {
+          const error = new Error("댓글을 찾을 수 없습니다.");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 삭제된 댓글은 좋아요 불가
-      if (comment.isDeleted) {
-        const error = new Error("삭제된 댓글에는 좋아요를 할 수 없습니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+        const comment = commentDoc.data();
+        if (comment.isDeleted) {
+          const error = new Error("삭제된 댓글에는 좋아요를 할 수 없습니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
 
-      // 기존 좋아요 확인 (복합 쿼리로 최적화)
-      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
-        "likes",
-        [
-          { field: "targetId", operator: "==", value: commentId },
-          { field: "userId", operator: "==", value: userId },
-          { field: "type", operator: "==", value: "COMMENT" },
-        ]
-      );
-      const userLike = userLikes[0];
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", commentId)
+          .where("userId", "==", userId)
+          .where("type", "==", "COMMENT")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // 댓글 좋아요 수 감소
-        await this.firestoreService.updateDocument("comments", commentId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "COMMENT",
-          targetId: commentId,
+          transaction.update(commentRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "COMMENT",
+            targetId: commentId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(commentRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const currentLikesCount = comment.likesCount || 0;
+
+        return {
+          commentId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // 댓글 좋아요 수 증가
-        await this.firestoreService.updateDocument("comments", commentId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 댓글 정보 조회
-      const updatedComment = await this.firestoreService.getDocument("comments", commentId);
-
-      return {
-        commentId,
-        userId,
-        isLiked,
-        likesCount: updatedComment.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle comment like error:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {

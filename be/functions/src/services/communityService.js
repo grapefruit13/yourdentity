@@ -594,64 +594,63 @@ class CommunityService {
    */
   async togglePostLike(communityId, postId, userId) {
     try {
-      const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const post = await postsService.getById(postId);
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const postRef = this.firestoreService.db.collection("communities").doc(communityId).collection("posts").doc(postId);
+        const postDoc = await transaction.get(postRef);
+        
+        if (!postDoc.exists) {
+          const error = new Error("Post not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      if (!post) {
-        const error = new Error("Post not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", postId)
+          .where("userId", "==", userId)
+          .where("type", "==", "POST")
+          .limit(1)
+          .get();
 
-      // 기존 좋아요 확인 (복합 쿼리로 최적화)
-      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
-        "likes",
-        [
-          { field: "targetId", operator: "==", value: postId },
-          { field: "userId", operator: "==", value: userId },
-          { field: "type", operator: "==", value: "POST" },
-        ]
-      );
-      const userLike = userLikes[0];
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      let isLiked = false;
+        if (userLike) {
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+          transaction.update(postRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "POST",
+            targetId: postId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
 
-        // 게시글 좋아요 수 감소
-        await postsService.update(postId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "POST",
-          targetId: postId,
+          transaction.update(postRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const post = postDoc.data();
+        const currentLikesCount = post.likesCount || 0;
+
+        return {
+          postId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // 게시글 좋아요 수 증가
-        await postsService.update(postId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 게시글 정보 조회
-      const updatedPost = await postsService.getById(postId);
-
-      return {
-        postId,
-        userId,
-        isLiked,
-        likesCount: updatedPost.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle post like error:", error.message);
       if (error.code === "NOT_FOUND") {
