@@ -253,9 +253,9 @@ const authGuard = require("../middleware/authGuard");
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         pageNumber:
  *                           type: integer
- *                         size:
+ *                         pageSize:
  *                           type: integer
  *                         totalElements:
  *                           type: integer
@@ -681,9 +681,9 @@ router.get("/:communityId/members", communityController.getCommunityMembers);
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         pageNumber:
  *                           type: integer
- *                         size:
+ *                         pageSize:
  *                           type: integer
  *                         totalElements:
  *                           type: integer

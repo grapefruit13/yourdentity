@@ -46,9 +46,9 @@ const authGuard = require("../middleware/authGuard");
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         pageNumber:
  *                           type: integer
- *                         size:
+ *                         pageSize:
  *                           type: integer
  *                         totalElements:
  *                           type: integer
