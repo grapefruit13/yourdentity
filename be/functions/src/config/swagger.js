@@ -1932,13 +1932,8 @@ const options = {
         },
         FCMToken: {
           type: "object",
-          required: ["userId", "token"],
+          required: ["token"],
           properties: {
-            userId: {
-              type: "string",
-              description: "사용자 ID",
-              example: "user_123",
-            },
             token: {
               type: "string",
               description: "FCM 토큰",
@@ -1984,8 +1979,8 @@ const options = {
                 properties: {
                   id: {
                     type: "string",
-                    description: "토큰 ID",
-                    example: "token_abc123",
+                    description: "디바이스 ID (문서 ID)",
+                    example: "63279522febcf5538b72",
                   },
                   token: {
                     type: "string",

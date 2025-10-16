@@ -41,17 +41,31 @@ const authGuard = require("../middleware/authGuard");
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
- *         description: 인증 실패
+ *         description: 인증 실패 (토큰 없음, 만료, 무효)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "Bearer 토큰이 필요합니다"
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "토큰 저장에 실패했습니다."
  */
 router.post("/token", authGuard, fcmController.saveToken.bind(fcmController));
 
@@ -83,17 +97,31 @@ router.post("/token", authGuard, fcmController.saveToken.bind(fcmController));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
- *         description: 인증 실패
+ *         description: 인증 실패 (토큰 없음, 만료, 무효)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "Bearer 토큰이 필요합니다"
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "토큰 저장에 실패했습니다."
  */
 router.get("/tokens", authGuard, fcmController.getUserTokens.bind(fcmController));
 
@@ -133,17 +161,31 @@ router.get("/tokens", authGuard, fcmController.getUserTokens.bind(fcmController)
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
- *         description: 인증 실패
+ *         description: 인증 실패 (토큰 없음, 만료, 무효)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "Bearer 토큰이 필요합니다"
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "토큰 저장에 실패했습니다."
  */
 router.delete("/token/:deviceId", authGuard, fcmController.deleteToken.bind(fcmController));
 
