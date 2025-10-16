@@ -88,7 +88,20 @@ const MyPageSettingLeavePage = () => {
       }
 
       // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
-      localStorage.clear();
+      // Firebase 인증 관련 키만 선택적으로 삭제 (PWA 설정 등은 보존)
+      const authKeyPatterns = ["firebase:", "auth", "user", "token", "session"];
+      Object.keys(localStorage).forEach((key) => {
+        // 인증 관련 패턴과 매칭되는 키만 삭제
+        const isAuthRelated = authKeyPatterns.some((pattern) =>
+          key.toLowerCase().includes(pattern)
+        );
+        // PWA 관련 키는 제외
+        const isPWAKey = key.startsWith("pwa_");
+
+        if (isAuthRelated && !isPWAKey) {
+          localStorage.removeItem(key);
+        }
+      });
 
       // 3. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
       const clearCookie = (name: string) => {
@@ -169,10 +182,18 @@ const MyPageSettingLeavePage = () => {
 
         {/* 이름 입력 필드 */}
         <div className="flex flex-col gap-2">
-          <Typography font="noto" variant="body1M" className="text-black">
+          <Typography
+            as="label"
+            htmlFor="userName"
+            font="noto"
+            variant="body1M"
+            className="text-black"
+          >
             이름
           </Typography>
           <input
+            id="userName"
+            name="userName"
             type="text"
             value={userName}
             onChange={(e) => {
