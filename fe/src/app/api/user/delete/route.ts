@@ -79,11 +79,31 @@ export function DELETE(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    // 6. 성공 응답
-    return NextResponse.json({
+    // 6. 쿠키 삭제 (HttpOnly 쿠키는 클라이언트에서 삭제 불가)
+    const response = NextResponse.json({
       success: true,
       message: "계정이 성공적으로 삭제되었습니다.",
     });
+
+    // 모든 쿠키를 만료시키기 위한 헤더 설정
+    const cookiesToClear = [
+      "session-token",
+      "auth-token",
+      "refresh-token",
+      "__session", // Firebase 기본 쿠키
+    ];
+
+    cookiesToClear.forEach((cookieName) => {
+      response.cookies.set(cookieName, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        expires: new Date(0), // 1970년 1월 1일로 설정하여 즉시 만료
+      });
+    });
+
+    return response;
   } catch (error) {
     debug.error("계정 삭제 API 오류:", error);
 

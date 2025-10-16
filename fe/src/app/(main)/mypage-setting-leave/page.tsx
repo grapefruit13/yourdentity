@@ -91,33 +91,20 @@ const MyPageSettingLeavePage = () => {
       }
 
       // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
-      // 2-1) Firebase 클라이언트 인증 상태 초기화 (IndexedDB 포함)
-      await signOut(auth);
+      // Firebase 인증 관련 키만 선택적으로 삭제 (PWA 설정 등은 보존)
+      const authKeyPatterns = ["firebase:", "auth", "user", "token", "session"];
+      Object.keys(localStorage).forEach((key) => {
+        // 인증 관련 패턴과 매칭되는 키만 삭제
+        const isAuthRelated = authKeyPatterns.some((pattern) =>
+          key.toLowerCase().includes(pattern)
+        );
+        // PWA 관련 키는 제외
+        const isPWAKey = key.startsWith("pwa_");
 
-      // 2-2) 로컬 스토리지: 명시적인 인증 관련 키만 제거
-      const AUTH_STORAGE_KEYS = [
-        "firebase:authUser",
-        "firebase:refreshToken",
-        "firebase:host",
-        "firebase:heartbeat",
-        // 프로젝트별 추가 인증 키가 있다면 여기에 명시
-      ];
-
-      // Firebase 키는 프로젝트 ID를 포함하므로 패턴 매칭 필요
-      const allKeys = Object.keys(localStorage);
-      allKeys.forEach((key) => {
-        // firebase:authUser:[PROJECT_ID] 형식 처리
-        if (
-          key.startsWith("firebase:authUser:") ||
-          key.startsWith("firebase:refreshToken:") ||
-          key.startsWith("firebase:host:")
-        ) {
+        if (isAuthRelated && !isPWAKey) {
           localStorage.removeItem(key);
         }
       });
-
-      // 기타 명시적 키 삭제
-      AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
 
       // 3. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
       const clearCookie = (name: string) => {
@@ -198,10 +185,18 @@ const MyPageSettingLeavePage = () => {
 
         {/* 이름 입력 필드 */}
         <div className="flex flex-col gap-2">
-          <Typography font="noto" variant="body1M" className="text-black">
+          <Typography
+            as="label"
+            htmlFor="userName"
+            font="noto"
+            variant="body1M"
+            className="text-black"
+          >
             이름
           </Typography>
           <input
+            id="userName"
+            name="userName"
             type="text"
             value={userName}
             onChange={(e) => {
