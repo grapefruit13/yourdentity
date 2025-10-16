@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { auth } from "@/lib/firebase";
 
 /**
  * @description 계정 삭제 페이지
@@ -15,12 +16,34 @@ const MyPageSettingLeavePage = () => {
   const router = useRouter();
   const [userName, setUserName] = useState("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [actualUserName, setActualUserName] = useState<string | null>(null);
+  const [nameError, setNameError] = useState("");
+
+  // Firebase Auth에서 사용자 이름 가져오기
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      // displayName이 있으면 사용, 없으면 email의 @ 앞부분 사용
+      const name =
+        currentUser.displayName || currentUser.email?.split("@")[0] || null;
+      setActualUserName(name);
+    }
+  }, []);
 
   const handleDeleteAccount = () => {
     if (!userName.trim()) {
       alert("이름을 입력해주세요.");
       return;
     }
+
+    // 실제 사용자 이름과 비교
+    if (actualUserName && userName.trim() !== actualUserName) {
+      setNameError("사용 중인 이름과 다릅니다. 다시 입력해 주세요.");
+      return;
+    }
+
+    // 이름이 일치하면 에러 메시지 제거
+    setNameError("");
     setIsDeleteModalOpen(true);
   };
 
@@ -145,10 +168,44 @@ const MyPageSettingLeavePage = () => {
           <input
             type="text"
             value={userName}
-            onChange={(e) => setUserName(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setUserName(value);
+
+              // 실시간 이름 검증
+              if (
+                actualUserName &&
+                value.trim() !== "" &&
+                value.trim() !== actualUserName
+              ) {
+                setNameError("사용 중인 이름과 다릅니다. 다시 입력해 주세요.");
+              } else {
+                setNameError("");
+              }
+            }}
             placeholder="이름을 입력하세요"
-            className="w-full rounded-lg border border-pink-300 px-3 py-3 text-sm focus:border-pink-500 focus:outline-none"
+            className="w-full rounded-lg px-3 py-3 text-sm shadow-sm focus:outline-none"
           />
+          {nameError && (
+            <div className="flex items-center gap-2">
+              <svg
+                className="h-4 w-4 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              <Typography font="noto" variant="body2R" className="text-red-500">
+                {nameError}
+              </Typography>
+            </div>
+          )}
         </div>
       </main>
 
@@ -157,7 +214,7 @@ const MyPageSettingLeavePage = () => {
         <ButtonBase
           onClick={handleDeleteAccount}
           className="relative w-full rounded-lg bg-[#FF006C] py-4 transition-colors hover:bg-[#e6005a] disabled:bg-[#FF006C] disabled:after:absolute disabled:after:inset-0 disabled:after:rounded-lg disabled:after:bg-white/70 disabled:after:content-['']"
-          disabled={!userName.trim()}
+          disabled={!userName.trim() || nameError !== ""}
         >
           <Typography
             font="noto"
