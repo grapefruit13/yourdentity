@@ -1,5 +1,5 @@
 /**
- * @description CSRF 토큰 관리 유틸리티
+ * @description CSRF 토큰 관리 유틸리티 (Double-submit cookie 패턴)
  */
 
 const CSRF_TOKEN_KEY = "csrf_token";
