@@ -16,7 +16,14 @@ class TmiController {
       const size = parseInt(req.query.size) || 10;
 
       const result = await tmiService.getAllTmiProjects({page, size});
-      return res.paginate(result.content, result.pagination);
+      
+      // data 객체 안에 tmis 배열과 pagination 객체 분리
+      const responseData = {
+        tmis: result.content || [],
+        pagination: result.pagination || {}
+      };
+      
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }

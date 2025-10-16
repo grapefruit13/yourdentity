@@ -157,10 +157,52 @@ const authGuard = require("../middleware/authGuard");
      *           format: date-time
      *           description: 생성일
      *           example: "2025-10-03T17:15:07.862Z"
-     *         timeAgo:
-     *           type: string
-     *           description: 상대적 시간
-     *           example: "2분 전"
+ *         timeAgo:
+ *           type: string
+ *           description: 상대적 시간
+ *           example: "2분 전"
+ *
+ *     CommunityMember:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 멤버 ID
+ *           example: "member_123"
+ *         userId:
+ *           type: string
+ *           description: 사용자 ID
+ *           example: "user_123"
+ *         nickname:
+ *           type: string
+ *           description: 사용자 닉네임
+ *           example: "사용자닉네임"
+ *         avatar:
+ *           type: string
+ *           nullable: true
+ *           description: 프로필 이미지 URL
+ *           example: "https://example.com/avatar.jpg"
+ *         role:
+ *           type: string
+ *           enum: [member, admin, moderator]
+ *           description: 멤버 역할
+ *           example: "member"
+ *         status:
+ *           type: string
+ *           enum: [active, inactive, banned]
+ *           description: 멤버 상태
+ *           example: "active"
+ *         joinedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 가입일시
+ *           example: "2025-10-03T17:15:07.862Z"
+ *         lastActiveAt:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           description: 마지막 활동일시
+ *           example: "2025-10-03T18:30:15.123Z"
  */
 
 // 커뮤니티 목록 조회
@@ -202,24 +244,31 @@ const authGuard = require("../middleware/authGuard");
  *                   type: integer
  *                   example: 200
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Community'
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     page:
- *                       type: integer
- *                     size:
- *                       type: integer
- *                     totalElements:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
- *                     hasNext:
- *                       type: boolean
- *                     hasPrevious:
- *                       type: boolean
+ *                     communities:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Community'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                         pageSize:
+ *                           type: integer
+ *                         totalElements:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         hasNext:
+ *                           type: boolean
+ *                         hasPrevious:
+ *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
  *       500:
  *         description: 서버 오류
  *         content:
@@ -271,84 +320,91 @@ router.get("/", communityController.getCommunities);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/CommunityPostListItem'
- *                   example:
- *                     - id: "AMrsQRg9tBY0ZGJMbKG2"
- *                       type: "TMI"
- *                       authorId: "user123"
- *                       author: "사용자닉네임"
- *                       title: "오늘의 루틴 인증!"
- *                       preview:
- *                         description: "string"
- *                         thumbnail: null
- *                         isVideo: false
- *                         hasImage: false
- *                         hasVideo: false
- *                       mediaCount: 0
- *                       channel: "TMI 자아탐색"
- *                       category: "string"
- *                       tags: ["string"]
- *                       scheduledDate: "2025-10-03T17:15:04.882Z"
- *                       isLocked: false
- *                       visibility: "public"
- *                       likesCount: 0
- *                       commentsCount: 0
- *                       createdAt: "2025-10-03T17:15:07.862Z"
- *                       timeAgo: "2분 전"
- *                     - id: "jpb8WjP7poOmI07Z7tU8"
- *                       type: "TMI"
- *                       authorId: "user456"
- *                       author: "사용자닉네임"
- *                       title: "수정된 TMI 인증!"
- *                       preview:
- *                         description: "수정된 내용입니다!"
- *                         thumbnail:
- *                           url: "https://example.com/updated-image.jpg"
- *                           blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                           width: 1080
- *                           height: 1080
- *                           ratio: "1080:1080"
- *                         isVideo: false
- *                         hasImage: true
- *                         hasVideo: false
- *                       mediaCount: 1
- *                       channel: "TMI 자아탐색"
- *                       category: "string"
- *                       tags: ["string"]
- *                       scheduledDate: "2025-10-03T17:15:04.882Z"
- *                       isLocked: false
- *                       visibility: "public"
- *                       likesCount: 0
- *                       commentsCount: 0
- *                       createdAt: "2025-10-03T17:15:07.862Z"
- *                       timeAgo: "2분 전"
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     page:
- *                       type: integer
- *                       example: 0
- *                     size:
- *                       type: integer
- *                       example: 10
- *                     totalElements:
- *                       type: integer
- *                       example: 100
- *                     totalPages:
- *                       type: integer
- *                       example: 10
- *                     hasNext:
- *                       type: boolean
- *                       example: true
- *                     hasPrevious:
- *                       type: boolean
- *                       example: false
+ *                     posts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CommunityPost'
+ *                       example:
+ *                         - id: "AMrsQRg9tBY0ZGJMbKG2"
+ *                           type: "TMI"
+ *                           authorId: "user123"
+ *                           author: "사용자닉네임"
+ *                           title: "오늘의 루틴 인증!"
+ *                           preview:
+ *                             description: "string"
+ *                             thumbnail: null
+ *                             isVideo: false
+ *                             hasImage: false
+ *                             hasVideo: false
+ *                           mediaCount: 0
+ *                           channel: "TMI 자아탐색"
+ *                           category: "string"
+ *                           tags: ["string"]
+ *                           scheduledDate: "2025-10-03T17:15:04.882Z"
+ *                           isLocked: false
+ *                           visibility: "public"
+ *                           likesCount: 0
+ *                           commentsCount: 0
+ *                           createdAt: "2025-10-03T17:15:07.862Z"
+ *                           timeAgo: "2분 전"
+ *                         - id: "jpb8WjP7poOmI07Z7tU8"
+ *                           type: "TMI"
+ *                           authorId: "user456"
+ *                           author: "사용자닉네임"
+ *                           title: "수정된 TMI 인증!"
+ *                           preview:
+ *                             description: "수정된 내용입니다!"
+ *                             thumbnail:
+ *                               url: "https://example.com/updated-image.jpg"
+ *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                               width: 1080
+ *                               height: 1080
+ *                               ratio: "1080:1080"
+ *                             isVideo: false
+ *                             hasImage: true
+ *                             hasVideo: false
+ *                           mediaCount: 1
+ *                           channel: "TMI 자아탐색"
+ *                           category: "string"
+ *                           tags: ["string"]
+ *                           scheduledDate: "2025-10-03T17:15:04.882Z"
+ *                           isLocked: false
+ *                           visibility: "public"
+ *                           likesCount: 0
+ *                           commentsCount: 0
+ *                           createdAt: "2025-10-03T17:15:07.862Z"
+ *                           timeAgo: "2분 전"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                           example: 0
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 100
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 10
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevious:
+ *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
+ *                           example: false
  *       500:
  *         description: 서버 오류
  */
@@ -441,10 +497,89 @@ router.get("/:communityId", communityController.getCommunityById);
  *     responses:
  *       200:
  *         description: 멤버 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     members:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CommunityMember'
+ *                       example:
+ *                         - id: "member_123"
+ *                           userId: "user_123"
+ *                           nickname: "사용자닉네임"
+ *                           avatar: "https://example.com/avatar.jpg"
+ *                           role: "member"
+ *                           status: "active"
+ *                           joinedAt: "2025-10-03T17:15:07.862Z"
+ *                           lastActiveAt: "2025-10-03T18:30:15.123Z"
+ *                         - id: "member_456"
+ *                           userId: "user_456"
+ *                           nickname: "관리자닉네임"
+ *                           avatar: null
+ *                           role: "admin"
+ *                           status: "active"
+ *                           joinedAt: "2025-10-02T10:00:00.000Z"
+ *                           lastActiveAt: "2025-10-03T19:00:00.000Z"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                           example: 0
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 20
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 150
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 8
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevious:
+ *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
+ *                           example: false
  *       404:
  *         description: 커뮤니티를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "커뮤니티를 찾을 수 없습니다"
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:communityId/members", communityController.getCommunityMembers);
 
@@ -487,61 +622,81 @@ router.get("/:communityId/members", communityController.getCommunityMembers);
  *                   type: integer
  *                   example: 200
  *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/CommunityPost'
- *                   example:
- *                     - id: "AMrsQRg9tBY0ZGJMbKG2"
- *                       type: "TMI"
- *                       authorId: "user123"
- *                       author: "사용자닉네임"
- *                       title: "오늘의 루틴 인증!"
- *                       preview:
- *                         description: "string"
- *                         thumbnail: null
- *                         isVideo: false
- *                         hasImage: false
- *                         hasVideo: false
- *                       mediaCount: 0
- *                       channel: "TMI 자아탐색"
- *                       category: "string"
- *                       tags: ["string"]
- *                       scheduledDate: "2025-10-03T17:15:04.882Z"
- *                       isLocked: false
- *                       visibility: "public"
- *                       likesCount: 0
- *                       commentsCount: 0
- *                       createdAt: "2025-10-03T17:15:07.862Z"
- *                       timeAgo: "2분 전"
- *                     - id: "jpb8WjP7poOmI07Z7tU8"
- *                       type: "TMI"
- *                       authorId: "user456"
- *                       author: "사용자닉네임"
- *                       title: "수정된 TMI 인증!"
- *                       preview:
- *                         description: "수정된 내용입니다!"
- *                         thumbnail:
- *                           url: "https://example.com/updated-image.jpg"
- *                           blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                           width: 1080
- *                           height: 1080
- *                           ratio: "1080:1080"
- *                         isVideo: false
- *                         hasImage: true
- *                         hasVideo: false
- *                       mediaCount: 1
- *                       channel: "TMI 자아탐색"
- *                       category: "string"
- *                       tags: ["string"]
- *                       scheduledDate: "2025-10-03T17:15:04.882Z"
- *                       isLocked: false
- *                       visibility: "public"
- *                       likesCount: 0
- *                       commentsCount: 0
- *                       createdAt: "2025-10-03T17:15:07.862Z"
- *                       timeAgo: "2분 전"
- *                 pagination:
  *                   type: object
+ *                   properties:
+ *                     posts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CommunityPost'
+ *                       example:
+ *                         - id: "AMrsQRg9tBY0ZGJMbKG2"
+ *                           type: "TMI"
+ *                           authorId: "user123"
+ *                           author: "사용자닉네임"
+ *                           title: "오늘의 루틴 인증!"
+ *                           preview:
+ *                             description: "string"
+ *                             thumbnail: null
+ *                             isVideo: false
+ *                             hasImage: false
+ *                             hasVideo: false
+ *                           mediaCount: 0
+ *                           channel: "TMI 자아탐색"
+ *                           category: "string"
+ *                           tags: ["string"]
+ *                           scheduledDate: "2025-10-03T17:15:04.882Z"
+ *                           isLocked: false
+ *                           visibility: "public"
+ *                           likesCount: 0
+ *                           commentsCount: 0
+ *                           createdAt: "2025-10-03T17:15:07.862Z"
+ *                           timeAgo: "2분 전"
+ *                         - id: "jpb8WjP7poOmI07Z7tU8"
+ *                           type: "TMI"
+ *                           authorId: "user456"
+ *                           author: "사용자닉네임"
+ *                           title: "수정된 TMI 인증!"
+ *                           preview:
+ *                             description: "수정된 내용입니다!"
+ *                             thumbnail:
+ *                               url: "https://example.com/updated-image.jpg"
+ *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                               width: 1080
+ *                               height: 1080
+ *                               ratio: "1080:1080"
+ *                             isVideo: false
+ *                             hasImage: true
+ *                             hasVideo: false
+ *                           mediaCount: 1
+ *                           channel: "TMI 자아탐색"
+ *                           category: "string"
+ *                           tags: ["string"]
+ *                           scheduledDate: "2025-10-03T17:15:04.882Z"
+ *                           isLocked: false
+ *                           visibility: "public"
+ *                           likesCount: 0
+ *                           commentsCount: 0
+ *                           createdAt: "2025-10-03T17:15:07.862Z"
+ *                           timeAgo: "2분 전"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                         pageSize:
+ *                           type: integer
+ *                         totalElements:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         hasNext:
+ *                           type: boolean
+ *                         hasPrevious:
+ *                           type: boolean
+ *                         isFirst:
+ *                           type: boolean
+ *                         isLast:
+ *                           type: boolean
  *       404:
  *         description: 커뮤니티를 찾을 수 없음
  *       500:

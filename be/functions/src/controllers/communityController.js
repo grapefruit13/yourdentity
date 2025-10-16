@@ -17,7 +17,14 @@ class CommunityController {
       const size = parseInt(req.query.size, 10) || 10;
 
       const result = await communityService.getCommunities({type, page, size});
-      return res.paginate(result.content, result.pagination);
+      
+      // data 객체 안에 communities 배열과 pagination 객체 분리
+      const responseData = {
+        communities: result.content || [],
+        pagination: result.pagination || {}
+      };
+      
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }
@@ -53,7 +60,13 @@ class CommunityController {
         includeContent: includeContent === "true",
       });
 
-      return res.paginate(result.content, result.pagination);
+      // data 객체 안에 posts 배열과 pagination 객체 분리
+      const responseData = {
+        posts: result.content || [],
+        pagination: result.pagination || {}
+      };
+
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }
@@ -88,7 +101,14 @@ class CommunityController {
       const size = parseInt(req.query.size, 10) || 20;
 
       const result = await communityService.getCommunityMembers(communityId, {page, size});
-      return res.paginate(result.content, result.pagination);
+      
+      // data 객체 안에 members 배열과 pagination 객체 분리
+      const responseData = {
+        members: result.content || [],
+        pagination: result.pagination || {}
+      };
+      
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }
@@ -119,7 +139,13 @@ class CommunityController {
         includeContent: includeContent === "true",
       });
 
-      return res.paginate(result.content, result.pagination);
+      // data 객체 안에 posts 배열과 pagination 객체 분리
+      const responseData = {
+        posts: result.content || [],
+        pagination: result.pagination || {}
+      };
+
+      return res.success(responseData);
     } catch (error) {
       return next(error);
     }
