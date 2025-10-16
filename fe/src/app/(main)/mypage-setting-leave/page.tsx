@@ -19,6 +19,7 @@ const MyPageSettingLeavePage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [actualUserName, setActualUserName] = useState<string | null>(null);
   const [nameError, setNameError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Firebase Auth에서 사용자 이름 가져오기 (비동기)
   useEffect(() => {
@@ -54,6 +55,9 @@ const MyPageSettingLeavePage = () => {
   };
 
   const handleDeleteConfirm = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+
     try {
       // 1. 서버에 계정 삭제 요청 전송
       const response = await fetch("/api/user/delete", {
@@ -129,6 +133,8 @@ const MyPageSettingLeavePage = () => {
 
       // 오류 발생 시 모달은 열어두어 사용자가 재시도할 수 있도록 함
       // setIsDeleteModalOpen(false); // 주석 처리
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -185,7 +191,7 @@ const MyPageSettingLeavePage = () => {
               }
             }}
             placeholder="이름을 입력하세요"
-            className="w-full rounded-lg px-3 py-3 text-sm shadow-sm focus:outline-none"
+            className="w-full rounded-lg px-3 py-3 text-sm shadow-sm focus:ring-2 focus:ring-[#FF006C] focus:outline-none"
           />
           {nameError && (
             <div className="flex items-center gap-2">
@@ -238,6 +244,7 @@ const MyPageSettingLeavePage = () => {
         onConfirm={handleDeleteConfirm}
         onClose={handleDeleteCancel}
         variant="danger"
+        confirmDisabled={isDeleting}
       />
     </div>
   );
