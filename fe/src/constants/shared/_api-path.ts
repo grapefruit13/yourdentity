@@ -17,8 +17,8 @@ const BASE = {
   REPORTS: "/reportContent",
   STORE: "/store",
   TMI: "/tmis",
-  NOTION: "notion",
-};
+  NOTION: "/notion",
+} as const;
 
 /**
  * @description 부분 경로(세그먼트) 상수: 동적 ID 사이에 끼워 넣어 사용
