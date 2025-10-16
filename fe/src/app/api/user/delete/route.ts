@@ -6,7 +6,30 @@ import { debug } from "@/utils/shared/debugger";
  * DELETE /api/user/delete
  */
 export function DELETE(request: NextRequest) {
-  // 보안 안전장치: 기능이 완전히 구현되기 전까지 비활성화
+  // 1. CSRF 토큰 검증
+  const csrfToken = request.headers.get("x-csrf-token");
+  if (!csrfToken) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "CSRF 토큰이 누락되었습니다.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // CSRF 토큰이 유효한지 검증 (최소 길이 체크)
+  if (csrfToken.length < 32) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "유효하지 않은 CSRF 토큰입니다.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // 2. 보안 안전장치: 기능이 완전히 구현되기 전까지 비활성화
   if (process.env.ENABLE_ACCOUNT_DELETION !== "true") {
     return NextResponse.json(
       {
