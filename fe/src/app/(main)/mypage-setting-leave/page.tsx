@@ -198,18 +198,10 @@ const MyPageSettingLeavePage = () => {
 
         {/* 이름 입력 필드 */}
         <div className="flex flex-col gap-2">
-          <Typography
-            as="label"
-            htmlFor="userName"
-            font="noto"
-            variant="body1M"
-            className="text-black"
-          >
+          <Typography font="noto" variant="body1M" className="text-black">
             이름
           </Typography>
           <input
-            id="userName"
-            name="userName"
             type="text"
             value={userName}
             onChange={(e) => {
