@@ -27,7 +27,6 @@ const faqRoutes = require("./src/routes/faqs");
 const notionUserRoutes = require("./src/routes/notionUsers");
 const fcmRoutes = require("./src/routes/fcm");
 
-
 if (!admin.apps.length) {
   admin.initializeApp();
 }
