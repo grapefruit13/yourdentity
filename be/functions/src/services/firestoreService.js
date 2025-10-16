@@ -363,6 +363,15 @@ class FirestoreService {
     await db.collection(collectionName).doc(docId).delete();
   }
 
+  async setDocument(collectionName, docId, data) {
+    await db.collection(collectionName).doc(docId).set({
+      ...data,
+      createdAt: data.createdAt || new Date(),
+      updatedAt: new Date(),
+    });
+    return docId;
+  }
+
   async getCollectionWhere(collectionName, field, operator, value) {
     const snapshot = await db
         .collection(collectionName)
