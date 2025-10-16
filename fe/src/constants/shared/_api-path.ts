@@ -72,39 +72,39 @@ const GATHERINGS = {
 const COMMUNITIES = {
   ROOT: BASE.COMMUNITIES,
   POSTS: `${BASE.COMMUNITIES}/${SEGMENTS.POSTS}`,
-};
+} as const;
 
 const ANNOUNCEMENTS = {
   LIST: `${BASE.NOTION}/${BASE.ANNOUNCEMENTS}`,
-};
+} as const;
 
 const FAQS = {
   ROOT: BASE.FAQS,
-};
+} as const;
 
 const AUTH = {
   LOGOUT: `${BASE.AUTH}/logout`,
   VERIFY: `${BASE.AUTH}/verify`,
-};
+} as const;
 
 const COMMENTS = {
   ROOT: BASE.COMMENTS,
-};
+} as const;
 
 const REPORTS = {
   ROOT: BASE.REPORTS,
   SYNC_NOTION_REPORTS: `${BASE.REPORTS}/syncNotionReports`,
   MY: `${BASE.REPORTS}/my`,
-};
+} as const;
 
 const STORE = {
   PRODUCTS: `${BASE.STORE}/products`,
   PURCHASES: `${BASE.STORE}/purchase`,
-};
+} as const;
 
 const TMI = {
   ROOT: BASE.TMI,
-};
+} as const;
 
 export const API_PATH = {
   BASE,
