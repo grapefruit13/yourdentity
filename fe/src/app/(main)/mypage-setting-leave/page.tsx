@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { AlertTriangle } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { auth } from "@/lib/firebase";
+import { getCsrfToken } from "@/utils/shared/csrf";
 
 /**
  * @description 계정 삭제 페이지
@@ -59,11 +60,13 @@ const MyPageSettingLeavePage = () => {
     setIsDeleting(true);
 
     try {
-      // 1. 서버에 계정 삭제 요청 전송
+      // 1. 서버에 계정 삭제 요청 전송 (CSRF 토큰 포함)
+      const csrfToken = getCsrfToken();
       const response = await fetch("/api/user/delete", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
         },
         credentials: "include", // 쿠키 포함
       });
@@ -88,20 +91,33 @@ const MyPageSettingLeavePage = () => {
       }
 
       // 2. 서버 삭제 성공 후 클라이언트 사이드 정리
-      // Firebase 인증 관련 키만 선택적으로 삭제 (PWA 설정 등은 보존)
-      const authKeyPatterns = ["firebase:", "auth", "user", "token", "session"];
-      Object.keys(localStorage).forEach((key) => {
-        // 인증 관련 패턴과 매칭되는 키만 삭제
-        const isAuthRelated = authKeyPatterns.some((pattern) =>
-          key.toLowerCase().includes(pattern)
-        );
-        // PWA 관련 키는 제외
-        const isPWAKey = key.startsWith("pwa_");
+      // 2-1) Firebase 클라이언트 인증 상태 초기화 (IndexedDB 포함)
+      await signOut(auth);
 
-        if (isAuthRelated && !isPWAKey) {
+      // 2-2) 로컬 스토리지: 명시적인 인증 관련 키만 제거
+      const AUTH_STORAGE_KEYS = [
+        "firebase:authUser",
+        "firebase:refreshToken",
+        "firebase:host",
+        "firebase:heartbeat",
+        // 프로젝트별 추가 인증 키가 있다면 여기에 명시
+      ];
+
+      // Firebase 키는 프로젝트 ID를 포함하므로 패턴 매칭 필요
+      const allKeys = Object.keys(localStorage);
+      allKeys.forEach((key) => {
+        // firebase:authUser:[PROJECT_ID] 형식 처리
+        if (
+          key.startsWith("firebase:authUser:") ||
+          key.startsWith("firebase:refreshToken:") ||
+          key.startsWith("firebase:host:")
+        ) {
           localStorage.removeItem(key);
         }
       });
+
+      // 기타 명시적 키 삭제
+      AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
 
       // 3. 쿠키 정리 - 다양한 경로와 도메인 조합으로 시도
       const clearCookie = (name: string) => {
