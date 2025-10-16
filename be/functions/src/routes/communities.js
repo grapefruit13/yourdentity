@@ -383,10 +383,10 @@ router.get("/", communityController.getCommunities);
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         pageNumber:
  *                           type: integer
  *                           example: 0
- *                         size:
+ *                         pageSize:
  *                           type: integer
  *                           example: 10
  *                         totalElements:
@@ -532,10 +532,10 @@ router.get("/:communityId", communityController.getCommunityById);
  *                     pagination:
  *                       type: object
  *                       properties:
- *                         page:
+ *                         pageNumber:
  *                           type: integer
  *                           example: 0
- *                         size:
+ *                         pageSize:
  *                           type: integer
  *                           example: 20
  *                         totalElements:
