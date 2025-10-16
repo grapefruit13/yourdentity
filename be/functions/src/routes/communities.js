@@ -329,7 +329,7 @@ router.get("/", communityController.getCommunities);
  *                     posts:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/CommunityPostListItem'
+ *                         $ref: '#/components/schemas/CommunityPost'
  *                       example:
  *                         - id: "AMrsQRg9tBY0ZGJMbKG2"
  *                           type: "TMI"
