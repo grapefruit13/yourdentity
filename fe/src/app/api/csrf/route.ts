@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 export function GET(request: NextRequest) {
   // 1) 클라이언트에서 제공한 토큰을 사용하거나 새로 생성
   const headerToken = request.headers.get("x-csrf-token") ?? "";
-  let token =
+  const token =
     headerToken && headerToken.length >= 32
       ? headerToken
       : (() => {

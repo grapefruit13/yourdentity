@@ -8,8 +8,8 @@ import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { auth } from "@/lib/firebase";
 import { signOut } from "@/lib/auth";
+import { auth } from "@/lib/firebase";
 import { getCsrfToken } from "@/utils/shared/csrf";
 
 /**
