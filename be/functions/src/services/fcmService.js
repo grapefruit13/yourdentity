@@ -64,7 +64,11 @@ class FCMService {
         createdAt: FieldValue.serverTimestamp(),
       };
 
-      await this.firestoreService.addDocument(`users/${userId}/fcmTokens`, tokenData);
+      await this.firestoreService.setDocument(
+        `users/${userId}/fcmTokens`,
+        deviceId,
+        tokenData
+      );
 
       return {deviceId, message: "토큰 저장 완료"};
     } catch (error) {
