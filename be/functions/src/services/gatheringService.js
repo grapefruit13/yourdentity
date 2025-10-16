@@ -192,49 +192,72 @@ class GatheringService {
         customFieldsResponse = {},
       } = applicationData;
 
-      // 소모임 정보 조회
-      const gathering = await this.firestoreService.getDocument("gatherings", gatheringId);
-      if (!gathering) {
-        const error = new Error("Gathering not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const gatheringRef = this.firestoreService.db.collection("gatherings").doc(gatheringId);
+        const gatheringDoc = await transaction.get(gatheringRef);
+        
+        if (!gatheringDoc.exists) {
+          const error = new Error("Gathering not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 재고 확인
-      if (gathering.stockCount <= 0) {
-        const error = new Error("Gathering is out of stock");
-        error.code = "OUT_OF_STOCK";
-        throw error;
-      }
+        const existingApplicationQuery = await this.firestoreService.db
+          .collection("applications")
+          .where("targetId", "==", gatheringId)
+          .where("userId", "==", userId)
+          .where("type", "==", "GATHERING")
+          .limit(1)
+          .get();
 
-      const applicationPayload = {
-        type: "GATHERING",
-        targetId: gatheringId,
-        userId,
-        status: "PENDING",
-        selectedVariant,
-        quantity,
-        targetName: gathering.name,
-        targetPrice: gathering.price,
-        customFieldsResponse,
-        appliedAt: new Date(),
-        updatedAt: new Date(),
-      };
+        if (!existingApplicationQuery.empty) {
+          const error = new Error("Already applied to this gathering");
+          error.code = "ALREADY_APPLIED";
+          throw error;
+        }
 
-      const applicationId = await this.firestoreService.addDocument(
-        "applications",
-        applicationPayload,
-      );
+        const gathering = gatheringDoc.data();
+        const currentStockCount = gathering.stockCount || 0;
 
-      // 소모임 카운트 업데이트 (신청 시 즉시 반영)
-      await this.firestoreService.updateDocument("gatherings", gatheringId, {
-        soldCount: (gathering.soldCount || 0) + quantity,
-        stockCount: Math.max(0, (gathering.stockCount || 0) - quantity),
-        updatedAt: new Date(),
+        if (currentStockCount < quantity) {
+          const error = new Error("Gathering is out of stock");
+          error.code = "OUT_OF_STOCK";
+          throw error;
+        }
+
+        const applicationPayload = {
+          type: "GATHERING",
+          targetId: gatheringId,
+          userId,
+          status: "PENDING",
+          selectedVariant,
+          quantity,
+          targetName: gathering.name,
+          targetPrice: gathering.price,
+          customFieldsResponse,
+          appliedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const applicationRef = this.firestoreService.db.collection("applications").doc();
+        transaction.set(applicationRef, applicationPayload);
+
+
+        transaction.update(gatheringRef, {
+          soldCount: (gathering.soldCount || 0) + quantity,
+          stockCount: currentStockCount - quantity,
+          updatedAt: new Date(),
+        });
+
+        return {
+          applicationId: applicationRef.id,
+          gathering,
+          applicationPayload,
+        };
       });
 
       return {
-        applicationId,
+        applicationId: result.applicationId,
         type: "GATHERING",
         targetId: gatheringId,
         userId,
@@ -242,13 +265,13 @@ class GatheringService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        appliedAt: applicationPayload.appliedAt.toISOString(),
-        targetName: gathering.name,
-        targetPrice: gathering.price,
+        appliedAt: result.applicationPayload.appliedAt.toISOString(),
+        targetName: result.gathering.name,
+        targetPrice: result.gathering.price,
       };
     } catch (error) {
       console.error("Apply to gathering error:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK") {
+      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_APPLIED") {
         throw error;
       }
       throw new Error("Failed to apply to gathering");
@@ -482,62 +505,66 @@ class GatheringService {
    */
   async toggleQnALike(qnaId, userId) {
     try {
-      const qna = await this.firestoreService.getDocument("qnas", qnaId);
-      if (!qna) {
-        const error = new Error("QnA not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const qnaRef = this.firestoreService.db.collection("qnas").doc(qnaId);
+        const qnaDoc = await transaction.get(qnaRef);
+        
+        if (!qnaDoc.exists) {
+          const error = new Error("QnA not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인 (복합 쿼리로 최적화)
-      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
-        "likes",
-        [
-          { field: "targetId", operator: "==", value: qnaId },
-          { field: "userId", operator: "==", value: userId },
-          { field: "type", operator: "==", value: "QNA" },
-        ]
-      );
-      const userLike = userLikes[0];
+        // 기존 좋아요 확인 (트랜잭션 내에서)
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", qnaId)
+          .where("userId", "==", userId)
+          .where("type", "==", "QNA")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          // 좋아요 취소
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // QnA 좋아요 수 감소
-        await this.firestoreService.updateDocument("qnas", qnaId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "QNA",
-          targetId: qnaId,
+          transaction.update(qnaRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          // 좋아요 등록
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "QNA",
+            targetId: qnaId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(qnaRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const qna = qnaDoc.data();
+        const currentLikesCount = qna.likesCount || 0;
+
+        return {
+          qnaId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // QnA 좋아요 수 증가
-        await this.firestoreService.updateDocument("qnas", qnaId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 QnA 정보 조회
-      const updatedQna = await this.firestoreService.getDocument("qnas", qnaId);
-
-      return {
-        qnaId,
-        userId,
-        isLiked,
-        likesCount: updatedQna.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle QnA like error:", error.message);
       if (error.code === "NOT_FOUND") {
@@ -587,63 +614,66 @@ class GatheringService {
    */
   async toggleGatheringLike(gatheringId, userId) {
     try {
-      // 소모임 존재 확인
-      const gathering = await this.firestoreService.getDocument("gatherings", gatheringId);
-      if (!gathering) {
-        const error = new Error("Gathering not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const gatheringRef = this.firestoreService.db.collection("gatherings").doc(gatheringId);
+        const gatheringDoc = await transaction.get(gatheringRef);
+        
+        if (!gatheringDoc.exists) {
+          const error = new Error("Gathering not found");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인
-      const existingLikes = await this.firestoreService.getCollectionWhere(
-        "likes",
-        "targetId",
-        "==",
-        gatheringId,
-      );
-      const userLike = existingLikes.find(
-        (like) => like.userId === userId && like.type === "GATHERING",
-      );
+        // 기존 좋아요 확인 (트랜잭션 내에서)
+        const existingLikesQuery = await this.firestoreService.db
+          .collection("likes")
+          .where("targetId", "==", gatheringId)
+          .where("userId", "==", userId)
+          .where("type", "==", "GATHERING")
+          .limit(1)
+          .get();
 
-      let isLiked = false;
+        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (userLike) {
+          // 좋아요 취소
+          transaction.delete(userLike.ref);
+          isLiked = false;
 
-        // 소모임 좋아요 수 감소
-        await this.firestoreService.updateDocument("gatherings", gatheringId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "GATHERING",
-          targetId: gatheringId,
+          transaction.update(gatheringRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: new Date(),
+          });
+        } else {
+          // 좋아요 등록
+          const likeRef = this.firestoreService.db.collection("likes").doc();
+          transaction.set(likeRef, {
+            type: "GATHERING",
+            targetId: gatheringId,
+            userId,
+            createdAt: new Date(),
+          });
+          isLiked = true;
+
+          transaction.update(gatheringRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+        }
+
+        const gathering = gatheringDoc.data();
+        const currentLikesCount = gathering.likesCount || 0;
+
+        return {
+          gatheringId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+        };
+      });
 
-        // 소모임 좋아요 수 증가
-        await this.firestoreService.updateDocument("gatherings", gatheringId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
-      }
-
-      // 업데이트된 소모임 정보 조회
-      const updatedGathering = await this.firestoreService.getDocument("gatherings", gatheringId);
-
-      return {
-        gatheringId,
-        userId,
-        isLiked,
-        likesCount: updatedGathering.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle gathering like error:", error.message);
       if (error.code === "NOT_FOUND") {

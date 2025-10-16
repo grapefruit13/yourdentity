@@ -433,95 +433,98 @@ class CommentService {
    */
   async toggleCommentLike(commentId, userId) {
     try {
-      const comment = await this.firestoreService.getDocument("comments", commentId);
-      if (!comment) {
-        const error = new Error("댓글을 찾을 수 없습니다.");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
+        const commentDoc = await transaction.get(commentRef);
 
-      // 삭제된 댓글은 좋아요 불가
-      if (comment.isDeleted) {
-        const error = new Error("삭제된 댓글에는 좋아요를 할 수 없습니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+        if (!commentDoc.exists) {
+          const error = new Error("댓글을 찾을 수 없습니다.");
+          error.code = "NOT_FOUND";
+          throw error;
+        }
 
-      // 기존 좋아요 확인 (복합 쿼리로 최적화)
-      const userLikes = await this.firestoreService.getCollectionWhereMultiple(
-        "likes",
-        [
-          { field: "targetId", operator: "==", value: commentId },
-          { field: "userId", operator: "==", value: userId },
-          { field: "type", operator: "==", value: "COMMENT" },
-        ]
-      );
-      const userLike = userLikes[0];
+        const comment = commentDoc.data();
+        if (comment.isDeleted) {
+          const error = new Error("삭제된 댓글에는 좋아요를 할 수 없습니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
 
-      let isLiked = false;
+        // 결정적 문서 ID로 중복 생성 방지
+        const likeRef = this.firestoreService.db
+          .collection("likes")
+          .doc(`COMMENT:${commentId}:${userId}`);
+        const likeDoc = await transaction.get(likeRef);
+        let isLiked = false;
 
-      if (userLike) {
-        // 좋아요 취소
-        await this.firestoreService.deleteDocument("likes", userLike.id);
-        isLiked = false;
+        if (likeDoc.exists) {
+          transaction.delete(likeRef);
+          isLiked = false;
 
-        // 댓글 좋아요 수 감소
-        await this.firestoreService.updateDocument("comments", commentId, {
-          likesCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
-        });
-      } else {
-        // 좋아요 등록
-        await this.firestoreService.addDocument("likes", {
-          type: "COMMENT",
-          targetId: commentId,
+          transaction.update(commentRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(likeRef, {
+            type: "COMMENT",
+            targetId: commentId,
+            userId,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          isLiked = true;
+
+          transaction.update(commentRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        const currentLikesCount = comment.likesCount || 0;
+        return {
+          commentId,
           userId,
-          createdAt: new Date(),
-        });
-        isLiked = true;
+          isLiked,
+          likesCount: isLiked
+            ? currentLikesCount + 1
+            : Math.max(0, currentLikesCount - 1),
+        };
+      });
 
-        // 댓글 좋아요 수 증가
-        await this.firestoreService.updateDocument("comments", commentId, {
-          likesCount: FieldValue.increment(1),
-          updatedAt: new Date(),
-        });
+      if (result.isLiked) {
+        const comment = await this.firestoreService.getDocument("comments", result.commentId);
 
         if (comment.userId !== userId) {
           try {
             const liker = await this.userService.getUserById(userId);
             const likerName = liker?.name || "사용자";
 
-            const textContent = comment.content.find(item => item.type === "text");
+            const textContent = comment.content.find((item) => item.type === "text");
             const commentPreview = textContent ? textContent.content : "댓글";
-            const preview = commentPreview.length > 50 ? 
-              commentPreview.substring(0, 50) + "..." : 
-              commentPreview;
+            const preview =
+              commentPreview.length > 50
+                ? commentPreview.substring(0, 50) + "..."
+                : commentPreview;
 
-            fcmHelper.sendNotification(
-              comment.userId,
-              "댓글에 좋아요가 달렸습니다",
-              `${likerName}님이 "${preview}" 댓글에 좋아요를 눌렀습니다`,
-              "community",
-              commentId,
-              `/community/${comment.communityId}/posts/${comment.postId}`
-            ).catch(error => {
-              console.error("댓글 좋아요 알림 전송 실패:", error);
-            });
+            fcmHelper
+              .sendNotification(
+                comment.userId,
+                "댓글에 좋아요가 달렸습니다",
+                `${likerName}님이 "${preview}" 댓글에 좋아요를 눌렀습니다`,
+                "community",
+                comment.id,
+                `/community/${comment.communityId}/posts/${comment.postId}`
+              )
+              .catch((error) => {
+                console.error("댓글 좋아요 알림 전송 실패:", error);
+              });
           } catch (error) {
             console.error("댓글 좋아요 알림 처리 실패:", error);
           }
         }
       }
 
-      // 업데이트된 댓글 정보 조회
-      const updatedComment = await this.firestoreService.getDocument("comments", commentId);
-
-      return {
-        commentId,
-        userId,
-        isLiked,
-        likesCount: updatedComment.likesCount || 0,
-      };
+      return result;
     } catch (error) {
       console.error("Toggle comment like error:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
