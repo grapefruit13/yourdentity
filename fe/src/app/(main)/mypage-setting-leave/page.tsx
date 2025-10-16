@@ -55,8 +55,6 @@ const MyPageSettingLeavePage = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      console.log("계정 삭제 진행 중...");
-
       // 1. 서버에 계정 삭제 요청 전송
       const response = await fetch("/api/user/delete", {
         method: "DELETE",
@@ -119,8 +117,6 @@ const MyPageSettingLeavePage = () => {
       // 6. 로그인 페이지로 리다이렉트
       router.push(LINK_URL.LOGIN);
       router.refresh(); // Next.js 라우터 캐시 새로고침
-
-      console.log("계정 삭제 완료");
     } catch (error) {
       console.error("계정 삭제 중 오류 발생:", error);
 
