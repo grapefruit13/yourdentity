@@ -98,16 +98,11 @@ const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
-  // variant에 따른 버튼 색상 설정
+  // 버튼 스타일 설정
   const confirmButtonStyle =
-    variant === "danger"
-      ? "bg-[#FF006C] hover:bg-[#e6005a] disabled:bg-gray-300"
-      : "bg-[#FF006C] hover:bg-[#e6005a] disabled:bg-gray-300";
+    "bg-[#FF006C] hover:bg-[#e6005a] disabled:bg-gray-300";
 
-  const cancelButtonStyle =
-    variant === "danger"
-      ? "border-none text-black hover:bg-gray-50 shadow-md"
-      : "border-none text-black hover:bg-gray-50 shadow-md";
+  const cancelButtonStyle = "border-none text-black hover:bg-gray-50 shadow-md";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">

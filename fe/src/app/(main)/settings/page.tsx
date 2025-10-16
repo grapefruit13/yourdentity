@@ -43,7 +43,7 @@ const SettingsPage = () => {
   };
 
   const handleDeleteAccount = () => {
-    router.push("/mypage-setting-leave");
+    router.push(LINK_URL.MYPAGE_SETTING_LEAVE);
   };
 
   const loginSectionItems = [
