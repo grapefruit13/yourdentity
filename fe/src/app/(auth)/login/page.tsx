@@ -8,6 +8,7 @@ import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao } from "@/lib/auth";
 import { debug } from "@/utils/shared/debugger";
 
@@ -18,6 +19,7 @@ const LoginPage = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { registerFCMToken } = useFCM();
 
   /**
    * @description 카카오 로그인
@@ -27,6 +29,15 @@ const LoginPage = () => {
     setErrorMessage(null);
     try {
       await signInWithKakao();
+
+      try {
+        debug.log("로그인 성공, FCM 토큰 저장 시작...");
+        await registerFCMToken();
+        debug.log("FCM 토큰 저장 완료");
+      } catch (fcmError) {
+        debug.error("FCM 토큰 저장 실패:", fcmError);
+      }
+
       router.replace(LINK_URL.HOME);
     } catch (error) {
       debug.error("카카오 로그인에 실패했어요. 다시 시도해 주세요.", error);
