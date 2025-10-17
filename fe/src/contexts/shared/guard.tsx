@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import useFcmToken from "@/hooks/shared/useFcmToken";
 import { onAuthStateChange } from "@/lib/auth";
 
 /**
@@ -12,6 +13,9 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
+
+  // FCM 토큰 관리 (로그인된 사용자만)
+  useFcmToken();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user) => {
