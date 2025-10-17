@@ -4,6 +4,7 @@
  *
  * 응답 형식:
  * - 성공: { status: 200, data: {...} }
+ * - 페이지네이션: { status: 200, data: { content: [...], pagination: {...} } }
  * - 실패: { status: 400, message: "..." }
  * @param {Object} req - Express request
  * @param {Object} res - Express response
@@ -58,15 +59,17 @@ const responseHandler = (req, res, next) => {
 
     return res.status(200).json({
       status: 200,
-      data,
-      pagination,
+      data: {
+        content: data,
+        pagination,
+      },
     });
   };
 
   // 생성 성공 응답 (201)
   res.created = (data) => {
     if (!data) {
-      console.warn("생성 응답: 201 응답에는 data가 필요합니다");
+      console.warn("생성 응답: 201 응답에는 data가 꼭 필요합니다");
       data = {};
     }
 
