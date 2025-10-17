@@ -260,38 +260,33 @@ class StoreService {
           throw error;
         }
 
-        const existingLikesQuery = await this.firestoreService.db
+        // 결정적 문서 ID로 중복 생성 방지
+        const likeRef = this.firestoreService.db
           .collection("likes")
-          .where("targetId", "==", productId)
-          .where("userId", "==", userId)
-          .where("type", "==", "PRODUCT")
-          .limit(1)
-          .get();
-
-        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+          .doc(`PRODUCT:${productId}:${userId}`);
+        const likeDoc = await transaction.get(likeRef);
         let isLiked = false;
 
-        if (userLike) {
-          transaction.delete(userLike.ref);
+        if (likeDoc.exists) {
+          transaction.delete(likeRef);
           isLiked = false;
 
           transaction.update(productRef, {
             likesCount: FieldValue.increment(-1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
-          const likeRef = this.firestoreService.db.collection("likes").doc();
           transaction.set(likeRef, {
             type: "PRODUCT",
             targetId: productId,
             userId,
-            createdAt: new Date(),
+            createdAt: FieldValue.serverTimestamp(),
           });
           isLiked = true;
 
           transaction.update(productRef, {
             likesCount: FieldValue.increment(1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
@@ -302,7 +297,7 @@ class StoreService {
           productId,
           userId,
           isLiked,
-          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+          likesCount: isLiked ? currentLikesCount + 1 : Math.max(0, currentLikesCount - 1),
         };
       });
 
@@ -553,38 +548,33 @@ class StoreService {
           throw error;
         }
 
-        const existingLikesQuery = await this.firestoreService.db
+        // 결정적 문서 ID로 중복 생성 방지
+        const likeRef = this.firestoreService.db
           .collection("likes")
-          .where("targetId", "==", qnaId)
-          .where("userId", "==", userId)
-          .where("type", "==", "QNA")
-          .limit(1)
-          .get();
-
-        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+          .doc(`QNA:${qnaId}:${userId}`);
+        const likeDoc = await transaction.get(likeRef);
         let isLiked = false;
 
-        if (userLike) {
-          transaction.delete(userLike.ref);
+        if (likeDoc.exists) {
+          transaction.delete(likeRef);
           isLiked = false;
 
           transaction.update(qnaRef, {
             likesCount: FieldValue.increment(-1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
-          const likeRef = this.firestoreService.db.collection("likes").doc();
           transaction.set(likeRef, {
             type: "QNA",
             targetId: qnaId,
             userId,
-            createdAt: new Date(),
+            createdAt: FieldValue.serverTimestamp(),
           });
           isLiked = true;
 
           transaction.update(qnaRef, {
             likesCount: FieldValue.increment(1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
@@ -595,7 +585,7 @@ class StoreService {
           qnaId,
           userId,
           isLiked,
-          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+          likesCount: isLiked ? currentLikesCount + 1 : Math.max(0, currentLikesCount - 1),
         };
       });
 

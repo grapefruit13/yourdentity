@@ -166,15 +166,13 @@ class TmiService {
         }
 
 
-        const existingApplicationQuery = await this.firestoreService.db
+        // 결정적 문서 ID로 중복 신청 방지
+        const applicationRef = this.firestoreService.db
           .collection("applications")
-          .where("targetId", "==", tmiId)
-          .where("userId", "==", userId)
-          .where("type", "==", "TMI")
-          .limit(1)
-          .get();
-
-        if (!existingApplicationQuery.empty) {
+          .doc(`TMI:${tmiId}:${userId}`);
+        const applicationDoc = await transaction.get(applicationRef);
+        
+        if (applicationDoc.exists) {
           const error = new Error("Already applied to this TMI project");
           error.code = "ALREADY_APPLIED";
           throw error;
@@ -199,19 +197,16 @@ class TmiService {
           targetName: tmi.name || tmi.title,
           targetPrice: tmi.price,
           customFieldsResponse,
-          appliedAt: new Date(),
-          updatedAt: new Date(),
+          appliedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         };
 
-    
-        const applicationRef = this.firestoreService.db.collection("applications").doc();
         transaction.set(applicationRef, applicationPayload);
 
-
         transaction.update(tmiRef, {
-          soldCount: (tmi.soldCount || 0) + quantity,
-          stockCount: currentStockCount - quantity,
-          updatedAt: new Date(),
+          soldCount: FieldValue.increment(quantity),
+          stockCount: FieldValue.increment(-quantity),
+          updatedAt: FieldValue.serverTimestamp(),
         });
 
         return {
@@ -230,7 +225,7 @@ class TmiService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        appliedAt: result.applicationPayload.appliedAt,
+        appliedAt: new Date(),
         targetName: result.tmi.name || result.tmi.title,
         targetPrice: result.tmi.price,
       };
@@ -480,41 +475,33 @@ class TmiService {
           throw error;
         }
 
-        // 기존 좋아요 확인 (트랜잭션 내에서)
-        const existingLikesQuery = await this.firestoreService.db
+        // 결정적 문서 ID로 중복 생성 방지
+        const likeRef = this.firestoreService.db
           .collection("likes")
-          .where("targetId", "==", qnaId)
-          .where("userId", "==", userId)
-          .where("type", "==", "QNA")
-          .limit(1)
-          .get();
-
-        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+          .doc(`QNA:${qnaId}:${userId}`);
+        const likeDoc = await transaction.get(likeRef);
         let isLiked = false;
 
-        if (userLike) {
-          // 좋아요 취소
-          transaction.delete(userLike.ref);
+        if (likeDoc.exists) {
+          transaction.delete(likeRef);
           isLiked = false;
 
           transaction.update(qnaRef, {
             likesCount: FieldValue.increment(-1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
-          // 좋아요 등록
-          const likeRef = this.firestoreService.db.collection("likes").doc();
           transaction.set(likeRef, {
             type: "QNA",
             targetId: qnaId,
             userId,
-            createdAt: new Date(),
+            createdAt: FieldValue.serverTimestamp(),
           });
           isLiked = true;
 
           transaction.update(qnaRef, {
             likesCount: FieldValue.increment(1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
@@ -525,7 +512,7 @@ class TmiService {
           qnaId,
           userId,
           isLiked,
-          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+          likesCount: isLiked ? currentLikesCount + 1 : Math.max(0, currentLikesCount - 1),
         };
       });
 
@@ -589,41 +576,33 @@ class TmiService {
           throw error;
         }
 
-        // 기존 좋아요 확인 (트랜잭션 내에서)
-        const existingLikesQuery = await this.firestoreService.db
+        // 결정적 문서 ID로 중복 생성 방지
+        const likeRef = this.firestoreService.db
           .collection("likes")
-          .where("targetId", "==", tmiId)
-          .where("userId", "==", userId)
-          .where("type", "==", "TMI")
-          .limit(1)
-          .get();
-
-        const userLike = existingLikesQuery.empty ? null : existingLikesQuery.docs[0];
+          .doc(`TMI:${tmiId}:${userId}`);
+        const likeDoc = await transaction.get(likeRef);
         let isLiked = false;
 
-        if (userLike) {
-          // 좋아요 취소
-          transaction.delete(userLike.ref);
+        if (likeDoc.exists) {
+          transaction.delete(likeRef);
           isLiked = false;
 
           transaction.update(tmiRef, {
             likesCount: FieldValue.increment(-1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
-          // 좋아요 등록
-          const likeRef = this.firestoreService.db.collection("likes").doc();
           transaction.set(likeRef, {
             type: "TMI",
             targetId: tmiId,
             userId,
-            createdAt: new Date(),
+            createdAt: FieldValue.serverTimestamp(),
           });
           isLiked = true;
 
           transaction.update(tmiRef, {
             likesCount: FieldValue.increment(1),
-            updatedAt: new Date(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
@@ -634,7 +613,7 @@ class TmiService {
           tmiId,
           userId,
           isLiked,
-          likesCount: isLiked ? currentLikesCount + 1 : currentLikesCount - 1,
+          likesCount: isLiked ? currentLikesCount + 1 : Math.max(0, currentLikesCount - 1),
         };
       });
 
