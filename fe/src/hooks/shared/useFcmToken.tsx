@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onMessage, Unsubscribe } from "firebase/messaging";
 import { toast } from "sonner";
+import { onAuthStateChange } from "@/lib/auth";
 import { fetchToken, getClientMessaging } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
+import { useFCM } from "./useFCM";
 
 async function getNotificationPermissionAndToken() {
   // Step 1: Check if Notifications are supported in the browser.
@@ -33,17 +35,26 @@ async function getNotificationPermissionAndToken() {
 }
 
 const useFcmToken = () => {
+  console.log("useFcmToken hook initialized");
+
   const router = useRouter(); // Initialize the router for navigation.
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
     useState<NotificationPermission | null>(null); // State to store the notification permission status.
   const [token, setToken] = useState<string | null>(null); // State to store the FCM token.
   const retryLoadToken = useRef(0); // Ref to keep track of retry attempts.
   const isLoading = useRef(false); // Ref to keep track if a token fetch is currently in progress.
+  const tokenSent = useRef(false); // Ref to prevent duplicate token sending
+  // FCM 훅 사용
+  const { registerFCMToken } = useFCM();
 
-  const loadToken = async () => {
+  const loadToken = useCallback(async () => {
     // Step 4: Prevent multiple fetches if already fetched or in progress.
-    if (isLoading.current) return;
+    if (isLoading.current) {
+      debug.log("FCM token loading already in progress, skipping...");
+      return;
+    }
 
+    debug.log("Starting FCM token loading process...");
     isLoading.current = true; // Mark loading as in progress.
     const token = await getNotificationPermissionAndToken(); // Fetch the token.
 
@@ -82,14 +93,43 @@ const useFcmToken = () => {
     setNotificationPermissionStatus(Notification.permission);
     setToken(token);
     isLoading.current = false;
-  };
+
+    // 중복 전송 방지
+    if (!tokenSent.current) {
+      try {
+        await registerFCMToken();
+        tokenSent.current = true;
+        debug.log("FCM 토큰이 서버에 저장되었습니다.");
+      } catch (error) {
+        debug.error("FCM 토큰 서버 저장 실패:", error);
+        // 토큰 저장 실패해도 로컬 토큰은 유지
+      }
+    } else {
+      debug.log("FCM 토큰이 이미 전송되었습니다. 중복 전송 방지.");
+    }
+  }, [registerFCMToken]);
 
   useEffect(() => {
-    // Step 8: Initialize token loading when the component mounts.
-    if ("Notification" in window) {
-      loadToken();
-    }
-  }, []);
+    const unsubscribe = onAuthStateChange((user: any) => {
+      debug.log("Auth state changed:", {
+        user: !!user,
+        hasNotification: "Notification" in window,
+      });
+
+      if (user && "Notification" in window) {
+        debug.log("User logged in, starting FCM token process...");
+        loadToken();
+      } else if (!user) {
+        debug.log("User logged out, clearing FCM token");
+        setToken(null);
+        setNotificationPermissionStatus(null);
+      } else {
+        debug.log("User logged in but Notification not supported");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadToken]);
 
   useEffect(() => {
     const setupListener = async () => {
@@ -163,7 +203,7 @@ const useFcmToken = () => {
 
     // Step 11: Cleanup the listener when the component unmounts.
     return () => unsubscribe?.();
-  }, [token, router, toast]);
+  }, [token, router]);
 
   return { token, notificationPermissionStatus }; // Return the token and permission status.
 };
