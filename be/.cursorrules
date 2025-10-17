@@ -58,13 +58,14 @@
 ### Controller 패턴
 ```javascript
 class UserController {
-  async getUserById(req, res) {
+  async getUserById(req, res, next) {
     try {
       const { userId } = req.params;
       const user = await userService.getUserById(userId);
       res.json(successResponse(200, user));
     } catch (error) {
-      return req.next ? req.next(error) : res.status(500).json({ error: error.message });
+      console.error('Get user error:', error);
+      return next(error);
     }
   }
 }
@@ -126,7 +127,7 @@ await userRef.update({
 ## 추가 리소스
 - 상세 가이드: `be/rules/backend-guidelines.mdc`
 - Swagger 문서: `/api-docs`
-- 에러 코드 정의: `src/middleware/errorHandler.js`
+- 에러 코드 정의: `functions/src/middleware/errorHandler.js`
 
 ## Code Review 체크리스트
 상세 내용은 `backend-guidelines.mdc`의 Code Review Checklist 참조
