@@ -66,14 +66,24 @@ jobs:
           # GitHub Secret의 환경변수를 .env에 주입
           # 주석/빈 줄/CRLF 제거 후 key=value 라인만 반영
           if [ -n "${ENV_VARS:-}" ]; then
-            appended_count=$(
-              printf '%s\n' "$ENV_VARS" \
+            # 임시 파일 생성 (보안: stdout에 출력하지 않음)
+            temp_file=$(mktemp)
+            
+            # 필터링된 변수들을 임시 파일에 작성 (로그에 노출되지 않음)
+            printf '%s\n' "$ENV_VARS" \
               | tr -d '\r' \
               | grep -Ev '^[[:space:]]*#|^[[:space:]]*$' \
               | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' \
-              | tee -a .env \
-              | wc -l | tr -d ' '
-            )
+              > "$temp_file"
+            
+            # 라인 수 카운트
+            appended_count=$(wc -l < "$temp_file" | tr -d ' ')
+            
+            # .env에 append (로그 출력 없음)
+            cat "$temp_file" >> .env
+            
+            # 임시 파일 안전하게 제거
+            rm -f "$temp_file"
           else
             echo "❌ 오류: ENV_VARS Secret이 비어있습니다" >&2
             exit 1
