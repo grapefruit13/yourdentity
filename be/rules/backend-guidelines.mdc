@@ -28,7 +28,7 @@ alwaysApply: false
 ```javascript
 // ❌ 나쁜 예: Controller에 비즈니스 로직 혼재
 class UserController {
-  async createUser(req, res) {
+  async createUser(req, res, next) {
     const { email, password, name } = req.body;
     
     // 비즈니스 로직이 Controller에 있음
@@ -897,11 +897,11 @@ class BusinessService {
 ```javascript
 // ✅ Controller 메서드: HTTP 동사 + 리소스명
 class UserController {
-  async createUser(req, res) { }
-  async getUserById(req, res) { }
-  async getAllUsers(req, res) { }
-  async updateUser(req, res) { }
-  async deleteUser(req, res) { }
+  async createUser(req, res, next) { }
+  async getUserById(req, res, next) { }
+  async getAllUsers(req, res, next) { }
+  async updateUser(req, res, next) { }
+  async deleteUser(req, res, next) { }
 }
 
 // ✅ Service 메서드: 동사 + 명사
