@@ -69,7 +69,7 @@ const responseHandler = (req, res, next) => {
   // 생성 성공 응답 (201)
   res.created = (data) => {
     if (!data) {
-      console.warn("생성 응답: 201 응답에는 data가 필요합니다");
+      console.warn("생성 응답: 201 응답에는 data가 꼭 필요합니다");
       data = {};
     }
 
