@@ -167,15 +167,12 @@ class StoreService {
           throw error;
         }
 
-        const existingPurchaseQuery = await this.firestoreService.db
+        const purchaseRef = this.firestoreService.db
           .collection("purchases")
-          .where("targetId", "==", productId)
-          .where("userId", "==", userId)
-          .where("type", "==", "PRODUCT")
-          .limit(1)
-          .get();
-
-        if (!existingPurchaseQuery.empty) {
+          .doc(`PRODUCT:${productId}:${userId}`);
+        const existingPurchaseDoc = await transaction.get(purchaseRef);
+        
+        if (existingPurchaseDoc.exists) {
           const error = new Error("Already purchased this product");
           error.code = "ALREADY_PURCHASED";
           throw error;
@@ -200,17 +197,16 @@ class StoreService {
           targetName: product.name,
           targetPrice: product.price,
           customFieldsResponse,
-          purchasedAt: new Date(),
-          updatedAt: new Date(),
+          purchasedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         };
 
-        const purchaseRef = this.firestoreService.db.collection("purchases").doc();
         transaction.set(purchaseRef, purchasePayload);
 
         transaction.update(productRef, {
-          soldCount: (product.soldCount || 0) + quantity,
-          stockCount: currentStockCount - quantity,
-          updatedAt: new Date(),
+          soldCount: FieldValue.increment(quantity),
+          stockCount: FieldValue.increment(-quantity),
+          updatedAt: FieldValue.serverTimestamp(),
         });
 
         return {
@@ -219,6 +215,12 @@ class StoreService {
           purchasePayload,
         };
       });
+
+      // 커밋 후 문서 재조회로 서버 타임스탬프 해석
+      const purchase = await this.firestoreService.getDocument("purchases", result.purchaseId);
+      const purchasedAtIso = purchase?.purchasedAt?.toDate
+        ? purchase.purchasedAt.toDate().toISOString()
+        : undefined;
 
       return {
         purchaseId: result.purchaseId,
@@ -229,7 +231,7 @@ class StoreService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        purchasedAt: result.purchasePayload.purchasedAt,
+        purchasedAt: purchasedAtIso,
         targetName: result.product.name,
         targetPrice: result.product.price,
       };

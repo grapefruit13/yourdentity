@@ -252,6 +252,11 @@ class GatheringService {
         };
       });
 
+      const application = await this.firestoreService.getDocument("applications", result.applicationId);
+      const appliedAtIso = application?.appliedAt?.toDate
+        ? application.appliedAt.toDate().toISOString()
+        : undefined;
+
       return {
         applicationId: result.applicationId,
         type: "GATHERING",
@@ -261,7 +266,7 @@ class GatheringService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        appliedAt: result.applicationPayload.appliedAt.toISOString(),
+        appliedAt: appliedAtIso,
         targetName: result.gathering.name,
         targetPrice: result.gathering.price,
       };
