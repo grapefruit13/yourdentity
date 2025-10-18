@@ -50,7 +50,7 @@ class ReportContentController {
 
       const result = await reportContentService.createReport(reportData);
 
-      res.created({ message: "신고가 접수되었습니다.", reportId: result.id });
+      res.created({ message: "신고가 접수되었습니다.", reportId: result.notionPageId });
     } catch (error) {
       console.error("Create report error:", error);
 
@@ -85,7 +85,7 @@ class ReportContentController {
 
 
   // 노션 전체 DB를 Firebase reports 컬렉션으로 동기화
-  async syncNotionReports(req, res) {
+  async syncNotionReports(req, res, next) {
     try {
       const syncedReports = await reportContentService.syncResolvedReports();
       res.success({ 
