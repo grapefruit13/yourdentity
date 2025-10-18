@@ -34,11 +34,25 @@ const nextConfig: NextConfig = {
   },
   // eslint-disable-next-line require-await
   async redirects() {
+    if (process.env.NODE_ENV !== "development") {
+      return [];
+    }
     return [
       {
         source: LINK_URL.ROOT,
         destination: LINK_URL.HOME,
         permanent: false,
+      },
+    ];
+  },
+  // API 프록시 설정 - HTTPS에서 HTTP 백엔드로 안전하게 요청
+  // eslint-disable-next-line require-await
+  async rewrites() {
+    return [
+      {
+        source: "/api-proxy/:path*",
+        destination:
+          "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api/:path*",
       },
     ];
   },

@@ -2,12 +2,20 @@ import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
 import { auth } from "./firebase";
 
+const getBaseURL = () => {
+  if (process.env.NODE_ENV === "development") {
+    return "/api-proxy";
+  } else {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+};
+
 /**
  * @description axios api instance
+ * Next.js rewrites를 통해 /api-proxy -> 백엔드 HTTP로 프록시
  */
 const instance = axios.create({
-  // TODO: process.env.NEXT_PUBLIC_API_URL 로 교체
-  baseURL: "http://localhost:3000",
+  baseURL: getBaseURL(),
   withCredentials: true, // 쿠키 포함
   headers: {
     "Content-Type": "application/json",
