@@ -257,6 +257,12 @@ class RoutineService {
         };
       });
 
+      // 커밋 후 문서 재조회로 서버 타임스탬프 해석
+      const application = await this.firestoreService.getDocument("applications", result.applicationId);
+      const appliedAtIso = application?.appliedAt?.toDate
+        ? application.appliedAt.toDate().toISOString()
+        : undefined;
+
       return {
         applicationId: result.applicationId,
         type: "ROUTINE",
@@ -266,7 +272,7 @@ class RoutineService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        appliedAt: result.applicationPayload.appliedAt,
+        appliedAt: appliedAtIso,
         targetName: result.routine.name,
         targetPrice: result.routine.price,
       };

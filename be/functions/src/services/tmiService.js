@@ -224,6 +224,12 @@ class TmiService {
         };
       });
 
+      // 커밋 후 문서 재조회로 서버 타임스탬프 해석
+      const application = await this.firestoreService.getDocument("applications", result.applicationId);
+      const appliedAtIso = application?.appliedAt?.toDate
+        ? application.appliedAt.toDate().toISOString()
+        : undefined;
+
       return {
         applicationId: result.applicationId,
         type: "TMI",
@@ -233,7 +239,7 @@ class TmiService {
         selectedVariant,
         quantity,
         customFieldsResponse,
-        appliedAt: new Date(),
+        appliedAt: appliedAtIso,
         targetName: result.tmi.name || result.tmi.title,
         targetPrice: result.tmi.price,
       };
