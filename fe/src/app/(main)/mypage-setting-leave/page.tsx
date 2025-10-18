@@ -262,7 +262,7 @@ const MyPageSettingLeavePage = () => {
       <div className="px-4 pb-4">
         <ButtonBase
           onClick={handleDeleteAccount}
-          className="relative w-full rounded-lg bg-[#FF006C] py-4 transition-colors hover:bg-[#e6005a] disabled:bg-[#FF006C] disabled:after:absolute disabled:after:inset-0 disabled:after:rounded-lg disabled:after:bg-white/70 disabled:after:content-['']"
+          className="relative w-full rounded-lg bg-[#FF006C] py-[15px] transition-colors hover:bg-[#e6005a] disabled:bg-[#FF006C] disabled:after:absolute disabled:after:inset-0 disabled:after:rounded-lg disabled:after:bg-white/70 disabled:after:content-['']"
           disabled={
             !userName.trim() || nameError !== "" || actualUserName === null
           }
