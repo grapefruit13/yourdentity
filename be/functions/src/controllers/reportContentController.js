@@ -50,7 +50,8 @@ class ReportContentController {
 
       const result = await reportContentService.createReport(reportData);
 
-      res.created({ message: "신고가 접수되었습니다.", reportId: result.notionPageId });
+      //res.created({ message: "신고가 접수되었습니다.", reportId: result.notionPageId });
+      res.created({ message: "신고가 접수되었습니다."});
     } catch (error) {
       console.error("Create report error:", error);
 

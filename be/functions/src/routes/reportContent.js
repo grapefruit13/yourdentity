@@ -148,9 +148,6 @@ const router = express.Router();
  *                     message:
  *                       type: string
  *                       example: "신고가 접수되었습니다."
- *                     reportId:
- *                       type: string
- *                       example: "report_123"
  *       400:
  *         description: 잘못된 요청
  *         content:
