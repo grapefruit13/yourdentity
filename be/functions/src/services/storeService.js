@@ -151,11 +151,19 @@ class StoreService {
    */
   async purchaseProduct(productId, userId, purchaseData) {
     try {
-      const {
+      let {
         selectedVariant = null,
         quantity = 1,
         customFieldsResponse = {},
       } = purchaseData;
+
+      // 수량 검증 (트랜잭션 진입 전)
+      quantity = Number(quantity);
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        const error = new Error("수량은 1 이상의 정수여야 합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       const result = await this.firestoreService.runTransaction(async (transaction) => {
         const productRef = this.firestoreService.db.collection("products").doc(productId);
@@ -237,7 +245,7 @@ class StoreService {
       };
     } catch (error) {
       console.error("Purchase product error:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_PURCHASED") {
+      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_PURCHASED" || error.code === "BAD_REQUEST") {
         throw error;
       }
       throw new Error("Failed to purchase product");
