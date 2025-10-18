@@ -6,7 +6,30 @@ import { debug } from "@/utils/shared/debugger";
  * DELETE /api/user/delete
  */
 export function DELETE(request: NextRequest) {
-  // 보안 안전장치: 기능이 완전히 구현되기 전까지 비활성화
+  // 1. CSRF 토큰 검증
+  const csrfToken = request.headers.get("x-csrf-token");
+  if (!csrfToken) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "CSRF 토큰이 누락되었습니다.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // CSRF 토큰이 유효한지 검증 (최소 길이 체크)
+  if (csrfToken.length < 32) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "유효하지 않은 CSRF 토큰입니다.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // 2. 보안 안전장치: 기능이 완전히 구현되기 전까지 비활성화
   if (process.env.ENABLE_ACCOUNT_DELETION !== "true") {
     return NextResponse.json(
       {
@@ -56,11 +79,31 @@ export function DELETE(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    // 6. 성공 응답
-    return NextResponse.json({
+    // 6. 쿠키 삭제 (HttpOnly 쿠키는 클라이언트에서 삭제 불가)
+    const response = NextResponse.json({
       success: true,
       message: "계정이 성공적으로 삭제되었습니다.",
     });
+
+    // 모든 쿠키를 만료시키기 위한 헤더 설정
+    const cookiesToClear = [
+      "session-token",
+      "auth-token",
+      "refresh-token",
+      "__session", // Firebase 기본 쿠키
+    ];
+
+    cookiesToClear.forEach((cookieName) => {
+      response.cookies.set(cookieName, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        expires: new Date(0), // 1970년 1월 1일로 설정하여 즉시 만료
+      });
+    });
+
+    return response;
   } catch (error) {
     debug.error("계정 삭제 API 오류:", error);
 

@@ -21,15 +21,21 @@ const Page = () => {
   return (
     <div className="flex min-h-full w-full flex-col bg-gray-50">
       {/* 메인 컨텐츠 */}
-      <main className="flex flex-col gap-4 px-4 py-6">
+      <main className="flex flex-col px-4 py-6">
         {/* 프로필 카드 */}
-        <ProfileCard />
+        <div className="mb-4">
+          <ProfileCard />
+        </div>
 
         {/* 포인트 카드 */}
-        <PointsCard points={200} />
+        <div className="mb-3">
+          <PointsCard points={200} />
+        </div>
 
         {/* 액션 버튼들 */}
-        <ActionButtons />
+        <div className="mb-4">
+          <ActionButtons />
+        </div>
         {/* FIXME: 로그인 페이지 접근 위해 임시로 만든 버튼. 추후 삭제 예정. */}
         <ButtonBase
           onClick={handleLoginClick}

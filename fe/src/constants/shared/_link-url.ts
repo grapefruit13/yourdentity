@@ -12,4 +12,5 @@ export const LINK_URL = {
   COMMUNITY: "/community",
   DOWNLOAD: "/download",
   MY_PAGE: "/my-page",
+  MYPAGE_SETTING_LEAVE: "/mypage-setting-leave",
 };
