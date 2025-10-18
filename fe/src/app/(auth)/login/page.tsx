@@ -31,11 +31,9 @@ const LoginPage = () => {
       await signInWithKakao();
 
       try {
-        debug.log("로그인 성공, FCM 토큰 저장 시작...");
         await registerFCMToken();
-        debug.log("FCM 토큰 저장 완료");
       } catch (fcmError) {
-        debug.error("FCM 토큰 저장 실패:", fcmError);
+        // FCM 토큰 저장 실패해도 로그인은 계속 진행
       }
 
       router.replace(LINK_URL.HOME);

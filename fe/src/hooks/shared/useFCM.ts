@@ -113,37 +113,24 @@ export const useFCM = () => {
   // FCM 토큰 발급 및 저장
   const registerFCMToken = useCallback(async (): Promise<FCMTokenResult> => {
     try {
-      debug.log("Starting FCM token registration...");
-
       // 0. 사용자 인증 상태 확인
       const user = auth.currentUser;
       if (!user) {
-        debug.error("User not authenticated, cannot save FCM token");
         return {
           token: null,
           error: "사용자가 로그인되지 않았습니다.",
         };
       }
 
-      debug.log("User authenticated:", { uid: user.uid, email: user.email });
-
       // 1. FCM 토큰 발급
       const tokenResult = await getFCMToken();
       if (!tokenResult.token) {
-        debug.error("Failed to get FCM token:", tokenResult.error);
         return tokenResult;
       }
-
-      debug.log("FCM token obtained successfully");
 
       // 2. 디바이스 정보 수집
       const deviceInfo = getDeviceInfo();
       const deviceType = getDeviceType();
-
-      debug.log("Device info collected:", {
-        deviceType,
-        deviceInfoLength: deviceInfo.length,
-      });
 
       // 3. 서버에 토큰 저장
       const tokenRequest: FCMTokenRequest = {
@@ -152,15 +139,10 @@ export const useFCM = () => {
         deviceType,
       };
 
-      debug.log("Sending FCM token to server...", {
-        tokenLength: tokenResult.token.length,
-      });
       await saveTokenMutation.mutateAsync(tokenRequest);
-      debug.log("FCM token saved to server successfully");
 
       return { token: tokenResult.token };
     } catch (error) {
-      debug.error("FCM 토큰 등록 실패:", error);
       return {
         token: null,
         error:
