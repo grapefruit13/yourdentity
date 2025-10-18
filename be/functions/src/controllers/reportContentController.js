@@ -6,7 +6,7 @@ class ReportContentController {
   /**
      * 게시글/댓글 신고 생성
      */
-  async createReport(req, res) {
+  async createReport(req, res, next) {
     try {
       // TODO : 실제 환경에서 현제 userId를 받는 것에 제한이 있는경우 로그인된  토큰정보로 userId조회하는 방안 고려
       // const { uid } = req.user; // authGuard에서 설정
@@ -22,26 +22,17 @@ class ReportContentController {
 
       // 요청 데이터 검증
       if (!targetType || !targetId || !reportReason || !targetUserId || !reporterId) {
-        return res.status(400).json({
-          success: false,
-          error: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reporterId, reportReason)",
-        });
+        return res.error(400, "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reporterId, reportReason)");
       }
 
       if (!["post", "comment"].includes(targetType)) {
-        return res.status(400).json({
-          success: false,
-          error: "targetType은 'post' 또는 'comment'여야 합니다.",
-        });
+        return res.error(400, "targetType은 'post' 또는 'comment'여야 합니다.");
       }
 
       // Firestore에서 유저 존재 여부 확인
       const userDoc = await db.collection("users").doc(reporterId).get();
       if (!userDoc.exists) {
-        return res.status(404).json({
-          success: false,
-          error: "해당 reporterId를 가진 사용자를 찾을 수 없습니다.",
-        });
+        return res.error(404, "해당 reporterId를 가진 사용자를 찾을 수 없습니다.");
       }
 
       // 사용자 이름(닉네임) 가져오기
@@ -59,28 +50,13 @@ class ReportContentController {
 
       const result = await reportContentService.createReport(reportData);
 
-      res.status(201).json(successResponse(201, result, "신고가 접수되었습니다."));
+      //res.created({ message: "신고가 접수되었습니다.", reportId: result.notionPageId });
+      res.created({ message: "신고가 접수되었습니다."});
     } catch (error) {
       console.error("Create report error:", error);
 
-      if (error.message === "이미 신고한 콘텐츠입니다.") {
-        return res.status(400).json({
-          success: false,
-          error: error.message,
-        });
-      }
+      next(error);
 
-      if (error.message.includes("찾을 수 없습니다")) {
-        return res.status(404).json({
-          success: false,
-          error: error.message,
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        error: "서버 오류가 발생했습니다.",
-      });
     }
   }
 
@@ -101,27 +77,25 @@ class ReportContentController {
         cursor,
       });
 
-      res.json(successResponse(200, result));
+      res.success(result);
     } catch (error) {
       console.error("Get my reports error:", error);
-      res.status(500).json({
-        success: false,
-        error: "서버 오류가 발생했습니다.",
-      });
+      next(error);
     }
   }
 
 
-
-
   // 노션 전체 DB를 Firebase reports 컬렉션으로 동기화
-  async syncNotionReports(req, res) {
+  async syncNotionReports(req, res, next) {
     try {
       const syncedReports = await reportContentService.syncResolvedReports();
-      res.status(200).json({success: true, count: syncedReports.length});
+      res.success({ 
+        message: "동기화가 완료되었습니다.", 
+        count: syncedReports.length 
+      });
     } catch (error) {
       console.error("Notion -> Firebase 동기화 실패:", error);
-      res.status(500).json({success: false, message: error.message});
+      next(error);
     }
   }
 }

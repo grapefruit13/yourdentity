@@ -57,7 +57,39 @@ const errorHandler = (err, req, res, next) => {
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;
-  }
+
+    case "DUPLICATE_REPORT":
+    httpStatus = 400;
+    if (!err.message) errorMessage = "이미 신고한 콘텐츠입니다";
+    break;
+
+    case "NOTION_DATABASE_NOT_FOUND":
+    case "NOTION_SYNC_FAILED":
+      httpStatus = 500;
+      if (!err.message) errorMessage = "Notion 서비스 오류가 발생했습니다";
+      break;
+
+    case "REPORT_CREATION_FAILED":
+    case "REPORTS_FETCH_FAILED":
+      httpStatus = 500;
+      if (!err.message) errorMessage = "신고 처리 중 오류가 발생했습니다";
+      break;
+
+    case "MISSING_COMMUNITY_ID":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "communityId가 필요합니다. 게시글은 반드시 커뮤니티 하위에 존재합니다.";
+      break;
+
+    case "NOTION_POST_NOT_FOUND":
+      httpStatus = 404;
+      if (!err.message) errorMessage = "신고하려는 게시글을 찾을 수 없습니다.";
+      break;
+
+    case "COMMENT_NOT_FOUND":
+      httpStatus = 404;
+      if (!err.message) errorMessage = "신고하려는 댓글을 찾을 수 없습니다.";
+      break;
+   }
 
   // 프로덕션 보안: 500 에러 시 상세 메시지 숨김
   if (httpStatus >= 500 && process.env.NODE_ENV === "production") {

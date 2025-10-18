@@ -30,7 +30,10 @@ async createReport(reportData) {
     // 1. 중복 신고 체크
     const existingReport = await this.checkDuplicateReport(reporterId, targetType, targetId);
     if (existingReport) {
-      throw new Error("이미 신고한 콘텐츠입니다.");
+      const error = new Error("이미 신고한 콘텐츠입니다.");
+      error.code = "DUPLICATE_REPORT";
+      error.status = 400;
+      throw error;
     }
 
     // 2. 신고 대상 존재 여부 확인
@@ -121,17 +124,26 @@ async validateTargetExists(targetType, targetId, communityId) {
     if (targetType === 'post') {
 
       if (!communityId) {
-        throw new Error("communityId가 필요합니다. 게시글은 반드시 커뮤니티 하위에 존재합니다.");
+        const error1 = new Error("communityId가 필요합니다. 게시글은 반드시 커뮤니티 하위에 존재합니다.");
+        error1.code = "MISSING_COMMUNITY_ID";
+        error1.status = 400;
+        throw error1;
       }
 
       const postDoc = await db.doc(`communities/${communityId}/posts/${targetId}`).get();
       if (!postDoc.exists) {
-        throw new Error("신고하려는 게시글을 찾을 수 없습니다.");
+        const error2 = new Error("신고하려는 게시글을 찾을 수 없습니다.");
+        error2.code = "NOTION_POST_NOT_FOUND";
+        error2.status = 404;
+        throw error2;
       }
     } else if (targetType === 'comment') {
       const commentDoc = await db.doc(`comments/${targetId}`).get();
       if (!commentDoc.exists) {
-        throw new Error("신고하려는 댓글을 찾을 수 없습니다.");
+        const error3 = new Error("신고하려는 댓글을 찾을 수 없습니다.");
+        error3.code = "COMMENT_NOT_FOUND";
+        error3.status = 404;
+        throw error3;
       }
     }
   } catch (error) {
@@ -290,7 +302,11 @@ async syncReportToNotion(reportData) {
     return { success: true, notionPageId: response.id };
   } catch (error) {
     console.error('Notion 동기화 실패:', error);
-    throw new Error(`Notion 동기화 실패: ${error.message}`);
+    //throw new Error(`Notion 동기화 실패: ${error.message}`);
+    const customError = new Error("Notion 동기화 중 오류가 발생했습니다.");
+    customError.code = "NOTION_SYNC_FAILED";
+    customError.status = 500;
+    throw customError;
   }
 }
 

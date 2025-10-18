@@ -6,27 +6,16 @@ const { db, FieldValue } = require("../config/database");
 class NotionUserService {
 
   constructor() {
-    const {
-      NOTION_API_KEY,
-      NOTION_USER_ACCOUNT_DB_ID,
-    } = process.env;
-
-    // --- 환경 변수 검증 ---
-    if (!NOTION_API_KEY) throw new Error("Missing NOTION_API_KEY");
-    if (!NOTION_USER_ACCOUNT_DB_ID)
-      throw new Error("Missing NOTION_USER_ACCOUNT_DB_ID");
-
-    // --- Notion 클라이언트 초기화 (v5.x 호환) ---
     this.notion = new Client({
-      auth: NOTION_API_KEY,
-      notionVersion: "2022-06-28", // 최신 버전 명시 (SDK v5.x 기준)
+      auth: process.env.NOTION_API_KEY,
+
     });
 
-    // --- Notion 데이터베이스 ID 매핑 ---
-    this.notionUserAccountDB = NOTION_USER_ACCOUNT_DB_ID;
+    this.notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
+    this.activeUserDB  = process.env.NOTION_ACTIVE_USER;
+    this.withdrawUserDB = process.env.NOTION_WITHDRAWN_USER;
+    this.pendingUserDB = process.env.NOTION_PENDING_USER;
   }
-
-
 
 
   /**
@@ -71,7 +60,7 @@ class NotionUserService {
         ? new Date(notionUsers[userId].lastUpdated).getTime()
         : 0;
 
-  
+
       // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
       if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
         // 기존 데이터가 있다면 삭제
@@ -162,11 +151,6 @@ async getNotionUsers(databaseId) {
         start_cursor: startCursor,
       }),
     });
-
-    if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Notion query failed (${res.status}): ${text}`);
-          }
 
     const data = await res.json();
     results = results.concat(data.results);
