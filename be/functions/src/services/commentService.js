@@ -227,34 +227,42 @@ class CommentService {
           totalPages: Math.ceil(totalParentCount / pageSize),
         }
       };
-
-      // 각 부모 댓글에 대한 대댓글 조회
+      
       const commentsWithReplies = [];
       
-      for (const comment of result.content || []) {
-        // 대댓글 조회 (단순 쿼리로 변경)
-        const allReplies = await this.firestoreService.getCollectionWhere(
+      if (result.content && result.content.length > 0) {
+        const parentCommentIds = result.content.map(comment => comment.id);
+        
+        const allReplies = await this.firestoreService.getCollectionWhereIn(
           "comments",
-          "parentId", 
-          "==", 
-          comment.id
+          "parentId",
+          parentCommentIds
         );
 
-        // 메모리에서 필터링 및 정렬
-        const replies = {
-          content: allReplies
-            .filter(reply => !reply.isDeleted)
+        const repliesByParentId = {};
+        allReplies
+          .filter(reply => !reply.isDeleted)
+          .forEach(reply => {
+            if (!repliesByParentId[reply.parentId]) {
+              repliesByParentId[reply.parentId] = [];
+            }
+            repliesByParentId[reply.parentId].push(reply);
+          });
+
+        for (const comment of result.content) {
+          const replies = repliesByParentId[comment.id] || [];
+          const sortedReplies = replies
             .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-            .slice(0, 50) // 대댓글은 최대 50개
-        };
+            .slice(0, 50);
 
-        const processedComment = {
-          ...comment,
-          replies: replies.content || [],
-          repliesCount: (replies.content || []).length,
-        };
+          const processedComment = {
+            ...comment,
+            replies: sortedReplies,
+            repliesCount: sortedReplies.length,
+          };
 
-        commentsWithReplies.push(processedComment);
+          commentsWithReplies.push(processedComment);
+        }
       }
 
       return {
