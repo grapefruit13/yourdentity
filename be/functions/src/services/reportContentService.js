@@ -133,7 +133,7 @@ async validateTargetExists(targetType, targetId, communityId) {
       const postDoc = await db.doc(`communities/${communityId}/posts/${targetId}`).get();
       if (!postDoc.exists) {
         const error2 = new Error("신고하려는 게시글을 찾을 수 없습니다.");
-        error2.code = "POST_NOT_FOUND";
+        error2.code = "NOTION_POST_NOT_FOUND";
         error2.status = 404;
         throw error2;
       }
