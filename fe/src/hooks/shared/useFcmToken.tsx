@@ -99,32 +99,19 @@ const useFcmToken = () => {
       try {
         await registerFCMToken();
         tokenSent.current = true;
-        debug.log("FCM 토큰이 서버에 저장되었습니다.");
       } catch (error) {
-        debug.error("FCM 토큰 서버 저장 실패:", error);
         // 토큰 저장 실패해도 로컬 토큰은 유지
       }
-    } else {
-      debug.log("FCM 토큰이 이미 전송되었습니다. 중복 전송 방지.");
     }
   }, [registerFCMToken]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user: any) => {
-      debug.log("Auth state changed:", {
-        user: !!user,
-        hasNotification: "Notification" in window,
-      });
-
       if (user && "Notification" in window) {
-        debug.log("User logged in, starting FCM token process...");
         loadToken();
       } else if (!user) {
-        debug.log("User logged out, clearing FCM token");
         setToken(null);
         setNotificationPermissionStatus(null);
-      } else {
-        debug.log("User logged in but Notification not supported");
       }
     });
 
