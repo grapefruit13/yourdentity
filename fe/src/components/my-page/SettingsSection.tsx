@@ -39,7 +39,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, items }) => {
       <Typography
         as="h3"
         font="noto"
-        variant="body2R"
+        variant="body2B"
         className="px-4 text-gray-500"
       >
         {title}
