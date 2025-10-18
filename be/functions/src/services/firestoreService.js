@@ -7,6 +7,7 @@ const {db, FieldValue} = require("../config/database");
 class FirestoreService {
   constructor(collectionName) {
     this.collectionName = collectionName;
+    this.db = db; 
   }
 
   /**
@@ -499,6 +500,15 @@ class FirestoreService {
         isLast: safePage === totalPages - 1,
       },
     };
+  }
+
+  /**
+   * Firestore 트랜잭션 실행
+   * @param {Function} updateFunction - 트랜잭션 함수
+   * @return {Promise<any>} 트랜잭션 결과
+   */
+  async runTransaction(updateFunction) {
+    return await this.db.runTransaction(updateFunction);
   }
 }
 
