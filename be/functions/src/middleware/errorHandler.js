@@ -80,7 +80,7 @@ const errorHandler = (err, req, res, next) => {
       if (!err.message) errorMessage = "communityId가 필요합니다. 게시글은 반드시 커뮤니티 하위에 존재합니다.";
       break;
 
-    case "POST_NOT_FOUND":
+    case "NOTION_POST_NOT_FOUND":
       httpStatus = 404;
       if (!err.message) errorMessage = "신고하려는 게시글을 찾을 수 없습니다.";
       break;
