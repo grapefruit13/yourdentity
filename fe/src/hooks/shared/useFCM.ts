@@ -2,8 +2,6 @@
  * @description FCM 토큰 관리 훅
  */
 import { useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { saveFCMToken } from "@/api/fcm";
 import { fetchToken } from "@/lib/firebase";
 import { auth } from "@/lib/firebase";
 import {
@@ -13,6 +11,7 @@ import {
   DeviceType,
 } from "@/types/shared/fcm";
 import { debug } from "@/utils/shared/debugger";
+import { useSaveFCMToken } from "./useSaveFCMToken";
 
 /**
  * @description 알림 권한 요청
@@ -109,15 +108,7 @@ export const getDeviceType = (): DeviceType => {
  */
 export const useFCM = () => {
   // FCM 토큰 저장 뮤테이션
-  const saveTokenMutation = useMutation({
-    mutationFn: saveFCMToken,
-    onSuccess: () => {
-      debug.log("FCM 토큰 저장 성공");
-    },
-    onError: (error) => {
-      debug.error("FCM 토큰 저장 실패:", error);
-    },
-  });
+  const saveTokenMutation = useSaveFCMToken();
 
   // FCM 토큰 발급 및 저장
   const registerFCMToken = useCallback(async (): Promise<FCMTokenResult> => {
