@@ -34,6 +34,9 @@ const nextConfig: NextConfig = {
   },
   // eslint-disable-next-line require-await
   async redirects() {
+    if (process.env.NODE_ENV !== "development") {
+      return [];
+    }
     return [
       {
         source: LINK_URL.ROOT,
