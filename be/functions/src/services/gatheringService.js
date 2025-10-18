@@ -186,11 +186,19 @@ class GatheringService {
    */
   async applyToGathering(gatheringId, userId, applicationData) {
     try {
-      const {
+      let {
         selectedVariant = null,
         quantity = 1,
         customFieldsResponse = {},
       } = applicationData;
+
+      // 수량 검증 (트랜잭션 진입 전)
+      quantity = Number(quantity);
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        const error = new Error("수량은 1 이상의 정수여야 합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       const result = await this.firestoreService.runTransaction(async (transaction) => {
         const gatheringRef = this.firestoreService.db.collection("gatherings").doc(gatheringId);
@@ -272,7 +280,7 @@ class GatheringService {
       };
     } catch (error) {
       console.error("Apply to gathering error:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_APPLIED") {
+      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_APPLIED" || error.code === "BAD_REQUEST") {
         throw error;
       }
       throw new Error("Failed to apply to gathering");
