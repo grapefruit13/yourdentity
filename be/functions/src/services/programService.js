@@ -18,21 +18,31 @@ const ERROR_CODES = {
   SEARCH_ERROR: 'SEARCH_ERROR'
 };
 
-// 상태 매핑 상수
-const STATUS_MAPPINGS = {
-  recruitment: {
-    'before': '모집 전',
-    'ongoing': '모집 중',
-    'completed': '모집 완료',
-    'cancelled': '모집 취소'
-  },
-  program: {
-    'before': '진행 전',
-    'ongoing': '진행 중',
-    'completed': '종료됨',
-    'cancelled': '진행 취소됨'
-  }
+// Notion 필드명 상수
+const NOTION_FIELDS = {
+  PROGRAM_TITLE: "프로그램 제목",
+  PROGRAM_NAME: "프로그램명",
+  PROGRAM_DESCRIPTION: "프로그램 소개글",
+  PROGRAM_TYPE: "프로그램 종류",
+  RECRUITMENT_STATUS: "모집상태",
+  PROGRAM_STATUS: "프로그램 진행 여부",
+  START_DATE: "활동 시작 날짜",
+  END_DATE: "활동 종료 날짜",
+  RECRUITMENT_START_DATE: "모집 시작 날짜",
+  RECRUITMENT_END_DATE: "모집 종료 날짜",
+  TARGET_AUDIENCE: "참여 대상",
+  THUMBNAIL: "썸네일",
+  LINK_URL: "바로 보러 가기",
+  IS_REVIEW_REGISTERED: "프로그램 후기 등록 여부",
+  IS_BANNER_REGISTERED: "하단 배너 등록 여부",
+  PARTICIPANTS_NAME: "참여자 별명",
+  PARTICIPANTS_ID: "참여자 ID",
+  NOTES: "참고 사항",
+  FAQ: "FAQ",
+  LAST_EDITED_TIME: "최근 수정 날짜",
+  NOTION_PAGE_TITLE: "상세페이지(노션)"
 };
+
 
 class ProgramService {
   constructor() {
@@ -43,12 +53,12 @@ class ProgramService {
 
     // 환경 변수 검증
     if (!NOTION_API_KEY) {
-      const error = new Error("NOTION_API_KEY is required");
+      const error = new Error("NOTION_API_KEY가 필요합니다");
       error.code = ERROR_CODES.MISSING_API_KEY;
       throw error;
     }
     if (!NOTION_PROGRAM_DB_ID) {
-      const error = new Error("NOTION_PROGRAM_DB_ID is required");
+      const error = new Error("NOTION_PROGRAM_DB_ID가 필요합니다");
       error.code = ERROR_CODES.MISSING_DB_ID;
       throw error;
     }
@@ -79,7 +89,7 @@ class ProgramService {
         page_size: pageSize,
         sorts: [
           {
-            property: "최근 수정 날짜",
+            property: NOTION_FIELDS.LAST_EDITED_TIME,
             direction: "descending"
           }
         ]
@@ -93,7 +103,7 @@ class ProgramService {
 
         if (filters.recruitmentStatus) {
           queryBody.filter.and.push({
-            property: "모집상태",
+            property: NOTION_FIELDS.RECRUITMENT_STATUS,
             status: {
               equals: filters.recruitmentStatus
             }
@@ -102,7 +112,7 @@ class ProgramService {
 
         if (filters.programStatus) {
           queryBody.filter.and.push({
-            property: "프로그램 진행 여부",
+            property: NOTION_FIELDS.PROGRAM_STATUS,
             status: {
               equals: filters.programStatus
             }
@@ -111,7 +121,7 @@ class ProgramService {
 
         if (filters.programType) {
           queryBody.filter.and.push({
-            property: "프로그램 종류",
+            property: NOTION_FIELDS.PROGRAM_TYPE,
             select: {
               equals: filters.programType
             }
@@ -465,27 +475,26 @@ class ProgramService {
     
     const baseData = {
       id: page.id,
-      title: this.getTextContent(props["프로그램 제목"]),
-      programName: this.getTextContent(props["프로그램명"]),
-      description: this.getTextContent(props["프로그램 소개글"]),
-      programType: this.getSelectValue(props["프로그램 종류"]),
-      recruitmentStatus: this.getStatusValue(props["모집상태"]),
-      programStatus: this.getStatusValue(props["프로그램 진행 여부"]),
-      startDate: this.getDateValue(props["활동 시작 날짜"]),
-      endDate: this.getDateValue(props["활동 종료 날짜"]),
-      recruitmentStartDate: this.getDateValue(props["모집 시작 날짜"]),
-      recruitmentEndDate: this.getDateValue(props["모집 종료 날짜"]),
-      targetAudience: this.getTextContent(props["참여 대상"]),
-      thumbnail: this.getFileUrls(props["썸네일"]),
-      linkUrl: this.getUrlValue(props["바로 보러 가기"]),
-      isReviewRegistered: this.getCheckboxValue(props["프로그램 후기 등록 여부"]),
-      isBannerRegistered: this.getCheckboxValue(props["하단 배너 등록 여부"]),
-      participants: this.getMultiSelectValues(props["참여자 별명"]),
-      notes: this.getTextContent(props["참고 사항"]),
-      userIds: this.getTextContent(props["사용자ID"]),
-      faqRelation: this.getRelationValue(props["FAQ"]),
-      createdAt: page.last_edited_time || this.getDateValue(props["최근 수정 날짜"]) || null,
-      notionPageTitle: this.getTitleValue(props["상세페이지(노션)"])
+      title: this.getTextContent(props[NOTION_FIELDS.PROGRAM_TITLE]),
+      programName: this.getTextContent(props[NOTION_FIELDS.PROGRAM_NAME]),
+      description: this.getTextContent(props[NOTION_FIELDS.PROGRAM_DESCRIPTION]),
+      programType: this.getSelectValue(props[NOTION_FIELDS.PROGRAM_TYPE]),
+      recruitmentStatus: this.getStatusValue(props[NOTION_FIELDS.RECRUITMENT_STATUS]),
+      programStatus: this.getStatusValue(props[NOTION_FIELDS.PROGRAM_STATUS]),
+      startDate: this.getDateValue(props[NOTION_FIELDS.START_DATE]),
+      endDate: this.getDateValue(props[NOTION_FIELDS.END_DATE]),
+      recruitmentStartDate: this.getDateValue(props[NOTION_FIELDS.RECRUITMENT_START_DATE]),
+      recruitmentEndDate: this.getDateValue(props[NOTION_FIELDS.RECRUITMENT_END_DATE]),
+      targetAudience: this.getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
+      thumbnail: this.getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      linkUrl: this.getUrlValue(props[NOTION_FIELDS.LINK_URL]),
+      isReviewRegistered: this.getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
+      isBannerRegistered: this.getCheckboxValue(props[NOTION_FIELDS.IS_BANNER_REGISTERED]),
+      participants: this.getParticipantsData(props[NOTION_FIELDS.PARTICIPANTS_NAME], props[NOTION_FIELDS.PARTICIPANTS_ID]),
+      notes: this.getTextContent(props[NOTION_FIELDS.NOTES]),
+      faqRelation: this.getRelationValues(props[NOTION_FIELDS.FAQ]),
+      createdAt: page.last_edited_time || this.getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
+      notionPageTitle: this.getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
     };
 
 
@@ -508,26 +517,26 @@ class ProgramService {
         page_size: pageSize,
         sorts: [
           {
-            property: "최근 수정 날짜",
+            property: NOTION_FIELDS.LAST_EDITED_TIME,
             direction: "descending"
           }
         ],
         filter: {
           or: [
             {
-              property: "프로그램 제목",
+              property: NOTION_FIELDS.PROGRAM_TITLE,
               rich_text: {
                 contains: searchTerm
               }
             },
             {
-              property: "프로그램 소개글",
+              property: NOTION_FIELDS.PROGRAM_DESCRIPTION,
               rich_text: {
                 contains: searchTerm
               }
             },
             {
-              property: "프로그램명",
+              property: NOTION_FIELDS.PROGRAM_NAME,
               rich_text: {
                 contains: searchTerm
               }
@@ -548,7 +557,7 @@ class ProgramService {
 
         if (filters.recruitmentStatus) {
           queryBody.filter.and.push({
-            property: "모집상태",
+            property: NOTION_FIELDS.RECRUITMENT_STATUS,
             status: {
               equals: filters.recruitmentStatus
             }
@@ -557,7 +566,7 @@ class ProgramService {
 
         if (filters.programStatus) {
           queryBody.filter.and.push({
-            property: "프로그램 진행 여부",
+            property: NOTION_FIELDS.PROGRAM_STATUS,
             status: {
               equals: filters.programStatus
             }
@@ -566,7 +575,7 @@ class ProgramService {
 
         if (filters.programType) {
           queryBody.filter.and.push({
-            property: "프로그램 종류",
+            property: NOTION_FIELDS.PROGRAM_TYPE,
             select: {
               equals: filters.programType
             }
@@ -681,6 +690,100 @@ class ProgramService {
 
   getRelationValue(property) {
     if (!property || !property.relation) return [];
+    return property.relation.map(relation => ({
+      id: relation.id
+    }));
+  }
+
+  getParticipantsData(namesProperty, idsProperty) {
+    // 참여자 이름 추출 (rollup 타입)
+    const names = this.getRollupValues(namesProperty);
+    // 참여자 ID 추출 (rollup 타입)
+    const ids = this.getRollupValues(idsProperty);
+    
+    // 이름과 ID를 매칭하여 결합
+    const participants = [];
+    const maxLength = Math.max(names.length, ids.length);
+    
+    for (let i = 0; i < maxLength; i++) {
+      const name = names[i]?.name || '';
+      const id = ids[i]?.name || null; // rollup에서 추출한 ID는 name 필드에 저장됨
+      
+      if (name || id) {
+        participants.push({
+          name: name || '',
+          id: id || null
+        });
+      }
+    }
+    
+    return participants;
+  }
+
+  getRollupValues(property) {
+    if (!property || property.type !== 'rollup' || !property.rollup || !property.rollup.array) {
+      return [];
+    }
+    
+    return property.rollup.array.map(item => {
+      // rollup 아이템이 텍스트인 경우
+      if (typeof item === 'string') {
+        return { name: item, id: null };
+      }
+      // rollup 아이템이 객체인 경우 텍스트와 ID 추출
+      if (item && typeof item === 'object') {
+        let name = '';
+        let id = null;
+        
+        // ID 추출 - 다양한 위치에서 시도
+        if (item.id) {
+          id = item.id;
+        } else if (item.page_id) {
+          id = item.page_id;
+        } else if (item.database_id) {
+          id = item.database_id;
+        }
+        
+        // rich_text 배열인 경우
+        if (item.rich_text && Array.isArray(item.rich_text)) {
+          name = item.rich_text.map(text => text.plain_text).join('');
+        }
+        // plain_text가 있는 경우
+        else if (item.plain_text) {
+          name = item.plain_text;
+        }
+        // name 속성이 있는 경우 (select, multi_select 등)
+        else if (item.name) {
+          name = item.name;
+        }
+        // title 속성이 있는 경우
+        else if (item.title) {
+          name = item.title;
+        }
+        
+        return { name, id };
+      }
+      // 기타 경우 빈 객체 반환
+      return { name: '', id: null };
+    }).filter(item => item.name !== ''); // 빈 이름 제거
+  }
+
+  getMultiSelectValues(property) {
+    if (!property || property.type !== 'multi_select' || !property.multi_select) {
+      return [];
+    }
+    
+    return property.multi_select.map(option => ({
+      name: option.name,
+      id: option.id || null
+    }));
+  }
+
+  getRelationValues(property) {
+    if (!property || property.type !== 'relation' || !property.relation) {
+      return [];
+    }
+    
     return property.relation.map(relation => ({
       id: relation.id
     }));

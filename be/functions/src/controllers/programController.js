@@ -89,7 +89,7 @@ class ProgramController {
       });
 
     } catch (error) {
-      console.error("[ProgramController] getPrograms error:", error.message);
+      console.error("[ProgramController] 프로그램 목록 조회 오류:", error.message);
       return next(error);
     }
   }
@@ -119,7 +119,7 @@ class ProgramController {
       });
 
     } catch (error) {
-      console.error("[ProgramController] getProgramById error:", error.message);
+      console.error("[ProgramController] 프로그램 상세 조회 오류:", error.message);
       return next(error);
     }
   }
@@ -198,7 +198,7 @@ class ProgramController {
       });
 
     } catch (error) {
-      console.error("[ProgramController] searchPrograms error:", error.message);
+      console.error("[ProgramController] 프로그램 검색 오류:", error.message);
       return next(error);
     }
   }

@@ -50,6 +50,10 @@ const options = {
         name: "FCM",
         description: "FCM 푸시 알림 토큰 관리 API",
       },
+      {
+        name: "Programs",
+        description: "프로그램 관련 API",
+      },
     ],
     servers: [
       {
@@ -2021,6 +2025,384 @@ const options = {
               type: "string",
               description: "삭제 결과 메시지",
               example: "토큰이 삭제되었습니다.",
+            },
+          },
+        },
+        Program: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "프로그램 ID",
+              example: "program_123",
+            },
+            title: {
+              type: "string",
+              description: "프로그램 제목",
+              example: "청년 리더십 프로그램",
+            },
+            programName: {
+              type: "string",
+              description: "프로그램명",
+              example: "2024 청년 리더십 아카데미",
+            },
+            description: {
+              type: "string",
+              description: "프로그램 소개글",
+              example: "청년들의 리더십 역량을 기르는 프로그램입니다.",
+            },
+            recruitmentStatus: {
+              type: "string",
+              enum: ["모집 전", "모집 중", "모집 완료", "모집 취소"],
+              description: "모집상태",
+              example: "모집 중",
+            },
+            programStatus: {
+              type: "string",
+              enum: ["진행 전", "진행 중", "종료됨", "진행 취소됨"],
+              description: "프로그램 진행여부",
+              example: "진행 전",
+            },
+            startDate: {
+              type: "string",
+              format: "date",
+              description: "활동 시작 날짜",
+              example: "2024-03-01",
+            },
+            endDate: {
+              type: "string",
+              format: "date",
+              description: "활동 종료 날짜",
+              example: "2024-06-30",
+            },
+            recruitmentStartDate: {
+              type: "string",
+              format: "date",
+              description: "모집 시작 날짜",
+              example: "2024-01-01",
+            },
+            recruitmentEndDate: {
+              type: "string",
+              format: "date",
+              description: "모집 종료 날짜",
+              example: "2024-02-29",
+            },
+            targetAudience: {
+              type: "string",
+              description: "참여 대상",
+              example: "20-30세 청년",
+            },
+            thumbnail: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                    description: "파일명",
+                  },
+                  url: {
+                    type: "string",
+                    description: "이미지 URL",
+                  },
+                  type: {
+                    type: "string",
+                    description: "파일 타입",
+                  },
+                },
+              },
+              description: "썸네일",
+            },
+            linkUrl: {
+              type: "string",
+              description: "바로 보러 가기 URL",
+              example: "https://example.com/program",
+            },
+            isReviewRegistered: {
+              type: "boolean",
+              description: "프로그램 후기 등록 여부",
+              example: false,
+            },
+            isBannerRegistered: {
+              type: "boolean",
+              description: "하단 배너 등록 여부",
+              example: true,
+            },
+            participants: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "참여자 별명",
+              example: ["김철수", "이영희"],
+            },
+            notes: {
+              type: "string",
+              description: "참고 사항",
+              example: "온라인 진행",
+            },
+            userIds: {
+              type: "string",
+              description: "사용자ID",
+              example: "user_123,user_456",
+            },
+            faqRelation: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: {
+                    type: "string",
+                    description: "FAQ ID",
+                  },
+                },
+              },
+              description: "FAQ 관계",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "최근 수정 날짜",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            notionPageTitle: {
+              type: "string",
+              description: "상세페이지(노션) 제목",
+              example: "청년 리더십 프로그램 상세 안내",
+            },
+          },
+        },
+        ProgramDetail: {
+          allOf: [
+            {
+              $ref: "#/components/schemas/Program",
+            },
+            {
+              type: "object",
+              properties: {
+                pageContent: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      type: {
+                        type: "string",
+                        description: "블록 타입",
+                      },
+                      id: {
+                        type: "string",
+                        description: "블록 ID",
+                      },
+                      text: {
+                        type: "string",
+                        description: "텍스트 내용",
+                      },
+                      richText: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                        },
+                        description: "Rich Text 형태의 내용",
+                      },
+                      hasChildren: {
+                        type: "boolean",
+                        description: "하위 블록 존재 여부",
+                      },
+                      checked: {
+                        type: "boolean",
+                        description: "체크박스 상태 (to_do 타입)",
+                      },
+                      icon: {
+                        type: "object",
+                        description: "아이콘 정보 (callout 타입)",
+                      },
+                      url: {
+                        type: "string",
+                        description: "미디어 URL (image, video, file 타입)",
+                      },
+                      caption: {
+                        type: "string",
+                        description: "캡션 (미디어 타입)",
+                      },
+                    },
+                  },
+                  description: "프로그램 페이지 상세 내용",
+                },
+                faqList: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: {
+                        type: "string",
+                        description: "FAQ ID",
+                      },
+                      title: {
+                        type: "string",
+                        description: "FAQ 제목",
+                      },
+                      category: {
+                        type: "array",
+                        items: {
+                          type: "string",
+                        },
+                        description: "FAQ 카테고리",
+                      },
+                      content: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            type: {
+                              type: "string",
+                            },
+                            id: {
+                              type: "string",
+                            },
+                            text: {
+                              type: "string",
+                            },
+                          },
+                        },
+                        description: "FAQ 내용 (블록 형태)",
+                      },
+                      createdAt: {
+                        type: "string",
+                        format: "date-time",
+                        description: "생성일시",
+                      },
+                      updatedAt: {
+                        type: "string",
+                        format: "date-time",
+                        description: "수정일시",
+                      },
+                    },
+                  },
+                  description: "관련 FAQ 목록",
+                },
+              },
+            },
+          ],
+        },
+        ProgramListResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "성공 여부",
+              example: true,
+            },
+            message: {
+              type: "string",
+              description: "응답 메시지",
+              example: "프로그램 목록을 성공적으로 조회했습니다.",
+            },
+            data: {
+              type: "object",
+              properties: {
+                programs: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Program",
+                  },
+                  description: "프로그램 목록",
+                },
+                pagination: {
+                  type: "object",
+                  properties: {
+                    hasMore: {
+                      type: "boolean",
+                      description: "다음 페이지 존재 여부",
+                      example: true,
+                    },
+                    nextCursor: {
+                      type: "string",
+                      description: "다음 페이지 커서",
+                      example: "cursor_123",
+                    },
+                    totalCount: {
+                      type: "number",
+                      description: "전체 개수",
+                      example: 50,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        ProgramDetailResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "성공 여부",
+              example: true,
+            },
+            message: {
+              type: "string",
+              description: "응답 메시지",
+              example: "프로그램 상세 정보를 성공적으로 조회했습니다.",
+            },
+            data: {
+              type: "object",
+              properties: {
+                program: {
+                  $ref: "#/components/schemas/ProgramDetail",
+                },
+              },
+            },
+          },
+        },
+        ProgramSearchResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "성공 여부",
+              example: true,
+            },
+            message: {
+              type: "string",
+              description: "응답 메시지",
+              example: "'청년'에 대한 검색 결과를 성공적으로 조회했습니다.",
+            },
+            data: {
+              type: "object",
+              properties: {
+                programs: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Program",
+                  },
+                  description: "검색된 프로그램 목록",
+                },
+                pagination: {
+                  type: "object",
+                  properties: {
+                    hasMore: {
+                      type: "boolean",
+                      description: "다음 페이지 존재 여부",
+                      example: false,
+                    },
+                    nextCursor: {
+                      type: "string",
+                      description: "다음 페이지 커서",
+                      example: null,
+                    },
+                    totalCount: {
+                      type: "number",
+                      description: "검색 결과 총 개수",
+                      example: 5,
+                    },
+                  },
+                },
+                searchTerm: {
+                  type: "string",
+                  description: "검색어",
+                  example: "청년",
+                },
+              },
             },
           },
         },
