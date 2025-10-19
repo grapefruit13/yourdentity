@@ -421,11 +421,39 @@ class CommunityService {
         throw error;
       }
 
+      let author = "익명"; 
+      try {
+        const membersSnapshot = await db.collection("communities")
+          .doc(communityId)
+          .collection("members")
+          .where("userId", "==", userId)
+          .limit(1)
+          .get();
+          
+        console.log(`🔍 Member lookup - communityId: ${communityId}, userId: ${userId}, found: ${!membersSnapshot.empty}`);
+        
+        if (!membersSnapshot.empty) {
+          const memberData = membersSnapshot.docs[0].data();
+          console.log("📋 Member data:", memberData);
+          console.log("🏷️ Community postType:", community.postType);
+          
+          if (community.postType === "TMI") {
+            author = memberData.name || "익명";
+          } else {
+            author = memberData.nickName || "익명";
+          }
+          console.log("👤 Final author:", author);
+        }
+      } catch (memberError) {
+        console.warn("Failed to get member info:", memberError.message);
+      }
+
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       
       const newPost = {
         communityId,
         authorId: userId,
+        author: author,
         title,
         content,
         media,
