@@ -45,12 +45,17 @@ exports.createUserDocument = functions
 
         // 🆕 Firestore 사용자 문서 생성
         const userDoc = {
-        // 기본 정보
-          name: user.displayName || "사용자 이름", // 추후 온보딩에서 설정
+          // 기본 정보
+          name: user.displayName || "", // 이메일: 온보딩 필수, 카카오: 카카오에서 제공
           email: email || null,
+          nickname: "", // 온보딩에서 필수 입력
           profileImageUrl: user.photoURL || "",
-          birthYear: null, // 추후 카카오 심사 후 제공
-          phoneNumber: "",
+          birthYear: null, // 이메일: 온보딩 필수, 카카오: 카카오 심사 후 제공
+          birthDate: null, // 이메일: 온보딩 필수, 카카오: 카카오 심사 후 제공
+          gender: null, // 온보딩에서 선택 입력 (MALE | FEMALE | null)
+          phoneNumber: "", // 온보딩에서 선택 입력
+          address: "",
+          addressDetail: "",
           phoneVerified: false,
 
           // 인증 정보
@@ -59,22 +64,28 @@ exports.createUserDocument = functions
 
           // 사용자 상태
           role: "user",
-          onBoardingComplete: false,
+          onboardingCompleted: false, // 온보딩 완료 시 true로 변경
+          status: "PENDING", // PENDING → 온보딩 완료 시 ACTIVE
 
           // 리워드 시스템
           rewardPoints: 0,
           level: 1,
           badges: [],
           points: "0",
-          mainProfileId: "", // 온보딩에서 멀티프로필 생성 후 설정
 
           // 스토리지 관리
           uploadQuotaBytes: 1073741824, // 1GB
           usedStorageBytes: 0,
 
+          // 마케팅/유입
+          utmSource: "",
+          inviter: null,
+          penalty: false,
+
           // 타임스탬프
           createdAt: FieldValue.serverTimestamp(),
           lastLogin: FieldValue.serverTimestamp(),
+          lastUpdated: FieldValue.serverTimestamp(),
         };
 
         // Firestore 문서 생성
