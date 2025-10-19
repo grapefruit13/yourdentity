@@ -1,7 +1,7 @@
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
 import { auth } from "./firebase";
-//test 주석
+
 const getBaseURL = () => {
   if (process.env.NODE_ENV === "development") {
     return "/api-proxy";
