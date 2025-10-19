@@ -1,5 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
+const { maskPhoneNumber } = require("../utils/helpers");
 
 /**
  * TMI Service (비즈니스 로직 계층)
@@ -254,7 +255,7 @@ class TmiService {
         quantity,
         customFieldsRequest,
         activityNickname,
-        activityPhoneNumber,
+        activityPhoneNumber: maskPhoneNumber(activityPhoneNumber),
         region,
         currentSituation,
         applicationSource,

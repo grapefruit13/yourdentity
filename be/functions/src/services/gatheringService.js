@@ -1,5 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
+const { maskPhoneNumber } = require("../utils/helpers");
 
 /**
  * Gathering Service (비즈니스 로직 계층)
@@ -289,7 +290,7 @@ class GatheringService {
         quantity,
         customFieldsRequest,
         activityNickname,
-        activityPhoneNumber,
+        activityPhoneNumber: maskPhoneNumber(activityPhoneNumber),
         region,
         currentSituation,
         applicationSource,

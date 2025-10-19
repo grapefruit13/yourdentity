@@ -94,6 +94,43 @@ const deepClone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
+/**
+ * 전화번호 마스킹 (PII 보호)
+ * @param {string} phoneNumber - 마스킹할 전화번호
+ * @return {string} 마스킹된 전화번호
+ */
+const maskPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return phoneNumber;
+  }
+
+  // 숫자만 추출
+  const numbers = phoneNumber.replace(/\D/g, '');
+  
+  // 한국 전화번호 패턴 (010-XXXX-XXXX 또는 010XXXXXXXX)
+  if (numbers.length === 11 && numbers.startsWith('010')) {
+    return `010-****-${numbers.slice(-4)}`;
+  }
+  
+  // 다른 길이의 전화번호는 중간 부분을 마스킹
+  if (numbers.length >= 8) {
+    const start = numbers.slice(0, 3);
+    const end = numbers.slice(-4);
+    const middle = '*'.repeat(Math.max(4, numbers.length - 7));
+    return `${start}-${middle}-${end}`;
+  }
+  
+  // 너무 짧은 번호는 부분적으로만 마스킹
+  if (numbers.length >= 4) {
+    const visible = numbers.slice(-2);
+    const masked = '*'.repeat(numbers.length - 2);
+    return `${masked}${visible}`;
+  }
+  
+  // 4자리 미만은 전체 마스킹
+  return '*'.repeat(numbers.length);
+};
+
 module.exports = {
   // Validation
   validateMissionStatus,
@@ -104,6 +141,9 @@ module.exports = {
 
   // 포맷팅
   formatDate,
+
+  // PII 보호
+  maskPhoneNumber,
 
   // 배열/객체 유틸리티
   chunkArray,

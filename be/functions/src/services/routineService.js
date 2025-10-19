@@ -1,6 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
-const {successResponse} = require("../utils/helpers");
+const {successResponse, maskPhoneNumber} = require("../utils/helpers");
 
 /**
  * Routine Service (비즈니스 로직 계층)
@@ -287,7 +287,7 @@ class RoutineService {
         quantity,
         customFieldsRequest,
         activityNickname,
-        activityPhoneNumber,
+        activityPhoneNumber: maskPhoneNumber(activityPhoneNumber),
         region,
         currentSituation,
         applicationSource,
