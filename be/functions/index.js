@@ -26,6 +26,7 @@ const reportContentRoutes = require("./src/routes/reportContent");
 const faqRoutes = require("./src/routes/faqs");
 const notionUserRoutes = require("./src/routes/notionUsers");
 const fcmRoutes = require("./src/routes/fcm");
+const programRoutes = require("./src/routes/programs");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -196,6 +197,7 @@ app.use("/faqs", faqRoutes);
 app.use("/reportContent", reportContentRoutes);
 app.use("/notionUsers", notionUserRoutes);
 app.use("/fcm", fcmRoutes);
+app.use("/programs", programRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
