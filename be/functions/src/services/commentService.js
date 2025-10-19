@@ -2,6 +2,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
+const {db} = require("../config/database");
 
 /**
  * Comment Service (비즈니스 로직 계층)
@@ -162,9 +163,33 @@ class CommentService {
         });
       }
 
+      // 댓글 작성자 닉네임 가져오기
+      let author = "익명";
+      try {
+        const community = await this.firestoreService.getDocument("communities", communityId);
+        const membersSnapshot = await db.collection("communities")
+          .doc(communityId)
+          .collection("members")
+          .where("userId", "==", userId)
+          .limit(1)
+          .get();
+
+        if (!membersSnapshot.empty) {
+          const memberData = membersSnapshot.docs[0].data();
+          if (community && community.postType === "TMI") {
+            author = memberData.name || "익명";
+          } else {
+            author = memberData.nickName || "익명";
+          }
+        }
+      } catch (memberError) {
+        console.warn("Failed to get member info for comment creation:", memberError.message);
+      }
+
       return {
         id: commentId,
         ...newComment,
+        author,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -249,16 +274,70 @@ class CommentService {
             repliesByParentId[reply.parentId].push(reply);
           });
 
+        // 커뮤니티 정보 가져오기 (postType 확인용)
+        const community = await this.firestoreService.getDocument("communities", communityId);
+        
         for (const comment of result.content) {
           const replies = repliesByParentId[comment.id] || [];
           const sortedReplies = replies
             .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
             .slice(0, 50);
 
+          // 댓글 작성자 닉네임 가져오기
+          let author = "익명";
+          try {
+            const membersSnapshot = await db.collection("communities")
+              .doc(communityId)
+              .collection("members")
+              .where("userId", "==", comment.userId)
+              .limit(1)
+              .get();
+
+            if (!membersSnapshot.empty) {
+              const memberData = membersSnapshot.docs[0].data();
+              if (community && community.postType === "TMI") {
+                author = memberData.name || "익명";
+              } else {
+                author = memberData.nickName || "익명";
+              }
+            }
+          } catch (memberError) {
+            console.warn("Failed to get member info for comment:", memberError.message);
+          }
+
+          // 대댓글 닉네임 처리
+          const processedReplies = await Promise.all(sortedReplies.map(async (reply) => {
+            let replyAuthor = "익명";
+            try {
+              const replyMembersSnapshot = await db.collection("communities")
+                .doc(communityId)
+                .collection("members")
+                .where("userId", "==", reply.userId)
+                .limit(1)
+                .get();
+
+              if (!replyMembersSnapshot.empty) {
+                const replyMemberData = replyMembersSnapshot.docs[0].data();
+                if (community && community.postType === "TMI") {
+                  replyAuthor = replyMemberData.name || "익명";
+                } else {
+                  replyAuthor = replyMemberData.nickName || "익명";
+                }
+              }
+            } catch (replyMemberError) {
+              console.warn("Failed to get reply member info:", replyMemberError.message);
+            }
+            return {
+              ...reply,
+              author: replyAuthor
+            };
+          }));
+
           const processedComment = {
             ...comment,
-            replies: sortedReplies,
-            repliesCount: sortedReplies.length,
+            author,
+            replies: processedReplies,
+            repliesCount: processedReplies.length,
           };
 
           commentsWithReplies.push(processedComment);
