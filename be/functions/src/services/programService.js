@@ -8,6 +8,13 @@ const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MIN_PAGE_SIZE = 1;
 
+// page_size 검증 및 클램프 함수
+function normalizePageSize(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return DEFAULT_PAGE_SIZE;
+  return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.trunc(num)));
+}
+
 // 에러 코드 정의
 const ERROR_CODES = {
   MISSING_API_KEY: 'MISSING_NOTION_API_KEY',
@@ -86,7 +93,7 @@ class ProgramService {
   async getPrograms(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
       const queryBody = {
-        page_size: pageSize,
+        page_size: normalizePageSize(pageSize),
         sorts: [
           {
             property: NOTION_FIELDS.LAST_EDITED_TIME,
@@ -415,7 +422,7 @@ class ProgramService {
       return {
         id: faqId,
         title: this.getTitleValue(pageData.properties["제목"]),
-        category: this.getMultiSelectValues(pageData.properties["주제"]),
+        category: this.getMultiSelectNames(pageData.properties["주제"]),
         content: this.formatFaqBlocks(blocks),
         createdAt: pageData.created_time,
         updatedAt: pageData.last_edited_time
@@ -494,6 +501,7 @@ class ProgramService {
       notes: this.getTextContent(props[NOTION_FIELDS.NOTES]),
       faqRelation: this.getRelationValues(props[NOTION_FIELDS.FAQ]),
       createdAt: page.last_edited_time || this.getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
+      updatedAt: page.last_edited_time || this.getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: this.getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
     };
 
@@ -514,7 +522,7 @@ class ProgramService {
   async searchPrograms(searchTerm, filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
       const queryBody = {
-        page_size: pageSize,
+        page_size: normalizePageSize(pageSize),
         sorts: [
           {
             property: NOTION_FIELDS.LAST_EDITED_TIME,
@@ -649,7 +657,7 @@ class ProgramService {
     return property.select.name;
   }
 
-  getMultiSelectValues(property) {
+  getMultiSelectNames(property) {
     if (!property || !property.multi_select) return [];
     return property.multi_select.map(option => option.name);
   }
@@ -769,7 +777,7 @@ class ProgramService {
   }
 
   // 객체 형태가 필요한 경우에만 사용: { name, id }
-  getMultiSelectOptionsWithIds(property) {
+  getMultiSelectOptions(property) {
     if (!property || property.type !== 'multi_select' || !property.multi_select) {
       return [];
     }

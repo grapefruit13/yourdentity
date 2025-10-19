@@ -2051,6 +2051,12 @@ const options = {
               description: "프로그램 소개글",
               example: "청년들의 리더십 역량을 기르는 프로그램입니다.",
             },
+            programType: {
+              type: "string",
+              enum: ["ROUTINE", "TMI", "GATHERING"],
+              description: "프로그램 종류",
+              example: "ROUTINE",
+            },
             recruitmentStatus: {
               type: "string",
               enum: ["모집 전", "모집 중", "모집 완료", "모집 취소"],
@@ -2157,11 +2163,6 @@ const options = {
               description: "참고 사항",
               example: "온라인 진행",
             },
-            userIds: {
-              type: "string",
-              description: "사용자ID",
-              example: "user_123,user_456",
-            },
             faqRelation: {
               type: "array",
               items: {
@@ -2176,6 +2177,12 @@ const options = {
               description: "FAQ 관계",
             },
             createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "[Deprecated] 최근 수정 날짜. 'updatedAt' 사용 권장",
+              example: "2024-01-01T00:00:00.000Z",
+            },
+            updatedAt: {
               type: "string",
               format: "date-time",
               description: "최근 수정 날짜",
