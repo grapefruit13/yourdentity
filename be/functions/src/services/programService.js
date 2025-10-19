@@ -3,7 +3,7 @@ const { buildNotionHeadersFromEnv } = require('../utils/notionHelper');
 const faqService = require('./faqService');
 
 // 상수 정의
-const NOTION_VERSION = "2022-06-28";
+const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MIN_PAGE_SIZE = 1;
@@ -59,7 +59,7 @@ class ProgramService {
       notionVersion: NOTION_VERSION,
     });
 
-    this.programDB = NOTION_PROGRAM_DB_ID;
+    this.programDataSource = NOTION_PROGRAM_DB_ID;
   }
 
   /**
@@ -113,31 +113,11 @@ class ProgramService {
         queryBody.start_cursor = startCursor;
       }
 
-
-      // REST API 직접 호출 (기존 notionUserService 패턴 사용)
-      const response = await fetch(`https://api.notion.com/v1/databases/${this.programDB}/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-          'Notion-Version': NOTION_VERSION,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(queryBody)
+      // v5.3.0에서 databases.query가 제거되어 dataSources.query 사용
+      const data = await this.notion.dataSources.query({
+        data_source_id: this.programDataSource,
+        ...queryBody
       });
-
-      if (!response.ok) {
-        const text = await response.text();
-        
-        // Rate Limiting 처리
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('retry-after') || 60;
-          throw new Error(`Notion API rate limited. Please retry after ${retryAfter} seconds`);
-        }
-        
-        throw new Error(`Notion query failed (${response.status}): ${text}`);
-      }
-
-      const data = await response.json();
       
       const programs = data.results.map(page => this.formatProgramData(page));
       
@@ -150,6 +130,23 @@ class ProgramService {
 
     } catch (error) {
       console.error('[ProgramService] getPrograms error:', error.message);
+      
+      // Notion SDK 에러 처리
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('프로그램 데이터 소스를 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.MISSING_DB_ID;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+      
+      // Rate Limiting 처리
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+      
       const serviceError = new Error(`프로그램 목록 조회 중 오류가 발생했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;
       serviceError.originalError = error;
@@ -166,28 +163,10 @@ class ProgramService {
    */
   async getProgramById(programId) {
     try {
-      // REST API 직접 호출
-      const response = await fetch(`https://api.notion.com/v1/pages/${programId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-          'Notion-Version': NOTION_VERSION,
-          'Content-Type': 'application/json',
-        }
+      // Notion SDK 사용으로 통일
+      const page = await this.notion.pages.retrieve({
+        page_id: programId
       });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          const notFoundError = new Error('해당 프로그램을 찾을 수 없습니다.');
-          notFoundError.code = ERROR_CODES.PROGRAM_NOT_FOUND;
-          notFoundError.statusCode = 404;
-          throw notFoundError;
-        }
-        const text = await response.text();
-        throw new Error(`Notion page retrieve failed (${response.status}): ${text}`);
-      }
-
-      const page = await response.json();
       const programData = this.formatProgramData(page, true);
 
       // 프로그램 페이지 블록 내용 조회 (병렬 처리)
@@ -215,8 +194,20 @@ class ProgramService {
     } catch (error) {
       console.error('[ProgramService] getProgramById error:', error.message);
       
-      if (error.code === ERROR_CODES.PROGRAM_NOT_FOUND) {
-        throw error;
+      // Notion SDK 에러 처리
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('해당 프로그램을 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.PROGRAM_NOT_FOUND;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+      
+      // Rate Limiting 처리
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
       }
       
       const serviceError = new Error(`프로그램 상세 조회 중 오류가 발생했습니다: ${error.message}`);
@@ -233,21 +224,11 @@ class ProgramService {
    */
   async getProgramPageBlocks(programId) {
     try {
-      const response = await fetch(`https://api.notion.com/v1/blocks/${programId}/children`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-          'Notion-Version': NOTION_VERSION,
-          'Content-Type': 'application/json',
-        }
+      // Notion SDK 사용으로 통일
+      const data = await this.notion.blocks.children.list({
+        block_id: programId
       });
-
-      if (!response.ok) {
-        console.warn(`[ProgramService] 페이지 블록 조회 실패: ${response.status}`);
-        return [];
-      }
-
-      const data = await response.json();
+      
       return this.formatProgramBlocks(data.results);
     } catch (error) {
       console.warn('[ProgramService] getProgramPageBlocks error:', error.message);
@@ -392,23 +373,18 @@ class ProgramService {
     try {
       // FAQ 페이지 정보와 블록 내용을 병렬로 조회
       const [pageResponse, blocksResponse] = await Promise.allSettled([
-        fetch(`https://api.notion.com/v1/pages/${faqId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-            'Notion-Version': NOTION_VERSION,
-            'Content-Type': 'application/json',
-          }
+        this.notion.pages.retrieve({
+          page_id: faqId
         }),
         faqService.getPageBlocks({ pageId: faqId })
       ]);
 
       // 페이지 정보 조회 실패 시 null 반환
-      if (pageResponse.status !== 'fulfilled' || !pageResponse.value.ok) {
+      if (pageResponse.status !== 'fulfilled') {
         return null;
       }
 
-      const pageData = await pageResponse.value.json();
+      const pageData = pageResponse.value;
       
       // 블록 내용 조회 실패 시 빈 배열로 처리
       let blocks = [];
@@ -497,7 +473,7 @@ class ProgramService {
       notes: this.getTextContent(props["참고 사항"]),
       userIds: this.getTextContent(props["사용자ID"]),
       faqRelation: this.getRelationValue(props["FAQ"]),
-      createdAt: this.getDateValue(props["최근 수정 날짜"]),
+      createdAt: page.last_edited_time || this.getDateValue(props["최근 수정 날짜"]) || null,
       notionPageTitle: this.getTitleValue(props["상세페이지(노션)"])
     };
 
@@ -509,11 +485,19 @@ class ProgramService {
    * 프로그램 검색 (제목, 설명 기반)
    * @param {string} searchTerm - 검색어
    * @param {Object} filters - 필터 조건
+   * @param {number} pageSize - 페이지 크기
+   * @param {string} startCursor - 페이지네이션 커서
    */
-  async searchPrograms(searchTerm, filters = {}) {
+  async searchPrograms(searchTerm, filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
       const queryBody = {
-        page_size: 20,
+        page_size: pageSize,
+        sorts: [
+          {
+            property: "최근 수정 날짜",
+            direction: "descending"
+          }
+        ],
         filter: {
           or: [
             {
@@ -537,6 +521,10 @@ class ProgramService {
           ]
         }
       };
+
+      if (startCursor) {
+        queryBody.start_cursor = startCursor;
+      }
 
       // 추가 필터 조건 적용
       if (filters.recruitmentStatus || filters.programStatus) {
@@ -563,23 +551,11 @@ class ProgramService {
         }
       }
 
-      // REST API 직접 호출
-      const response = await fetch(`https://api.notion.com/v1/databases/${this.programDB}/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-          'Notion-Version': NOTION_VERSION,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(queryBody)
+      // v5.3.0에서 databases.query가 제거되어 dataSources.query 사용
+      const data = await this.notion.dataSources.query({
+        data_source_id: this.programDataSource,
+        ...queryBody
       });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Notion search failed (${response.status}): ${text}`);
-      }
-
-      const data = await response.json();
       const programs = data.results.map(page => this.formatProgramData(page));
       
       return {
@@ -591,6 +567,23 @@ class ProgramService {
 
     } catch (error) {
       console.error('[ProgramService] searchPrograms error:', error.message);
+      
+      // Notion SDK 에러 처리
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('프로그램 데이터 소스를 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.MISSING_DB_ID;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+      
+      // Rate Limiting 처리
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+      
       const serviceError = new Error(`프로그램 검색 중 오류가 발생했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.SEARCH_ERROR;
       serviceError.originalError = error;

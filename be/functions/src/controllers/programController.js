@@ -199,7 +199,7 @@ class ProgramController {
         return next(error);
       }
 
-      const result = await programService.searchPrograms(q.trim(), filters);
+      const result = await programService.searchPrograms(q.trim(), filters, pageSizeNum, cursor);
 
       res.success({
         message: `'${q}'에 대한 검색 결과를 성공적으로 조회했습니다.`,
