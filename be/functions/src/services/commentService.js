@@ -166,7 +166,6 @@ class CommentService {
       // 댓글 작성자 닉네임 가져오기
       let author = "익명";
       try {
-        const community = await this.firestoreService.getDocument("communities", communityId);
         const membersSnapshot = await db.collection("communities")
           .doc(communityId)
           .collection("members")
@@ -277,67 +276,65 @@ class CommentService {
         // 커뮤니티 정보 가져오기 (postType 확인용)
         const community = await this.firestoreService.getDocument("communities", communityId);
         
+        // 모든 userId 수집 (댓글 + 대댓글)
+        const allUserIds = new Set();
+        result.content.forEach(comment => allUserIds.add(comment.userId));
+        Object.values(repliesByParentId).flat().forEach(reply => allUserIds.add(reply.userId));
+        
+        // 모든 멤버 정보를 한 번에 조회 (Firestore in 쿼리 제한: 10개)
+        const membersMap = new Map();
+        if (allUserIds.size > 0) {
+          try {
+            const userIdsArray = Array.from(allUserIds);
+            // 10개씩 나누어서 배치 조회
+            const batches = [];
+            for (let i = 0; i < userIdsArray.length; i += 10) {
+              batches.push(userIdsArray.slice(i, i + 10));
+            }
+
+            for (const batch of batches) {
+              const membersSnapshot = await db.collection("communities")
+                .doc(communityId)
+                .collection("members")
+                .where("userId", "in", batch)
+                .get();
+
+              membersSnapshot.docs.forEach(doc => {
+                const memberData = doc.data();
+                membersMap.set(memberData.userId, memberData);
+              });
+            }
+          } catch (memberError) {
+            console.warn("Failed to get members info:", memberError.message);
+          }
+        }
+
+        // author 정보를 가져오는 헬퍼 함수
+        const getAuthor = (userId) => {
+          const memberData = membersMap.get(userId);
+          if (!memberData) return "익명";
+          
+          if (community && community.postType === "TMI") {
+            return memberData.name || "익명";
+          } else {
+            return memberData.nickName || "익명";
+          }
+        };
+
         for (const comment of result.content) {
           const replies = repliesByParentId[comment.id] || [];
           const sortedReplies = replies
             .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
             .slice(0, 50);
 
-          // 댓글 작성자 닉네임 가져오기
-          let author = "익명";
-          try {
-            const membersSnapshot = await db.collection("communities")
-              .doc(communityId)
-              .collection("members")
-              .where("userId", "==", comment.userId)
-              .limit(1)
-              .get();
-
-            if (!membersSnapshot.empty) {
-              const memberData = membersSnapshot.docs[0].data();
-              if (community && community.postType === "TMI") {
-                author = memberData.name || "익명";
-              } else {
-                author = memberData.nickName || "익명";
-              }
-            }
-          } catch (memberError) {
-            console.warn("Failed to get member info for comment:", memberError.message);
-          }
-
-          // 대댓글 닉네임 처리
-          const processedReplies = await Promise.all(sortedReplies.map(async (reply) => {
-            let replyAuthor = "익명";
-            try {
-              const replyMembersSnapshot = await db.collection("communities")
-                .doc(communityId)
-                .collection("members")
-                .where("userId", "==", reply.userId)
-                .limit(1)
-                .get();
-
-              if (!replyMembersSnapshot.empty) {
-                const replyMemberData = replyMembersSnapshot.docs[0].data();
-                if (community && community.postType === "TMI") {
-                  replyAuthor = replyMemberData.name || "익명";
-                } else {
-                  replyAuthor = replyMemberData.nickName || "익명";
-                }
-              }
-            } catch (replyMemberError) {
-              console.warn("Failed to get reply member info:", replyMemberError.message);
-            }
-            return {
-              ...reply,
-              author: replyAuthor
-            };
-          }));
-
           const processedComment = {
             ...comment,
-            author,
-            replies: processedReplies,
-            repliesCount: processedReplies.length,
+            author: getAuthor(comment.userId),
+            replies: sortedReplies.map(reply => ({
+              ...reply,
+              author: getAuthor(reply.userId)
+            })),
+            repliesCount: sortedReplies.length,
           };
 
           commentsWithReplies.push(processedComment);
