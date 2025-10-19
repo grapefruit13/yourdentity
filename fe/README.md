@@ -102,14 +102,30 @@
 ### 사용법
 
 ```bash
-# API 코드 자동 생성
+# Swagger 스펙 다운로드
+pnpm swagger:fetch
+
+# API 코드 생성
+pnpm api:generate
+
+# API 코드 자동 생성 (fetch + generate)
 pnpm api:sync
+
+# 백엔드 변경사항 자동 감지 모드
+pnpm api:watch
 
 # 개발 서버 실행 (자동 감지 모드)
 pnpm dev:with-api
 ```
 
-자세한 내용은 [API 자동 생성 시스템 가이드](./README_API_GENERATION.md)를 참고하세요.
+### 생성되는 파일들
+
+- `src/types/generated/`: API 요청/응답 타입 정의
+- `src/api/generated/`: API 호출 함수들
+- `src/hooks/generated/`: React Query 훅들
+- `src/constants/generated/`: Query Keys 상수들
+
+자세한 사용법은 [API 훅 사용 가이드](./docs/api-hooks-guide.md)를 참고하세요.
 
 ## 🛠️ 개발 환경 설정
 
@@ -126,11 +142,11 @@ pnpm dev:with-api
 pnpm install
 
 # 백엔드 서버 실행 (별도 터미널)
-cd ../be/functions
+cd be/functions
 firebase emulators:start --only functions,auth
 
 # 프론트엔드 개발 서버 실행 (API 자동 생성 모드)
-cd ../../fe
+cd fe
 pnpm dev:with-api
 
 # 또는 일반 개발 서버 실행
