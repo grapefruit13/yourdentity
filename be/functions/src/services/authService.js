@@ -18,7 +18,9 @@ const usersService = new FirestoreService("users");
 const checkEmailAvailability = async (email) => {
   try {
     if (!email) {
-      throw new Error("이메일이 필요합니다.");
+      const error = new Error("이메일이 필요합니다");
+      error.code = "BAD_REQUEST";
+      throw error;
     }
 
     // FirestoreService를 통한 이메일 중복 체크
@@ -70,7 +72,9 @@ const checkEmailAvailability = async (email) => {
 const logout = async (uid) => {
   try {
     if (!uid) {
-      throw new Error("UID가 필요합니다.");
+      const error = new Error("UID가 필요합니다");
+      error.code = "BAD_REQUEST";
+      throw error;
     }
 
     // 모든 Refresh Token 무효화

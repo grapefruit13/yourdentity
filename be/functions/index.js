@@ -7,7 +7,7 @@ const swaggerConfig = require("./src/config/swagger");
 const {admin} = require("./src/config/database");
 
 // 미들웨어
-const logger = require("./src/middleware/logger");
+const responseHandler = require("./src/middleware/responseHandler");
 const errorHandler = require("./src/middleware/errorHandler");
 
 // 라우터
@@ -24,6 +24,8 @@ const storeRoutes = require("./src/routes/store");
 const announcementRoutes = require("./src/routes/announcements");
 const reportContentRoutes = require("./src/routes/reportContent");
 const faqRoutes = require("./src/routes/faqs");
+const notionUserRoutes = require("./src/routes/notionUsers");
+const fcmRoutes = require("./src/routes/fcm");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -54,6 +56,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5001",
   "http://localhost:8080",
   "http://127.0.0.1:8080",
+  "http://localhost:5173",
   // 프로덕션 환경
   "https://yourdentity.vercel.app",
   "https://yourdentity.web.app",
@@ -82,7 +85,7 @@ app.use(
 );
 
 app.use(express.json());
-app.use(logger);
+app.use(responseHandler); // 표준 response 메서드 추가 (res.success, res.error, res.paginate)
 
 // TODO: 자동 업데이트 미들웨어 히스토리 확인 필요
 // if (process.env.NODE_ENV === "development") {
@@ -191,6 +194,8 @@ app.use("/comments", commentRoutes);
 app.use("/notion/announcements", announcementRoutes);
 app.use("/faqs", faqRoutes);
 app.use("/reportContent", reportContentRoutes);
+app.use("/notionUsers", notionUserRoutes);
+app.use("/fcm", fcmRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);

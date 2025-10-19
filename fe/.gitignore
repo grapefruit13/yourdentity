@@ -57,3 +57,5 @@ certificates
 /public/worker-*.js.map
 
 *.d.ts
+
+/public/swe-worker-*.js

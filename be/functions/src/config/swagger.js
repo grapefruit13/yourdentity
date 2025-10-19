@@ -46,6 +46,10 @@ const options = {
         name: "FAQs",
         description: "FAQ 관련 API",
       },
+      {
+        name: "FCM",
+        description: "FCM 푸시 알림 토큰 관리 API",
+      },
     ],
     servers: [
       {
@@ -487,99 +491,110 @@ const options = {
             },
           },
         },
-        Error: {
+        StandardResponse: {
           type: "object",
+          required: ["status"],
           properties: {
-            error: {
-              type: "string",
-              description: "에러 메시지",
-              example: "Invalid request",
-            },
             status: {
               type: "number",
               description: "HTTP 상태 코드",
-              example: 400,
+              example: 200,
             },
-            timestamp: {
-              type: "string",
-              format: "date-time",
-              description: "에러 발생 시간",
+            data: {
+              description: "응답 데이터 (성공 시에만 포함)",
+              nullable: true,
+              oneOf: [
+                {type: "object", additionalProperties: true},
+                {type: "array", items: {type: "object"}},
+                {type: "string"},
+                {type: "number"},
+                {type: "boolean"},
+              ],
             },
           },
         },
         ErrorResponse: {
           type: "object",
+          required: ["status", "message"],
           properties: {
-            success: {
-              type: "boolean",
-              example: false,
-            },
-            code: {
-              type: "string",
-              description: "에러 코드",
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 400,
             },
             message: {
               type: "string",
               description: "에러 메시지",
-            },
-            timestamp: {
-              type: "string",
-              format: "date-time",
-              description: "에러 발생 시간",
+              example: "잘못된 요청입니다",
             },
           },
         },
-        Success: {
+        PaginatedResponse: {
           type: "object",
+          required: ["status", "data", "pagination"],
           properties: {
             status: {
               type: "number",
-              example: 200,
               description: "HTTP 상태 코드",
+              example: 200,
             },
             data: {
-              type: "object",
-              description: "응답 데이터",
+              type: "array",
+              description: "응답 데이터 배열",
+              items: {
+                type: "object",
+              },
             },
-            message: {
-              type: "string",
-              description: "성공 메시지",
-              example: "Operation succeeded",
+            pagination: {
+              type: "object",
+              description: "페이지네이션 정보",
+              properties: {
+                page: {
+                  type: "number",
+                  description: "현재 페이지",
+                  example: 0,
+                },
+                size: {
+                  type: "number",
+                  description: "페이지당 항목 수",
+                  example: 20,
+                },
+                totalElements: {
+                  type: "number",
+                  description: "전체 항목 수",
+                  example: 100,
+                },
+                totalPages: {
+                  type: "number",
+                  description: "전체 페이지 수",
+                  example: 5,
+                },
+                hasNext: {
+                  type: "boolean",
+                  description: "다음 페이지 존재 여부",
+                  example: true,
+                },
+                hasPrevious: {
+                  type: "boolean",
+                  description: "이전 페이지 존재 여부",
+                  example: false,
+                },
+              },
             },
           },
         },
-        PaginationResponse: {
+        CreatedResponse: {
           type: "object",
+          required: ["status", "data"],
           properties: {
-            page: {
+            status: {
               type: "number",
-              description: "현재 페이지",
-              example: 1,
+              description: "HTTP 상태 코드",
+              example: 201,
             },
-            limit: {
-              type: "number",
-              description: "페이지당 항목 수",
-              example: 10,
-            },
-            total: {
-              type: "number",
-              description: "전체 항목 수",
-              example: 100,
-            },
-            totalPages: {
-              type: "number",
-              description: "전체 페이지 수",
-              example: 10,
-            },
-            hasNext: {
-              type: "boolean",
-              description: "다음 페이지 존재 여부",
-              example: true,
-            },
-            hasPrev: {
-              type: "boolean",
-              description: "이전 페이지 존재 여부",
-              example: false,
+            data: {
+              type: "object",
+              description: "생성된 리소스 데이터",
             },
           },
         },
@@ -845,9 +860,55 @@ const options = {
               description: "수량",
               example: 1,
             },
-            customFieldsResponse: {
+            customFieldsRequest: {
               type: "object",
-              description: "커스텀 필드 응답",
+              description: "커스텀 필드 요청",
+            },
+            activityNickname: {
+              type: "string",
+              description: "활동용 닉네임",
+              example: "기진맥진",
+            },
+            activityPhoneNumber: {
+              type: "string",
+              description: "활동용 전화번호",
+              example: "010-1234-5678",
+            },
+            region: {
+              type: "object",
+              description: "지역 정보",
+              properties: {
+                city: {
+                  type: "string",
+                  description: "시/도",
+                  example: "서울시",
+                },
+                district: {
+                  type: "string",
+                  description: "군/구",
+                  example: "성동구",
+                },
+              },
+            },
+            currentSituation: {
+              type: "string",
+              description: "현재 상황",
+              example: "중학생입니다.",
+            },
+            applicationSource: {
+              type: "string",
+              description: "신청 경로",
+              example: "인스타그램",
+            },
+            applicationMotivation: {
+              type: "string",
+              description: "신청 동기",
+              example: "규칙적인 생활을 위해서",
+            },
+            canAttendEvents: {
+              type: "boolean",
+              description: "필참 일정 참여 여부",
+              example: true,
             },
             appliedAt: {
               type: "string",
@@ -1743,7 +1804,7 @@ const options = {
               description: "좋아요 여부",
               example: true,
             },
-            likeCount: {
+            likesCount: {
               type: "integer",
               description: "좋아요 수",
               example: 5,
@@ -1768,7 +1829,7 @@ const options = {
               description: "좋아요 여부",
               example: true,
             },
-            likeCount: {
+            likesCount: {
               type: "integer",
               description: "좋아요 수",
               example: 3,
@@ -1912,6 +1973,100 @@ const options = {
                   example: "2024-01-01T00:00:00.000Z",
                 },
               },
+            },
+          },
+        },
+        FCMToken: {
+          type: "object",
+          required: ["token"],
+          properties: {
+            token: {
+              type: "string",
+              description: "FCM 토큰",
+              example: "fcm_token_example_123456789",
+            },
+            deviceInfo: {
+              type: "string",
+              description: "디바이스 정보 (브라우저 userAgent, 모바일 deviceId 등)",
+              example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+            deviceType: {
+              type: "string",
+              enum: ["pwa", "mobile", "web"],
+              description: "디바이스 타입",
+              default: "pwa",
+              example: "pwa",
+            },
+          },
+        },
+        FCMTokenResponse: {
+          type: "object",
+          properties: {
+            deviceId: {
+              type: "string",
+              description: "디바이스 ID",
+              example: "device_abc123def456",
+            },
+            message: {
+              type: "string",
+              description: "응답 메시지",
+              example: "토큰 저장 완료",
+            },
+          },
+        },
+        FCMTokenListResponse: {
+          type: "object",
+          properties: {
+            tokens: {
+              type: "array",
+              description: "FCM 토큰 목록",
+              items: {
+                type: "object",
+                properties: {
+                  id: {
+                    type: "string",
+                    description: "디바이스 ID (문서 ID)",
+                    example: "63279522febcf5538b72",
+                  },
+                  token: {
+                    type: "string",
+                    description: "FCM 토큰",
+                    example: "fcm_token_example_123456789",
+                  },
+                  deviceType: {
+                    type: "string",
+                    description: "디바이스 타입",
+                    example: "pwa",
+                  },
+                  deviceInfo: {
+                    type: "string",
+                    description: "디바이스 정보",
+                    example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                  },
+                  lastUsed: {
+                    type: "string",
+                    format: "date-time",
+                    description: "마지막 사용 시간",
+                    example: "2024-01-01T00:00:00.000Z",
+                  },
+                  createdAt: {
+                    type: "string",
+                    format: "date-time",
+                    description: "생성 시간",
+                    example: "2024-01-01T00:00:00.000Z",
+                  },
+                },
+              },
+            },
+          },
+        },
+        FCMDeleteResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              description: "삭제 결과 메시지",
+              example: "토큰이 삭제되었습니다.",
             },
           },
         },

@@ -82,6 +82,7 @@ const router = express.Router();
  *           description: 수정 일시
  */
 
+
 /**
  * @swagger
  * /reportContent:
@@ -130,20 +131,6 @@ const router = express.Router();
  *                 type: string
  *                 description: 신고 사유
  *                 example: "욕설"
- *           examples:
- *             postReport:
- *               summary: 게시글 신고 예시
- *               value:
- *                 targetType: "post"
- *                 targetId: "post_123"
- *                 communityId: "community_456"
- *                 reportReason: "욕설"
- *             commentReport:
- *               summary: 댓글 신고 예시
- *               value:
- *                 targetType: "comment"
- *                 targetId: "comment_789"
- *                 reportReason: "스팸"
  *     responses:
  *       201:
  *         description: 신고 접수 성공
@@ -152,14 +139,15 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "신고가 접수되었습니다."
+ *                 status:
+ *                   type: number
+ *                   example: 201
  *                 data:
- *                   $ref: '#/components/schemas/Report'
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "신고가 접수되었습니다."
  *       400:
  *         description: 잘못된 요청
  *         content:
@@ -167,18 +155,51 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 message:
  *                   type: string
  *                   example: "이미 신고한 콘텐츠입니다."
  *       401:
  *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "인증이 필요합니다."
  *       404:
  *         description: 신고 대상을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "해당 reporterId를 가진 사용자를 찾을 수 없습니다."
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다."
  */
 
 // router.post("/", authGuard, reportContentController.createReport);
@@ -191,8 +212,7 @@ router.post("/", reportContentController.createReport);
  *   get:
  *     summary: Notion 전체 DB를 Firebase reports 컬렉션으로 동기화
  *     description: 노션에 있는 모든 신고 데이터를 가져와서 Firebase reports 컬렉션에 저장합니다.
- *     tags:
- *       - Reports
+ *     tags: [Reports]
  *     responses:
  *       200:
  *         description: 동기화 성공
@@ -201,12 +221,18 @@ router.post("/", reportContentController.createReport);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 count:
- *                   type: integer
- *                   example: 10
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "동기화가 완료되었습니다."
+ *                     count:
+ *                       type: integer
+ *                       example: 10
  *       500:
  *         description: 동기화 실패
  *         content:
@@ -214,12 +240,12 @@ router.post("/", reportContentController.createReport);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
+ *                 status:
+ *                   type: number
+ *                   example: 500
  *                 message:
  *                   type: string
- *                   example: "Notion -> Firebase 동기화 실패: ..."
+ *                   example: "Notion 동기화 중 오류가 발생했습니다."
  */
 // 노션 → Firebase 동기화 라우트 추가
 router.get("/syncNotionReports", reportContentController.syncNotionReports);
@@ -229,12 +255,11 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  * @swagger
  * /reportContent/my:
  *   post:
- *     tags:
- *       - Reports
+ *     tags: [Reports]
  *     summary: 내가 신고한 목록 조회 (로그인 필요)
  *     description: 로그인된 사용자의 신고 목록을 조회합니다. 페이지네이션은 cursor 기반입니다.
  *     security:
- *       - bearerAuth: []   #토큰 필요
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -258,9 +283,9 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: number
+ *                   example: 200
  *                 data:
  *                   type: object
  *                   properties:
@@ -311,12 +336,12 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
+ *                 status:
+ *                   type: number
+ *                   example: 401
+ *                 message:
  *                   type: string
- *                   example: "Unauthorized"
+ *                   example: "인증이 필요합니다."
  *       500:
  *         description: 서버 오류
  *         content:
@@ -324,12 +349,12 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 message:
  *                   type: string
- *                   example: "서버 오류가 발생했습니다."
+ *                   example: "서버 내부 오류가 발생했습니다."
  */
 router.post("/my", authGuard, reportContentController.getMyReports);
 

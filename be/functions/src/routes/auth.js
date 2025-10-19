@@ -47,7 +47,7 @@ const router = express.Router();
  *                   properties:
  *                     message:
  *                       type: string
- *                       example: Logout successful
+ *                       example: 로그아웃 성공
  *                     revokedAt:
  *                       type: string
  *                       format: date-time
@@ -62,9 +62,9 @@ const router = express.Router();
  *                 status:
  *                   type: number
  *                   example: 401
- *                 error:
+ *                 message:
  *                   type: string
- *                   example: Token expired
+ *                   example: 토큰이 만료되었습니다
  *       500:
  *         description: 서버 오류
  *         content:
@@ -75,9 +75,9 @@ const router = express.Router();
  *                 status:
  *                   type: number
  *                   example: 500
- *                 error:
+ *                 message:
  *                   type: string
- *                   example: Internal server error
+ *                   example: 서버 내부 오류가 발생했습니다
  */
 router.post("/logout", authGuard, authController.logout);
 
@@ -106,7 +106,7 @@ router.post("/logout", authGuard, authController.logout);
  *                   properties:
  *                     message:
  *                       type: string
- *                       example: Token is valid
+ *                       example: 토큰이 유효합니다
  *                     user:
  *                       type: object
  *                       properties:
@@ -129,9 +129,9 @@ router.post("/logout", authGuard, authController.logout);
  *                 status:
  *                   type: number
  *                   example: 401
- *                 error:
+ *                 message:
  *                   type: string
- *                   example: Token expired
+ *                   example: 토큰이 만료되었습니다
  */
 router.get("/verify", authGuard, authController.verifyToken);
 

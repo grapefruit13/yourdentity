@@ -44,13 +44,58 @@ jobs:
           cd be/functions
           pnpm install --frozen-lockfile
 
+      - name: 📝 배포용 .env 생성
+        working-directory: be/functions
+        shell: bash
+        env:
+          ENV_VARS: ${{ secrets.ENV_VARS }}
+        run: |
+          set -euo pipefail
+          
+          echo "📝 배포용 .env 생성 시작"
+          
+          # 파일 권한 제한 (보안)
+          umask 077
+          
+          # 기존 .env 파일 제거 후 새로 생성
+          rm -f .env
+          touch .env
+          chmod 600 .env
+          
+          # 기본 환경 설정
+          echo "NODE_ENV=test" > .env
+          
+          # GitHub Secret의 환경변수를 .env에 주입
+          # 주석/빈 줄/CRLF 제거 후 key=value 라인만 반영
+          if [ -n "${ENV_VARS:-}" ]; then
+            appended_count=$(
+              printf '%s\n' "$ENV_VARS" \
+              | tr -d '\r' \
+              | grep -Ev '^[[:space:]]*#|^[[:space:]]*$' \
+              | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' \
+              | tee -a .env \
+              | wc -l | tr -d ' '
+            )
+          else
+            echo "❌ 오류: ENV_VARS Secret이 비어있습니다" >&2
+            exit 1
+          fi
+          
+          # .env 파일 생성 완료 확인 (실제 환경변수 라인이 최소 1개 존재해야 함)
+          if [ "${appended_count:-0}" -lt 1 ]; then
+            echo "❌ 오류: 유효한 ENV_VARS 항목이 없습니다 (주석/빈 줄 제외 시 0개)" >&2
+            exit 1
+          fi
+          
+          line_count=$(wc -l < .env | tr -d ' ')
+          echo "✅ .env 생성 완료: 총 ${line_count}줄 (ENV ${appended_count}개)"
 
-      - name: 빌드 테스트
+      - name: 🔨 빌드 테스트
         working-directory: be/functions
         run: |
-          echo "Firebase 에뮬레이터 빌드 테스트 시작!"
+          echo "🔨 Firebase 에뮬레이터 빌드 테스트 시작"
           pnpm run build
-          echo "빌드 테스트 완료 "
+          echo "✅ 빌드 테스트 완료"
 
       
       # ✅ 성공 시 코멘트 남기기

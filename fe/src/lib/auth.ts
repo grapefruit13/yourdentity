@@ -1,6 +1,7 @@
 /**
  * Firebase Auth - 카카오 소셜 로그인 (OpenID Connect)
  */
+import { FirebaseError } from "firebase/app";
 import {
   OAuthProvider,
   signInWithPopup,
@@ -13,6 +14,9 @@ import {
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "@/lib/firebase";
+import { ErrorResponse, Result } from "@/types/shared/response";
+import { debug } from "@/utils/shared/debugger";
+import { post } from "./axios";
 
 /**
  * @description 카카오 OAuth 제공업체 생성
@@ -49,11 +53,11 @@ export const signUpWithEmail = async (
       password
     );
 
-    console.log("이메일 회원가입 성공:", userCredential.user);
+    debug.log("이메일 회원가입 성공:", userCredential.user);
     return userCredential;
-  } catch (error) {
-    console.error("이메일 회원가입 실패:", error);
-    throw error;
+  } catch (err) {
+    debug.warn("이메일 회원가입 실패");
+    throw err;
   }
 };
 
@@ -63,7 +67,7 @@ export const signUpWithEmail = async (
 export const signInWithEmail = async (
   email: string,
   password: string
-): Promise<UserCredential> => {
+): Promise<Result<UserCredential>> => {
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -71,11 +75,34 @@ export const signInWithEmail = async (
       password
     );
 
-    console.log("이메일 로그인 성공:", userCredential.user);
-    return userCredential;
+    debug.log("이메일 로그인 성공:", userCredential.user);
+    return { data: userCredential, status: 200 };
   } catch (error) {
-    console.error("이메일 로그인 실패:", error);
-    throw error;
+    if (error instanceof FirebaseError) {
+      const { code } = error;
+      if (
+        code === "auth/network-request-failed" ||
+        code === "auth/internal-error" ||
+        code === "auth/timeout"
+      ) {
+        const networkError: ErrorResponse = {
+          status: 503,
+          message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        };
+        throw networkError;
+      }
+      const message =
+        code === "auth/too-many-requests"
+          ? "요청이 많습니다. 잠시 후 다시 시도해주세요."
+          : "계정 아이디(이메일) 또는 비밀번호를 다시 확인해주세요.";
+      const authError: ErrorResponse = { status: 401, message };
+      throw authError;
+    }
+    const unknownError: ErrorResponse = {
+      status: 500,
+      message: "알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    };
+    throw unknownError;
   }
 };
 
@@ -88,27 +115,20 @@ export const getCurrentUser = (): User | null => {
 
 /**
  * @description 로그아웃
- * Firebase 로그아웃 + 백엔드 Refresh Token 무효화
+ * Firebase 로그아웃 백엔드 Refresh Token 무효화
  */
 export const signOut = async (): Promise<void> => {
   try {
     // 1. 백엔드 API 호출 (Refresh Token 무효화)
     const token = await getFirebaseIdToken();
     if (token) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-      await fetch(`${apiUrl}/auth/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await post("auth/logout");
     }
 
     // 2. Firebase 로그아웃 (localStorage 자동 삭제)
     await auth.signOut();
-  } catch (error) {
-    console.error("로그아웃 실패:", error);
+  } catch {
+    debug.warn("로그아웃 실패");
     // 에러가 나도 로컬 로그아웃은 진행
     await auth.signOut();
   }
@@ -156,7 +176,7 @@ export const checkEmailAvailability = async (
     const result = await checkEmail({ email });
     return result.data;
   } catch (error) {
-    console.error("이메일 중복 체크 실패:", error);
+    debug.warn("이메일 중복 체크 실패");
     throw error;
   }
 };
