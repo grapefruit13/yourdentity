@@ -568,15 +568,44 @@ router.get("/:routineId", routineController.getRoutineById);
  *                 description: 신청 수량
  *               customFieldsRequest:
  *                 type: object
- *                 description: 커스텀 필드 요청
- *                 example:
- *                   custom_1: "홍길동"
- *                   custom_2: "한끗러버"
- *                   custom_3: "20070712"
- *                   custom_4: "서울시 성동구"
- *                   custom_5: "5"
- *                   custom_6: "인스타그램"
- *                   custom_7: "네, 확인했습니다"
+ *                 description: 커스텀 필드 요청 (한끗루틴은 추가 커스텀 필드 없음)
+ *                 example: {}
+ *               activityNickname:
+ *                 type: string
+ *                 description: 활동용 닉네임
+ *                 example: "한끗러버"
+ *               activityPhoneNumber:
+ *                 type: string
+ *                 description: 활동용 전화번호
+ *                 example: "010-1234-5678"
+ *               region:
+ *                 type: object
+ *                 description: 지역 정보
+ *                 properties:
+ *                   city:
+ *                     type: string
+ *                     description: 시/도
+ *                     example: "서울시"
+ *                   district:
+ *                     type: string
+ *                     description: 군/구
+ *                     example: "성동구"
+ *               currentSituation:
+ *                 type: string
+ *                 description: 현재 상황
+ *                 example: "대학생"
+ *               applicationSource:
+ *                 type: string
+ *                 description: 신청 경로
+ *                 example: "인스타그램"
+ *               applicationMotivation:
+ *                 type: string
+ *                 description: 신청 동기
+ *                 example: "규칙적인 생활을 위해서"
+ *               canAttendEvents:
+ *                 type: boolean
+ *                 description: 필참 일정 참여 여부
+ *                 example: true
  *     responses:
  *       201:
  *         description: 루틴 신청 성공

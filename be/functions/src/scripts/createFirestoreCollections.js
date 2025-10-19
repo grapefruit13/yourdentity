@@ -714,6 +714,16 @@ const createFirestoreCollections = async () => {
       targetName: "66일 한끗루틴", // 대상명 (루틴명/소모임명/TMI명)
       targetPrice: 0, // 대상 가격
       customFieldsRequest: {},
+      activityNickname: "한끗러버",
+      activityPhoneNumber: "010-1234-5678",
+      region: {
+        city: "서울시",
+        district: "성동구"
+      },
+      currentSituation: "대학생",
+      applicationSource: "인스타그램",
+      applicationMotivation: "규칙적인 생활을 위해서",
+      canAttendEvents: true,
       appliedAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now(),
     });
@@ -731,9 +741,20 @@ const createFirestoreCollections = async () => {
           targetName: "9월 독서 소모임", // 대상명
           targetPrice: 0, // 대상 가격
           customFieldsRequest: {
-            custom_1: "독서러",
-            custom_2: "소설",
+            custom_1: "책 읽기와 독서 후기 공유",
+            custom_2: "독서 습관 정착과 다양한 책 추천", 
+            custom_3: "견과류 알레르기",
           },
+          activityNickname: "독서러",
+          activityPhoneNumber: "010-9876-5432",
+          region: {
+            city: "서울시",
+            district: "강남구"
+          },
+          currentSituation: "직장인",
+          applicationSource: "카카오톡",
+          applicationMotivation: "독서 습관 기르기",
+          canAttendEvents: true,
           appliedAt: admin.firestore.Timestamp.now(),
           updatedAt: admin.firestore.Timestamp.now(),
         });
@@ -751,8 +772,20 @@ const createFirestoreCollections = async () => {
           targetName: "나다운게", // 대상명
           targetPrice: 0, // 대상 가격
           customFieldsRequest: {
-            custom_1: "홍길동",
+            custom_1: "자기소개서 작성 완료",
+            custom_2: "포트폴리오 제출 완료",
+            custom_3: "개발자 커리어 전환을 위한 목표 설정",
           },
+          activityNickname: "탐색러",
+          activityPhoneNumber: "010-5555-1234",
+          region: {
+            city: "경기도",
+            district: "성남시"
+          },
+          currentSituation: "고등학생",
+          applicationSource: "유튜브",
+          applicationMotivation: "자아를 찾고 싶어서",
+          canAttendEvents: false,
           appliedAt: admin.firestore.Timestamp.now(),
           updatedAt: admin.firestore.Timestamp.now(),
         });
@@ -1080,6 +1113,8 @@ const createFirestoreCollections = async () => {
           .doc("user123")
           .set({
             role: "admin",
+            nickname: "관리자", // 커뮤니티에서 사용할 닉네임
+            status: "active",
             joinedAt: admin.firestore.Timestamp.now(),
           });
 
