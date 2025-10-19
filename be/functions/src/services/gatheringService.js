@@ -189,7 +189,7 @@ class GatheringService {
       let {
         selectedVariant = null,
         quantity = 1,
-        customFieldsResponse = {},
+        customFieldsRequest = {},
       } = applicationData;
 
       // 수량 검증 (트랜잭션 진입 전)
@@ -240,7 +240,7 @@ class GatheringService {
           quantity,
           targetName: gathering.name,
           targetPrice: gathering.price,
-          customFieldsResponse,
+          customFieldsRequest,
           appliedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -273,7 +273,7 @@ class GatheringService {
         status: "PENDING",
         selectedVariant,
         quantity,
-        customFieldsResponse,
+        customFieldsRequest,
         appliedAt: appliedAtIso,
         targetName: result.gathering.name,
         targetPrice: result.gathering.price,

@@ -154,7 +154,7 @@ class StoreService {
       let {
         selectedVariant = null,
         quantity = 1,
-        customFieldsResponse = {},
+        customFieldsRequest = {},
       } = purchaseData;
 
       // 수량 검증 (트랜잭션 진입 전)
@@ -204,7 +204,7 @@ class StoreService {
           quantity,
           targetName: product.name,
           targetPrice: product.price,
-          customFieldsResponse,
+          customFieldsRequest,
           purchasedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -238,7 +238,7 @@ class StoreService {
         status: "PENDING",
         selectedVariant,
         quantity,
-        customFieldsResponse,
+        customFieldsRequest,
         purchasedAt: purchasedAtIso,
         targetName: result.product.name,
         targetPrice: result.product.price,

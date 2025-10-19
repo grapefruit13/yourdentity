@@ -860,9 +860,9 @@ const options = {
               description: "수량",
               example: 1,
             },
-            customFieldsResponse: {
+            customFieldsRequest: {
               type: "object",
-              description: "커스텀 필드 응답",
+              description: "커스텀 필드 요청",
             },
             appliedAt: {
               type: "string",

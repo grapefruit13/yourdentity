@@ -186,7 +186,7 @@ class RoutineService {
       let {
         selectedVariant = null,
         quantity = 1,
-        customFieldsResponse = {},
+        customFieldsRequest = {},
       } = applicationData;
 
       // 수량 검증 (트랜잭션 진입 전)
@@ -237,7 +237,7 @@ class RoutineService {
           quantity,
           targetName: routine.name,
           targetPrice: routine.price,
-          customFieldsResponse,
+          customFieldsRequest,
           appliedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -271,7 +271,7 @@ class RoutineService {
         status: "PENDING",
         selectedVariant,
         quantity,
-        customFieldsResponse,
+        customFieldsRequest,
         appliedAt: appliedAtIso,
         targetName: result.routine.name,
         targetPrice: result.routine.price,

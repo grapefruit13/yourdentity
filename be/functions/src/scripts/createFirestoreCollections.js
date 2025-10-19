@@ -713,7 +713,7 @@ const createFirestoreCollections = async () => {
       quantity: 1,
       targetName: "66일 한끗루틴", // 대상명 (루틴명/소모임명/TMI명)
       targetPrice: 0, // 대상 가격
-      customFieldsResponse: {},
+      customFieldsRequest: {},
       appliedAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now(),
     });
@@ -730,7 +730,7 @@ const createFirestoreCollections = async () => {
           quantity: 1,
           targetName: "9월 독서 소모임", // 대상명
           targetPrice: 0, // 대상 가격
-          customFieldsResponse: {
+          customFieldsRequest: {
             custom_1: "독서러",
             custom_2: "소설",
           },
@@ -750,7 +750,7 @@ const createFirestoreCollections = async () => {
           quantity: 1,
           targetName: "나다운게", // 대상명
           targetPrice: 0, // 대상 가격
-          customFieldsResponse: {
+          customFieldsRequest: {
             custom_1: "홍길동",
           },
           appliedAt: admin.firestore.Timestamp.now(),

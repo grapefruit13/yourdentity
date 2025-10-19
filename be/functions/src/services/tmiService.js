@@ -152,7 +152,7 @@ class TmiService {
       let {
         selectedVariant = null,
         quantity = 1,
-        customFieldsResponse = {},
+        customFieldsRequest = {},
       } = applicationData;
 
       // 수량 검증 (트랜잭션 진입 전)
@@ -204,7 +204,7 @@ class TmiService {
           quantity,
           targetName: tmi.name || tmi.title,
           targetPrice: tmi.price,
-          customFieldsResponse,
+          customFieldsRequest,
           appliedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -238,7 +238,7 @@ class TmiService {
         status: "PENDING",
         selectedVariant,
         quantity,
-        customFieldsResponse,
+        customFieldsRequest,
         appliedAt: appliedAtIso,
         targetName: result.tmi.name || result.tmi.title,
         targetPrice: result.tmi.price,

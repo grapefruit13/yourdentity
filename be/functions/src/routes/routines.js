@@ -340,9 +340,9 @@ const authGuard = require("../middleware/authGuard");
  *           type: integer
  *           description: 수량
  *           example: 1
- *         customFieldsResponse:
+ *         customFieldsRequest:
  *           type: object
- *           description: 커스텀 필드 응답
+ *           description: 커스텀 필드 요청
  *         appliedAt:
  *           type: string
  *           format: date-time
@@ -566,9 +566,9 @@ router.get("/:routineId", routineController.getRoutineById);
  *                 type: integer
  *                 default: 1
  *                 description: 신청 수량
- *               customFieldsResponse:
+ *               customFieldsRequest:
  *                 type: object
- *                 description: 커스텀 필드 응답
+ *                 description: 커스텀 필드 요청
  *                 example:
  *                   custom_1: "홍길동"
  *                   custom_2: "한끗러버"

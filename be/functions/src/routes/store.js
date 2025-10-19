@@ -690,9 +690,9 @@ router.get("/products/:productId", storeController.getProductById);
  *               selectedVariant:
  *                 type: string
  *                 description: 선택된 옵션
- *               customFieldsResponse:
+ *               customFieldsRequest:
  *                 type: object
- *                 description: 커스텀 필드 응답
+ *                 description: 커스텀 필드 요청
  *                 example:
  *                   custom_1: "홍길동"
  *                   custom_2: "한끗러버"
