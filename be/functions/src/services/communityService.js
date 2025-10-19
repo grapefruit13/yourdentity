@@ -1,6 +1,5 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
-const {db} = require("../config/database");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
 
@@ -423,19 +422,18 @@ class CommunityService {
 
       let author = "익명"; 
       try {
-        const membersSnapshot = await db.collection("communities")
-          .doc(communityId)
-          .collection("members")
-          .where("userId", "==", userId)
-          .limit(1)
-          .get();
-
-        if (!membersSnapshot.empty) {
-          const memberData = membersSnapshot.docs[0].data();
+        const members = await this.firestoreService.getCollectionWhere(
+          `communities/${communityId}/members`,
+          "userId",
+          "==",
+          userId
+        );
+        const memberData = members && members[0];
+        if (memberData) {
           if (community.postType === "TMI") {
             author = memberData.name || "익명";
           } else {
-            author = memberData.nickName || "익명";
+            author = memberData.nickname || "익명";
           }
         }
       } catch (memberError) {

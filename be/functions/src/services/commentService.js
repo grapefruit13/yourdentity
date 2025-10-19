@@ -2,7 +2,6 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
-const {db} = require("../config/database");
 
 /**
  * Comment Service (비즈니스 로직 계층)
@@ -166,19 +165,18 @@ class CommentService {
       // 댓글 작성자 닉네임 가져오기
       let author = "익명";
       try {
-        const membersSnapshot = await db.collection("communities")
-          .doc(communityId)
-          .collection("members")
-          .where("userId", "==", userId)
-          .limit(1)
-          .get();
-
-        if (!membersSnapshot.empty) {
-          const memberData = membersSnapshot.docs[0].data();
+        const members = await this.firestoreService.getCollectionWhere(
+          `communities/${communityId}/members`,
+          "userId",
+          "==",
+          userId
+        );
+        const memberData = members && members[0];
+        if (memberData) {
           if (community && community.postType === "TMI") {
             author = memberData.name || "익명";
           } else {
-            author = memberData.nickName || "익명";
+            author = memberData.nickname || "익명";
           }
         }
       } catch (memberError) {
@@ -293,14 +291,12 @@ class CommentService {
             }
 
             for (const batch of batches) {
-              const membersSnapshot = await db.collection("communities")
-                .doc(communityId)
-                .collection("members")
-                .where("userId", "in", batch)
-                .get();
-
-              membersSnapshot.docs.forEach(doc => {
-                const memberData = doc.data();
+              const members = await this.firestoreService.getCollectionWhereIn(
+                `communities/${communityId}/members`,
+                "userId",
+                batch
+              );
+              members.forEach(memberData => {
                 membersMap.set(memberData.userId, memberData);
               });
             }
@@ -317,7 +313,7 @@ class CommentService {
           if (community && community.postType === "TMI") {
             return memberData.name || "익명";
           } else {
-            return memberData.nickName || "익명";
+            return memberData.nickname || "익명";
           }
         };
 
