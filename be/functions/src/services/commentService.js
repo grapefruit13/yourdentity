@@ -162,9 +162,31 @@ class CommentService {
         });
       }
 
+      // 댓글 작성자 닉네임 가져오기
+      let author = "익명";
+      try {
+        const members = await this.firestoreService.getCollectionWhere(
+          `communities/${communityId}/members`,
+          "userId",
+          "==",
+          userId
+        );
+        const memberData = members && members[0];
+        if (memberData) {
+          if (community && community.postType === "TMI") {
+            author = memberData.name || "익명";
+          } else {
+            author = memberData.nickname || "익명";
+          }
+        }
+      } catch (memberError) {
+        console.warn("Failed to get member info for comment creation:", memberError.message);
+      }
+
       return {
         id: commentId,
         ...newComment,
+        author,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -249,6 +271,52 @@ class CommentService {
             repliesByParentId[reply.parentId].push(reply);
           });
 
+        // 커뮤니티 정보 가져오기 (postType 확인용)
+        const community = await this.firestoreService.getDocument("communities", communityId);
+        
+        // 모든 userId 수집 (댓글 + 대댓글)
+        const allUserIds = new Set();
+        result.content.forEach(comment => allUserIds.add(comment.userId));
+        Object.values(repliesByParentId).flat().forEach(reply => allUserIds.add(reply.userId));
+        
+        // 모든 멤버 정보를 한 번에 조회 (Firestore in 쿼리 제한: 10개)
+        const membersMap = new Map();
+        if (allUserIds.size > 0) {
+          try {
+            const userIdsArray = Array.from(allUserIds);
+            // 10개씩 나누어서 배치 조회
+            const batches = [];
+            for (let i = 0; i < userIdsArray.length; i += 10) {
+              batches.push(userIdsArray.slice(i, i + 10));
+            }
+
+            for (const batch of batches) {
+              const members = await this.firestoreService.getCollectionWhereIn(
+                `communities/${communityId}/members`,
+                "userId",
+                batch
+              );
+              members.forEach(memberData => {
+                membersMap.set(memberData.userId, memberData);
+              });
+            }
+          } catch (memberError) {
+            console.warn("Failed to get members info:", memberError.message);
+          }
+        }
+
+        // author 정보를 가져오는 헬퍼 함수
+        const getAuthor = (userId) => {
+          const memberData = membersMap.get(userId);
+          if (!memberData) return "익명";
+          
+          if (community && community.postType === "TMI") {
+            return memberData.name || "익명";
+          } else {
+            return memberData.nickname || "익명";
+          }
+        };
+
         for (const comment of result.content) {
           const replies = repliesByParentId[comment.id] || [];
           const sortedReplies = replies
@@ -257,7 +325,11 @@ class CommentService {
 
           const processedComment = {
             ...comment,
-            replies: sortedReplies,
+            author: getAuthor(comment.userId),
+            replies: sortedReplies.map(reply => ({
+              ...reply,
+              author: getAuthor(reply.userId)
+            })),
             repliesCount: sortedReplies.length,
           };
 

@@ -860,9 +860,55 @@ const options = {
               description: "수량",
               example: 1,
             },
-            customFieldsResponse: {
+            customFieldsRequest: {
               type: "object",
-              description: "커스텀 필드 응답",
+              description: "커스텀 필드 요청",
+            },
+            activityNickname: {
+              type: "string",
+              description: "활동용 닉네임",
+              example: "기진맥진",
+            },
+            activityPhoneNumber: {
+              type: "string",
+              description: "활동용 전화번호",
+              example: "010-1234-5678",
+            },
+            region: {
+              type: "object",
+              description: "지역 정보",
+              properties: {
+                city: {
+                  type: "string",
+                  description: "시/도",
+                  example: "서울시",
+                },
+                district: {
+                  type: "string",
+                  description: "군/구",
+                  example: "성동구",
+                },
+              },
+            },
+            currentSituation: {
+              type: "string",
+              description: "현재 상황",
+              example: "중학생입니다.",
+            },
+            applicationSource: {
+              type: "string",
+              description: "신청 경로",
+              example: "인스타그램",
+            },
+            applicationMotivation: {
+              type: "string",
+              description: "신청 동기",
+              example: "규칙적인 생활을 위해서",
+            },
+            canAttendEvents: {
+              type: "boolean",
+              description: "필참 일정 참여 여부",
+              example: true,
             },
             appliedAt: {
               type: "string",

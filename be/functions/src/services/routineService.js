@@ -1,6 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
-const {successResponse} = require("../utils/helpers");
+const {successResponse, maskPhoneNumber, isValidPhoneNumber} = require("../utils/helpers");
 
 /**
  * Routine Service (비즈니스 로직 계층)
@@ -186,13 +186,27 @@ class RoutineService {
       let {
         selectedVariant = null,
         quantity = 1,
-        customFieldsResponse = {},
+        customFieldsRequest = {},
+        activityNickname,
+        activityPhoneNumber,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents,
       } = applicationData;
 
       // 수량 검증 (트랜잭션 진입 전)
       quantity = Number(quantity);
       if (!Number.isInteger(quantity) || quantity <= 0) {
         const error = new Error("수량은 1 이상의 정수여야 합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      // 전화번호 형식 검증
+      if (activityPhoneNumber && !isValidPhoneNumber(activityPhoneNumber)) {
+        const error = new Error("올바른 전화번호 형식이 아닙니다");
         error.code = "BAD_REQUEST";
         throw error;
       }
@@ -237,7 +251,14 @@ class RoutineService {
           quantity,
           targetName: routine.name,
           targetPrice: routine.price,
-          customFieldsResponse,
+          customFieldsRequest,
+          activityNickname,
+          activityPhoneNumber,
+          region,
+          currentSituation,
+          applicationSource,
+          applicationMotivation,
+          canAttendEvents,
           appliedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -271,7 +292,14 @@ class RoutineService {
         status: "PENDING",
         selectedVariant,
         quantity,
-        customFieldsResponse,
+        customFieldsRequest,
+        activityNickname,
+        activityPhoneNumber: maskPhoneNumber(activityPhoneNumber),
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents,
         appliedAt: appliedAtIso,
         targetName: result.routine.name,
         targetPrice: result.routine.price,

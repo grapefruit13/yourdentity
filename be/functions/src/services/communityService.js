@@ -1,6 +1,5 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
-const {db} = require("../config/database");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
 
@@ -421,11 +420,32 @@ class CommunityService {
         throw error;
       }
 
+      let author = "익명"; 
+      try {
+        const members = await this.firestoreService.getCollectionWhere(
+          `communities/${communityId}/members`,
+          "userId",
+          "==",
+          userId
+        );
+        const memberData = members && members[0];
+        if (memberData) {
+          if (community.postType === "TMI") {
+            author = memberData.name || "익명";
+          } else {
+            author = memberData.nickname || "익명";
+          }
+        }
+      } catch (memberError) {
+        console.warn("Failed to get member info:", memberError.message);
+      }
+
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       
       const newPost = {
         communityId,
         authorId: userId,
+        author: author,
         title,
         content,
         media,

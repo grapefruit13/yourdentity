@@ -28,6 +28,37 @@ const isValidEmail = (email) => {
 };
 
 /**
+ * 전화번호 형식 검증
+ * @param {string} phoneNumber - 전화번호
+ * @return {boolean} 유효성 여부
+ */
+const isValidPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return false;
+  }
+
+  // 숫자만 추출
+  const numbers = phoneNumber.replace(/\D/g, '');
+  
+  // 한국 휴대폰 번호 패턴: 010-XXXX-XXXX (11자리)
+  if (numbers.length === 11 && numbers.startsWith('010')) {
+    return true;
+  }
+  
+  // 한국 지역번호 패턴 (9-10자리)
+  // 02: 서울 (9자리), 그 외 지역 (10자리)
+  if (numbers.length === 9 && numbers.startsWith('02')) {
+    return true;
+  }
+  
+  if (numbers.length === 10 && !numbers.startsWith('02') && !numbers.startsWith('010')) {
+    return true;
+  }
+  
+  return false;
+};
+
+/**
  * 고유 ID 생성 (타임스탬프 기반)
  * @return {string} 생성된 ID
  */
@@ -94,16 +125,57 @@ const deepClone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
+/**
+ * 전화번호 마스킹 (PII 보호)
+ * @param {string} phoneNumber - 마스킹할 전화번호
+ * @return {string} 마스킹된 전화번호
+ */
+const maskPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return phoneNumber;
+  }
+
+  // 숫자만 추출
+  const numbers = phoneNumber.replace(/\D/g, '');
+  
+  // 한국 전화번호 패턴 (010-XXXX-XXXX 또는 010XXXXXXXX)
+  if (numbers.length === 11 && numbers.startsWith('010')) {
+    return `010-****-${numbers.slice(-4)}`;
+  }
+  
+  // 다른 길이의 전화번호는 중간 부분을 마스킹
+  if (numbers.length >= 8) {
+    const start = numbers.slice(0, 3);
+    const end = numbers.slice(-4);
+    const middle = '*'.repeat(Math.max(4, numbers.length - 7));
+    return `${start}-${middle}-${end}`;
+  }
+  
+  // 너무 짧은 번호는 부분적으로만 마스킹
+  if (numbers.length >= 4) {
+    const visible = numbers.slice(-2);
+    const masked = '*'.repeat(numbers.length - 2);
+    return `${masked}${visible}`;
+  }
+  
+  // 4자리 미만은 전체 마스킹
+  return '*'.repeat(numbers.length);
+};
+
 module.exports = {
   // Validation
   validateMissionStatus,
   isValidEmail,
+  isValidPhoneNumber,
 
   // ID 생성
   generateId,
 
   // 포맷팅
   formatDate,
+
+  // PII 보호
+  maskPhoneNumber,
 
   // 배열/객체 유틸리티
   chunkArray,

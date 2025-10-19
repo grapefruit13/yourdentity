@@ -528,17 +528,49 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *                 type: integer
  *                 default: 1
  *                 description: 신청 수량
- *               customFieldsResponse:
+ *               customFieldsRequest:
  *                 type: object
- *                 description: 커스텀 필드 응답
+ *                 description: 커스텀 필드 요청 (TMI 프로젝트 및 기타 신청 전용 필드)
  *                 example:
- *                   custom_1: "홍길동"
- *                   custom_2: "한끗러버"
- *                   custom_3: "20070712"
- *                   custom_4: "서울시 성동구"
- *                   custom_5: "5"
- *                   custom_6: "인스타그램"
- *                   custom_7: "네, 확인했습니다"
+ *                   custom_1: "자기소개서 작성"
+ *                   custom_2: "포트폴리오 제출"
+ *                   custom_3: "참여 동기 및 목표"
+ *               activityNickname:
+ *                 type: string
+ *                 description: 활동용 닉네임
+ *                 example: "한끗러버"
+ *               activityPhoneNumber:
+ *                 type: string
+ *                 description: 활동용 전화번호
+ *                 example: "010-1234-5678"
+ *               region:
+ *                 type: object
+ *                 description: 지역 정보
+ *                 properties:
+ *                   city:
+ *                     type: string
+ *                     description: 시/도
+ *                     example: "서울시"
+ *                   district:
+ *                     type: string
+ *                     description: 군/구
+ *                     example: "성동구"
+ *               currentSituation:
+ *                 type: string
+ *                 description: 현재 상황
+ *                 example: "대학생"
+ *               applicationSource:
+ *                 type: string
+ *                 description: 신청 경로
+ *                 example: "인스타그램"
+ *               applicationMotivation:
+ *                 type: string
+ *                 description: 신청 동기
+ *                 example: "규칙적인 생활을 위해서"
+ *               canAttendEvents:
+ *                 type: boolean
+ *                 description: 필참 일정 참여 여부
+ *                 example: true
  *     responses:
  *       201:
  *         description: TMI 프로젝트 신청 성공
@@ -551,20 +583,7 @@ router.get("/:projectId", tmiController.getTmiProjectById);
  *                   type: integer
  *                   example: 201
  *                 data:
- *                   type: object
- *                   properties:
- *                     applicationId:
- *                       type: string
- *                     type:
- *                       type: string
- *                       example: "TMI"
- *                     targetId:
- *                       type: string
- *                     userId:
- *                       type: string
- *                     status:
- *                       type: string
- *                       example: "PENDING"
+ *                   $ref: '#/components/schemas/ApplicationResponse'
  *       400:
  *         description: 잘못된 요청 또는 품절
  *         content:
