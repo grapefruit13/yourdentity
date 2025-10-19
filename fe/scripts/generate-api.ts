@@ -57,10 +57,14 @@ interface ApiEndpoint {
 // 타입 생성
 function generateTypes(spec: SwaggerSpec): string {
   const schemas = spec.components?.schemas || {};
-  let types = `/**
+  let types = `
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
  * @description Swagger에서 자동 생성된 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
+
+import type * as Schema from "./api-schema";
 
 `;
 
@@ -155,9 +159,14 @@ function generateFunctionName(method: string, path: string): string {
 
   // 각 세그먼트를 적절히 변환
   const convertedSegments = pathSegments.map((part, index) => {
+    // 하이픈을 제거하고 카멜케이스로 변환
+    const camelCasePart = part.replace(/-([a-z])/g, (_, letter) =>
+      letter.toUpperCase()
+    );
+
     // 첫 번째 세그먼트는 소문자로, 나머지는 첫 글자만 대문자로
     if (index === 0) {
-      return part.toLowerCase();
+      return camelCasePart.toLowerCase();
     }
 
     // 특별한 경우 처리
@@ -180,9 +189,13 @@ function generateFunctionName(method: string, path: string): string {
       tmi: "Tmi",
       store: "Store",
       auth: "Auth",
+      uploadImage: "UploadImage",
     };
 
-    return specialCases[part] || part.charAt(0).toUpperCase() + part.slice(1);
+    return (
+      specialCases[camelCasePart] ||
+      camelCasePart.charAt(0).toUpperCase() + camelCasePart.slice(1)
+    );
   });
 
   // 전체 경로를 조합
@@ -213,6 +226,11 @@ function generateTypeName(
 
   // 각 세그먼트를 적절히 변환
   const convertedSegments = pathSegments.map((part) => {
+    // 하이픈을 제거하고 카멜케이스로 변환
+    const camelCasePart = part.replace(/-([a-z])/g, (_, letter) =>
+      letter.toUpperCase()
+    );
+
     // 특별한 경우 처리
     const specialCases: Record<string, string> = {
       posts: "Posts",
@@ -233,9 +251,13 @@ function generateTypeName(
       tmi: "Tmi",
       store: "Store",
       auth: "Auth",
+      uploadImage: "UploadImage",
     };
 
-    return specialCases[part] || part.charAt(0).toUpperCase() + part.slice(1);
+    return (
+      specialCases[camelCasePart] ||
+      camelCasePart.charAt(0).toUpperCase() + camelCasePart.slice(1)
+    );
   });
 
   // 전체 경로를 조합

@@ -273,9 +273,7 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
         {/* 내용 */}
         <div className="mb-6 text-base leading-relaxed text-gray-700">
           {post?.content ? (
-            <div className="whitespace-pre-line">
-              {post.content}
-            </div>
+            <div className="whitespace-pre-line">{post.content}</div>
           ) : (
             <>
               <p className="mb-3">
@@ -451,10 +449,16 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
               className="w-full border-none bg-transparent px-0 py-2 focus:outline-none"
             />
             <div className="mt-2 flex items-center justify-end gap-2">
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <span className="text-sm font-bold">Aa</span>
               </button>
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -469,7 +473,10 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
                   />
                 </svg>
               </button>
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -484,7 +491,10 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
                   />
                 </svg>
               </button>
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -499,7 +509,10 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
                   />
                 </svg>
               </button>
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -514,7 +527,10 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
                   />
                 </svg>
               </button>
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -529,7 +545,10 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
                   />
                 </svg>
               </button>
-              <button type="button" className="p-1 text-gray-400 transition-colors hover:text-gray-600">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
