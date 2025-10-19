@@ -22,27 +22,6 @@ const STATUS_MAPPINGS = {
   }
 };
 
-/**
- * 영어 상태값을 한국어로 변환
- * @param {string} type - 상태 타입 ('recruitment' | 'program')
- * @param {string} englishValue - 영어 상태값
- * @returns {string} 한국어 상태값
- * @throws {Error} 유효하지 않은 상태값인 경우
- */
-const mapStatusToKorean = (type, englishValue) => {
-  const mapping = STATUS_MAPPINGS[type];
-  if (!mapping) {
-    throw new Error(`지원하지 않는 상태 타입입니다: ${type}`);
-  }
-  
-  const koreanValue = mapping[englishValue];
-  if (!koreanValue) {
-    const validValues = Object.keys(mapping).join(', ');
-    throw new Error(`유효하지 않은 ${type} 상태값입니다. 사용 가능한 값: ${validValues}`);
-  }
-  
-  return koreanValue;
-};
 
 class ProgramController {
   /**
@@ -56,6 +35,7 @@ class ProgramController {
       const {
         recruitmentStatus,
         programStatus,
+        programType,
         pageSize = DEFAULT_PAGE_SIZE,
         cursor
       } = req.query;
@@ -63,26 +43,28 @@ class ProgramController {
       // 필터 조건 구성
       const filters = {};
       if (recruitmentStatus) {
-        try {
-          const koreanStatus = mapStatusToKorean('recruitment', recruitmentStatus);
-          filters.recruitmentStatus = koreanStatus;
-        } catch (error) {
-          const badRequestError = new Error(error.message);
-          badRequestError.code = 'BAD_REQUEST';
-          badRequestError.statusCode = 400;
-          return next(badRequestError);
+        const koreanStatus = STATUS_MAPPINGS.recruitment[recruitmentStatus];
+        if (!koreanStatus) {
+          const error = new Error(`유효하지 않은 모집상태입니다: ${recruitmentStatus}`);
+          error.code = 'BAD_REQUEST';
+          error.statusCode = 400;
+          return next(error);
         }
+        filters.recruitmentStatus = koreanStatus;
       }
       if (programStatus) {
-        try {
-          const koreanStatus = mapStatusToKorean('program', programStatus);
-          filters.programStatus = koreanStatus;
-        } catch (error) {
-          const badRequestError = new Error(error.message);
-          badRequestError.code = 'BAD_REQUEST';
-          badRequestError.statusCode = 400;
-          return next(badRequestError);
+        const koreanStatus = STATUS_MAPPINGS.program[programStatus];
+        if (!koreanStatus) {
+          const error = new Error(`유효하지 않은 프로그램 상태입니다: ${programStatus}`);
+          error.code = 'BAD_REQUEST';
+          error.statusCode = 400;
+          return next(error);
         }
+        filters.programStatus = koreanStatus;
+      }
+      if (programType) {
+        // 프로그램 종류는 직접 사용 (ROUTINE, TMI, GATHERING)
+        filters.programType = programType;
       }
 
       // 페이지 크기 검증
@@ -154,6 +136,7 @@ class ProgramController {
         q,
         recruitmentStatus,
         programStatus,
+        programType,
         pageSize = DEFAULT_PAGE_SIZE,
         cursor
       } = req.query;
@@ -168,26 +151,28 @@ class ProgramController {
       // 필터 조건 구성
       const filters = {};
       if (recruitmentStatus) {
-        try {
-          const koreanStatus = mapStatusToKorean('recruitment', recruitmentStatus);
-          filters.recruitmentStatus = koreanStatus;
-        } catch (error) {
-          const badRequestError = new Error(error.message);
-          badRequestError.code = 'BAD_REQUEST';
-          badRequestError.statusCode = 400;
-          return next(badRequestError);
+        const koreanStatus = STATUS_MAPPINGS.recruitment[recruitmentStatus];
+        if (!koreanStatus) {
+          const error = new Error(`유효하지 않은 모집상태입니다: ${recruitmentStatus}`);
+          error.code = 'BAD_REQUEST';
+          error.statusCode = 400;
+          return next(error);
         }
+        filters.recruitmentStatus = koreanStatus;
       }
       if (programStatus) {
-        try {
-          const koreanStatus = mapStatusToKorean('program', programStatus);
-          filters.programStatus = koreanStatus;
-        } catch (error) {
-          const badRequestError = new Error(error.message);
-          badRequestError.code = 'BAD_REQUEST';
-          badRequestError.statusCode = 400;
-          return next(badRequestError);
+        const koreanStatus = STATUS_MAPPINGS.program[programStatus];
+        if (!koreanStatus) {
+          const error = new Error(`유효하지 않은 프로그램 상태입니다: ${programStatus}`);
+          error.code = 'BAD_REQUEST';
+          error.statusCode = 400;
+          return next(error);
         }
+        filters.programStatus = koreanStatus;
+      }
+      if (programType) {
+        // 프로그램 종류는 직접 사용 (ROUTINE, TMI, GATHERING)
+        filters.programType = programType;
       }
 
       // 페이지 크기 검증

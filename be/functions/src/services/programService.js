@@ -67,6 +67,7 @@ class ProgramService {
    * @param {Object} filters - 필터 조건
    * @param {string} [filters.recruitmentStatus] - 모집상태 (모집 전, 모집 중, 모집 완료, 모집 취소)
    * @param {string} [filters.programStatus] - 프로그램 진행여부 (진행 전, 진행 중, 종료됨, 진행 취소됨)
+   * @param {string} [filters.programType] - 프로그램 종류 (ROUTINE, TMI, GATHERING)
    * @param {number} [pageSize=20] - 페이지 크기 (1-100)
    * @param {string} [startCursor] - 페이지네이션 커서
    * @returns {Promise<Object>} 프로그램 목록과 페이지네이션 정보
@@ -85,7 +86,7 @@ class ProgramService {
       };
 
       // 필터 조건 추가
-      if (filters.recruitmentStatus || filters.programStatus) {
+      if (filters.recruitmentStatus || filters.programStatus || filters.programType) {
         queryBody.filter = {
           and: []
         };
@@ -104,6 +105,15 @@ class ProgramService {
             property: "프로그램 진행 여부",
             status: {
               equals: filters.programStatus
+            }
+          });
+        }
+
+        if (filters.programType) {
+          queryBody.filter.and.push({
+            property: "프로그램 종류",
+            select: {
+              equals: filters.programType
             }
           });
         }
@@ -129,7 +139,7 @@ class ProgramService {
       };
 
     } catch (error) {
-      console.error('[ProgramService] getPrograms error:', error.message);
+      console.error('[ProgramService] 프로그램 목록 조회 오류:', error.message);
       
       // Notion SDK 에러 처리
       if (error.code === 'object_not_found') {
@@ -192,7 +202,7 @@ class ProgramService {
       return programData;
 
     } catch (error) {
-      console.error('[ProgramService] getProgramById error:', error.message);
+      console.error('[ProgramService] 프로그램 상세 조회 오류:', error.message);
       
       // Notion SDK 에러 처리
       if (error.code === 'object_not_found') {
@@ -231,7 +241,7 @@ class ProgramService {
       
       return this.formatProgramBlocks(data.results);
     } catch (error) {
-      console.warn('[ProgramService] getProgramPageBlocks error:', error.message);
+      console.warn('[ProgramService] 프로그램 페이지 블록 조회 오류:', error.message);
       return [];
     }
   }
@@ -250,7 +260,7 @@ class ProgramService {
       const faqIds = faqRelation.map(relation => relation.id);
       return await this.getFaqListByIds(faqIds);
     } catch (error) {
-      console.warn('[ProgramService] getFaqListForProgram error:', error.message);
+      console.warn('[ProgramService] FAQ 목록 조회 오류:', error.message);
       return [];
     }
   }
@@ -359,7 +369,7 @@ class ProgramService {
       
       return faqList;
     } catch (error) {
-      console.error('[ProgramService] getFaqListByIds error:', error.message);
+      console.error('[ProgramService] FAQ ID 목록 조회 오류:', error.message);
       return [];
     }
   }
@@ -458,6 +468,7 @@ class ProgramService {
       title: this.getTextContent(props["프로그램 제목"]),
       programName: this.getTextContent(props["프로그램명"]),
       description: this.getTextContent(props["프로그램 소개글"]),
+      programType: this.getSelectValue(props["프로그램 종류"]),
       recruitmentStatus: this.getStatusValue(props["모집상태"]),
       programStatus: this.getStatusValue(props["프로그램 진행 여부"]),
       startDate: this.getDateValue(props["활동 시작 날짜"]),
@@ -485,6 +496,9 @@ class ProgramService {
    * 프로그램 검색 (제목, 설명 기반)
    * @param {string} searchTerm - 검색어
    * @param {Object} filters - 필터 조건
+   * @param {string} [filters.recruitmentStatus] - 모집상태
+   * @param {string} [filters.programStatus] - 프로그램 진행여부
+   * @param {string} [filters.programType] - 프로그램 종류 (ROUTINE, TMI, GATHERING)
    * @param {number} pageSize - 페이지 크기
    * @param {string} startCursor - 페이지네이션 커서
    */
@@ -527,7 +541,7 @@ class ProgramService {
       }
 
       // 추가 필터 조건 적용
-      if (filters.recruitmentStatus || filters.programStatus) {
+      if (filters.recruitmentStatus || filters.programStatus || filters.programType) {
         queryBody.filter = {
           and: [queryBody.filter]
         };
@@ -549,6 +563,15 @@ class ProgramService {
             }
           });
         }
+
+        if (filters.programType) {
+          queryBody.filter.and.push({
+            property: "프로그램 종류",
+            select: {
+              equals: filters.programType
+            }
+          });
+        }
       }
 
       // v5.3.0에서 databases.query가 제거되어 dataSources.query 사용
@@ -566,7 +589,7 @@ class ProgramService {
       };
 
     } catch (error) {
-      console.error('[ProgramService] searchPrograms error:', error.message);
+      console.error('[ProgramService] 프로그램 검색 오류:', error.message);
       
       // Notion SDK 에러 처리
       if (error.code === 'object_not_found') {
