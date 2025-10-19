@@ -28,6 +28,37 @@ const isValidEmail = (email) => {
 };
 
 /**
+ * 전화번호 형식 검증
+ * @param {string} phoneNumber - 전화번호
+ * @return {boolean} 유효성 여부
+ */
+const isValidPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return false;
+  }
+
+  // 숫자만 추출
+  const numbers = phoneNumber.replace(/\D/g, '');
+  
+  // 한국 휴대폰 번호 패턴: 010-XXXX-XXXX (11자리)
+  if (numbers.length === 11 && numbers.startsWith('010')) {
+    return true;
+  }
+  
+  // 한국 지역번호 패턴 (9-10자리)
+  // 02: 서울 (9자리), 그 외 지역 (10자리)
+  if (numbers.length === 9 && numbers.startsWith('02')) {
+    return true;
+  }
+  
+  if (numbers.length === 10 && !numbers.startsWith('02') && !numbers.startsWith('010')) {
+    return true;
+  }
+  
+  return false;
+};
+
+/**
  * 고유 ID 생성 (타임스탬프 기반)
  * @return {string} 생성된 ID
  */
@@ -135,6 +166,7 @@ module.exports = {
   // Validation
   validateMissionStatus,
   isValidEmail,
+  isValidPhoneNumber,
 
   // ID 생성
   generateId,

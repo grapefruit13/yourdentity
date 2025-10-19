@@ -1,6 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
-const { maskPhoneNumber } = require("../utils/helpers");
+const { maskPhoneNumber, isValidPhoneNumber } = require("../utils/helpers");
 
 /**
  * TMI Service (비즈니스 로직 계층)
@@ -167,6 +167,13 @@ class TmiService {
       quantity = Number(quantity);
       if (!Number.isInteger(quantity) || quantity <= 0) {
         const error = new Error("수량은 1 이상의 정수여야 합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      // 전화번호 형식 검증
+      if (activityPhoneNumber && !isValidPhoneNumber(activityPhoneNumber)) {
+        const error = new Error("올바른 전화번호 형식이 아닙니다");
         error.code = "BAD_REQUEST";
         throw error;
       }
