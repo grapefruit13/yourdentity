@@ -1,6 +1,6 @@
-# yourdentity-front
+# 🚀 Yourdentity Frontend
 
-유어덴티티 프론트엔드 - PWA 기반 모바일 웹 애플리케이션
+> 청소년의 정체성 형성을 돕는 커뮤니티 플랫폼 - PWA 기반 모바일 웹 애플리케이션
 
 ## 🚀 테크 스택
 
@@ -39,6 +39,7 @@
     │
     ├── 📂 api/                                   # API 호출 함수
     │   ├── 📂 [module]/                          # 모듈별
+    │   ├── 📂 generated/                         # 자동 생성된 API 함수
     │   └── 📂 shared/                            # 공통
     │
     ├── 📂 components/                            # UI 컴포넌트
@@ -52,6 +53,7 @@
     │
     ├── 📂 hooks/                                 # 커스텀 훅
     │   ├── 📂 [module]/                          # 모듈별
+    │   ├── 📂 generated/                         # 자동 생성된 React Query 훅
     │   └── 📂 shared/                            # 공통
     │
     ├── 📂 lib/                                   # 라이브러리 설정
@@ -65,11 +67,16 @@
     │
     ├── 📂 types/                                 # 전역/도메인 타입
     │   ├── 📂 [module]/                          # 모듈별
+    │   ├── 📂 generated/                         # 자동 생성된 API 타입
     │   └── 📂 shared/                            # 공통
     │
     └── 📂 utils/                                 # 유틸리티 함수
        ├── 📂 [module]/                           # 모듈별
        └── 📂 shared/                             # 공통
+│
+└── 📂 scripts/                                   # 자동화 스크립트
+    ├── fetch-swagger.ts                          # Swagger 스펙 다운로드
+    └── generate-api.ts                           # API 코드 생성
 ```
 
 ### 🏗️ 아키텍처 특징
@@ -79,13 +86,38 @@
 - **App Router**: Next.js 15의 최신 라우팅 시스템
 - **PWA 지원**: 모바일 앱과 유사한 사용자 경험
 - **타입 안전성**: TypeScript로 전체 코드베이스 타입 관리
+- **API 자동 생성**: Swagger 기반 API 코드 자동 생성 시스템
+
+## 🔧 API 자동 생성 시스템
+
+이 프로젝트는 **Swagger 기반 API 코드 자동 생성 시스템**을 사용합니다.
+
+### 주요 특징
+
+- ✅ **API 함수 자동 생성**: 백엔드 API에 맞는 TypeScript 함수
+- ✅ **타입 안전성**: Swagger 스펙 기반 TypeScript 타입
+- ✅ **React Query 통합**: Query Keys와 Hooks 자동 생성
+- ✅ **실시간 동기화**: 백엔드 변경사항 자동 감지
+
+### 사용법
+
+```bash
+# API 코드 자동 생성
+pnpm api:sync
+
+# 개발 서버 실행 (자동 감지 모드)
+pnpm dev:with-api
+```
+
+자세한 내용은 [API 자동 생성 시스템 가이드](./README_API_GENERATION.md)를 참고하세요.
 
 ## 🛠️ 개발 환경 설정
 
 ### 필수 요구사항
 
-- Node.js 18+
+- Node.js 20+
 - pnpm (권장 패키지 매니저)
+- Firebase CLI
 
 ### 설치 및 실행
 
@@ -93,7 +125,15 @@
 # 의존성 설치
 pnpm install
 
-# 개발 서버 실행 (HTTPS)
+# 백엔드 서버 실행 (별도 터미널)
+cd ../be/functions
+firebase emulators:start --only functions,auth
+
+# 프론트엔드 개발 서버 실행 (API 자동 생성 모드)
+cd ../../fe
+pnpm dev:with-api
+
+# 또는 일반 개발 서버 실행
 pnpm dev
 
 # 프로덕션 빌드
