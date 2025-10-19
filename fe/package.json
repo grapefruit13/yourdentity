@@ -15,8 +15,7 @@
     "api:generate": "tsx scripts/generate-api.ts",
     "api:sync": "pnpm swagger:fetch && pnpm api:generate",
     "api:watch": "nodemon --watch ../be/functions/src/routes --watch swagger.json --exec pnpm api:sync",
-    "dev:with-api": "concurrently \"pnpm api:watch\" \"next dev --experimental-https\"",
-    "prebuild": "pnpm api:sync"
+    "dev:with-api": "concurrently \"pnpm api:watch\" \"next dev --experimental-https\""
   },
   "lint-staged": {
     "**/*.{tsx,ts}": [

@@ -7,3 +7,5 @@ dist
 coverage
 public/**/*.svg
 *.mjs
+
+pnpm-lock.yaml
