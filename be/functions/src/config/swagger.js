@@ -2131,10 +2131,26 @@ const options = {
             participants: {
               type: "array",
               items: {
-                type: "string",
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                    description: "참여자 이름",
+                    example: "김철수",
+                  },
+                  id: {
+                    type: "string",
+                    nullable: true,
+                    description: "참여자 ID",
+                    example: "user_123",
+                  },
+                },
               },
-              description: "참여자 별명",
-              example: ["김철수", "이영희"],
+              description: "참여자 정보",
+              example: [
+                { name: "김철수", id: "user_123" },
+                { name: "이영희", id: "user_456" }
+              ],
             },
             notes: {
               type: "string",
@@ -2287,19 +2303,19 @@ const options = {
         ProgramListResponse: {
           type: "object",
           properties: {
-            success: {
-              type: "boolean",
-              description: "성공 여부",
-              example: true,
-            },
-            message: {
-              type: "string",
-              description: "응답 메시지",
-              example: "프로그램 목록을 성공적으로 조회했습니다.",
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
             },
             data: {
               type: "object",
               properties: {
+                message: {
+                  type: "string",
+                  description: "응답 메시지",
+                  example: "프로그램 목록을 성공적으로 조회했습니다.",
+                },
                 programs: {
                   type: "array",
                   items: {
@@ -2334,19 +2350,19 @@ const options = {
         ProgramDetailResponse: {
           type: "object",
           properties: {
-            success: {
-              type: "boolean",
-              description: "성공 여부",
-              example: true,
-            },
-            message: {
-              type: "string",
-              description: "응답 메시지",
-              example: "프로그램 상세 정보를 성공적으로 조회했습니다.",
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
             },
             data: {
               type: "object",
               properties: {
+                message: {
+                  type: "string",
+                  description: "응답 메시지",
+                  example: "프로그램 상세 정보를 성공적으로 조회했습니다.",
+                },
                 program: {
                   $ref: "#/components/schemas/ProgramDetail",
                 },
@@ -2357,19 +2373,19 @@ const options = {
         ProgramSearchResponse: {
           type: "object",
           properties: {
-            success: {
-              type: "boolean",
-              description: "성공 여부",
-              example: true,
-            },
-            message: {
-              type: "string",
-              description: "응답 메시지",
-              example: "'청년'에 대한 검색 결과를 성공적으로 조회했습니다.",
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
             },
             data: {
               type: "object",
               properties: {
+                message: {
+                  type: "string",
+                  description: "응답 메시지",
+                  example: "'청년'에 대한 검색 결과를 성공적으로 조회했습니다.",
+                },
                 programs: {
                   type: "array",
                   items: {

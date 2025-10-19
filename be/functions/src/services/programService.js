@@ -768,7 +768,8 @@ class ProgramService {
     }).filter(item => item.name !== ''); // 빈 이름 제거
   }
 
-  getMultiSelectValues(property) {
+  // 객체 형태가 필요한 경우에만 사용: { name, id }
+  getMultiSelectOptionsWithIds(property) {
     if (!property || property.type !== 'multi_select' || !property.multi_select) {
       return [];
     }
