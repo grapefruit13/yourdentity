@@ -26,9 +26,12 @@ if (!admin.apps.length) {
       // 서비스 계정 키 정규화 (camelCase와 snake_case 모두 지원)
       const accountRecord = serviceAccount as Record<string, unknown>;
       const normalizedAccount: ServiceAccount = {
-        projectId: (accountRecord["project_id"] ?? accountRecord["projectId"]) as string,
-        privateKey: (accountRecord["private_key"] ?? accountRecord["privateKey"]) as string,
-        clientEmail: (accountRecord["client_email"] ?? accountRecord["clientEmail"]) as string,
+        projectId: (accountRecord["project_id"] ??
+          accountRecord["projectId"]) as string,
+        privateKey: (accountRecord["private_key"] ??
+          accountRecord["privateKey"]) as string,
+        clientEmail: (accountRecord["client_email"] ??
+          accountRecord["clientEmail"]) as string,
       };
 
       const missingFields = Object.entries(normalizedAccount)
@@ -56,7 +59,9 @@ if (!admin.apps.length) {
       throw error;
     }
   } else {
-    debug.warn("FCM_SERVICE_KEY_STRINGIFIED environment variable is not set or empty - FCM functionality will be disabled");
+    debug.warn(
+      "FCM_SERVICE_KEY_STRINGIFIED environment variable is not set or empty - FCM functionality will be disabled"
+    );
   }
 }
 
@@ -70,7 +75,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "FCM service is not configured. Please set FCM_SERVICE_KEY_STRINGIFIED environment variable."
+          error:
+            "FCM service is not configured. Please set FCM_SERVICE_KEY_STRINGIFIED environment variable.",
         },
         { status: 503 }
       );

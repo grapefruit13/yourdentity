@@ -1,0 +1,7 @@
+{
+  "watch": ["../be/functions/src/routes", "swagger.json"],
+  "ext": "js,json",
+  "ignore": ["node_modules", "src", ".next", "dist"],
+  "exec": "pnpm api:sync",
+  "delay": 1000
+}
