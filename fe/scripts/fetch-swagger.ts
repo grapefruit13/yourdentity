@@ -6,7 +6,11 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 import { debug } from "@/utils/shared/debugger";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SWAGGER_URL =
   process.env.NEXT_PUBLIC_SWAGGER_URL ||
@@ -18,7 +22,10 @@ async function fetchSwaggerSpec() {
     debug.log("🔄 Swagger 스펙 다운로드 중...");
     debug.log(`📍 URL: ${SWAGGER_URL}`);
 
-    const response = await fetch(SWAGGER_URL);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    const response = await fetch(SWAGGER_URL, { signal: controller.signal });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -49,8 +56,9 @@ async function fetchSwaggerSpec() {
   }
 }
 
-// 스크립트가 직접 실행될 때만 실행
-if (require.main === module) {
+// 스크립트가 직접 실행될 때만 실행 (ESM-safe)
+const isMain = import.meta.url === pathToFileURL(process.argv[1]!).href;
+if (isMain) {
   fetchSwaggerSpec()
     .then(() => {
       debug.log("🎉 Swagger 스펙 가져오기 완료");
