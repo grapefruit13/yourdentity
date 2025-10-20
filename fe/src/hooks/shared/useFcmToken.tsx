@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { onAuthStateChange } from "@/lib/auth";
 import { fetchToken, getClientMessaging } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
-import { useFCM } from "./useFCM";
 
 async function getNotificationPermissionAndToken() {
   // Step 1: Check if Notifications are supported in the browser.
@@ -43,9 +42,6 @@ const useFcmToken = () => {
   const [token, setToken] = useState<string | null>(null); // State to store the FCM token.
   const retryLoadToken = useRef(0); // Ref to keep track of retry attempts.
   const isLoading = useRef(false); // Ref to keep track if a token fetch is currently in progress.
-  const tokenSent = useRef(false); // Ref to prevent duplicate token sending
-  // FCM 훅 사용
-  const { registerFCMToken } = useFCM();
 
   const loadToken = useCallback(async () => {
     // Step 4: Prevent multiple fetches if already fetched or in progress.
@@ -94,16 +90,8 @@ const useFcmToken = () => {
     setToken(token);
     isLoading.current = false;
 
-    // 중복 전송 방지
-    if (!tokenSent.current) {
-      try {
-        await registerFCMToken();
-        tokenSent.current = true;
-      } catch (error) {
-        // 토큰 저장 실패해도 로컬 토큰은 유지
-      }
-    }
-  }, [registerFCMToken]);
+    // FCM 토큰 등록은 로그인 페이지에서 담당하므로 여기서는 토큰만 설정
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user: any) => {
