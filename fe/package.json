@@ -13,9 +13,7 @@
     "prepare": "cd .. && husky fe/.husky",
     "swagger:fetch": "tsx scripts/fetch-swagger.ts",
     "api:generate": "tsx scripts/generate-api.ts",
-    "api:sync": "pnpm swagger:fetch && pnpm api:generate",
-    "api:watch": "nodemon --watch ../be/functions/src/routes --watch swagger.json --exec pnpm api:sync",
-    "dev:with-api": "concurrently \"pnpm api:watch\" \"next dev --experimental-https\""
+    "api:sync": "pnpm swagger:fetch && pnpm api:generate"
   },
   "lint-staged": {
     "**/*.{tsx,ts}": [
