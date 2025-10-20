@@ -30,7 +30,7 @@ export const useGetUsers = () => {
 
 export const useGetUsersById = (request: Types.TGETUsersByIdReq) => {
   return useQuery({
-    queryKey: usersKeys.getUsersById,
+    queryKey: usersKeys.getUsersById(request),
     queryFn: () => Api.getUsersById(request),
   });
 };

@@ -19,7 +19,7 @@ export const useGetUsersMissionsById = (
   request: Types.TGETUsersMissionsByIdReq
 ) => {
   return useQuery({
-    queryKey: missionsKeys.getUsersMissionsById,
+    queryKey: missionsKeys.getUsersMissionsById(request),
     queryFn: () => Api.getUsersMissionsById(request),
   });
 };
@@ -28,7 +28,7 @@ export const useGetUsersMissionsByTwoIds = (
   request: Types.TGETUsersMissionsByTwoIdsReq
 ) => {
   return useQuery({
-    queryKey: missionsKeys.getUsersMissionsByTwoIds,
+    queryKey: missionsKeys.getUsersMissionsByTwoIds(request),
     queryFn: () => Api.getUsersMissionsByTwoIds(request),
   });
 };

@@ -10,7 +10,7 @@ import type * as Types from "@/types/generated/store-types";
 
 export const useGetStoreProducts = (request: Types.TGETStoreProductsReq) => {
   return useQuery({
-    queryKey: storeKeys.getStoreProducts,
+    queryKey: storeKeys.getStoreProducts(request),
     queryFn: () => Api.getStoreProducts(request),
   });
 };
@@ -19,7 +19,7 @@ export const useGetStoreProductsById = (
   request: Types.TGETStoreProductsByIdReq
 ) => {
   return useQuery({
-    queryKey: storeKeys.getStoreProductsById,
+    queryKey: storeKeys.getStoreProductsById(request),
     queryFn: () => Api.getStoreProductsById(request),
   });
 };

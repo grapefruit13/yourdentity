@@ -10,14 +10,14 @@ import type * as Types from "@/types/generated/routines-types";
 
 export const useGetRoutines = (request: Types.TGETRoutinesReq) => {
   return useQuery({
-    queryKey: routinesKeys.getRoutines,
+    queryKey: routinesKeys.getRoutines(request),
     queryFn: () => Api.getRoutines(request),
   });
 };
 
 export const useGetRoutinesById = (request: Types.TGETRoutinesByIdReq) => {
   return useQuery({
-    queryKey: routinesKeys.getRoutinesById,
+    queryKey: routinesKeys.getRoutinesById(request),
     queryFn: () => Api.getRoutinesById(request),
   });
 };

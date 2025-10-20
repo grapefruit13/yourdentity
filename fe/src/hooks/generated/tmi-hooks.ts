@@ -10,14 +10,14 @@ import type * as Types from "@/types/generated/tmi-types";
 
 export const useGetTmis = (request: Types.TGETTmisReq) => {
   return useQuery({
-    queryKey: tmiKeys.getTmis,
+    queryKey: tmiKeys.getTmis(request),
     queryFn: () => Api.getTmis(request),
   });
 };
 
 export const useGetTmisById = (request: Types.TGETTmisByIdReq) => {
   return useQuery({
-    queryKey: tmiKeys.getTmisById,
+    queryKey: tmiKeys.getTmisById(request),
     queryFn: () => Api.getTmisById(request),
   });
 };

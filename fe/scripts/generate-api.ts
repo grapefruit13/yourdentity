@@ -33,6 +33,9 @@ function ensureDir(dir: string) {
   }
 }
 
+// 사용 가능한 스키마 이름 추적 (Swagger components.schemas의 키)
+const availableSchemaNames = new Set<string>();
+
 // Swagger 스펙 파싱
 interface SwaggerSpec {
   paths: Record<string, Record<string, any>>;
@@ -59,6 +62,8 @@ function generateTypes(spec: SwaggerSpec): string {
   const schemas = spec.components?.schemas || {};
   let types = `
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type * as Schema from "./api-schema";
+
 /**
  * @description Swagger에서 자동 생성된 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -459,7 +464,11 @@ import type * as Schema from "./api-schema";
           const bodySchema = requestBody.content["application/json"].schema;
           if (bodySchema.$ref) {
             const refName = bodySchema.$ref.split("/").pop();
-            fileContent += `  data: Schema.${refName};\n`;
+            if (refName && availableSchemaNames.has(refName)) {
+              fileContent += `  data: Schema.${refName};\n`;
+            } else {
+              fileContent += `  data: any;\n`;
+            }
           } else {
             // 인라인 스키마인 경우 직접 타입 생성
             const bodyType = getTypeScriptType(bodySchema);
@@ -483,7 +492,11 @@ import type * as Schema from "./api-schema";
 
         if (responseSchema.$ref) {
           const refName = responseSchema.$ref.split("/").pop();
-          fileContent += `Schema.${refName};\n\n`;
+          if (refName && availableSchemaNames.has(refName)) {
+            fileContent += `Schema.${refName};\n\n`;
+          } else {
+            fileContent += `any;\n\n`;
+          }
         } else if (responseSchema.properties?.data) {
           // 응답 스키마에 data 필드가 있는 경우, data 필드의 타입만 추출
           const dataType = getTypeScriptType(responseSchema.properties.data);
@@ -503,7 +516,10 @@ import type * as Schema from "./api-schema";
 
 // Query Keys 생성
 function generateQueryKeys(endpoints: ApiEndpoint[]): string {
-  let queryKeys = `/**
+  let queryKeys = `
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/**
  * @description Swagger에서 자동 생성된 Query Keys
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
@@ -521,14 +537,73 @@ function generateQueryKeys(endpoints: ApiEndpoint[]): string {
     {} as Record<string, ApiEndpoint[]>
   );
 
+  // 타입 임포트 추가 (요청 파라미터가 있는 태그에 한해)
+  const tagNames = Object.keys(groupedEndpoints).map((t) => t.toLowerCase());
+  const uniqueTagNames = Array.from(new Set(tagNames));
+  if (uniqueTagNames.length > 0) {
+    uniqueTagNames.forEach((name) => {
+      queryKeys += `import type * as ${name}Types from "@/types/generated/${name}-types";\n`;
+    });
+    queryKeys += `\n`;
+  }
+
+  // 공용 헬퍼: 쿼리 정규화 및 키 빌더 (파일당 한 번만 선언)
+  queryKeys += `function __normalizeQuery(obj: Record<string, unknown>) {\n`;
+  queryKeys += `  const normalized: Record<string, unknown> = {};\n`;
+  queryKeys += `  Object.keys(obj).forEach((k) => {\n`;
+  queryKeys += `    const val = (obj as any)[k];\n`;
+  queryKeys += `    if (val === undefined) return;\n`;
+  queryKeys += `    normalized[k] = val instanceof Date ? val.toISOString() : val;\n`;
+  queryKeys += `  });\n`;
+  queryKeys += `  return normalized;\n`;
+  queryKeys += `}\n\n`;
+
+  queryKeys += `function __buildKey(tag: string, name: string, parts?: { path?: Record<string, unknown>; query?: Record<string, unknown> }) {\n`;
+  queryKeys += `  if (!parts) return [tag, name] as const;\n`;
+  queryKeys += `  const { path, query } = parts;\n`;
+  queryKeys += `  return [tag, name, path ?? {}, __normalizeQuery(query ?? {})] as const;\n`;
+  queryKeys += `}\n\n`;
+
   Object.entries(groupedEndpoints).forEach(([tag, tagEndpoints]) => {
     const tagName = tag.toLowerCase();
     queryKeys += `// ${tag} Query Keys\nexport const ${tagName}Keys = {\n`;
 
     tagEndpoints.forEach((endpoint) => {
-      const { method, operationId, path } = endpoint;
+      const {
+        method,
+        operationId,
+        path,
+        parameters = [],
+        requestBody,
+      } = endpoint;
       const keyName = operationId || generateFunctionName(method, path);
-      queryKeys += `  ${keyName}: ["${tagName}", "${keyName}"] as const,\n`;
+
+      // GET만 키 생성 (중복/불필요한 키 생성 방지)
+      if (method.toLowerCase() !== "get") {
+        return;
+      }
+
+      const pathParams = parameters.filter((p: any) => p.in === "path");
+      const queryParams = parameters.filter((p: any) => p.in === "query");
+      const hasRequestBody =
+        requestBody && requestBody.content?.["application/json"]?.schema;
+      const hasRequestParams =
+        pathParams.length > 0 || queryParams.length > 0 || hasRequestBody;
+
+      if (hasRequestParams) {
+        const reqTypeName = generateTypeName(method, path, "Req");
+        const pathKeysStr = pathParams
+          .map((p: any) => `${p.name}: request.${p.name}`)
+          .join(", ");
+        const queryKeysStr = queryParams
+          .map((p: any) => `${p.name}: request.${p.name}`)
+          .join(", ");
+
+        queryKeys += `  ${keyName}: (request: ${tagName}Types.${reqTypeName}) => __buildKey("${tagName}", "${keyName}", { path: { ${pathKeysStr} }, query: { ${queryKeysStr} } }),\n`;
+      } else {
+        // 요청 파라미터가 없는 경우 상수 키
+        queryKeys += `  ${keyName}: __buildKey("${tagName}", "${keyName}"),\n`;
+      }
     });
 
     queryKeys += `} as const;\n\n`;
@@ -573,7 +648,6 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         path,
         parameters = [],
         requestBody,
-        responses,
       } = endpoint;
       const funcName = operationId || generateFunctionName(method, path);
       const hookName = `use${funcName.charAt(0).toUpperCase() + funcName.slice(1)}`;
@@ -592,7 +666,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
           const reqTypeName = generateTypeName(method, path, "Req");
           fileContent += `export const ${hookName} = (request: Types.${reqTypeName}) => {\n`;
           fileContent += `  return useQuery({\n`;
-          fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName},\n`;
+          fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName}(request),\n`;
           fileContent += `    queryFn: () => Api.${funcName}(request),\n`;
           fileContent += `  });\n`;
           fileContent += `};\n\n`;
@@ -642,6 +716,10 @@ function generateApiCode() {
 
     const swaggerSpec: SwaggerSpec = JSON.parse(
       fs.readFileSync(SWAGGER_FILE, "utf-8")
+    );
+    // 사용 가능한 스키마 이름들 기록
+    Object.keys(swaggerSpec.components?.schemas || {}).forEach((name) =>
+      availableSchemaNames.add(name)
     );
     debug.log(
       `📊 Swagger 스펙 로드 완료: ${Object.keys(swaggerSpec.paths || {}).length}개 엔드포인트`

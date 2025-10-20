@@ -12,7 +12,7 @@ export const useGetCommentsCommunitiesPostsByTwoIds = (
   request: Types.TGETCommentsCommunitiesPostsByTwoIdsReq
 ) => {
   return useQuery({
-    queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds,
+    queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds(request),
     queryFn: () => Api.getCommentsCommunitiesPostsByTwoIds(request),
   });
 };

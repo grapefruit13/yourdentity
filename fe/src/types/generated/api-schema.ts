@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type * as Schema from "./api-schema";
+
 /**
  * @description Swagger에서 자동 생성된 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
-
-import type * as Schema from "./api-schema";
 
 // 기본 응답 타입
 export interface ApiResponse<T = any> {
@@ -678,10 +678,4 @@ export interface TmiProject {
       name?: string;
     };
   }[];
-}
-
-// 성공 응답 타입
-export interface Success {
-  success: boolean;
-  message?: string;
 }

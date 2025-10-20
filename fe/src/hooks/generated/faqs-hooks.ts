@@ -10,14 +10,14 @@ import type * as Types from "@/types/generated/faqs-types";
 
 export const useGetFaqs = (request: Types.TGETFaqsReq) => {
   return useQuery({
-    queryKey: faqsKeys.getFaqs,
+    queryKey: faqsKeys.getFaqs(request),
     queryFn: () => Api.getFaqs(request),
   });
 };
 
 export const useGetFaqsBlocksById = (request: Types.TGETFaqsBlocksByIdReq) => {
   return useQuery({
-    queryKey: faqsKeys.getFaqsBlocksById,
+    queryKey: faqsKeys.getFaqsBlocksById(request),
     queryFn: () => Api.getFaqsBlocksById(request),
   });
 };

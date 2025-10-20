@@ -12,7 +12,7 @@ export const useGetNotionAnnouncements = (
   request: Types.TGETNotionAnnouncementsReq
 ) => {
   return useQuery({
-    queryKey: announcementsKeys.getNotionAnnouncements,
+    queryKey: announcementsKeys.getNotionAnnouncements(request),
     queryFn: () => Api.getNotionAnnouncements(request),
   });
 };
@@ -21,7 +21,7 @@ export const useGetNotionAnnouncementsSyncById = (
   request: Types.TGETNotionAnnouncementsSyncByIdReq
 ) => {
   return useQuery({
-    queryKey: announcementsKeys.getNotionAnnouncementsSyncById,
+    queryKey: announcementsKeys.getNotionAnnouncementsSyncById(request),
     queryFn: () => Api.getNotionAnnouncementsSyncById(request),
   });
 };
@@ -30,7 +30,7 @@ export const useGetNotionAnnouncementsDeleteById = (
   request: Types.TGETNotionAnnouncementsDeleteByIdReq
 ) => {
   return useQuery({
-    queryKey: announcementsKeys.getNotionAnnouncementsDeleteById,
+    queryKey: announcementsKeys.getNotionAnnouncementsDeleteById(request),
     queryFn: () => Api.getNotionAnnouncementsDeleteById(request),
   });
 };
@@ -39,7 +39,7 @@ export const useGetNotionAnnouncementsById = (
   request: Types.TGETNotionAnnouncementsByIdReq
 ) => {
   return useQuery({
-    queryKey: announcementsKeys.getNotionAnnouncementsById,
+    queryKey: announcementsKeys.getNotionAnnouncementsById(request),
     queryFn: () => Api.getNotionAnnouncementsById(request),
   });
 };

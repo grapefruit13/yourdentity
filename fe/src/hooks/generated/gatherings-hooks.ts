@@ -10,14 +10,14 @@ import type * as Types from "@/types/generated/gatherings-types";
 
 export const useGetGatherings = (request: Types.TGETGatheringsReq) => {
   return useQuery({
-    queryKey: gatheringsKeys.getGatherings,
+    queryKey: gatheringsKeys.getGatherings(request),
     queryFn: () => Api.getGatherings(request),
   });
 };
 
 export const useGetGatheringsById = (request: Types.TGETGatheringsByIdReq) => {
   return useQuery({
-    queryKey: gatheringsKeys.getGatheringsById,
+    queryKey: gatheringsKeys.getGatheringsById(request),
     queryFn: () => Api.getGatheringsById(request),
   });
 };

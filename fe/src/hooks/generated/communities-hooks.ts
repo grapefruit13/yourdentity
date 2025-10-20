@@ -10,7 +10,7 @@ import type * as Types from "@/types/generated/communities-types";
 
 export const useGetCommunities = (request: Types.TGETCommunitiesReq) => {
   return useQuery({
-    queryKey: communitiesKeys.getCommunities,
+    queryKey: communitiesKeys.getCommunities(request),
     queryFn: () => Api.getCommunities(request),
   });
 };
@@ -19,7 +19,7 @@ export const useGetCommunitiesPosts = (
   request: Types.TGETCommunitiesPostsReq
 ) => {
   return useQuery({
-    queryKey: communitiesKeys.getCommunitiesPosts,
+    queryKey: communitiesKeys.getCommunitiesPosts(request),
     queryFn: () => Api.getCommunitiesPosts(request),
   });
 };
@@ -28,7 +28,7 @@ export const useGetCommunitiesById = (
   request: Types.TGETCommunitiesByIdReq
 ) => {
   return useQuery({
-    queryKey: communitiesKeys.getCommunitiesById,
+    queryKey: communitiesKeys.getCommunitiesById(request),
     queryFn: () => Api.getCommunitiesById(request),
   });
 };
@@ -37,7 +37,7 @@ export const useGetCommunitiesMembersById = (
   request: Types.TGETCommunitiesMembersByIdReq
 ) => {
   return useQuery({
-    queryKey: communitiesKeys.getCommunitiesMembersById,
+    queryKey: communitiesKeys.getCommunitiesMembersById(request),
     queryFn: () => Api.getCommunitiesMembersById(request),
   });
 };
@@ -46,7 +46,7 @@ export const useGetCommunitiesPostsById = (
   request: Types.TGETCommunitiesPostsByIdReq
 ) => {
   return useQuery({
-    queryKey: communitiesKeys.getCommunitiesPostsById,
+    queryKey: communitiesKeys.getCommunitiesPostsById(request),
     queryFn: () => Api.getCommunitiesPostsById(request),
   });
 };
@@ -62,7 +62,7 @@ export const useGetCommunitiesPostsByTwoIds = (
   request: Types.TGETCommunitiesPostsByTwoIdsReq
 ) => {
   return useQuery({
-    queryKey: communitiesKeys.getCommunitiesPostsByTwoIds,
+    queryKey: communitiesKeys.getCommunitiesPostsByTwoIds(request),
     queryFn: () => Api.getCommunitiesPostsByTwoIds(request),
   });
 };
