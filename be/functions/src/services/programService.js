@@ -364,7 +364,7 @@ class ProgramService {
       
       return {
         id: faqId,
-        title: getTitleValue(pageData.properties["제목"]),
+        title: getTitleValue(pageData.properties["FAQ"]),
         category: getMultiSelectNames(pageData.properties["주제"]),
         content: this.formatFaqBlocks(blocks),
         createdAt: pageData.created_time,

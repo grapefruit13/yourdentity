@@ -127,7 +127,7 @@ class FaqService {
     
     return {
       id: pageData.id,
-      title: getTitleValue(props["제목"]),
+      title: getTitleValue(props["FAQ"]),
       category: getMultiSelectNames(props["주제"]),
       content: this.formatFaqBlocks(blocks),
       createdAt: getCreatedTimeValue(props["생성일"]) || pageData.created_time,
