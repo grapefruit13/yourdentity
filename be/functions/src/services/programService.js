@@ -1,5 +1,21 @@
 const { Client } = require('@notionhq/client');
-const { buildNotionHeadersFromEnv } = require('../utils/notionHelper');
+const { 
+  buildNotionHeadersFromEnv,
+  getTextContent,
+  getTitleValue,
+  getSelectValue,
+  getMultiSelectNames,
+  getMultiSelectOptions,
+  getNumberValue,
+  getDateValue,
+  getCheckboxValue,
+  getUrlValue,
+  getStatusValue,
+  getPeopleValue,
+  getFileUrls,
+  getRelationValues,
+  getRollupValues
+} = require('../utils/notionHelper');
 const faqService = require('./faqService');
 
 // 상수 정의
@@ -265,16 +281,16 @@ class ProgramService {
 
   /**
    * FAQ 관계를 통한 FAQ 목록 조회
-   * @param {Array} faqRelation - FAQ 관계 배열
+   * @param {Object} faqRelation - FAQ 관계 객체
    * @returns {Promise<Array>} FAQ 목록
    */
   async getFaqListForProgram(faqRelation) {
-    if (!faqRelation || faqRelation.length === 0) {
+    if (!faqRelation || !faqRelation.relations || faqRelation.relations.length === 0) {
       return [];
     }
 
     try {
-      const faqIds = faqRelation.map(relation => relation.id);
+      const faqIds = faqRelation.relations.map(relation => relation.id);
       return await this.getFaqListByIds(faqIds);
     } catch (error) {
       console.warn('[ProgramService] FAQ 목록 조회 오류:', error.message);
@@ -421,8 +437,8 @@ class ProgramService {
       
       return {
         id: faqId,
-        title: this.getTitleValue(pageData.properties["제목"]),
-        category: this.getMultiSelectNames(pageData.properties["주제"]),
+        title: getTitleValue(pageData.properties["제목"]),
+        category: getMultiSelectNames(pageData.properties["주제"]),
         content: this.formatFaqBlocks(blocks),
         createdAt: pageData.created_time,
         updatedAt: pageData.last_edited_time
@@ -482,27 +498,27 @@ class ProgramService {
     
     const baseData = {
       id: page.id,
-      title: this.getTextContent(props[NOTION_FIELDS.PROGRAM_TITLE]),
-      programName: this.getTextContent(props[NOTION_FIELDS.PROGRAM_NAME]),
-      description: this.getTextContent(props[NOTION_FIELDS.PROGRAM_DESCRIPTION]),
-      programType: this.getSelectValue(props[NOTION_FIELDS.PROGRAM_TYPE]),
-      recruitmentStatus: this.getStatusValue(props[NOTION_FIELDS.RECRUITMENT_STATUS]),
-      programStatus: this.getStatusValue(props[NOTION_FIELDS.PROGRAM_STATUS]),
-      startDate: this.getDateValue(props[NOTION_FIELDS.START_DATE]),
-      endDate: this.getDateValue(props[NOTION_FIELDS.END_DATE]),
-      recruitmentStartDate: this.getDateValue(props[NOTION_FIELDS.RECRUITMENT_START_DATE]),
-      recruitmentEndDate: this.getDateValue(props[NOTION_FIELDS.RECRUITMENT_END_DATE]),
-      targetAudience: this.getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
-      thumbnail: this.getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
-      linkUrl: this.getUrlValue(props[NOTION_FIELDS.LINK_URL]),
-      isReviewRegistered: this.getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
-      isBannerRegistered: this.getCheckboxValue(props[NOTION_FIELDS.IS_BANNER_REGISTERED]),
+      title: getTextContent(props[NOTION_FIELDS.PROGRAM_TITLE]),
+      programName: getTextContent(props[NOTION_FIELDS.PROGRAM_NAME]),
+      description: getTextContent(props[NOTION_FIELDS.PROGRAM_DESCRIPTION]),
+      programType: getSelectValue(props[NOTION_FIELDS.PROGRAM_TYPE]),
+      recruitmentStatus: getStatusValue(props[NOTION_FIELDS.RECRUITMENT_STATUS]),
+      programStatus: getStatusValue(props[NOTION_FIELDS.PROGRAM_STATUS]),
+      startDate: getDateValue(props[NOTION_FIELDS.START_DATE]),
+      endDate: getDateValue(props[NOTION_FIELDS.END_DATE]),
+      recruitmentStartDate: getDateValue(props[NOTION_FIELDS.RECRUITMENT_START_DATE]),
+      recruitmentEndDate: getDateValue(props[NOTION_FIELDS.RECRUITMENT_END_DATE]),
+      targetAudience: getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
+      thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      linkUrl: getUrlValue(props[NOTION_FIELDS.LINK_URL]),
+      isReviewRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
+      isBannerRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_BANNER_REGISTERED]),
       participants: this.getParticipantsData(props[NOTION_FIELDS.PARTICIPANTS_NAME], props[NOTION_FIELDS.PARTICIPANTS_ID]),
-      notes: this.getTextContent(props[NOTION_FIELDS.NOTES]),
-      faqRelation: this.getRelationValues(props[NOTION_FIELDS.FAQ]),
-      createdAt: page.last_edited_time || this.getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
-      updatedAt: page.last_edited_time || this.getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
-      notionPageTitle: this.getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
+      notes: getTextContent(props[NOTION_FIELDS.NOTES]),
+      faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
+      createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
+      updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
+      notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
     };
 
 
@@ -633,11 +649,6 @@ class ProgramService {
 
 
   // Helper methods for extracting data from Notion properties
-  getTextContent(property) {
-    if (!property || !property.rich_text) return '';
-    return property.rich_text.map(text => text.plain_text).join('');
-  }
-
   getRichTextContent(property) {
     if (!property || !property.rich_text) return '';
     return property.rich_text.map(text => ({
@@ -647,67 +658,16 @@ class ProgramService {
     }));
   }
 
-  getStatusValue(property) {
-    if (!property || !property.status) return null;
-    return property.status.name;
-  }
-
-  getSelectValue(property) {
-    if (!property || !property.select) return null;
-    return property.select.name;
-  }
-
-  getMultiSelectNames(property) {
-    if (!property || !property.multi_select) return [];
-    return property.multi_select.map(option => option.name);
-  }
-
-  getNumberValue(property) {
-    if (!property || property.number === null || property.number === undefined) return null;
-    return property.number;
-  }
-
-  getDateValue(property) {
-    if (!property || !property.date) return null;
-    return property.date.start;
-  }
-
-  getCheckboxValue(property) {
-    if (!property) return false;
-    return property.checkbox;
-  }
-
-  getUrlValue(property) {
-    if (!property || !property.url) return null;
-    return property.url;
-  }
-
-  getTitleValue(property) {
-    if (!property || !property.title) return '';
-    return property.title.map(text => text.plain_text).join('');
-  }
-
-  getFileUrls(property) {
-    if (!property || !property.files) return [];
-    return property.files.map(file => ({
-      name: file.name,
-      url: file.type === 'external' ? file.external.url : file.file.url,
-      type: file.type
-    }));
-  }
-
-  getRelationValue(property) {
-    if (!property || !property.relation) return [];
-    return property.relation.map(relation => ({
-      id: relation.id
-    }));
-  }
 
   getParticipantsData(namesProperty, idsProperty) {
     // 참여자 이름 추출 (rollup 타입)
-    const names = this.getRollupValues(namesProperty);
+    const namesData = getRollupValues(namesProperty);
     // 참여자 ID 추출 (rollup 타입)
-    const ids = this.getRollupValues(idsProperty);
+    const idsData = getRollupValues(idsProperty);
+    
+    // rollup 데이터에서 실제 배열 추출
+    const names = namesData.value || [];
+    const ids = idsData.value || [];
     
     // 이름과 ID를 매칭하여 결합
     const participants = [];
@@ -715,12 +675,12 @@ class ProgramService {
     
     for (let i = 0; i < maxLength; i++) {
       const name = names[i]?.name || '';
-      const id = ids[i]?.name || null; // rollup에서 추출한 ID는 name 필드에 저장됨
+      const id = ids[i]?.name || null; // name 필드에서 ID 추출
       
       if (name || id) {
         participants.push({
-          name: name || '',
-          id: id || null
+          name,
+          id
         });
       }
     }
@@ -728,53 +688,6 @@ class ProgramService {
     return participants;
   }
 
-  getRollupValues(property) {
-    if (!property || property.type !== 'rollup' || !property.rollup || !property.rollup.array) {
-      return [];
-    }
-    
-    return property.rollup.array.map(item => {
-      // rollup 아이템이 텍스트인 경우
-      if (typeof item === 'string') {
-        return { name: item, id: null };
-      }
-      // rollup 아이템이 객체인 경우 텍스트와 ID 추출
-      if (item && typeof item === 'object') {
-        let name = '';
-        let id = null;
-        
-        // ID 추출 - 다양한 위치에서 시도
-        if (item.id) {
-          id = item.id;
-        } else if (item.page_id) {
-          id = item.page_id;
-        } else if (item.database_id) {
-          id = item.database_id;
-        }
-        
-        // rich_text 배열인 경우
-        if (item.rich_text && Array.isArray(item.rich_text)) {
-          name = item.rich_text.map(text => text.plain_text).join('');
-        }
-        // plain_text가 있는 경우
-        else if (item.plain_text) {
-          name = item.plain_text;
-        }
-        // name 속성이 있는 경우 (select, multi_select 등)
-        else if (item.name) {
-          name = item.name;
-        }
-        // title 속성이 있는 경우
-        else if (item.title) {
-          name = item.title;
-        }
-        
-        return { name, id };
-      }
-      // 기타 경우 빈 객체 반환
-      return { name: '', id: null };
-    }).filter(item => item.name !== ''); // 빈 이름 제거
-  }
 
   // 객체 형태가 필요한 경우에만 사용: { name, id }
   getMultiSelectOptions(property) {

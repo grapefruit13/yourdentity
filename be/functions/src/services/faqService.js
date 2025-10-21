@@ -1,4 +1,12 @@
-const {buildNotionHeadersFromEnv} = require("../utils/notionHelper");
+const {
+  buildNotionHeadersFromEnv, 
+  getTitleValue,
+  getTextContent,
+  getMultiSelectNames,
+  getDateValue,
+  getCreatedTimeValue,
+  getLastEditedTimeValue
+} = require("../utils/notionHelper");
 
 class FaqService {
   constructor() {
@@ -105,6 +113,70 @@ class FaqService {
     
     console.log(`[FAQ 서비스] 페이지 블록 조회 성공 - 페이지 ID: ${pageId}`);
     return resp.json();
+  }
+
+  /**
+   * FAQ 데이터 포맷팅
+   * @param {Object} pageData - Notion 페이지 데이터
+   * @param {Array} blocks - 페이지 블록 데이터
+   * @returns {Object} 포맷팅된 FAQ 데이터
+   */
+  formatFaqData(pageData, blocks = []) {
+    const props = pageData.properties;
+    
+    return {
+      id: pageData.id,
+      title: getTitleValue(props["제목"]),
+      category: getMultiSelectNames(props["주제"]),
+      content: this.formatFaqBlocks(blocks),
+      createdAt: getCreatedTimeValue(props["생성일"]) || pageData.created_time,
+      updatedAt: getLastEditedTimeValue(props["수정일"]) || pageData.last_edited_time
+    };
+  }
+
+  /**
+   * FAQ 블록 포맷팅
+   * @param {Array} blocks - Notion 블록 배열
+   * @returns {Array} 포맷팅된 FAQ 내용
+   */
+  formatFaqBlocks(blocks) {
+    return blocks.map(block => ({
+      type: block.type,
+      id: block.id,
+      text: this.extractBlockText(block)
+    }));
+  }
+
+  /**
+   * 블록에서 텍스트 추출
+   * @param {Object} block - Notion 블록
+   * @returns {string} 추출된 텍스트
+   */
+  extractBlockText(block) {
+    switch (block.type) {
+      case 'paragraph':
+        return getTextContent(block.paragraph);
+      case 'heading_1':
+        return getTextContent(block.heading_1);
+      case 'heading_2':
+        return getTextContent(block.heading_2);
+      case 'heading_3':
+        return getTextContent(block.heading_3);
+      case 'bulleted_list_item':
+        return getTextContent(block.bulleted_list_item);
+      case 'numbered_list_item':
+        return getTextContent(block.numbered_list_item);
+      case 'to_do':
+        return getTextContent(block.to_do);
+      case 'toggle':
+        return getTextContent(block.toggle);
+      case 'quote':
+        return getTextContent(block.quote);
+      case 'callout':
+        return getTextContent(block.callout);
+      default:
+        return '';
+    }
   }
 }
 

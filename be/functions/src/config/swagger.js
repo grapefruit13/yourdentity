@@ -2164,17 +2164,28 @@ const options = {
               example: "온라인 진행",
             },
             faqRelation: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  id: {
-                    type: "string",
-                    description: "FAQ ID",
+              type: "object",
+              properties: {
+                relations: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: {
+                        type: "string",
+                        description: "FAQ ID",
+                      },
+                    },
                   },
+                  description: "FAQ 관계 목록",
+                },
+                has_more: {
+                  type: "boolean",
+                  description: "추가 FAQ 관계 존재 여부",
+                  example: false,
                 },
               },
-              description: "FAQ 관계",
+              description: "FAQ 관계 정보",
             },
             createdAt: {
               type: "string",
