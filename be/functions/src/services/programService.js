@@ -359,31 +359,14 @@ class ProgramService {
         blocks = blocksResponse.value.results || [];
       }
       
-      return {
-        id: faqId,
-        title: getTitleValue(pageData.properties["FAQ"]),
-        category: getMultiSelectNames(pageData.properties["주제"]),
-        content: this.formatFaqBlocks(blocks),
-        createdAt: pageData.created_time,
-        updatedAt: pageData.last_edited_time
-      };
+      // faqService의 formatFaqData 재사용
+      return faqService.formatFaqData(pageData, blocks);
     } catch (error) {
       console.warn(`[ProgramService] FAQ ${faqId} 조회 실패:`, error.message);
       return null;
     }
   }
 
-  /**
-   * FAQ 블록 내용 포맷팅
-   * @param {Array} blocks - Notion 블록 배열
-   * @returns {Array} 포맷팅된 FAQ 내용
-   */
-  formatFaqBlocks(blocks) {
-    return formatNotionBlocks(blocks, { 
-      includeRichText: false, 
-      includeMetadata: false 
-    });
-  }
 
   /**
    * 프로그램 데이터 포맷팅 (실제 Notion DB 구조에 맞춤)
