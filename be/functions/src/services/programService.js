@@ -5,13 +5,10 @@ const {
   getTitleValue,
   getSelectValue,
   getMultiSelectNames,
-  getMultiSelectOptions,
-  getNumberValue,
   getDateValue,
   getCheckboxValue,
   getUrlValue,
   getStatusValue,
-  getPeopleValue,
   getFileUrls,
   getRelationValues,
   getRollupValues,
@@ -548,17 +545,6 @@ class ProgramService {
   }
 
 
-  // Helper methods for extracting data from Notion properties
-  getRichTextContent(property) {
-    if (!property || !property.rich_text) return '';
-    return property.rich_text.map(text => ({
-      text: text.plain_text,
-      annotations: text.annotations,
-      href: text.href
-    }));
-  }
-
-
   getParticipantsData(namesProperty, idsProperty) {
     // 참여자 이름 추출 (rollup 타입)
     const namesData = getRollupValues(namesProperty);
@@ -589,27 +575,6 @@ class ProgramService {
   }
 
 
-  // 객체 형태가 필요한 경우에만 사용: { name, id }
-  getMultiSelectOptions(property) {
-    if (!property || property.type !== 'multi_select' || !property.multi_select) {
-      return [];
-    }
-    
-    return property.multi_select.map(option => ({
-      name: option.name,
-      id: option.id || null
-    }));
-  }
-
-  getRelationValues(property) {
-    if (!property || property.type !== 'relation' || !property.relation) {
-      return [];
-    }
-    
-    return property.relation.map(relation => ({
-      id: relation.id
-    }));
-  }
 }
 
 module.exports = new ProgramService();
