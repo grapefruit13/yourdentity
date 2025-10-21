@@ -249,6 +249,11 @@ class CommentService {
 
       if (paginatedParentComments.length > 0) {
         const parentIds = paginatedParentComments.map(comment => comment.id);
+        
+        if (parentIds.length > 10) {
+          console.warn(`부모댓글: (${parentIds.length}) 10개 초과`);
+          parentIds.splice(10);
+        }
 
         const [allReplies] = await Promise.all([
           this.firestoreService.getCollectionWhereMultiple(
@@ -279,7 +284,7 @@ class CommentService {
           const processedComment = {
             ...comment,
             replies: sortedReplies,
-            repliesCount: sortedReplies.length,
+            repliesCount: replies.length, 
           };
 
           commentsWithReplies.push(processedComment);
