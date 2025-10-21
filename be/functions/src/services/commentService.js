@@ -141,13 +141,22 @@ class CommentService {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      const commentId = await this.firestoreService.addDocument("comments", newComment);
-
-      // 게시글의 댓글 수 업데이트
-      await this.firestoreService.updateDocument(`communities/${communityId}/posts`, postId, {
-        commentsCount: FieldValue.increment(1),
-        updatedAt: FieldValue.serverTimestamp(),
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const commentRef = this.firestoreService.db.collection("comments").doc();
+        const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc(postId);
+        
+        transaction.set(commentRef, newComment);
+        transaction.update(postRef, {
+          commentsCount: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        
+        return { commentId: commentRef.id };
       });
+
+      const commentId = result.commentId;
+
+      const created = await this.firestoreService.getDocument("comments", commentId);
 
       if (post.authorId !== userId) {
         fcmHelper.sendNotification(
@@ -186,8 +195,7 @@ class CommentService {
 
       return {
         id: commentId,
-        ...newComment,
-        author,
+        ...created,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -222,23 +230,20 @@ class CommentService {
       const pageNumber = parseInt(page);
       const pageSize = parseInt(size);
 
-      const parentComments = await this.firestoreService.getCollectionWhereMultiple(
-        "comments",
-        [
-          {field: "postId", operator: "==", value: postId},
-          {field: "parentId", operator: "==", value: null},
-          {field: "isDeleted", operator: "==", value: false}
+      // 1️⃣ 부모 댓글 페이징 쿼리 (Firestore 레벨에서 페이징)
+      const parentCommentsResult = await this.firestoreService.getWithPagination({
+        page: pageNumber,
+        size: pageSize,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        where: [
+          { field: "postId", operator: "==", value: postId },
+          { field: "parentId", operator: "==", value: null },
+          { field: "isDeleted", operator: "==", value: false }
         ]
-      );
+      });
 
-      const sortedParentComments = parentComments
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      const totalParentCount = sortedParentComments.length;
-      const paginatedParentComments = sortedParentComments.slice(
-        pageNumber * pageSize,
-        (pageNumber + 1) * pageSize,
-      );
+      const paginatedParentComments = parentCommentsResult.content || [];
 
       const commentsWithReplies = [];
 
@@ -265,8 +270,10 @@ class CommentService {
 
         for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
+          // Firestore Timestamp를 안전하게 처리
+          const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
           const sortedReplies = replies
-            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+            .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .slice(0, 50);
 
           const processedComment = {
@@ -281,15 +288,15 @@ class CommentService {
 
       return {
         content: commentsWithReplies,
-        pagination: {
+        pagination: parentCommentsResult.pageable || {
           pageNumber,
           pageSize,
-          totalElements: totalParentCount,
-          totalPages: Math.ceil(totalParentCount / pageSize),
-          hasNext: pageNumber < Math.ceil(totalParentCount / pageSize) - 1,
-          hasPrevious: pageNumber > 0,
-          isFirst: pageNumber === 0,
-          isLast: pageNumber >= Math.ceil(totalParentCount / pageSize) - 1,
+          totalElements: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrevious: false,
+          isFirst: true,
+          isLast: true,
         },
       };
     } catch (error) {
