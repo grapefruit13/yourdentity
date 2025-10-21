@@ -5,7 +5,8 @@ const {
   getMultiSelectNames,
   getDateValue,
   getCreatedTimeValue,
-  getLastEditedTimeValue
+  getLastEditedTimeValue,
+  formatNotionBlocks
 } = require("../utils/notionHelper");
 
 class FaqService {
@@ -140,43 +141,10 @@ class FaqService {
    * @returns {Array} 포맷팅된 FAQ 내용
    */
   formatFaqBlocks(blocks) {
-    return blocks.map(block => ({
-      type: block.type,
-      id: block.id,
-      text: this.extractBlockText(block)
-    }));
-  }
-
-  /**
-   * 블록에서 텍스트 추출
-   * @param {Object} block - Notion 블록
-   * @returns {string} 추출된 텍스트
-   */
-  extractBlockText(block) {
-    switch (block.type) {
-      case 'paragraph':
-        return getTextContent(block.paragraph);
-      case 'heading_1':
-        return getTextContent(block.heading_1);
-      case 'heading_2':
-        return getTextContent(block.heading_2);
-      case 'heading_3':
-        return getTextContent(block.heading_3);
-      case 'bulleted_list_item':
-        return getTextContent(block.bulleted_list_item);
-      case 'numbered_list_item':
-        return getTextContent(block.numbered_list_item);
-      case 'to_do':
-        return getTextContent(block.to_do);
-      case 'toggle':
-        return getTextContent(block.toggle);
-      case 'quote':
-        return getTextContent(block.quote);
-      case 'callout':
-        return getTextContent(block.callout);
-      default:
-        return '';
-    }
+    return formatNotionBlocks(blocks, { 
+      includeRichText: false, 
+      includeMetadata: false 
+    });
   }
 }
 

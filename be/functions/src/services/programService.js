@@ -14,7 +14,8 @@ const {
   getPeopleValue,
   getFileUrls,
   getRelationValues,
-  getRollupValues
+  getRollupValues,
+  formatNotionBlocks
 } = require('../utils/notionHelper');
 const faqService = require('./faqService');
 
@@ -304,83 +305,9 @@ class ProgramService {
    * @returns {Array} 포맷팅된 페이지 내용
    */
   formatProgramBlocks(blocks) {
-    return blocks.map(block => {
-      const formattedBlock = {
-        type: block.type,
-        id: block.id,
-        hasChildren: block.has_children
-      };
-
-      switch (block.type) {
-        case 'paragraph':
-          formattedBlock.text = block.paragraph?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.paragraph?.rich_text || [];
-          break;
-        case 'heading_1':
-          formattedBlock.text = block.heading_1?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.heading_1?.rich_text || [];
-          break;
-        case 'heading_2':
-          formattedBlock.text = block.heading_2?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.heading_2?.rich_text || [];
-          break;
-        case 'heading_3':
-          formattedBlock.text = block.heading_3?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.heading_3?.rich_text || [];
-          break;
-        case 'bulleted_list_item':
-          formattedBlock.text = block.bulleted_list_item?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.bulleted_list_item?.rich_text || [];
-          break;
-        case 'numbered_list_item':
-          formattedBlock.text = block.numbered_list_item?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.numbered_list_item?.rich_text || [];
-          break;
-        case 'to_do':
-          formattedBlock.text = block.to_do?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.checked = block.to_do?.checked || false;
-          formattedBlock.richText = block.to_do?.rich_text || [];
-          break;
-        case 'toggle':
-          formattedBlock.text = block.toggle?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.toggle?.rich_text || [];
-          break;
-        case 'quote':
-          formattedBlock.text = block.quote?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.richText = block.quote?.rich_text || [];
-          break;
-        case 'callout':
-          formattedBlock.text = block.callout?.rich_text?.map(text => text.plain_text).join('') || '';
-          formattedBlock.icon = block.callout?.icon;
-          formattedBlock.richText = block.callout?.rich_text || [];
-          break;
-        case 'image':
-          formattedBlock.caption = block.image?.caption?.map(text => text.plain_text).join('') || '';
-          formattedBlock.url = block.image?.type === 'external' 
-            ? block.image.external.url 
-            : block.image?.file?.url;
-          break;
-        case 'video':
-          formattedBlock.caption = block.video?.caption?.map(text => text.plain_text).join('') || '';
-          formattedBlock.url = block.video?.type === 'external' 
-            ? block.video.external.url 
-            : block.video?.file?.url;
-          break;
-        case 'file':
-          formattedBlock.caption = block.file?.caption?.map(text => text.plain_text).join('') || '';
-          formattedBlock.url = block.file?.type === 'external' 
-            ? block.file.external.url 
-            : block.file?.file?.url;
-          break;
-        case 'divider':
-          // 구분선은 별도 텍스트 없음
-          break;
-        default:
-          formattedBlock.text = '';
-          formattedBlock.richText = [];
-      }
-
-      return formattedBlock;
+    return formatNotionBlocks(blocks, { 
+      includeRichText: true, 
+      includeMetadata: true 
     });
   }
 
@@ -455,36 +382,9 @@ class ProgramService {
    * @returns {Array} 포맷팅된 FAQ 내용
    */
   formatFaqBlocks(blocks) {
-    return blocks.map(block => {
-      const formattedBlock = {
-        type: block.type,
-        id: block.id
-      };
-
-      switch (block.type) {
-        case 'paragraph':
-          formattedBlock.text = block.paragraph?.rich_text?.map(text => text.plain_text).join('') || '';
-          break;
-        case 'heading_1':
-          formattedBlock.text = block.heading_1?.rich_text?.map(text => text.plain_text).join('') || '';
-          break;
-        case 'heading_2':
-          formattedBlock.text = block.heading_2?.rich_text?.map(text => text.plain_text).join('') || '';
-          break;
-        case 'heading_3':
-          formattedBlock.text = block.heading_3?.rich_text?.map(text => text.plain_text).join('') || '';
-          break;
-        case 'bulleted_list_item':
-          formattedBlock.text = block.bulleted_list_item?.rich_text?.map(text => text.plain_text).join('') || '';
-          break;
-        case 'numbered_list_item':
-          formattedBlock.text = block.numbered_list_item?.rich_text?.map(text => text.plain_text).join('') || '';
-          break;
-        default:
-          formattedBlock.text = '';
-      }
-
-      return formattedBlock;
+    return formatNotionBlocks(blocks, { 
+      includeRichText: false, 
+      includeMetadata: false 
     });
   }
 

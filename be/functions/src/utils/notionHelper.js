@@ -325,6 +325,94 @@ const filterEmptyBlocks = (blocks) => {
   });
 };
 
+// Notion 블록 포맷팅 공통 함수
+const formatNotionBlocks = (blocks, options = {}) => {
+  const { includeRichText = false, includeMetadata = false } = options;
+  
+  return blocks.map(block => {
+    const formattedBlock = {
+      type: block.type,
+      id: block.id,
+      ...(includeMetadata && { hasChildren: block.has_children })
+    };
+
+    // 공통 블록 타입 처리
+    const blockTypes = ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item'];
+    
+    if (blockTypes.includes(block.type)) {
+      const blockData = block[block.type];
+      formattedBlock.text = extractPlainText(blockData?.rich_text) || '';
+      if (includeRichText) {
+        formattedBlock.richText = blockData?.rich_text || [];
+      }
+    }
+    
+    // 특수 블록 타입 처리
+    switch (block.type) {
+      case 'to_do':
+        formattedBlock.text = extractPlainText(block.to_do?.rich_text) || '';
+        formattedBlock.checked = block.to_do?.checked || false;
+        if (includeRichText) {
+          formattedBlock.richText = block.to_do?.rich_text || [];
+        }
+        break;
+      case 'toggle':
+        formattedBlock.text = extractPlainText(block.toggle?.rich_text) || '';
+        if (includeRichText) {
+          formattedBlock.richText = block.toggle?.rich_text || [];
+        }
+        break;
+      case 'quote':
+        formattedBlock.text = extractPlainText(block.quote?.rich_text) || '';
+        if (includeRichText) {
+          formattedBlock.richText = block.quote?.rich_text || [];
+        }
+        break;
+      case 'callout':
+        formattedBlock.text = extractPlainText(block.callout?.rich_text) || '';
+        formattedBlock.icon = block.callout?.icon;
+        if (includeRichText) {
+          formattedBlock.richText = block.callout?.rich_text || [];
+        }
+        break;
+      case 'image':
+        formattedBlock.caption = extractPlainText(block.image?.caption) || '';
+        formattedBlock.url = block.image?.type === 'external' 
+          ? block.image.external.url 
+          : block.image?.file?.url;
+        break;
+      case 'video':
+        formattedBlock.caption = extractPlainText(block.video?.caption) || '';
+        formattedBlock.url = block.video?.type === 'external' 
+          ? block.video.external.url 
+          : block.video?.file?.url;
+        break;
+      case 'file':
+        formattedBlock.caption = extractPlainText(block.file?.caption) || '';
+        formattedBlock.url = block.file?.type === 'external' 
+          ? block.file.external.url 
+          : block.file?.file?.url;
+        break;
+      case 'divider':
+        // 구분선은 별도 텍스트 없음
+        break;
+      default:
+        formattedBlock.text = '';
+        if (includeRichText) {
+          formattedBlock.richText = [];
+        }
+    }
+    
+    return formattedBlock;
+  });
+};
+
+// Rich Text에서 plain text 추출 헬퍼 함수
+const extractPlainText = (richText) => {
+  if (!richText || !Array.isArray(richText)) return '';
+  return richText.map(text => text.plain_text).join('');
+};
+
 module.exports = {
   buildNotionHeaders,
   buildNotionHeadersFromEnv,
@@ -358,6 +446,9 @@ module.exports = {
   getUniqueIdValue,
   getVerificationValue,
   filterEmptyBlocks,
+  // Notion 블록 포맷팅 함수들
+  formatNotionBlocks,
+  extractPlainText,
 };
 
 
