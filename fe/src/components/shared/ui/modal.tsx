@@ -115,7 +115,7 @@ const Modal: React.FC<ModalProps> = ({
 
       {/* 모달 컨텐츠 */}
       <div
-        className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        className="relative mx-8 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

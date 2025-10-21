@@ -229,7 +229,7 @@ const MyPageSettingLeavePage = () => {
               }
             }}
             placeholder="이름을 입력하세요"
-            className="w-full rounded-lg px-3 py-3 text-sm shadow-sm focus:ring-2 focus:ring-[#FF006C] focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm shadow-sm focus:border-gray-300 focus:outline-none"
           />
           {nameError && (
             <div className="flex items-center gap-2">
@@ -246,7 +246,11 @@ const MyPageSettingLeavePage = () => {
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-              <Typography font="noto" variant="body2R" className="text-red-500">
+              <Typography
+                font="noto"
+                variant="label1R"
+                className="text-red-500"
+              >
                 {nameError}
               </Typography>
             </div>
@@ -258,7 +262,7 @@ const MyPageSettingLeavePage = () => {
       <div className="px-4 pb-4">
         <ButtonBase
           onClick={handleDeleteAccount}
-          className="relative w-full rounded-lg bg-[#FF006C] py-4 transition-colors hover:bg-[#e6005a] disabled:bg-[#FF006C] disabled:after:absolute disabled:after:inset-0 disabled:after:rounded-lg disabled:after:bg-white/70 disabled:after:content-['']"
+          className="relative w-full rounded-lg bg-[#FF006C] py-[15px] transition-colors hover:bg-[#e6005a] disabled:bg-[#FF006C] disabled:after:absolute disabled:after:inset-0 disabled:after:rounded-lg disabled:after:bg-white/70 disabled:after:content-['']"
           disabled={
             !userName.trim() || nameError !== "" || actualUserName === null
           }
