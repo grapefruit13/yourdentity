@@ -137,8 +137,8 @@ class CommentService {
         likesCount: 0,
         isDeleted: false,
         depth: parentId ? 1 : 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       const commentId = await this.firestoreService.addDocument("comments", newComment);
@@ -146,7 +146,7 @@ class CommentService {
       // 게시글의 댓글 수 업데이트
       await this.firestoreService.updateDocument(`communities/${communityId}/posts`, postId, {
         commentsCount: FieldValue.increment(1),
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
 
       if (post.authorId !== userId) {
@@ -209,7 +209,6 @@ class CommentService {
     try {
       const {page = 0, size = 10} = options;
 
-      // 게시글 존재 확인
       const post = await this.firestoreService.getDocument(
         `communities/${communityId}/posts`,
         postId,
@@ -220,59 +219,51 @@ class CommentService {
         throw error;
       }
 
-      // 해당 게시글의 댓글만 조회 (단순 쿼리로 변경)
-      // 먼저 postId로만 필터링
-      const postComments = await this.firestoreService.getCollectionWhere(
-        "comments", 
-        "postId", 
-        "==", 
-        postId
-      );
-
       const pageNumber = parseInt(page);
       const pageSize = parseInt(size);
-      const parentCommentsFiltered = postComments
-        .filter((comment) => comment.parentId === null && !comment.isDeleted)
+
+      const parentComments = await this.firestoreService.getCollectionWhereMultiple(
+        "comments",
+        [
+          {field: "postId", operator: "==", value: postId},
+          {field: "parentId", operator: "==", value: null},
+          {field: "isDeleted", operator: "==", value: false}
+        ]
+      );
+
+      const sortedParentComments = parentComments
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      const totalParentCount = parentCommentsFiltered.length;
-      const parentComments = parentCommentsFiltered.slice(
+      const totalParentCount = sortedParentComments.length;
+      const paginatedParentComments = sortedParentComments.slice(
         pageNumber * pageSize,
         (pageNumber + 1) * pageSize,
       );
 
-      const result = {
-        content: parentComments,
-        pageable: {
-          pageNumber,
-          pageSize,
-          totalElements: totalParentCount,
-          totalPages: Math.ceil(totalParentCount / pageSize),
-        },
-      };
-
       const commentsWithReplies = [];
 
-      if (result.content && result.content.length > 0) {
-        const parentCommentIds = result.content.map(comment => comment.id);
+      if (paginatedParentComments.length > 0) {
+        const parentIds = paginatedParentComments.map(comment => comment.id);
 
-        const allReplies = await this.firestoreService.getCollectionWhereIn(
-          "comments",
-          "parentId",
-          parentCommentIds
-        );
+        const [allReplies] = await Promise.all([
+          this.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              { field: "parentId", operator: "in", value: parentIds },
+              { field: "isDeleted", operator: "==", value: false }
+            ]
+          )
+        ]);
 
         const repliesByParentId = {};
-        allReplies
-          .filter(reply => !reply.isDeleted)
-          .forEach(reply => {
-            if (!repliesByParentId[reply.parentId]) {
-              repliesByParentId[reply.parentId] = [];
-            }
-            repliesByParentId[reply.parentId].push(reply);
-          });
+        allReplies.forEach(reply => {
+          if (!repliesByParentId[reply.parentId]) {
+            repliesByParentId[reply.parentId] = [];
+          }
+          repliesByParentId[reply.parentId].push(reply);
+        });
 
-        for (const comment of result.content) {
+        for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
           const sortedReplies = replies
             .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
@@ -290,7 +281,16 @@ class CommentService {
 
       return {
         content: commentsWithReplies,
-        pagination: result.pageable || {},
+        pagination: {
+          pageNumber,
+          pageSize,
+          totalElements: totalParentCount,
+          totalPages: Math.ceil(totalParentCount / pageSize),
+          hasNext: pageNumber < Math.ceil(totalParentCount / pageSize) - 1,
+          hasPrevious: pageNumber > 0,
+          isFirst: pageNumber === 0,
+          isLast: pageNumber >= Math.ceil(totalParentCount / pageSize) - 1,
+        },
       };
     } catch (error) {
       console.error("Get comments error:", error.message);
@@ -382,7 +382,7 @@ class CommentService {
       const updatedData = {
         content,
         media,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
@@ -435,7 +435,7 @@ class CommentService {
         isDeleted: true,
         content: [{type: "text", content: "삭제된 댓글입니다."}],
         media: [],
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
 
       // 게시글의 댓글 수 감소
@@ -444,7 +444,7 @@ class CommentService {
         comment.postId,
         {
           commentsCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
+          updatedAt: FieldValue.serverTimestamp(),
         },
       );
     } catch (error) {
