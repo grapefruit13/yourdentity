@@ -48,10 +48,7 @@ self.addEventListener("notificationclick", function (event) {
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then(function (clientList) {
-        const notificationData = event.notification.data;
-        const url = notificationData?.url;
-        const type = notificationData?.type;
-        const relatedId = notificationData?.relatedId;
+        const { url, type, relatedId } = event.notification?.data ?? {};
 
         console.log("Notification data:", { url, type, relatedId });
 
@@ -63,8 +60,37 @@ self.addEventListener("notificationclick", function (event) {
           ? url
           : `${self.location.origin}${url}`;
 
+        /**
+         * URL 정규화 함수
+         * - 트레일링 슬래시 제거
+         * - 쿼리 파라미터 정렬
+         * - Service Worker 전용 구현
+         */
+        const normalizeUrl = (url) => {
+          try {
+            const urlObj = new URL(url);
+            // 쿼리 파라미터 정렬
+            const sortedParams = new URLSearchParams(urlObj.search);
+            const sortedSearch = sortedParams.toString();
+
+            // 트레일링 슬래시 제거 (pathname이 '/'가 아닌 경우)
+            const normalizedPathname =
+              urlObj.pathname === "/"
+                ? urlObj.pathname
+                : urlObj.pathname.replace(/\/$/, "");
+
+            return `${urlObj.origin}${normalizedPathname}${sortedSearch ? `?${sortedSearch}` : ""}${urlObj.hash}`;
+          } catch (error) {
+            console.warn("URL 정규화 실패:", url, error);
+            return url;
+          }
+        };
+
+        const normalizedFullUrl = normalizeUrl(fullUrl);
+
         for (const client of clientList) {
-          if (client.url === fullUrl && "focus" in client) {
+          const normalizedClientUrl = normalizeUrl(client.url);
+          if (normalizedClientUrl === normalizedFullUrl && "focus" in client) {
             return client.focus();
           }
         }
