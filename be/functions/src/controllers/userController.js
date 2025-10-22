@@ -58,9 +58,48 @@ class UserController {
      * @param {Object} res - Express response object
      * @param {Function} next - Express next function
      */
+  /**
+   * 본인 정보 조회
+   * GET /users/me
+   */
+  async getMe(req, res, next) {
+    try {
+      const {uid} = req.user; // authGuard에서 설정
+      const user = await userService.getUserById(uid);
+      if (!user) {
+        const err = new Error("사용자를 찾을 수 없습니다");
+        err.code = "NOT_FOUND";
+        throw err;
+      }
+      return res.json({
+        status: 200,
+        user: user,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 특정 사용자 정보 조회 (Admin 또는 본인만)
+   * GET /users/:userId
+   */
   async getUserById(req, res, next) {
     try {
       const {userId} = req.params;
+      const {uid, customClaims} = req.user; // authGuard에서 설정
+
+      // 권한 체크: 본인이거나 Admin만 조회 가능
+      const isOwner = userId === uid;
+      const isAdmin = customClaims?.role === "admin";
+
+      if (!isOwner && !isAdmin) {
+        const err = new Error("권한이 없습니다");
+        err.code = "FORBIDDEN";
+        err.status = 403;
+        throw err;
+      }
+
       const user = await userService.getUserById(userId);
       if (!user) {
         const err = new Error("사용자를 찾을 수 없습니다");
@@ -108,29 +147,38 @@ class UserController {
     }
   }
 
-     /**
+  /**
    * 온보딩 정보 업데이트
    * PATCH /users/me/onboarding
+   * 
+   * Body:
+   * - name, nickname, birthYear, birthDate, gender, phoneNumber
+   * - terms: { SERVICE: boolean, PRIVACY: boolean, MARKETING: boolean }
    */
-  async updateOnboarding(req, res) {
+  async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
-      const {name, nickname, birthYear, birthDate, phoneNumber} = req.body || {};
+      const {name, nickname, birthYear, birthDate, gender, phoneNumber, terms} = req.body || {};
+
+      // 약관 검증 (형식 체크)
+      if (terms !== undefined && typeof terms !== "object") {
+        const err = new Error("약관 동의는 객체 형태여야 합니다.");
+        err.code = "INVALID_INPUT";
+        throw err;
+      }
 
       const result = await userService.updateOnboarding({
         uid,
-        payload: {name, nickname, birthYear, birthDate, phoneNumber},
+        payload: {name, nickname, birthYear, birthDate, gender, phoneNumber, terms},
       });
 
-      return res.json(
-          successResponse(200, {onboardingCompleted: result.onboardingCompleted},
-              "ONBOARDING_UPDATED"),
-      );
-    } catch (error) {
-      return req.next ? req.next(error) : res.status(500).json({
-        status: 500,
-        error: error.message || "Failed to update onboarding",
+      return res.json({
+        status: 200,
+        message: "ONBOARDING_UPDATED",
+        data: {onboardingCompleted: result.onboardingCompleted},
       });
+    } catch (error) {
+      return next(error);
     }
   }
 
