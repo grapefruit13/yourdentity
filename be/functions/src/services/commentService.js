@@ -105,27 +105,58 @@ class CommentService {
         return mediaItem;
       });
 
+      // 댓글 작성자 닉네임 가져오기
+      let author = "익명";
+      try {
+        const members = await this.firestoreService.getCollectionWhere(
+          `communities/${communityId}/members`,
+          "userId",
+          "==",
+          userId
+        );
+        const memberData = members && members[0];
+        if (memberData) {
+          if (community && community.postType === "TMI") {
+            author = memberData.name || "익명";
+          } else {
+            author = memberData.nickname || "익명";
+          }
+        }
+      } catch (memberError) {
+        console.warn("Failed to get member info for comment creation:", memberError.message);
+      }
+
       const newComment = {
         communityId,
         postId,
         userId,
+        author,
         content,
         media,
         parentId,
         likesCount: 0,
         isDeleted: false,
         depth: parentId ? 1 : 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
-      const commentId = await this.firestoreService.addDocument("comments", newComment);
-
-      // 게시글의 댓글 수 업데이트
-      await this.firestoreService.updateDocument(`communities/${communityId}/posts`, postId, {
-        commentsCount: FieldValue.increment(1),
-        updatedAt: new Date(),
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
+        const commentRef = this.firestoreService.db.collection("comments").doc();
+        const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc(postId);
+        
+        transaction.set(commentRef, newComment);
+        transaction.update(postRef, {
+          commentsCount: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        
+        return { commentId: commentRef.id };
       });
+
+      const commentId = result.commentId;
+
+      const created = await this.firestoreService.getDocument("comments", commentId);
 
       if (post.authorId !== userId) {
         fcmHelper.sendNotification(
@@ -162,31 +193,9 @@ class CommentService {
         });
       }
 
-      // 댓글 작성자 닉네임 가져오기
-      let author = "익명";
-      try {
-        const members = await this.firestoreService.getCollectionWhere(
-          `communities/${communityId}/members`,
-          "userId",
-          "==",
-          userId
-        );
-        const memberData = members && members[0];
-        if (memberData) {
-          if (community && community.postType === "TMI") {
-            author = memberData.name || "익명";
-          } else {
-            author = memberData.nickname || "익명";
-          }
-        }
-      } catch (memberError) {
-        console.warn("Failed to get member info for comment creation:", memberError.message);
-      }
-
       return {
         id: commentId,
-        ...newComment,
-        author,
+        ...created,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -208,7 +217,6 @@ class CommentService {
     try {
       const {page = 0, size = 10} = options;
 
-      // 게시글 존재 확인
       const post = await this.firestoreService.getDocument(
         `communities/${communityId}/posts`,
         postId,
@@ -219,118 +227,64 @@ class CommentService {
         throw error;
       }
 
-      // 해당 게시글의 댓글만 조회 (단순 쿼리로 변경)
-      // 먼저 postId로만 필터링
-      const postComments = await this.firestoreService.getCollectionWhere(
-        "comments", 
-        "postId", 
-        "==", 
-        postId
-      );
-
-      // 메모리에서 필터링 (부모 댓글만, 삭제되지 않은 것)
       const pageNumber = parseInt(page);
       const pageSize = parseInt(size);
-      const parentCommentsFiltered = postComments
-        .filter((comment) => comment.parentId === null && !comment.isDeleted)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      const totalParentCount = parentCommentsFiltered.length;
-      const parentComments = parentCommentsFiltered.slice(
-        pageNumber * pageSize,
-        (pageNumber + 1) * pageSize,
-      );
 
-      const result = {
-        content: parentComments,
-        pageable: {
-          pageNumber,
-          pageSize,
-          totalElements: totalParentCount,
-          totalPages: Math.ceil(totalParentCount / pageSize),
-        }
-      };
-      
+      // 1️⃣ 부모 댓글 페이징 쿼리 (Firestore 레벨에서 페이징)
+      const parentCommentsResult = await this.firestoreService.getWithPagination({
+        page: pageNumber,
+        size: pageSize,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        where: [
+          { field: "postId", operator: "==", value: postId },
+          { field: "parentId", operator: "==", value: null },
+          { field: "isDeleted", operator: "==", value: false }
+        ]
+      });
+
+      const paginatedParentComments = parentCommentsResult.content || [];
+
       const commentsWithReplies = [];
-      
-      if (result.content && result.content.length > 0) {
-        const parentCommentIds = result.content.map(comment => comment.id);
+
+      if (paginatedParentComments.length > 0) {
+        const parentIds = paginatedParentComments.map(comment => comment.id);
         
-        const allReplies = await this.firestoreService.getCollectionWhereIn(
-          "comments",
-          "parentId",
-          parentCommentIds
-        );
+        if (parentIds.length > 10) {
+          console.warn(`부모댓글: (${parentIds.length}) 10개 초과`);
+          parentIds.splice(10);
+        }
+
+        const [allReplies] = await Promise.all([
+          this.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              { field: "parentId", operator: "in", value: parentIds },
+              { field: "isDeleted", operator: "==", value: false }
+            ]
+          )
+        ]);
 
         const repliesByParentId = {};
-        allReplies
-          .filter(reply => !reply.isDeleted)
-          .forEach(reply => {
-            if (!repliesByParentId[reply.parentId]) {
-              repliesByParentId[reply.parentId] = [];
-            }
-            repliesByParentId[reply.parentId].push(reply);
-          });
-
-        // 커뮤니티 정보 가져오기 (postType 확인용)
-        const community = await this.firestoreService.getDocument("communities", communityId);
-        
-        // 모든 userId 수집 (댓글 + 대댓글)
-        const allUserIds = new Set();
-        result.content.forEach(comment => allUserIds.add(comment.userId));
-        Object.values(repliesByParentId).flat().forEach(reply => allUserIds.add(reply.userId));
-        
-        // 모든 멤버 정보를 한 번에 조회 (Firestore in 쿼리 제한: 10개)
-        const membersMap = new Map();
-        if (allUserIds.size > 0) {
-          try {
-            const userIdsArray = Array.from(allUserIds);
-            // 10개씩 나누어서 배치 조회
-            const batches = [];
-            for (let i = 0; i < userIdsArray.length; i += 10) {
-              batches.push(userIdsArray.slice(i, i + 10));
-            }
-
-            for (const batch of batches) {
-              const members = await this.firestoreService.getCollectionWhereIn(
-                `communities/${communityId}/members`,
-                "userId",
-                batch
-              );
-              members.forEach(memberData => {
-                membersMap.set(memberData.userId, memberData);
-              });
-            }
-          } catch (memberError) {
-            console.warn("Failed to get members info:", memberError.message);
+        allReplies.forEach(reply => {
+          if (!repliesByParentId[reply.parentId]) {
+            repliesByParentId[reply.parentId] = [];
           }
-        }
+          repliesByParentId[reply.parentId].push(reply);
+        });
 
-        // author 정보를 가져오는 헬퍼 함수
-        const getAuthor = (userId) => {
-          const memberData = membersMap.get(userId);
-          if (!memberData) return "익명";
-          
-          if (community && community.postType === "TMI") {
-            return memberData.name || "익명";
-          } else {
-            return memberData.nickname || "익명";
-          }
-        };
-
-        for (const comment of result.content) {
+        for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
+          // Firestore Timestamp를 안전하게 처리
+          const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
           const sortedReplies = replies
-            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+            .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .slice(0, 50);
 
           const processedComment = {
             ...comment,
-            author: getAuthor(comment.userId),
-            replies: sortedReplies.map(reply => ({
-              ...reply,
-              author: getAuthor(reply.userId)
-            })),
-            repliesCount: sortedReplies.length,
+            replies: sortedReplies,
+            repliesCount: replies.length, 
           };
 
           commentsWithReplies.push(processedComment);
@@ -339,7 +293,16 @@ class CommentService {
 
       return {
         content: commentsWithReplies,
-        pagination: result.pageable || {},
+        pagination: parentCommentsResult.pageable || {
+          pageNumber,
+          pageSize,
+          totalElements: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrevious: false,
+          isFirst: true,
+          isLast: true,
+        },
       };
     } catch (error) {
       console.error("Get comments error:", error.message);
@@ -431,7 +394,7 @@ class CommentService {
       const updatedData = {
         content,
         media,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
@@ -484,7 +447,7 @@ class CommentService {
         isDeleted: true,
         content: [{type: "text", content: "삭제된 댓글입니다."}],
         media: [],
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
 
       // 게시글의 댓글 수 감소
@@ -493,7 +456,7 @@ class CommentService {
         comment.postId,
         {
           commentsCount: FieldValue.increment(-1),
-          updatedAt: new Date(),
+          updatedAt: FieldValue.serverTimestamp(),
         },
       );
     } catch (error) {
