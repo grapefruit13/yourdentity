@@ -95,7 +95,12 @@ router.post("/provision", authGuard, userController.provisionUser);
  * /users/me/onboarding:
  *   patch:
  *     summary: 온보딩 정보 업데이트 (본인)
- *     description: 이름/닉네임/출생년도/생년월일/전화번호 등 온보딩 정보를 업데이트합니다.
+ *     description: |
+ *       이름/닉네임/출생년도/생년월일/성별/전화번호 등 온보딩 정보를 업데이트합니다.
+ *       
+ *       **필수 필드 정책:**
+ *       - 카카오: nickname (필수), phoneNumber (선택), gender (선택)
+ *       - 이메일: name, nickname, birthYear, birthDate, terms (필수), gender, phoneNumber (선택)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -108,21 +113,48 @@ router.post("/provision", authGuard, userController.provisionUser);
  *             properties:
  *               name:
  *                 type: string
+ *                 description: 사용자 이름 (이메일 필수)
  *               nickname:
  *                 type: string
+ *                 description: 닉네임 (카카오/이메일 필수)
  *               birthYear:
  *                 type: number
+ *                 description: 출생년도 (이메일 필수)
  *               birthDate:
  *                 type: string
+ *                 description: 생년월일 YYYY-MM-DD (이메일 필수)
  *                 example: 2000-01-31
+ *               gender:
+ *                 type: string
+ *                 enum: [MALE, FEMALE, null]
+ *                 description: 성별 (선택)
  *               phoneNumber:
  *                 type: string
+ *                 description: 전화번호 (선택)
+ *               terms:
+ *                 type: object
+ *                 description: 약관 동의 (이메일 필수)
+ *                 properties:
+ *                   SERVICE:
+ *                     type: boolean
+ *                     description: 서비스 이용약관 (필수)
+ *                   PRIVACY:
+ *                     type: boolean
+ *                     description: 개인정보 처리방침 (필수)
+ *                   MARKETING:
+ *                     type: boolean
+ *                     description: 마케팅 수신 동의 (선택)
  *             example:
  *               name: 홍길동
  *               nickname: gildong
  *               birthYear: 1998
  *               birthDate: 1998-01-02
+ *               gender: MALE
  *               phoneNumber: 010-1234-5678
+ *               terms:
+ *                 SERVICE: true
+ *                 PRIVACY: true
+ *                 MARKETING: false
  *     responses:
  *       200:
  *         description: 온보딩 업데이트 성공
@@ -168,6 +200,26 @@ router.post("/provision", authGuard, userController.provisionUser);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
+/**
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: 본인 정보 조회
+ *     description: 인증된 사용자의 정보를 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 사용자 정보 조회 성공
+ *       401:
+ *         description: 인증 실패
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ */
+router.get("/me", authGuard, userController.getMe);
+
 router.patch("/me/onboarding", authGuard, userController.updateOnboarding);
 
 /**
