@@ -117,7 +117,7 @@ const PwaDownloadBottomSheet = ({
       >
         {/* Drag Handle */}
         <div className="flex justify-center py-4">
-          <div className="h-1 w-8 rounded-full bg-gray-400" />
+          <ButtonBase className="h-1 w-8 rounded-full bg-gray-400" />
         </div>
 
         {/* Content */}
@@ -153,12 +153,12 @@ const PwaDownloadBottomSheet = ({
             <ButtonBase
               onClick={onInstall}
               className={
-                "bg-primary-600 w-full rounded-lg px-4 py-3.5 font-semibold text-white transition-colors duration-200"
+                "bg-primary-600 w-full rounded-lg px-4 py-3.5 font-semibold text-white transition-colors duration-200 hover:cursor-pointer"
               }
             >
               설치 없이 앱으로 열기
             </ButtonBase>
-            <ButtonBase onClick={onClose}>
+            <ButtonBase onClick={onClose} className="hover:cursor-pointer">
               <Typography
                 font="noto"
                 variant="body2M"
