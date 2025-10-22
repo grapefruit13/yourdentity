@@ -99,6 +99,12 @@ class NotionUserService {
           "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
           "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
           "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
+          "성별": { 
+            select: { 
+              name: 
+                user.gender === 'MALE' ? "남성" : user.gender === 'FEMALE' ? "여성" : "미선택",
+            } 
+          },
           "Push 광고 수신 여부": {
                         select: {
                           name:
@@ -213,7 +219,7 @@ async syncAllUserAccounts() {
     console.log(`Firebase에서 ${snapshot.docs.length}명의 사용자 데이터를 가져왔습니다.`);
 
     //4. 사용자 데이터를 배치로 처리
-    const BATCH_SIZE = 20; // 20명씩 배치 처리
+    const BATCH_SIZE = 10; // 10명씩 배치 처리
     const DELAY_MS = 2000; // 2초 지연
 
     for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
@@ -256,6 +262,12 @@ async syncAllUserAccounts() {
             "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
             "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
+            "성별": { 
+              select: { 
+                name: 
+                  user.gender === 'MALE' ? "남성" : user.gender === 'FEMALE' ? "여성" : "미선택",
+              } 
+            },
             "Push 광고 수신 여부": {
               select: {
                 name:
