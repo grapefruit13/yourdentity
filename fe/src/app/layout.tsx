@@ -255,7 +255,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={cn(notoSansKr.variable, "flex h-screen w-full flex-col")}
+        className={cn(
+          notoSansKr.variable,
+          "mx-auto flex h-screen w-full max-w-[470px] flex-col"
+        )}
       >
         <QueryProvider>
           <Toaster />

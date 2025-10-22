@@ -10,7 +10,7 @@ import { MOCK_NOTION_HOME } from "@/constants/shared/notion-home-mock";
 const NotionTestPage = () => {
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-[470px] px-4 py-4">
+      <div className="mx-auto px-4 py-4">
         <h1 className="mb-4 text-2xl font-bold">Notion 렌더링 테스트</h1>
         <NotionPageRenderer
           recordMap={MOCK_NOTION_HOME}
