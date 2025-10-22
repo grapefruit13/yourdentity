@@ -47,4 +47,33 @@ const router = express.Router();
 router.get("/sync/active", notionUserController.syncUserAccounts);
 
 
+/**
+ * @swagger
+ * /notionUsers/sync/full:
+ *   get:
+ *     summary: 회원 전체 재동기화
+ *     description: |
+ *       기존 Notion 사용자 데이터베이스를 모두 삭제하고,
+ *       Firebase users 컬렉션의 전체 데이터를 다시 동기화합니다.
+ *     tags: [NotionUsers]
+ *     responses:
+ *       200:
+ *         description: 전체 동기화 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: string
+ *                   example: "회원 전체 재동기화 완료: 150명"
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/sync/full", notionUserController.syncAllUserAccounts);
+
+
 module.exports = router;
