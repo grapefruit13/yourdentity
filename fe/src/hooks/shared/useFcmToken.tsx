@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onMessage, Unsubscribe } from "firebase/messaging";
 import { toast } from "sonner";
+import { onAuthStateChange } from "@/lib/auth";
 import { fetchToken, getClientMessaging } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
 
@@ -33,6 +34,8 @@ async function getNotificationPermissionAndToken() {
 }
 
 const useFcmToken = () => {
+  console.log("useFcmToken hook initialized");
+
   const router = useRouter(); // Initialize the router for navigation.
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
     useState<NotificationPermission | null>(null); // State to store the notification permission status.
@@ -40,10 +43,14 @@ const useFcmToken = () => {
   const retryLoadToken = useRef(0); // Ref to keep track of retry attempts.
   const isLoading = useRef(false); // Ref to keep track if a token fetch is currently in progress.
 
-  const loadToken = async () => {
+  const loadToken = useCallback(async () => {
     // Step 4: Prevent multiple fetches if already fetched or in progress.
-    if (isLoading.current) return;
+    if (isLoading.current) {
+      debug.log("FCM token loading already in progress, skipping...");
+      return;
+    }
 
+    debug.log("Starting FCM token loading process...");
     isLoading.current = true; // Mark loading as in progress.
     const token = await getNotificationPermissionAndToken(); // Fetch the token.
 
@@ -82,14 +89,22 @@ const useFcmToken = () => {
     setNotificationPermissionStatus(Notification.permission);
     setToken(token);
     isLoading.current = false;
-  };
+
+    // FCM 토큰 등록은 로그인 페이지에서 담당하므로 여기서는 토큰만 설정
+  }, []);
 
   useEffect(() => {
-    // Step 8: Initialize token loading when the component mounts.
-    if ("Notification" in window) {
-      loadToken();
-    }
-  }, []);
+    const unsubscribe = onAuthStateChange((user: any) => {
+      if (user && "Notification" in window) {
+        loadToken();
+      } else if (!user) {
+        setToken(null);
+        setNotificationPermissionStatus(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadToken]);
 
   useEffect(() => {
     const setupListener = async () => {
@@ -163,7 +178,7 @@ const useFcmToken = () => {
 
     // Step 11: Cleanup the listener when the component unmounts.
     return () => unsubscribe?.();
-  }, [token, router, toast]);
+  }, [token, router]);
 
   return { token, notificationPermissionStatus }; // Return the token and permission status.
 };

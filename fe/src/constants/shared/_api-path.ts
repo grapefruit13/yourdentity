@@ -18,6 +18,7 @@ const BASE = {
   STORE: "/store",
   TMI: "/tmis",
   NOTION: "/notion",
+  FCM: "/fcm",
 } as const;
 
 /**
@@ -106,6 +107,10 @@ const TMI = {
   ROOT: BASE.TMI,
 } as const;
 
+const FCM = {
+  TOKEN: `${BASE.FCM}/token`,
+} as const;
+
 export const API_PATH = {
   BASE,
   SEGMENTS,
@@ -122,4 +127,5 @@ export const API_PATH = {
   REPORTS,
   STORE,
   TMI,
+  FCM,
 } as const;
