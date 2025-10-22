@@ -69,9 +69,21 @@ self.addEventListener("notificationclick", function (event) {
         const normalizeUrl = (url) => {
           try {
             const urlObj = new URL(url);
+
             // 쿼리 파라미터 정렬
-            const sortedParams = new URLSearchParams(urlObj.search);
-            const sortedSearch = sortedParams.toString();
+            let sortedSearch = "";
+            if (urlObj.search) {
+              const params = new URLSearchParams(urlObj.search);
+              // URLSearchParams의 entries를 배열로 변환하여 정렬
+              const sortedEntries = Array.from(params.entries()).sort(
+                ([a], [b]) => a.localeCompare(b)
+              );
+              const sortedParams = new URLSearchParams();
+              sortedEntries.forEach(([key, value]) => {
+                sortedParams.append(key, value);
+              });
+              sortedSearch = sortedParams.toString();
+            }
 
             // 트레일링 슬래시 제거 (pathname이 '/'가 아닌 경우)
             const normalizedPathname =
