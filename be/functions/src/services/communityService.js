@@ -34,7 +34,7 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Get community mapping error:", error.message);
-      throw new Error("Failed to get community mapping");
+      throw new Error("커뮤니티 매핑 정보 조회에 실패했습니다");
     }
   }
 
@@ -71,7 +71,7 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Get communities error:", error.message);
-      throw new Error("Failed to get communities");
+      throw new Error("커뮤니티 목록 조회에 실패했습니다");
     }
   }
 
@@ -280,7 +280,7 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Get all community posts error:", error.message);
-      throw new Error("Failed to get community posts");
+      throw new Error("커뮤니티 게시글 조회에 실패했습니다");
     }
   }
 
@@ -381,7 +381,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND") {
         throw error;
       }
-      throw new Error("Failed to create post");
+      throw new Error("게시글 생성에 실패했습니다");
     }
   }
 
@@ -432,7 +432,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND") {
         throw error;
       }
-      throw new Error("Failed to get post");
+      throw new Error("게시글 조회에 실패했습니다");
     }
   }
 
@@ -491,7 +491,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
-      throw new Error("Failed to update post");
+      throw new Error("게시글 수정에 실패했습니다");
     }
   }
 
@@ -525,7 +525,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
-      throw new Error("Failed to delete post");
+      throw new Error("게시글 삭제에 실패했습니다");
     }
   }
 
@@ -620,7 +620,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND") {
         throw error;
       }
-      throw new Error("Failed to toggle post like");
+      throw new Error("게시글 좋아요 처리에 실패했습니다");
     }
   }
 }
