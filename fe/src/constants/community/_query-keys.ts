@@ -2,6 +2,7 @@ import { KEY } from "@/constants/shared/_query-keys-base";
 import {
   GETCommunityListReq,
   GETCommunityPostListReq,
+  GETCommunityPostDetailReq,
 } from "@/types/community/request";
 
 const { BASE, COMMON } = KEY;
@@ -13,6 +14,7 @@ const { BASE, COMMON } = KEY;
 const COMMUNITY_KEYS = {
   LIST: [BASE.COMMUNITY, COMMON.LIST] as const,
   POST_LIST: [BASE.COMMUNITY, BASE.POST, COMMON.LIST] as const,
+  POST_DETAIL: [BASE.COMMUNITY, BASE.POST, COMMON.DETAIL] as const,
 } as const;
 
 export const communityKeys = {
@@ -25,5 +27,11 @@ export const communityKeys = {
       request.page,
       request.size,
       request.filter,
+    ] as const,
+  postDetail: (request: GETCommunityPostDetailReq) =>
+    [
+      ...COMMUNITY_KEYS.POST_DETAIL,
+      request.communityId,
+      request.postId,
     ] as const,
 } as const;
