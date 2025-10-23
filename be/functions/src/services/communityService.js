@@ -622,6 +622,59 @@ class CommunityService {
       throw new Error("게시글 좋아요 처리에 실패했습니다");
     }
   }
+
+  /**
+   * 커뮤니티 멤버 닉네임 중복 체크
+   * @param {string} communityId - 커뮤니티 ID
+   * @param {string} nickname - 체크할 닉네임
+   * @return {Promise<boolean>} 닉네임 사용 가능 여부 (true: 사용 가능, false: 중복)
+   */
+  async checkNicknameAvailability(communityId, nickname) {
+    try {
+      const membersService = new FirestoreService(`communities/${communityId}/members`);
+    
+      const members = await membersService.getWhere("nickname", "==", nickname);
+
+      return members.length === 0;
+    } catch (error) {
+      console.error("Check nickname availability error:", error.message);
+      throw new Error("Failed to check nickname availability");
+    }
+  }
+
+  /**
+   * 커뮤니티에 멤버 추가
+   * @param {string} communityId - 커뮤니티 ID
+   * @param {string} userId - 사용자 ID
+   * @param {string} nickname - 닉네임
+   * @return {Promise<Object>} 추가된 멤버 정보
+   */
+  async addMemberToCommunity(communityId, userId, nickname) {
+    try {
+      const membersService = new FirestoreService(`communities/${communityId}/members`);
+      
+      const memberData = {
+        userId,
+        nickname,
+        role: "member",
+        joinedAt: this.firestoreService.admin.firestore.Timestamp.now(),
+      };
+
+      const memberId = userId;
+      await membersService.createDocument(memberId, memberData);
+
+      return {
+        id: memberId,
+        userId,
+        nickname,
+        role: "member",
+        joinedAt: memberData.joinedAt.toDate().toISOString(),
+      };
+    } catch (error) {
+      console.error("Add member to community error:", error.message);
+      throw new Error("Failed to add member to community");
+    }
+  }
 }
 
 module.exports = CommunityService;
