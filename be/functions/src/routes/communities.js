@@ -93,18 +93,11 @@ const authGuard = require("../middleware/authGuard");
      *           items:
      *             type: string
      *           example: ["운동", "루틴", "인증"]
-     *         scheduledDate:
-     *           type: object
-     *           description: 예약 발행 날짜 (Firestore Timestamp)
-     *           properties:
-     *             _seconds:
-     *               type: integer
-     *               description: 초
-     *               example: 1759511704
-     *             _nanoseconds:
-     *               type: integer
-     *               description: 나노초
-     *               example: 882000000
+ *         scheduledDate:
+ *           type: string
+ *           format: date-time
+ *           description: 예약 발행 날짜
+ *           example: "2025-10-03T17:15:04.882Z"
      *         isLocked:
      *           type: boolean
      *           description: 잠금 여부

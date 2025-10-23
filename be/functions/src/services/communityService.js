@@ -237,7 +237,10 @@ class CommunityService {
       const processedPosts = paginatedPosts.map((post) => {
         const processedPost = {
           ...post,
-          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
+          createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
+          updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+          scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
           communityPath: `communities/${post.communityId}`,
           rewardGiven: post.rewardGiven || false,
           reactionsCount: post.reactionsCount || 0,
@@ -353,8 +356,8 @@ class CommunityService {
         commentsCount: 0,
         reportsCount: 0,
         viewCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       const result = await postsService.create(newPost);
@@ -363,6 +366,10 @@ class CommunityService {
       return {
         id: postId,
         ...newPost,
+        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
+        createdAt: newPost.createdAt?.toDate?.()?.toISOString?.() || newPost.createdAt,
+        updatedAt: newPost.updatedAt?.toDate?.()?.toISOString?.() || newPost.updatedAt,
+        scheduledDate: newPost.scheduledDate?.toDate?.()?.toISOString?.() || newPost.scheduledDate,
         communityPath: `communities/${communityId}`,
         community: {
           id: communityId,
@@ -399,7 +406,7 @@ class CommunityService {
       const newViewCount = (post.viewCount || 0) + 1;
       postsService.update(postId, {
         viewCount: newViewCount,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       }).catch(error => {
         console.error("조회수 증가 실패:", error);
       });
@@ -410,7 +417,11 @@ class CommunityService {
       return {
         ...post,
         viewCount: newViewCount,
-        timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
+        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
+        createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
+        updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+        scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+        timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
         community: community ? {
           id: communityId,
           name: community.name,
@@ -453,7 +464,7 @@ class CommunityService {
 
       const updatedData = {
         ...updateData,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       await postsService.update(postId, updatedData);
@@ -465,6 +476,10 @@ class CommunityService {
         id: postId,
         ...post,
         ...updatedData,
+        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
+        createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
+        updatedAt: updatedData.updatedAt?.toDate?.()?.toISOString?.() || updatedData.updatedAt,
+        scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
         communityPath: `communities/${communityId}`,
         community: community ? {
           id: communityId,
