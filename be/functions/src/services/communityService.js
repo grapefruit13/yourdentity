@@ -468,18 +468,17 @@ class CommunityService {
       };
 
       await postsService.update(postId, updatedData);
-
-      // 커뮤니티 정보 조회
+      
+      const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
 
       return {
         id: postId,
-        ...post,
-        ...updatedData,
-        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
-        createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
-        updatedAt: updatedData.updatedAt?.toDate?.()?.toISOString?.() || updatedData.updatedAt,
-        scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+        ...fresh,
+        
+        createdAt: fresh.createdAt?.toDate?.()?.toISOString?.() || fresh.createdAt,
+        updatedAt: fresh.updatedAt?.toDate?.()?.toISOString?.() || fresh.updatedAt,
+        scheduledDate: fresh.scheduledDate?.toDate?.()?.toISOString?.() || fresh.scheduledDate,
         communityPath: `communities/${communityId}`,
         community: community ? {
           id: communityId,
