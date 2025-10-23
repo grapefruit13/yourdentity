@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import CommunityDetail from "@/components/community/CommunityDetail";
+import { samplePosts } from "@/constants/community/sampleData";
 import { useGetCommunityPostDetail } from "@/hooks/community/useGetCommunityPostDetail";
 import { CommunityPost } from "@/types/community";
 import { GETCommunityPostDetailRes } from "@/types/community/response";
