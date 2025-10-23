@@ -48,24 +48,23 @@ const authGuard = require("../middleware/authGuard");
      *         id:
      *           type: string
      *           description: 게시글 ID
-     *           example: "AMrsQRg9tBY0ZGJMbKG2"
-     *         type:
-     *           type: string
-     *           enum: [ROUTINE_CERT, GATHERING_REVIEW, TMI]
-     *           description: 게시글 타입
-     *           example: "TMI"
+     *           example: "TzZcfj7sTrhQdOvUW4f5"
      *         authorId:
      *           type: string
      *           description: 작성자 ID (uid)
-     *           example: "user123"
+     *           example: "KBmmDM8sdZQDpk2GIQJikPP7kapY"
      *         author:
      *           type: string
      *           description: 작성자 닉네임
-     *           example: "사용자닉네임"
- *         title:
- *           type: string
- *           description: 제목
- *           example: "오늘의 루틴 인증!"
+     *           example: "익명"
+     *         title:
+     *           type: string
+     *           description: 제목
+     *           example: "오늘의 루틴 인증!"
+     *         type:
+     *           type: string
+     *           description: 게시글 타입
+     *           example: "GENERAL"
  *         content:
  *           type: array
  *           description: 게시글 내용
@@ -86,21 +85,26 @@ const authGuard = require("../middleware/authGuard");
      *           example: "TMI 자아탐색"
      *         category:
      *           type: string
-     *           nullable: true
      *           description: 카테고리
-     *           example: "string"
+     *           example: "한끗루틴"
      *         tags:
      *           type: array
      *           description: 태그 목록
      *           items:
      *             type: string
-     *           example: ["string"]
+     *           example: ["운동", "루틴", "인증"]
      *         scheduledDate:
-     *           type: string
-     *           format: date-time
-     *           nullable: true
-     *           description: 예약 발행 날짜
-     *           example: "2025-10-03T17:15:04.882Z"
+     *           type: object
+     *           description: 예약 발행 날짜 (Firestore Timestamp)
+     *           properties:
+     *             _seconds:
+     *               type: integer
+     *               description: 초
+     *               example: 1759511704
+     *             _nanoseconds:
+     *               type: integer
+     *               description: 나노초
+     *               example: 882000000
      *         isLocked:
      *           type: boolean
      *           description: 잠금 여부
@@ -143,14 +147,18 @@ const authGuard = require("../middleware/authGuard");
  *           format: date-time
  *           description: 수정일
  *           example: "2025-10-03T18:30:15.123Z"
- *         timeAgo:
- *           type: string
- *           description: 상대적 시간
- *           example: "2분 전"
- *         community:
- *           type: object
- *           description: 커뮤니티 정보
- *           properties:
+     *         timeAgo:
+     *           type: string
+     *           description: 상대적 시간
+     *           example: "2분 전"
+     *         communityPath:
+     *           type: string
+     *           description: 커뮤니티 경로
+     *           example: "communities/CP:VYTTZW33IH"
+     *         community:
+     *           type: object
+     *           description: 커뮤니티 정보
+     *           properties:
  *             id:
  *               type: string
  *               description: 커뮤니티 ID
@@ -340,7 +348,6 @@ router.get("/", communityController.getCommunities);
  *                             isVideo: false
  *                             hasImage: false
  *                             hasVideo: false
- *                           mediaCount: 0
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
  *                           tags: ["string"]
@@ -350,7 +357,16 @@ router.get("/", communityController.getCommunities);
  *                           likesCount: 0
  *                           commentsCount: 0
  *                           createdAt: "2025-10-03T17:15:07.862Z"
+ *                           updatedAt: "2025-10-23T16:37:23.780Z"
+ *                           community:
+ *                             id: "CP:VYTTZW33IH"
+ *                             name: "TMI 자아탐색"
  *                           timeAgo: "2분 전"
+ *                           communityPath: "communities/CP:VYTTZW33IH"
+ *                           rewardGiven: false
+ *                           reactionsCount: 0
+ *                           reportsCount: 0
+ *                           viewCount: 0
  *                         - id: "jpb8WjP7poOmI07Z7tU8"
  *                           type: "TMI"
  *                           authorId: "user456"
@@ -367,7 +383,6 @@ router.get("/", communityController.getCommunities);
  *                             isVideo: false
  *                             hasImage: true
  *                             hasVideo: false
- *                           mediaCount: 1
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
  *                           tags: ["string"]
