@@ -1,4 +1,13 @@
-const {buildNotionHeadersFromEnv} = require("../utils/notionHelper");
+const {
+  buildNotionHeadersFromEnv, 
+  getTitleValue,
+  getTextContent,
+  getMultiSelectNames,
+  getDateValue,
+  getCreatedTimeValue,
+  getLastEditedTimeValue,
+  formatNotionBlocks
+} = require("../utils/notionHelper");
 
 class FaqService {
   constructor() {
@@ -105,6 +114,37 @@ class FaqService {
     
     console.log(`[FAQ 서비스] 페이지 블록 조회 성공 - 페이지 ID: ${pageId}`);
     return resp.json();
+  }
+
+  /**
+   * FAQ 데이터 포맷팅
+   * @param {Object} pageData - Notion 페이지 데이터
+   * @param {Array} blocks - 페이지 블록 데이터
+   * @returns {Object} 포맷팅된 FAQ 데이터
+   */
+  formatFaqData(pageData, blocks = []) {
+    const props = pageData.properties;
+    
+    return {
+      id: pageData.id,
+      title: getTitleValue(props["FAQ"]),
+      category: getMultiSelectNames(props["주제"]),
+      content: this.formatFaqBlocks(blocks),
+      createdAt: getCreatedTimeValue(props["생성일"]) || pageData.created_time,
+      updatedAt: getLastEditedTimeValue(props["수정일"]) || pageData.last_edited_time
+    };
+  }
+
+  /**
+   * FAQ 블록 포맷팅
+   * @param {Array} blocks - Notion 블록 배열
+   * @returns {Array} 포맷팅된 FAQ 내용
+   */
+  formatFaqBlocks(blocks) {
+    return formatNotionBlocks(blocks, { 
+      includeRichText: false, 
+      includeMetadata: false 
+    });
   }
 }
 
