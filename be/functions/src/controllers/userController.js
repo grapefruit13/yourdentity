@@ -112,41 +112,6 @@ class UserController {
     }
   }
 
-   /**
-   * 온보딩 과정용 : 사용자 정보 수정 API
-   *
-   * 사용 시나리오:
-   * - Auth Trigger로 이미 생성된 사용자 문서를 업데이트
-   * - 온보딩 과정에서 추가 정보 입력 시 (닉네임, 프로필 이미지 등)
-   * - 사용자가 프로필 정보를 수정할 때
-   *
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-   async provisionUser(req, res, next) {
-    try {
-      // authGuard 미들웨어에서 설정한 req.user 사용
-      const {uid} = req.user;
-      const {email, name, profileImageUrl, birthYear, authType, snsProvider} =
-          req.body;
-
-      // 사용자 정보 업데이트
-      const result = await userService.updateUserInfo(uid, {
-        email,
-        name,
-        profileImageUrl,
-        birthYear, // 추후 카카오 심사 후 제공
-        authType,
-        snsProvider,
-      });
-      return res.success({user: result.user});
-    } catch (error) {
-      console.error("사용자 프로비저닝 에러:", error);
-      return next(error);
-    }
-  }
-
   /**
    * 온보딩 정보 업데이트
    * PATCH /users/me/onboarding
