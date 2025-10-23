@@ -33,7 +33,7 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Get community mapping error:", error.message);
-      throw new Error("Failed to get community mapping");
+      throw new Error("커뮤니티 매핑 정보 조회에 실패했습니다");
     }
   }
 
@@ -70,89 +70,11 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Get communities error:", error.message);
-      throw new Error("Failed to get communities");
+      throw new Error("커뮤니티 목록 조회에 실패했습니다");
     }
   }
 
-  /**
-   * 커뮤니티 상세 조회
-   * @param {string} communityId - 커뮤니티 ID
-   * @return {Promise<Object>} 커뮤니티 상세 정보
-   */
-  async getCommunityById(communityId) {
-    try {
-      const community = await this.firestoreService.getDocument("communities", communityId);
 
-      if (!community) {
-        const error = new Error("Community not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
-
-      // 멤버 수 조회
-      const membersSnapshot = await db
-        .collection("communities")
-        .doc(communityId)
-        .collection("members")
-        .get();
-      community.membersCount = membersSnapshot.size;
-
-      // 게시글 수 조회
-      const postsSnapshot = await db
-        .collection("communities")
-        .doc(communityId)
-        .collection("posts")
-        .get();
-      community.postsCount = postsSnapshot.size;
-
-      return community;
-    } catch (error) {
-      console.error("Get community by ID error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
-      }
-      throw new Error("Failed to get community");
-    }
-  }
-
-  /**
-   * 커뮤니티 멤버 목록 조회
-   * @param {string} communityId - 커뮤니티 ID
-   * @param {Object} options - 페이지네이션 옵션
-   * @return {Promise<Object>} 멤버 목록
-   */
-  async getCommunityMembers(communityId, options = {}) {
-    try {
-      const {page = 0, size = 20} = options;
-
-      // 커뮤니티 존재 확인
-      const community = await this.firestoreService.getDocument("communities", communityId);
-      if (!community) {
-        const error = new Error("Community not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
-
-      const membersService = new FirestoreService(`communities/${communityId}/members`);
-      const result = await membersService.getWithPagination({
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "joinedAt",
-        orderDirection: "desc",
-      });
-
-      return {
-        content: result.content || [],
-        pagination: result.pageable || {},
-      };
-    } catch (error) {
-      console.error("Get community members error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
-      }
-      throw new Error("Failed to get community members");
-    }
-  }
 
   /**
    * 시간 차이 계산
@@ -188,7 +110,7 @@ class CommunityService {
   createPreview(post) {
     const contentArr = Array.isArray(post.content) ? post.content : [];
     const mediaArr = Array.isArray(post.media) ? post.media : [];
-    // 텍스트 content에서 첫 2줄 추출
+    
     const textContents = contentArr.filter(
       (item) => item.type === "text" && item.text && item.text.trim(),
     );
@@ -197,9 +119,11 @@ class CommunityService {
         (textContents[0].text.length > 100 ? "..." : "") :
       "";
 
-    // 첫 번째 이미지 미디어 찾기
-    const firstImage = mediaArr.find((item) => item.type === "image") ||
+      const firstImage = mediaArr.find((item) => item.type === "image") ||
       contentArr.find((item) => item.type === "image");
+    
+    const firstVideo = mediaArr.find((item) => item.type === "video") ||
+      contentArr.find((item) => item.type === "video");
 
     const thumbnail = firstImage ? {
       url: firstImage.url || firstImage.src,
@@ -213,16 +137,12 @@ class CommunityService {
     return {
       description,
       thumbnail,
-      hasMedia: mediaArr.length > 0,
-      mediaCount: mediaArr.length,
+      isVideo: !!firstVideo,
+      hasImage: !!firstImage,
+      hasVideo: !!firstVideo,
     };
   }
 
-  /**
-   * 전체 커뮤니티 게시글 조회 (Collection Group + 복합 인덱스 - 최적화)
-   * @param {Object} options - 조회 옵션
-   * @return {Promise<Object>} 게시글 목록
-   */
   async getAllCommunityPosts(options = {}) {
     try {
       const {
@@ -234,69 +154,99 @@ class CommunityService {
         orderDirection = "desc",
       } = options;
 
-      // filter에 따른 게시글 타입 매핑
       const postTypeMapping = {
         routine: "ROUTINE_CERT",
         gathering: "GATHERING_REVIEW",
         tmi: "TMI",
       };
 
-      // 1. Collection Group으로 모든 커뮤니티의 posts 조회 (단일 쿼리)
-      const whereConditions = [];
-      if (type && postTypeMapping[type]) {
-        whereConditions.push({
-          field: "type",
-          operator: "==",
-          value: postTypeMapping[type],
-        });
+      const communities = await this.firestoreService.getCollection("communities");
+
+      if (communities.length === 0) {
+        return {
+          content: [],
+          pagination: {
+            pageNumber: 0,
+            pageSize: size,
+            totalElements: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+            isFirst: true,
+            isLast: true,
+          },
+        };
       }
 
-
-      const result = await this.firestoreService.getCollectionGroup("posts", {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: orderBy || "createdAt",
-        orderDirection: orderDirection || "desc",
-        where: whereConditions.length > 0 ? whereConditions : [],
-      });
-
-      // 2. 커뮤니티 정보 조회 (필요한 커뮤니티만)
-      const communityIds = [...new Set(result.content.map(post => post.communityId))].filter(id => id && id !== undefined);
-      
-      let communities = [];
-      if (communityIds.length > 0) {
-        communities = await this.firestoreService.getCollectionWhereIn(
-          "communities",
-          "id",
-          communityIds
-        );
-      }
-
-      // 3. 커뮤니티 정보 매핑
+      const allPosts = [];
       const communityMap = {};
+
       communities.forEach(community => {
         communityMap[community.id] = community;
       });
 
-      // 4. 게시글 데이터 가공
-      const processedPosts = result.content.map((post) => {
-        const community = communityMap[post.communityId] || {
-          id: post.communityId,
-          name: "알 수 없는 커뮤니티",
-          type: "UNKNOWN",
-        };
+      const postPromises = communities.map(async (community) => {
+        try {
+          const whereConditions = [];
+          if (type && postTypeMapping[type]) {
+            whereConditions.push({
+              field: "type",
+              operator: "==",
+              value: postTypeMapping[type],
+            });
+          }
 
+          const postsService = new FirestoreService(`communities/${community.id}/posts`);
+          const postsResult = await postsService.getWithPagination({
+            page: page,
+            size: size,
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            where: whereConditions,
+          });
+
+          const communityPosts = (postsResult.content || []).map(post => ({
+            ...post,
+            communityId: community.id,
+            community: {
+              id: community.id,
+              name: community.name,
+            },
+          }));
+
+          return communityPosts;
+        } catch (error) {
+          return [];
+        }
+      });
+
+      const postsArrays = await Promise.all(postPromises);
+      allPosts.push(...postsArrays.flat());
+
+      allPosts.sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      });
+
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedPosts = allPosts.slice(startIndex, endIndex);
+
+      const processedPosts = paginatedPosts.map((post) => {
         const processedPost = {
           ...post,
-          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
-          community: {
-            id: community.id,
-            name: community.name,
-            type: community.type,
-          },
+          createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
+          updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+          scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
+          communityPath: `communities/${post.communityId}`,
+          rewardGiven: post.rewardGiven || false,
+          reactionsCount: post.reactionsCount || 0,
+          reportsCount: post.reportsCount || 0,
+          viewCount: post.viewCount || 0,
         };
 
-        // 내용 포함 여부에 따른 처리
         if (includeContent) {
           processedPost.content = post.content || [];
           processedPost.media = post.media || [];
@@ -306,100 +256,33 @@ class CommunityService {
           delete processedPost.media;
         }
 
-        // Collection Group에서 추가된 필드 제거
-        delete processedPost.path;
         delete processedPost.communityId;
 
         return processedPost;
       });
 
+      const totalElements = allPosts.length;
+      const totalPages = Math.ceil(totalElements / size);
+
       return {
         content: processedPosts,
-        pagination: result.pageable || {},
+        pagination: {
+          pageNumber: page,
+          pageSize: size,
+          totalElements: totalElements,
+          totalPages: totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+          isFirst: page === 0,
+          isLast: page === totalPages - 1,
+        },
       };
     } catch (error) {
       console.error("Get all community posts error:", error.message);
-      throw new Error("Failed to get community posts");
+      throw new Error("커뮤니티 게시글 조회에 실패했습니다");
     }
   }
 
-  /**
-   * 특정 커뮤니티의 게시글 목록 조회
-   * @param {string} communityId - 커뮤니티 ID
-   * @param {Object} options - 조회 옵션
-   * @return {Promise<Object>} 게시글 목록
-   */
-  async getCommunityPosts(communityId, options = {}) {
-    try {
-      const {
-        type,
-        channel,
-        page = 0,
-        size = 10,
-        includeContent = false,
-      } = options;
-
-      // 커뮤니티 존재 확인
-      const community = await this.firestoreService.getDocument("communities", communityId);
-      if (!community) {
-        const error = new Error("Community not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
-
-      const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const whereConditions = [];
-
-      if (type) {
-        whereConditions.push({field: "type", operator: "==", value: type});
-      }
-      if (channel) {
-        whereConditions.push({field: "channel", operator: "==", value: channel});
-      }
-
-      const result = await postsService.getWithPagination({
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "desc",
-        where: whereConditions,
-      });
-
-      // 게시글 데이터 가공
-      const posts = (result.content || []).map((post) => {
-        const processedPost = {
-          ...post,
-          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
-          community: {
-            id: communityId,
-            name: community.name,
-          },
-        };
-
-        if (includeContent) {
-          processedPost.content = post.content || [];
-          processedPost.media = post.media || [];
-        } else {
-          processedPost.preview = this.createPreview(post);
-          delete processedPost.content;
-          delete processedPost.media;
-        }
-
-        return processedPost;
-      });
-
-      return {
-        content: posts,
-        pagination: result.pageable || {},
-      };
-    } catch (error) {
-      console.error("Get community posts error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
-      }
-      throw new Error("Failed to get community posts");
-    }
-  }
 
   /**
    * 게시글 생성
@@ -410,7 +293,17 @@ class CommunityService {
    */
   async createPost(communityId, userId, postData) {
     try {
-      const {title, content = [], media = [], type, channel, visibility = "PUBLIC"} = postData;
+      const {
+        title, 
+        content = [], 
+        media = [], 
+        type, 
+        channel, 
+        visibility = "PUBLIC",
+        category,
+        tags = [],
+        scheduledDate
+      } = postData;
 
       // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument("communities", communityId);
@@ -449,15 +342,21 @@ class CommunityService {
         title,
         content,
         media,
-        type: type || "GENERAL",
-        channel: channel || "general",
+        type: type || community.postType || "GENERAL",
+        channel: channel || community.channel || "general",
+        category: category || null,
+        tags: tags || [],
+        scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         visibility,
         isLocked: false,
+        rewardGiven: false,
+        reactionsCount: 0,
         likesCount: 0,
         commentsCount: 0,
+        reportsCount: 0,
         viewCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       const result = await postsService.create(newPost);
@@ -466,6 +365,11 @@ class CommunityService {
       return {
         id: postId,
         ...newPost,
+        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
+        createdAt: newPost.createdAt?.toDate?.()?.toISOString?.() || newPost.createdAt,
+        updatedAt: newPost.updatedAt?.toDate?.()?.toISOString?.() || newPost.updatedAt,
+        scheduledDate: newPost.scheduledDate?.toDate?.()?.toISOString?.() || newPost.scheduledDate,
+        communityPath: `communities/${communityId}`,
         community: {
           id: communityId,
           name: community.name,
@@ -476,7 +380,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND") {
         throw error;
       }
-      throw new Error("Failed to create post");
+      throw new Error("게시글 생성에 실패했습니다");
     }
   }
 
@@ -501,7 +405,7 @@ class CommunityService {
       const newViewCount = (post.viewCount || 0) + 1;
       postsService.update(postId, {
         viewCount: newViewCount,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       }).catch(error => {
         console.error("조회수 증가 실패:", error);
       });
@@ -512,7 +416,12 @@ class CommunityService {
       return {
         ...post,
         viewCount: newViewCount,
-        timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
+        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
+        createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
+        updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+        scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+        timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
+        communityPath: `communities/${communityId}`,
         community: community ? {
           id: communityId,
           name: community.name,
@@ -523,7 +432,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND") {
         throw error;
       }
-      throw new Error("Failed to get post");
+      throw new Error("게시글 조회에 실패했습니다");
     }
   }
 
@@ -555,22 +464,33 @@ class CommunityService {
 
       const updatedData = {
         ...updateData,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       await postsService.update(postId, updatedData);
+      
+      const fresh = await postsService.getById(postId);
+      const community = await this.firestoreService.getDocument("communities", communityId);
 
       return {
         id: postId,
-        ...post,
-        ...updatedData,
+        ...fresh,
+        
+        createdAt: fresh.createdAt?.toDate?.()?.toISOString?.() || fresh.createdAt,
+        updatedAt: fresh.updatedAt?.toDate?.()?.toISOString?.() || fresh.updatedAt,
+        scheduledDate: fresh.scheduledDate?.toDate?.()?.toISOString?.() || fresh.scheduledDate,
+        communityPath: `communities/${communityId}`,
+        community: community ? {
+          id: communityId,
+          name: community.name,
+        } : null,
       };
     } catch (error) {
       console.error("Update post error:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
-      throw new Error("Failed to update post");
+      throw new Error("게시글 수정에 실패했습니다");
     }
   }
 
@@ -604,7 +524,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
-      throw new Error("Failed to delete post");
+      throw new Error("게시글 삭제에 실패했습니다");
     }
   }
 
@@ -699,7 +619,7 @@ class CommunityService {
       if (error.code === "NOT_FOUND") {
         throw error;
       }
-      throw new Error("Failed to toggle post like");
+      throw new Error("게시글 좋아요 처리에 실패했습니다");
     }
   }
 }

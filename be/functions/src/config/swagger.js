@@ -1632,11 +1632,6 @@ const options = {
               description: "게시글 타입",
               example: "ROUTINE_CERT",
             },
-            refId: {
-              type: "string",
-              description: "외부 참조 ID (루틴/소모임/TMI 프로젝트 ID)",
-              example: "routine_123",
-            },
             authorId: {
               type: "string",
               description: "작성자 ID",
@@ -1737,10 +1732,6 @@ const options = {
               type: "string",
               enum: ["GATHERING_REVIEW", "ROUTINE_CERT", "TMI_REVIEW"],
               description: "활동 구분",
-            },
-            refId: {
-              type: "string",
-              description: "원본 활동 ID",
             },
             userId: {
               type: "string",
