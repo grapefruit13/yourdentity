@@ -1,16 +1,3 @@
-// 콘텐츠 아이템 타입 정의
-export interface ContentItem {
-  type: "text" | "image";
-  order: number;
-  content?: string; // text 타입일 때
-  url?: string; // image 타입일 때
-  width?: number; // image 타입일 때
-  height?: number; // image 타입일 때
-  blurHash?: string; // image 타입일 때
-  mimeType?: string; // image 타입일 때
-  processingStatus?: "ready" | "processing" | "failed"; // image 타입일 때
-}
-
 // TODO: be response 수정 예정
 export interface GETCommunityListRes {
   pagination: {
@@ -37,7 +24,6 @@ export interface GETCommunityPostDetailRes {
   authorId: string;
   author: string;
   title: string;
-  content: ContentItem[]; // 상세 조회 시 주요 게시글 내용
   preview: {
     description: string;
     thumbnail?: {
@@ -62,5 +48,5 @@ export interface GETCommunityPostDetailRes {
   commentsCount: number;
   createdAt: string;
   timeAgo: string;
-  replies?: unknown[]; // 댓글 목록 (상세 조회 시 포함)
+  replies?: any[]; // 댓글 목록 (상세 조회 시 포함)
 }
