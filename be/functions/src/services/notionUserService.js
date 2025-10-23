@@ -115,7 +115,31 @@ class NotionUserService {
                               : "미설정",
                         },
                       },
-          "패널티 주기": { checkbox: user.penalty || false },
+          // "패널티 주기": { checkbox: user.penalty || false },
+          "자격정지 적용": {
+            checkbox: false
+          },
+          "자격정지 상태": user.suspensionType ? {
+            status: { name: user.suspensionType }
+          } : "",
+          "자격정지 기간(일시정지)": (user.suspensionStart && user.suspensionEnd) ? {
+            date: {
+              start: user.suspensionStart,
+              end: user.suspensionEnd
+            }
+          } : "",
+          "자격정지 정책 적용 일시": user.suspensionAppliedAt ? {
+            date: { 
+              start: user.suspensionAppliedAt 
+            }
+          } : "",
+          "정지 사유": user.suspensionReason ? {
+            rich_text: [{
+              text: { content: user.suspensionReason }
+            }]
+          } : {
+            rich_text: []
+          },
           "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
         };
   
@@ -278,7 +302,31 @@ async syncAllUserAccounts() {
                     : "미설정",
               },
             },
-            "패널티 주기": { checkbox: user.penalty || false },
+            // "패널티 주기": { checkbox: user.penalty || false },
+            "자격정지 적용": {
+              checkbox: false
+            },
+            "자격정지 상태": user.suspensionType ? {
+              status: { name: user.suspensionType }
+            } : undefined,
+            "자격정지 기간(일시정지)": (user.suspensionStart && user.suspensionEnd) ? {
+              date: {
+                start: user.suspensionStart,
+                end: user.suspensionEnd
+              }
+            } : undefined,
+            "자격정지 정책 적용 일시": user.suspensionAppliedAt ? {
+              date: { 
+                start: user.suspensionAppliedAt 
+              }
+            } : undefined,
+            "정지 사유": user.suspensionReason ? {
+              rich_text: [{
+                text: { content: user.suspensionReason }
+              }]
+            } : {
+              rich_text: []
+            },
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
           };
 
@@ -425,6 +473,137 @@ async getAllNotionPages(databaseId) {
   }
 
   return results;
+}
+
+
+
+async syncPenaltyUsers() {
+  let hasMore = true;
+  let startCursor = undefined;
+  let syncedCount = 0;
+
+  // 모든 페이지를 순회하며 Notion DB 전체 조회
+  while (hasMore) {
+    const notionResponse = await fetch(`https://api.notion.com/v1/databases/${this.notionUserAccountDB}/query`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filter: {
+          property: "자격정지 적용",
+          checkbox: { equals: true },
+        },
+        page_size: 100,
+        start_cursor: startCursor,
+      }),
+    });
+
+    const data = await notionResponse.json();
+    const pages = data.results || [];
+
+    // 각 페이지(회원)에 대해 Firebase 업데이트
+    for (const page of pages) {
+      const pageId = page.id;
+      const props = page.properties;
+
+      const userId = props["사용자ID"]?.title?.[0]?.plain_text;
+      if (!userId) continue;
+
+      const penaltyStatus = props["자격정지 상태"]?.status?.name || "미적용";
+      const penaltyReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
+      const penaltyAppliedAt = props["자격정지 정책 적용 일시"]?.date?.start || "";
+      const penaltyPeriodStart = props["자격정지 기간(일시정지)"]?.date?.start || "";
+      const penaltyPeriodEnd = props["자격정지 기간(일시정지)"]?.date?.end || "";
+
+
+      // 자격정지 상태가 "일시정지"인데 기간이 없는 경우 검증
+      if (penaltyStatus === "일시정지" && (!penaltyPeriodStart || !penaltyPeriodEnd)) {
+        const error = new Error(`사용자 ${userId}의 자격정지 상태가 일시정지인데 자격정지 기간이 설정되지 않았습니다`);
+        error.code = "SUSPENSION_PERIOD_REQUIRED";
+        throw error;
+      }
+
+      // 격정지 기간 처리 로직
+      // "미적용"이나 "영구정지"인 경우 기간을 빈 값으로 설정
+      let finalSuspensionStart = "";
+      let finalSuspensionEnd = "";
+      
+      if (penaltyStatus === "일시정지") {
+        // 일시정지인 경우에만 기간 값 사용
+        finalSuspensionStart = penaltyPeriodStart;
+        finalSuspensionEnd = penaltyPeriodEnd;
+      }
+
+      // Firebase users 컬렉션에서 해당 사용자 찾기
+      const userRef = db.collection("users").doc(userId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        console.warn(`[WARN] Firebase에 ${userId} 사용자가 존재하지 않음`);
+        continue;
+      }
+
+      // Firebase 자격정지 정보 업데이트
+      await userRef.update({
+        suspended: true,
+        suspensionType: penaltyStatus,
+        suspensionReason: penaltyReason,
+        suspensionStart: finalSuspensionStart,
+        suspensionEnd: finalSuspensionEnd,
+        suspensionAppliedAt: penaltyAppliedAt,
+      });
+
+      // Firebase 업데이트 후 최신 데이터 가져오기
+      const updatedUserDoc = await userRef.get();
+      const updatedUserData = updatedUserDoc.data();
+
+      console.log("updatedUserData:", updatedUserData);
+
+      // 노션에 Firebase 동기화된 데이터로 업데이트
+      await this.notion.pages.update({
+        page_id: pageId,
+        properties: {
+          "자격정지 적용": {
+            //checkbox: updatedUserData.suspended || false
+            checkbox: false
+          },
+          "자격정지 상태": {
+            status: updatedUserData.suspensionType ? { name: updatedUserData.suspensionType } : null
+          },
+          "자격정지 기간(일시정지)": {
+            date: (updatedUserData.suspensionStart && updatedUserData.suspensionEnd) ? {
+              start: updatedUserData.suspensionStart,
+              end: updatedUserData.suspensionEnd
+            } : null
+          },
+          "자격정지 정책 적용 일시": {
+            date: updatedUserData.suspensionAppliedAt ? { 
+              start: updatedUserData.suspensionAppliedAt 
+            } : { 
+              start: new Date().toISOString() 
+            }
+          },
+          "정지 사유": {
+            rich_text: updatedUserData.suspensionReason ? [{
+              text: { content: updatedUserData.suspensionReason }
+            }] : []
+          }
+        },
+      });
+
+      syncedCount++;
+    }
+
+    // 다음 페이지가 있으면 cursor 갱신
+    hasMore = data.has_more;
+    startCursor = data.next_cursor;
+  }
+
+  console.log(`자격정지 회원 전체 동기화 완료: ${syncedCount}명`);
+  return { syncedCount };
 }
 
 

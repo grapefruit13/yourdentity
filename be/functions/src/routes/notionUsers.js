@@ -76,4 +76,33 @@ router.get("/sync/active", notionUserController.syncUserAccounts);
 router.get("/sync/full", notionUserController.syncAllUserAccounts);
 
 
+/**
+ * @swagger
+ * /notionUsers/sync/penalty:
+ *   get:
+ *     summary: 자격정지 회원 동기화
+ *     description: |
+ *       노션 DB에서 자격정지 적용이 체크된 회원만 조회하여 Firebase에 자격정지 정보를 반영하고,
+ *       반영된 결과를 노션에도 동기화합니다.
+ *     tags: [NotionUsers]
+ *     responses:
+ *       200:
+ *         description: 동기화 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: string
+ *                   example: "자격정지 회원 동기화 완료: 5명"
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/sync/penalty", notionUserController.syncPenaltyUsers);
+
+
 module.exports = router;

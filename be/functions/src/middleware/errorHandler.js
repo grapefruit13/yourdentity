@@ -85,6 +85,11 @@ const errorHandler = (err, req, res, next) => {
       if (!err.message) errorMessage = "신고하려는 게시글을 찾을 수 없습니다.";
       break;
 
+    case "SUSPENSION_PERIOD_REQUIRED":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "자격정지 상태가 일시정지인 경우 자격정지 기간을 입력해주세요.";
+      break;
+
     case "COMMENT_NOT_FOUND":
       httpStatus = 404;
       if (!err.message) errorMessage = "신고하려는 댓글을 찾을 수 없습니다.";

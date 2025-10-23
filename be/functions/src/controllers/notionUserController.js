@@ -26,6 +26,17 @@ class NotionUserController {
   }
 
 
+  async syncPenaltyUsers(req, res, next) {
+    try {
+      const result = await notionUserService.syncPenaltyUsers();
+      res.success(`자격정지 회원 동기화 완료: ${result.syncedCount}명`);
+    } catch (error) {
+      console.error("[Controller Error] syncPenaltyUsers:", error);
+      next(error);
+    }
+  }
+
+
 
 }
 
