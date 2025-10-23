@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CommunityDetail from "@/components/community/CommunityDetail";
+import { samplePosts } from "@/constants/community/sampleData";
 import { useGetCommunityPostDetail } from "@/hooks/community/useGetCommunityPostDetail";
 import { CommunityPost } from "@/types/community";
 import { GETCommunityPostDetailRes } from "@/types/community/response";
-import { samplePosts } from "@/constants/community/sampleData";
 
 /**
  * API 응답 데이터를 기존 CommunityPost 타입으로 변환하는 함수
