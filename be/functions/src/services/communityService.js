@@ -2,7 +2,6 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
-const {db} = require("../config/database");
 
 /**
  * Community Service (비즈니스 로직 계층)
@@ -161,99 +160,108 @@ class CommunityService {
         tmi: "TMI",
       };
 
-      // CollectionGroup(🔥 핵심) - 인덱스 문제로 단순화
-      let query = db.collectionGroup("posts");
+      const communities = await this.firestoreService.getCollection("communities");
 
-      // 타입 필터링은 메모리에서 처리 (인덱스 문제 회피)
-      // 정렬도 메모리에서 처리하여 인덱스 의존성 제거
-      
-      // 데이터 가져오기 (모든 데이터를 가져와서 메모리에서 처리)
-      const snapshot = await query.get();
-
-      const allPosts = [];
-      const communityIds = new Set();
-
-      snapshot.forEach((doc) => {
-        const pathParts = doc.ref.path.split("/"); 
-        const communityId = pathParts[1];
-        const data = doc.data();
-
-        allPosts.push({
-          id: doc.id,
-          communityId,
-          ...data,
-        });
-
-        communityIds.add(communityId);
-      });
-
-      // 메모리에서 타입 필터링
-      let filteredPosts = allPosts;
-      if (type && postTypeMapping[type]) {
-        filteredPosts = allPosts.filter(post => post.type === postTypeMapping[type]);
+      if (communities.length === 0) {
+        return {
+          content: [],
+          pagination: {
+            pageNumber: 0,
+            pageSize: size,
+            totalElements: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+            isFirst: true,
+            isLast: true,
+          },
+        };
       }
 
-      // 메모리에서 정렬 (Firestore Timestamp 안전 변환)
-      const toMillis = (ts) => ts?.toDate?.()?.getTime?.() ?? new Date(ts).getTime();
-      filteredPosts.sort((a, b) => {
-        const aTime = toMillis(a[orderBy]);
-        const bTime = toMillis(b[orderBy]);
-        return orderDirection === "desc" ? bTime - aTime : aTime - bTime;
+      const allPosts = [];
+      const communityMap = {};
+
+      communities.forEach(community => {
+        communityMap[community.id] = community;
       });
 
-      // 페이지네이션 적용
-      const offset = page * size;
-      const posts = filteredPosts.slice(offset, offset + size);
-
-      // ===== 커뮤니티 이름/정보 붙이기 =====
-      const communityMap = {};
-      const communityPromises = Array.from(communityIds).map(async (communityId) => {
+      const postPromises = communities.map(async (community) => {
         try {
-          const community = await this.firestoreService.getDocument("communities", communityId);
-          return { id: communityId, data: community };
+          const whereConditions = [];
+          if (type && postTypeMapping[type]) {
+            whereConditions.push({
+              field: "type",
+              operator: "==",
+              value: postTypeMapping[type],
+            });
+          }
+
+          const postsService = new FirestoreService(`communities/${community.id}/posts`);
+          const postsResult = await postsService.getWithPagination({
+            page: page,
+            size: size,
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            where: whereConditions,
+          });
+
+          const communityPosts = (postsResult.content || []).map(post => ({
+            ...post,
+            communityId: community.id,
+            community: {
+              id: community.id,
+              name: community.name,
+            },
+          }));
+
+          return communityPosts;
         } catch (error) {
-          console.warn("community fetch err:", error.message);
-          return { id: communityId, data: null };
+          return [];
         }
       });
 
-      const results = await Promise.all(communityPromises);
-      results.forEach(({ id, data }) => {
-        if (data) communityMap[id] = data;
+      const postsArrays = await Promise.all(postPromises);
+      allPosts.push(...postsArrays.flat());
+
+      allPosts.sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return bTime - aTime;
       });
 
-      // ===== 포스트 가공 =====
-      const processedPosts = posts.map((post) => {
-        const processed = {
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedPosts = allPosts.slice(startIndex, endIndex);
+
+      const processedPosts = paginatedPosts.map((post) => {
+        const processedPost = {
           ...post,
           createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
           updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
           scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
           timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
           communityPath: `communities/${post.communityId}`,
-          community: communityMap[post.communityId] || {
-            id: post.communityId,
-            name: "알 수 없는 커뮤니티",
-          },
           rewardGiven: post.rewardGiven || false,
           reactionsCount: post.reactionsCount || 0,
           reportsCount: post.reportsCount || 0,
           viewCount: post.viewCount || 0,
         };
 
-        if (!includeContent) {
-          processed.preview = this.createPreview(post);
-          delete processed.content;
-          delete processed.media;
+        if (includeContent) {
+          processedPost.content = post.content || [];
+          processedPost.media = post.media || [];
+        } else {
+          processedPost.preview = this.createPreview(post);
+          delete processedPost.content;
+          delete processedPost.media;
         }
 
-        delete processed.communityId;
+        delete processedPost.communityId;
 
-        return processed;
+        return processedPost;
       });
 
-      // ===== 전체 개수 구하기 (정확 페이징용) =====
-      const totalElements = filteredPosts.length;
+      const totalElements = allPosts.length;
       const totalPages = Math.ceil(totalElements / size);
 
       return {
@@ -261,8 +269,8 @@ class CommunityService {
         pagination: {
           pageNumber: page,
           pageSize: size,
-          totalElements,
-          totalPages,
+          totalElements: totalElements,
+          totalPages: totalPages,
           hasNext: page < totalPages - 1,
           hasPrevious: page > 0,
           isFirst: page === 0,
