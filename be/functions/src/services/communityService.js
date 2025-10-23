@@ -343,7 +343,7 @@ class CommunityService {
         title,
         content,
         media,
-        type: type || "GENERAL",
+        type: type || community.postType || "GENERAL",
         channel: channel || community.channel || "general",
         category: category || null,
         tags: tags || [],
