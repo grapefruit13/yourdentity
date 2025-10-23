@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // Helper Functions
+    // ==========================================
+    
+    // 인증된 사용자인지 확인
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // 본인의 문서인지 확인
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ==========================================
+    // Users Collection
+    // ==========================================
+    match /users/{userId} {
+      // 읽기: 본인만 가능
+      allow read: if isOwner(userId);
+      
+      // 쓰기: 본인만 가능
+      allow write: if isOwner(userId);
+    }
+    
+    // ==========================================
+    // Nicknames Collection (닉네임 중복 방지)
+    // ==========================================
+    match /nicknames/{nickname} {
+      // 읽기: 모든 인증된 사용자 가능 (중복 체크용)
+      allow read: if isAuthenticated();
+      
+      // 쓰기: 본인의 닉네임만 생성/수정 가능
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+    
+    // ==========================================
+    // User Terms Collection (약관 동의)
+    // ==========================================
+    match /user_terms/{recordId} {
+      // 읽기: 본인의 약관 레코드만 읽기 가능
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // 쓰기: 본인의 약관 레코드만 생성 가능 (백엔드에서 처리)
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // 수정/삭제: 금지 (약관 히스토리 보존)
+      allow update, delete: if false;
+    }
+    
+    // ==========================================
+    // Default: 모든 요청 거부
+    // ==========================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

@@ -13,6 +13,7 @@
     }
   ],
   "firestore": {
+    "rules": "be/functions/firestore.rules",
     "indexes": "be/functions/firestore.indexes.json"
   },
   "emulators": {
