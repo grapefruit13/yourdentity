@@ -52,6 +52,7 @@
 - 하나의 함수는 하나의 책임만 (SRP)
 - 의존성 주입으로 테스트 가능성 확보
 - **Firestore 접근은 FirestoreService 사용** (직접 접근 금지)
+  - **예외**: Batch/Transaction, 복잡한 쿼리(orderBy + where), 히스토리 관리 등 특수 케이스는 직접 접근 허용
 
 ## 코드 예시
 
@@ -118,6 +119,7 @@ await userRef.update({
 ## 금지 사항
 - ❌ Controller에 비즈니스 로직 작성 금지
 - ❌ Firestore 직접 접근 금지 (`admin.firestore()` 대신 `FirestoreService` 사용)
+  - ✅ **예외**: Batch/Transaction, 복잡한 쿼리, 히스토리 관리는 직접 접근 허용 (예: termsService, nicknames Transaction)
 - ❌ 반복문 안에서 개별 Firestore 쿼리 금지 (N+1 문제)
 - ❌ 민감한 정보(password, token) 로깅 금지
 - ❌ 매직 넘버/문자열 직접 사용 금지

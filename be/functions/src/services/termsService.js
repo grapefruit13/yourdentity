@@ -5,6 +5,12 @@ const {TERM_TYPES, CURRENT_VERSIONS, REQUIRED_TERMS} = require("../schemas/userT
 /**
  * 약관 동의 관리 서비스
  * Root Collection: user_terms/{recordId}
+ * 
+ * ⚠️ FirestoreService 미사용 이유:
+ * - Batch 작업 필요 (한 번에 여러 약관 레코드 생성)
+ * - 복잡한 쿼리 (where + orderBy + 중복 제거)
+ * - 히스토리 관리 (타입별 최신 레코드 필터링)
+ * → Guidelines 예외 조항에 따라 직접 Firestore 접근 허용
  */
 class TermsService {
   constructor() {
