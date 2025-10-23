@@ -352,7 +352,7 @@ router.get("/:userId", userController.getUserById);
  *               mainProfileId:
  *                 type: string
  *                 example: profile_abc123
- *               onBoardingComplete:
+ *               onboardingCompleted:
  *                 type: boolean
  *                 example: true
  *               uploadQuotaBytes:

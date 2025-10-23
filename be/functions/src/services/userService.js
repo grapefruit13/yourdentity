@@ -257,7 +257,7 @@ class UserService {
       badges: [],
       points: "0",
       mainProfileId: "",
-      onBoardingComplete: false,
+      onboardingCompleted: false,
       uploadQuotaBytes: 1073741824, // 1GB
       usedStorageBytes: 0,
     };

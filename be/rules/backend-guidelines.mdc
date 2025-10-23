@@ -69,7 +69,7 @@ class UserService {
       email,
       rewardPoints: 0,
       level: 1,
-      onBoardingComplete: false,
+      onboardingCompleted: false,
     };
     
     await this.firestoreService.create(firestoreUser, authUser.uid);
@@ -916,7 +916,7 @@ class UserService {
 // ✅ Boolean 변수: is, has, should 등의 접두사
 const isNewUser = true;
 const hasPermission = await checkPermission(userId);
-const shouldUpdateProfile = user.onBoardingComplete === false;
+const shouldUpdateProfile = user.onboardingCompleted === false;
 
 // ✅ 상수: UPPER_SNAKE_CASE
 const MAX_UPLOAD_SIZE_BYTES = 1073741824; // 1GB

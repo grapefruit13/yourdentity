@@ -151,7 +151,7 @@ class UserController {
       const {userId} = req.params;
       const {
         name, profileImageUrl, birthYear, rewardPoints, level, badges,
-        points, mainProfileId, onBoardingComplete, uploadQuotaBytes,
+        points, mainProfileId, onboardingCompleted, uploadQuotaBytes,
         usedStorageBytes,
       } = req.body;
 
@@ -187,8 +187,8 @@ class UserController {
       if (badges !== undefined) {
         updateData.badges = badges;
       }
-      if (onBoardingComplete !== undefined) {
-        updateData.onBoardingComplete = onBoardingComplete;
+      if (onboardingCompleted !== undefined) {
+        updateData.onboardingCompleted = onboardingCompleted;
       }
 
       if (Object.keys(updateData).length === 0) {
