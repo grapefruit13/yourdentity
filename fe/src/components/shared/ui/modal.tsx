@@ -98,16 +98,11 @@ const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
-  // variant에 따른 버튼 색상 설정
+  // 버튼 스타일 설정
   const confirmButtonStyle =
-    variant === "danger"
-      ? "bg-red-600 hover:bg-red-700 disabled:bg-gray-300"
-      : "bg-[#FF006C] hover:bg-[#e6005a] disabled:bg-gray-300";
+    "bg-[#FF006C] hover:bg-[#e6005a] disabled:bg-gray-300";
 
-  const cancelButtonStyle =
-    variant === "danger"
-      ? "border-gray-300 text-gray-600 hover:bg-gray-50"
-      : "border-[#FF006C] text-[#FF006C] hover:bg-gray-50";
+  const cancelButtonStyle = "border-none text-black hover:bg-gray-50 shadow-md";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -120,7 +115,7 @@ const Modal: React.FC<ModalProps> = ({
 
       {/* 모달 컨텐츠 */}
       <div
-        className="relative mx-8 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        className="relative mx-8 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -131,8 +126,8 @@ const Modal: React.FC<ModalProps> = ({
           as="h2"
           id="modal-title"
           font="noto"
-          variant="heading2M"
-          className="mb-4 text-center text-black"
+          variant="heading2B"
+          className="mb-6 text-left text-black"
         >
           {title}
         </Typography>
@@ -144,7 +139,7 @@ const Modal: React.FC<ModalProps> = ({
             font="noto"
             variant="body2R"
             className={`mb-4 text-center ${
-              variant === "danger" ? "text-red-600" : "text-gray-600"
+              variant === "danger" ? "text-red-500" : "text-gray-600"
             }`}
           >
             {description}
@@ -159,7 +154,7 @@ const Modal: React.FC<ModalProps> = ({
           {/* 취소 버튼 */}
           <button
             onClick={handleClose}
-            className={`flex-1 rounded-xl border-2 bg-white px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
+            className={`flex-1 rounded-xl bg-white px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
             aria-label={cancelText}
           >
             <Typography font="noto" variant="body2M">

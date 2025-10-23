@@ -85,6 +85,18 @@ const authGuard = require("../middleware/authGuard");
  *         schema:
  *           type: string
  *         description: 게시글 ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 페이지 크기
  *     responses:
  *       200:
  *         description: 댓글 목록 조회 성공

@@ -33,7 +33,7 @@ class CommentController {
     try {
       const {communityId, postId} = req.params;
       const page = parseInt(req.query.page, 10) || 0;
-      const size = parseInt(req.query.size, 10) || 10;
+      const size = Math.min(parseInt(req.query.size, 10) || 10, 10); 
 
       const result = await commentService.getComments(communityId, postId, {page, size});
       

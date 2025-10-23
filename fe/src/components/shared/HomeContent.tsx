@@ -123,7 +123,7 @@ export const HomeContent = ({ data }: HomeContentProps) => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-[470px] px-4 py-4">
+      <div className="mx-auto px-4 py-4">
         {sortedSections.map(renderSection)}
       </div>
     </div>
