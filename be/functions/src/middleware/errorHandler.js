@@ -20,6 +20,9 @@ const errorHandler = (err, req, res, next) => {
     case "VALIDATION_ERROR":
     case "INVALID_INPUT":
     case "MISSING_REQUIRED_FIELD":
+    case "TERMS_REQUIRED_FOR_EMAIL":
+    case "REQUIRED_TERM_NOT_AGREED":
+    case "REQUIRE_FIELDS_MISSING":
       httpStatus = 400;
       if (!err.message) errorMessage = "잘못된 요청입니다";
       break;
@@ -54,6 +57,7 @@ const errorHandler = (err, req, res, next) => {
     case "RESOURCE_ALREADY_EXISTS":
     case "USER_ALREADY_EXISTS":
     case "EMAIL_ALREADY_EXISTS":
+    case "NICKNAME_TAKEN":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;

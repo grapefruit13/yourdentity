@@ -96,7 +96,6 @@ class UserController {
       if (!isOwner && !isAdmin) {
         const err = new Error("권한이 없습니다");
         err.code = "FORBIDDEN";
-        err.status = 403;
         throw err;
       }
 

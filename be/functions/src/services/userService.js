@@ -117,7 +117,6 @@ class UserService {
           if (!terms[requiredType]) {
             const e = new Error(`REQUIRED_TERM_NOT_AGREED: ${requiredType}`);
             e.code = "REQUIRED_TERM_NOT_AGREED";
-            e.status = 400;
             throw e;
           }
         }
@@ -143,7 +142,6 @@ class UserService {
     if (isEmail && !terms) {
       const e = new Error("TERMS_REQUIRED_FOR_EMAIL");
       e.code = "TERMS_REQUIRED_FOR_EMAIL";
-      e.status = 400;
       throw e;
     }
 
@@ -151,7 +149,6 @@ class UserService {
     if (missing.length > 0) {
       const e = new Error(`REQUIRE_FIELDS_MISSING: ${missing.join(",")}`);
       e.code = "REQUIRE_FIELDS_MISSING";
-      e.status = 400;
       throw e;
     }
 
@@ -170,7 +167,6 @@ class UserService {
         if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
           const e = new Error("NICKNAME_TAKEN");
           e.code = "NICKNAME_TAKEN";
-          e.status = 409;
           throw e;
         }
         tx.set(nickRef, {uid});
