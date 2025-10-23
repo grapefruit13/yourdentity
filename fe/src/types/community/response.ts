@@ -48,5 +48,5 @@ export interface GETCommunityPostDetailRes {
   commentsCount: number;
   createdAt: string;
   timeAgo: string;
-  replies?: any[]; // 댓글 목록 (상세 조회 시 포함)
+  replies?: unknown[]; // 댓글 목록 (상세 조회 시 포함)
 }
