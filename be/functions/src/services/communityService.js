@@ -111,7 +111,7 @@ class CommunityService {
   createPreview(post) {
     const contentArr = Array.isArray(post.content) ? post.content : [];
     const mediaArr = Array.isArray(post.media) ? post.media : [];
-    // 텍스트 content에서 첫 2줄 추출
+    
     const textContents = contentArr.filter(
       (item) => item.type === "text" && item.text && item.text.trim(),
     );
@@ -120,9 +120,11 @@ class CommunityService {
         (textContents[0].text.length > 100 ? "..." : "") :
       "";
 
-    // 첫 번째 이미지 미디어 찾기
-    const firstImage = mediaArr.find((item) => item.type === "image") ||
+      const firstImage = mediaArr.find((item) => item.type === "image") ||
       contentArr.find((item) => item.type === "image");
+    
+    const firstVideo = mediaArr.find((item) => item.type === "video") ||
+      contentArr.find((item) => item.type === "video");
 
     const thumbnail = firstImage ? {
       url: firstImage.url || firstImage.src,
@@ -136,16 +138,12 @@ class CommunityService {
     return {
       description,
       thumbnail,
-      hasMedia: mediaArr.length > 0,
-      mediaCount: mediaArr.length,
+      isVideo: !!firstVideo,
+      hasImage: !!firstImage,
+      hasVideo: !!firstVideo,
     };
   }
 
-  /**
-   * 전체 커뮤니티 게시글 조회 (Collection Group + 복합 인덱스 - 최적화)
-   * @param {Object} options - 조회 옵션
-   * @return {Promise<Object>} 게시글 목록
-   */
   async getAllCommunityPosts(options = {}) {
     try {
       const {
@@ -157,69 +155,96 @@ class CommunityService {
         orderDirection = "desc",
       } = options;
 
-      // filter에 따른 게시글 타입 매핑
       const postTypeMapping = {
         routine: "ROUTINE_CERT",
         gathering: "GATHERING_REVIEW",
         tmi: "TMI",
       };
 
-      // 1. Collection Group으로 모든 커뮤니티의 posts 조회 (단일 쿼리)
-      const whereConditions = [];
-      if (type && postTypeMapping[type]) {
-        whereConditions.push({
-          field: "type",
-          operator: "==",
-          value: postTypeMapping[type],
-        });
+      const communities = await this.firestoreService.getCollection("communities");
+
+      if (communities.length === 0) {
+        return {
+          content: [],
+          pagination: {
+            pageNumber: 0,
+            pageSize: size,
+            totalElements: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+            isFirst: true,
+            isLast: true,
+          },
+        };
       }
 
-
-      const result = await this.firestoreService.getCollectionGroup("posts", {
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: orderBy || "createdAt",
-        orderDirection: orderDirection || "desc",
-        where: whereConditions.length > 0 ? whereConditions : [],
-      });
-
-      // 2. 커뮤니티 정보 조회 (필요한 커뮤니티만)
-      const communityIds = [...new Set(result.content.map(post => post.communityId))].filter(id => id && id !== undefined);
-      
-      let communities = [];
-      if (communityIds.length > 0) {
-        communities = await this.firestoreService.getCollectionWhereIn(
-          "communities",
-          "id",
-          communityIds
-        );
-      }
-
-      // 3. 커뮤니티 정보 매핑
+      const allPosts = [];
       const communityMap = {};
+      
       communities.forEach(community => {
         communityMap[community.id] = community;
       });
 
-      // 4. 게시글 데이터 가공
-      const processedPosts = result.content.map((post) => {
-        const community = communityMap[post.communityId] || {
-          id: post.communityId,
-          name: "알 수 없는 커뮤니티",
-          type: "UNKNOWN",
-        };
+      const postPromises = communities.map(async (community) => {
+        try {
+          const whereConditions = [];
+          if (type && postTypeMapping[type]) {
+            whereConditions.push({
+              field: "type",
+              operator: "==",
+              value: postTypeMapping[type],
+            });
+          }
 
+          const postsService = new FirestoreService(`communities/${community.id}/posts`);
+          const postsResult = await postsService.getWithPagination({
+            page: 0,
+            size: 50,
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            where: whereConditions,
+          });
+
+          const communityPosts = (postsResult.content || []).map(post => ({
+            ...post,
+            communityId: community.id,
+            community: {
+              id: community.id,
+              name: community.name,
+            },
+          }));
+
+          return communityPosts;
+        } catch (error) {
+          return [];
+        }
+      });
+
+      const postsArrays = await Promise.all(postPromises);
+      allPosts.push(...postsArrays.flat());
+
+      allPosts.sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      });
+
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedPosts = allPosts.slice(startIndex, endIndex);
+
+      const processedPosts = paginatedPosts.map((post) => {
         const processedPost = {
           ...post,
           timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
-          community: {
-            id: community.id,
-            name: community.name,
-            type: community.type,
-          },
+          communityPath: `communities/${post.communityId}`,
+          rewardGiven: post.rewardGiven || false,
+          reactionsCount: post.reactionsCount || 0,
+          reportsCount: post.reportsCount || 0,
+          viewCount: post.viewCount || 0,
         };
 
-        // 내용 포함 여부에 따른 처리
         if (includeContent) {
           processedPost.content = post.content || [];
           processedPost.media = post.media || [];
@@ -229,16 +254,26 @@ class CommunityService {
           delete processedPost.media;
         }
 
-        // Collection Group에서 추가된 필드 제거
-        delete processedPost.path;
         delete processedPost.communityId;
 
         return processedPost;
       });
 
+      const totalElements = allPosts.length;
+      const totalPages = Math.ceil(totalElements / size);
+
       return {
         content: processedPosts,
-        pagination: result.pageable || {},
+        pagination: {
+          pageNumber: page,
+          pageSize: size,
+          totalElements: totalElements,
+          totalPages: totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+          isFirst: page === 0,
+          isLast: page === totalPages - 1,
+        },
       };
     } catch (error) {
       console.error("Get all community posts error:", error.message);
