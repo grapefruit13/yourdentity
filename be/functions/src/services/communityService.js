@@ -199,8 +199,8 @@ class CommunityService {
 
           const postsService = new FirestoreService(`communities/${community.id}/posts`);
           const postsResult = await postsService.getWithPagination({
-            page: 0,
-            size: 50,
+            page: page,
+            size: size,
             orderBy: "createdAt",
             orderDirection: "desc",
             where: whereConditions,
