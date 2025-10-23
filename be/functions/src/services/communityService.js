@@ -422,6 +422,7 @@ class CommunityService {
         updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
         scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
         timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
+        communityPath: `communities/${communityId}`,
         community: community ? {
           id: communityId,
           name: community.name,
