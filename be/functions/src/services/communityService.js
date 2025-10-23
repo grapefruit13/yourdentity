@@ -2,6 +2,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
+const {db} = require("../config/database");
 
 /**
  * Community Service (비즈니스 로직 계층)
@@ -74,85 +75,7 @@ class CommunityService {
     }
   }
 
-  /**
-   * 커뮤니티 상세 조회
-   * @param {string} communityId - 커뮤니티 ID
-   * @return {Promise<Object>} 커뮤니티 상세 정보
-   */
-  async getCommunityById(communityId) {
-    try {
-      const community = await this.firestoreService.getDocument("communities", communityId);
 
-      if (!community) {
-        const error = new Error("Community not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
-
-      // 멤버 수 조회
-      const membersSnapshot = await db
-        .collection("communities")
-        .doc(communityId)
-        .collection("members")
-        .get();
-      community.membersCount = membersSnapshot.size;
-
-      // 게시글 수 조회
-      const postsSnapshot = await db
-        .collection("communities")
-        .doc(communityId)
-        .collection("posts")
-        .get();
-      community.postsCount = postsSnapshot.size;
-
-      return community;
-    } catch (error) {
-      console.error("Get community by ID error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
-      }
-      throw new Error("Failed to get community");
-    }
-  }
-
-  /**
-   * 커뮤니티 멤버 목록 조회
-   * @param {string} communityId - 커뮤니티 ID
-   * @param {Object} options - 페이지네이션 옵션
-   * @return {Promise<Object>} 멤버 목록
-   */
-  async getCommunityMembers(communityId, options = {}) {
-    try {
-      const {page = 0, size = 20} = options;
-
-      // 커뮤니티 존재 확인
-      const community = await this.firestoreService.getDocument("communities", communityId);
-      if (!community) {
-        const error = new Error("Community not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
-
-      const membersService = new FirestoreService(`communities/${communityId}/members`);
-      const result = await membersService.getWithPagination({
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "joinedAt",
-        orderDirection: "desc",
-      });
-
-      return {
-        content: result.content || [],
-        pagination: result.pageable || {},
-      };
-    } catch (error) {
-      console.error("Get community members error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
-      }
-      throw new Error("Failed to get community members");
-    }
-  }
 
   /**
    * 시간 차이 계산
@@ -323,83 +246,6 @@ class CommunityService {
     }
   }
 
-  /**
-   * 특정 커뮤니티의 게시글 목록 조회
-   * @param {string} communityId - 커뮤니티 ID
-   * @param {Object} options - 조회 옵션
-   * @return {Promise<Object>} 게시글 목록
-   */
-  async getCommunityPosts(communityId, options = {}) {
-    try {
-      const {
-        type,
-        channel,
-        page = 0,
-        size = 10,
-        includeContent = false,
-      } = options;
-
-      // 커뮤니티 존재 확인
-      const community = await this.firestoreService.getDocument("communities", communityId);
-      if (!community) {
-        const error = new Error("Community not found");
-        error.code = "NOT_FOUND";
-        throw error;
-      }
-
-      const postsService = new FirestoreService(`communities/${communityId}/posts`);
-      const whereConditions = [];
-
-      if (type) {
-        whereConditions.push({field: "type", operator: "==", value: type});
-      }
-      if (channel) {
-        whereConditions.push({field: "channel", operator: "==", value: channel});
-      }
-
-      const result = await postsService.getWithPagination({
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "desc",
-        where: whereConditions,
-      });
-
-      // 게시글 데이터 가공
-      const posts = (result.content || []).map((post) => {
-        const processedPost = {
-          ...post,
-          timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt)) : "",
-          community: {
-            id: communityId,
-            name: community.name,
-          },
-        };
-
-        if (includeContent) {
-          processedPost.content = post.content || [];
-          processedPost.media = post.media || [];
-        } else {
-          processedPost.preview = this.createPreview(post);
-          delete processedPost.content;
-          delete processedPost.media;
-        }
-
-        return processedPost;
-      });
-
-      return {
-        content: posts,
-        pagination: result.pageable || {},
-      };
-    } catch (error) {
-      console.error("Get community posts error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
-      }
-      throw new Error("Failed to get community posts");
-    }
-  }
 
   /**
    * 게시글 생성

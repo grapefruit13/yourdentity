@@ -72,84 +72,8 @@ class CommunityController {
     }
   }
 
-  /**
-   * 커뮤니티 상세 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-  async getCommunityById(req, res, next) {
-    try {
-      const {communityId} = req.params;
-      const community = await communityService.getCommunityById(communityId);
-      return res.success(community);
-    } catch (error) {
-      return next(error);
-    }
-  }
 
-  /**
-   * 커뮤니티 멤버 목록 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-  async getCommunityMembers(req, res, next) {
-    try {
-      const {communityId} = req.params;
-      const page = parseInt(req.query.page, 10) || 0;
-      const size = parseInt(req.query.size, 10) || 20;
 
-      const result = await communityService.getCommunityMembers(communityId, {page, size});
-      
-      // data 객체 안에 members 배열과 pagination 객체 분리
-      const responseData = {
-        members: result.content || [],
-        pagination: result.pagination || {}
-      };
-      
-      return res.success(responseData);
-    } catch (error) {
-      return next(error);
-    }
-  }
-
-  /**
-   * 특정 커뮤니티의 게시글 목록 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-  async getCommunityPosts(req, res, next) {
-    try {
-      const {communityId} = req.params;
-      const {
-        type,
-        channel,
-        includeContent = false,
-      } = req.query;
-      const page = parseInt(req.query.page, 10) || 0;
-      const size = parseInt(req.query.size, 10) || 10;
-
-      const result = await communityService.getCommunityPosts(communityId, {
-        type,
-        channel,
-        page,
-        size,
-        includeContent: includeContent === "true",
-      });
-
-      // data 객체 안에 posts 배열과 pagination 객체 분리
-      const responseData = {
-        posts: result.content || [],
-        pagination: result.pagination || {}
-      };
-
-      return res.success(responseData);
-    } catch (error) {
-      return next(error);
-    }
-  }
 
   /**
    * 게시글 생성 API
