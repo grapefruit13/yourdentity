@@ -256,7 +256,17 @@ class CommunityService {
    */
   async createPost(communityId, userId, postData) {
     try {
-      const {title, content = [], media = [], type, channel, visibility = "PUBLIC"} = postData;
+      const {
+        title, 
+        content = [], 
+        media = [], 
+        type, 
+        channel, 
+        visibility = "PUBLIC",
+        category,
+        tags = [],
+        scheduledDate
+      } = postData;
 
       // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument("communities", communityId);
@@ -296,11 +306,17 @@ class CommunityService {
         content,
         media,
         type: type || "GENERAL",
-        channel: channel || "general",
+        channel: channel || community.channel || "general",
+        category: category || null,
+        tags: tags || [],
+        scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         visibility,
         isLocked: false,
+        rewardGiven: false,
+        reactionsCount: 0,
         likesCount: 0,
         commentsCount: 0,
+        reportsCount: 0,
         viewCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -312,6 +328,7 @@ class CommunityService {
       return {
         id: postId,
         ...newPost,
+        communityPath: `communities/${communityId}`,
         community: {
           id: communityId,
           name: community.name,
@@ -406,10 +423,18 @@ class CommunityService {
 
       await postsService.update(postId, updatedData);
 
+      // 커뮤니티 정보 조회
+      const community = await this.firestoreService.getDocument("communities", communityId);
+
       return {
         id: postId,
         ...post,
         ...updatedData,
+        communityPath: `communities/${communityId}`,
+        community: community ? {
+          id: communityId,
+          name: community.name,
+        } : null,
       };
     } catch (error) {
       console.error("Update post error:", error.message);
