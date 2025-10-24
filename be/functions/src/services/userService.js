@@ -1,13 +1,6 @@
-const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
-const TermsService = require("./termsService");
-const {REQUIRED_TERMS} = require("../schemas/userTermsSchema");
-
-// Admin 초기화
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+const NicknameService = require("./nicknameService");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -16,7 +9,7 @@ if (!admin.apps.length) {
 class UserService {
   constructor() {
     this.firestoreService = new FirestoreService("users");
-    this.termsService = new TermsService();
+    this.nicknameService = new NicknameService();
   }
 
   /**
@@ -31,17 +24,13 @@ class UserService {
    * @return {Promise<{onboardingCompleted:boolean}>}
    */
   async updateOnboarding({uid, payload}) {
-    const db = admin.firestore();
-
-    // 1) 현재 사용자 문서 조회
-    const userRef = db.collection("users").doc(uid);
-    const snap = await userRef.get();
-    if (!snap.exists) {
+    // 1) 현재 사용자 문서 조회 (FirestoreService 사용)
+    const existing = await this.firestoreService.getById(uid);
+    if (!existing) {
       const e = new Error("User document not found");
       e.code = "NOT_FOUND";
       throw e;
     }
-    const existing = snap.data() || {};
 
     // 2) 허용 필드 화이트리스트 적용
     const allowedFields = [
@@ -113,7 +102,8 @@ class UserService {
       // 필수 약관 체크 (이메일만)
       const isEmail = existing.authType === "email";
       if (isEmail) {
-        for (const requiredType of REQUIRED_TERMS) {
+        const requiredTerms = ["SERVICE", "PRIVACY"];
+        for (const requiredType of requiredTerms) {
           if (!terms[requiredType]) {
             const e = new Error(`REQUIRED_TERM_NOT_AGREED: ${requiredType}`);
             e.code = "REQUIRED_TERM_NOT_AGREED";
@@ -122,12 +112,11 @@ class UserService {
         }
       }
 
-      // 약관 동의 레코드 생성
-      const termRecords = Object.keys(terms).map((type) => ({
-        type,
-        agreed: terms[type],
-      }));
-      await this.termsService.createTermConsents(uid, termRecords);
+      // 약관 동의 정보를 users 필드에 저장 (true/false 구조)
+      update.serviceTermsAgreed = terms.SERVICE === true;
+      update.servicePrivacyAgreed = terms.PRIVACY === true;
+      update.marketingTermsAgreed = terms.MARKETING === true;
+      update.termsAgreedAt = FieldValue.serverTimestamp();
     }
 
     // 5) 제공자별 필수값 계산 (기존값+업데이트 병합 후 판단)
@@ -159,49 +148,31 @@ class UserService {
     const nickname = update.nickname;
     const doNicknameReservation = typeof nickname === "string" && nickname.trim().length > 0;
 
-    const result = await db.runTransaction(async (tx) => {
-      let onboardingCompleted = false;
+    // 닉네임 처리 (별도 서비스로 위임)
+    if (doNicknameReservation) {
+      await this.nicknameService.reserveNickname(nickname, uid, existing.nickname);
+    }
 
-      // 닉네임 처리
-      if (doNicknameReservation) {
-        const lower = nickname.toLowerCase();
-        const nickRef = db.collection("nicknames").doc(lower);
-        const nickDoc = await tx.get(nickRef);
-        if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
-          const e = new Error("NICKNAME_TAKEN");
-          e.code = "NICKNAME_TAKEN";
-          throw e;
-        }
-        tx.set(nickRef, {uid});
+    // 온보딩 완료 여부 (필수 필드 + 약관 동의 완료)
+    const fieldsCompleted = required.every((f) => !!merged[f]);
+    const termsCompleted = isEmail ? (merged.serviceTermsAgreed && merged.servicePrivacyAgreed) : true; // 이메일: 약관 필수, 카카오: 불필요
+    const onboardingCompleted = fieldsCompleted && termsCompleted;
 
-        // 기존 닉네임과 다르면 이전 키 해제 (선택적)
-        const prevNick = existing.nickname;
-        if (prevNick && prevNick.toLowerCase() !== lower) {
-          const prevRef = db.collection("nicknames").doc(prevNick.toLowerCase());
-          tx.delete(prevRef);
-        }
-      }
+    const userUpdate = {
+      ...update,
+      onboardingCompleted,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
 
-      // 온보딩 완료 여부 (필수 필드 + 약관 동의 완료)
-      const fieldsCompleted = required.every((f) => !!merged[f]);
-      const termsCompleted = isEmail ? !!terms : true; // 이메일: 약관 필수, 카카오: 불필요
-      onboardingCompleted = fieldsCompleted && termsCompleted;
+    // 온보딩 완료 시 status를 ACTIVE로 변경
+    if (onboardingCompleted) {
+      userUpdate.status = "ACTIVE";
+    }
 
-      const userUpdate = {
-        ...update,
-        onboardingCompleted,
-        updatedAt: FieldValue.serverTimestamp(),
-      };
-
-      // 온보딩 완료 시 status를 ACTIVE로 변경
-      if (onboardingCompleted) {
-        userUpdate.status = "ACTIVE";
-      }
-
-      tx.update(userRef, userUpdate);
-
-      return {onboardingCompleted};
-    });
+    // 사용자 문서 업데이트 (FirestoreService 사용)
+    await this.firestoreService.update(uid, userUpdate);
+    
+    const result = {onboardingCompleted};
 
     return result;
   }
