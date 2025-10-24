@@ -21,7 +21,7 @@ const router = express.Router();
  *       
  *       **필수 필드 정책:**
  *       - 카카오: nickname (필수), phoneNumber (선택), gender (선택)
- *       - 이메일: name, nickname, birthYear, birthDate, terms (필수), gender, phoneNumber (선택)
+ *       - 이메일: name, nickname, birthDate, terms (필수), gender, phoneNumber (선택)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -38,9 +38,6 @@ const router = express.Router();
  *               nickname:
  *                 type: string
  *                 description: 닉네임 (카카오/이메일 필수)
- *               birthYear:
- *                 type: number
- *                 description: 출생년도 (이메일 필수)
  *               birthDate:
  *                 type: string
  *                 description: 생년월일 YYYY-MM-DD (이메일 필수)
@@ -65,7 +62,6 @@ const router = express.Router();
  *             example:
  *               name: 홍길동
  *               nickname: gildong
- *               birthYear: 1998
  *               birthDate: 1998-01-02
  *               gender: MALE
  *               phoneNumber: 010-1234-5678
@@ -175,9 +171,6 @@ router.patch("/me/onboarding", authGuard, userController.updateOnboarding);
  *               profileImageUrl:
  *                 type: string
  *                 example: https://example.com/profile.jpg
- *               birthYear:
- *                 type: number
- *                 example: 1990
  *               authType:
  *                 type: string
  *                 enum: [email, sns]
@@ -325,9 +318,6 @@ router.get("/:userId", userController.getUserById);
  *               profileImageUrl:
  *                 type: string
  *                 example: https://example.com/new-profile.jpg
- *               birthYear:
- *                 type: number
- *                 example: 1990
  *               rewardPoints:
  *                 type: number
  *                 example: 1000

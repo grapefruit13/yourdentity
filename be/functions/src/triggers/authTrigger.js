@@ -51,7 +51,6 @@ exports.createUserDocument = functions
           email: email || null,
           nickname: "", // 온보딩에서 필수 입력
           profileImageUrl: user.photoURL || "",
-          birthYear: null, // 이메일: 온보딩 필수, 카카오: 카카오 심사 후 제공
           birthDate: null, // 이메일: 온보딩 필수, 카카오: 카카오 심사 후 제공
           gender: null, // 온보딩에서 선택 입력 (MALE | FEMALE | null)
           phoneNumber: "", // 온보딩에서 선택 입력

@@ -81,7 +81,6 @@ ONBOARDING_NO_TERMS=$(curl -s -i -X PATCH "$API/users/me/onboarding" \
   -d '{
     "name": "홍길동",
     "nickname": "gildong",
-    "birthYear": 1998,
     "birthDate": "1998-01-02"
   }')
 
@@ -96,15 +95,13 @@ ONBOARDING_SUCCESS=$(curl -s -X PATCH "$API/users/me/onboarding" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "홍길동",
-    "nickname": "gildong-$(date +%s%N)",
-    "birthYear": 1998,
+    "nickname": "gildong-$(date +%s%N | cut -c1-10)",
     "birthDate": "1998-01-02",
     "gender": "MALE",
     "phoneNumber": "010-1234-5678",
     "terms": {
       "SERVICE": true,
-      "PRIVACY": true,
-      "MARKETING": false
+      "PRIVACY": true
     }
   }')
 

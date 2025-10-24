@@ -114,13 +114,13 @@ class UserController {
    * PATCH /users/me/onboarding
    * 
    * Body:
-   * - name, nickname, birthYear, birthDate, gender, phoneNumber
+   * - name, nickname, birthDate, gender, phoneNumber
    * - terms: { SERVICE: boolean, PRIVACY: boolean }
    */
   async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
-      const {name, nickname, birthYear, birthDate, gender, phoneNumber, terms} = req.body || {};
+      const {name, nickname, birthDate, gender, phoneNumber, terms} = req.body || {};
 
       // 약관 검증
       if (terms !== undefined) {
@@ -146,7 +146,7 @@ class UserController {
 
       const result = await userService.updateOnboarding({
         uid,
-        payload: {name, nickname, birthYear, birthDate, gender, phoneNumber, terms},
+        payload: {name, nickname, birthDate, gender, phoneNumber, terms},
       });
 
       return res.success({onboardingCompleted: result.onboardingCompleted});
@@ -159,7 +159,7 @@ class UserController {
     try {
       const {userId} = req.params;
       const {
-        name, profileImageUrl, birthYear, rewardPoints, level, badges,
+        name, profileImageUrl, birthDate, rewardPoints, level, badges,
         points, mainProfileId, onboardingCompleted, uploadQuotaBytes,
         usedStorageBytes,
       } = req.body;
@@ -178,9 +178,6 @@ class UserController {
       if (mainProfileId !== undefined) {
         updateData.mainProfileId = mainProfileId;
       }
-      if (birthYear !== undefined) {
-        updateData.birthYear = birthYear;
-      }
       if (rewardPoints !== undefined) {
         updateData.rewardPoints = rewardPoints;
       }
@@ -198,6 +195,9 @@ class UserController {
       }
       if (onboardingCompleted !== undefined) {
         updateData.onboardingCompleted = onboardingCompleted;
+      }
+      if (birthDate !== undefined) {
+        updateData.birthDate = birthDate;
       }
 
       if (Object.keys(updateData).length === 0) {

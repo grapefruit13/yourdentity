@@ -38,7 +38,6 @@ class UserService {
     const allowedFields = [
       "name",
       "nickname",
-      "birthYear",
       "birthDate",
       "gender",
       "phoneNumber",
@@ -49,16 +48,6 @@ class UserService {
     }
 
     // 3) 유효성 검증
-    const currentYear = new Date().getFullYear();
-    if (update.birthYear !== undefined) {
-      const y = Number(update.birthYear);
-      if (!Number.isInteger(y) || y < 1900 || y > currentYear) {
-        const e = new Error("INVALID_BIRTH_YEAR");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-      update.birthYear = y;
-    }
     if (update.birthDate !== undefined) {
       try {
         const formattedDate = formatDate(update.birthDate);
@@ -111,7 +100,7 @@ class UserService {
 
     // 5) 제공자별 필수값 체크
     const isEmail = existing.authType === AUTH_TYPES.EMAIL;
-    const requiredForEmail = ["name", "nickname", "birthYear", "birthDate"];
+    const requiredForEmail = ["name", "nickname", "birthDate"];
     const requiredForKakao = ["nickname"];
     const required = isEmail ? requiredForEmail : requiredForKakao;
 
@@ -170,7 +159,7 @@ class UserService {
    * @return {Promise<Object>} 생성된 사용자 데이터
    */
   async createUser(userData) {
-    const {name, email, password, profileImageUrl, birthYear, authType = "email", snsProvider = null} = userData;
+    const {name, email, password, profileImageUrl, birthDate, authType = "email", snsProvider = null} = userData;
     if (!name) {
       const e = new Error("이름이 필요합니다");
       e.code = "BAD_REQUEST";
@@ -201,7 +190,7 @@ class UserService {
       name,
       email: email,
       profileImageUrl: profileImageUrl || "",
-      birthYear: birthYear || null,
+      birthDate: birthDate || null,
       authType,
       snsProvider,
       role: "user",
