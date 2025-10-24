@@ -15,6 +15,13 @@ const transformApiDataToCommunityPost = (
   apiData: GETCommunityPostDetailRes,
   communityId: string
 ): CommunityPost => {
+  // content 배열에서 텍스트 내용들을 추출하여 하나의 문자열로 결합
+  const fullContent = apiData.content
+    .filter((item) => item.type === "text")
+    .sort((a, b) => a.order - b.order)
+    .map((item) => item.content)
+    .join("\n\n");
+
   return {
     id: apiData.id,
     communityId: communityId,
@@ -25,7 +32,7 @@ const transformApiDataToCommunityPost = (
       avatar: undefined, // 기본값, 추후 API에서 제공될 수 있음
     },
     date: apiData.timeAgo,
-    content: apiData.preview.description,
+    content: fullContent || apiData.preview.description, // content가 없으면 preview.description 사용
     category: apiData.category || "일상 공유",
     tags: apiData.tags,
     stats: {
