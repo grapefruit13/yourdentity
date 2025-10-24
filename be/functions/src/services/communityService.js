@@ -631,14 +631,29 @@ class CommunityService {
    */
   async checkNicknameAvailability(communityId, nickname) {
     try {
+      if (!communityId) {
+        const error = new Error("커뮤니티 ID가 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!nickname || nickname.trim().length === 0) {
+        const error = new Error("닉네임이 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
       const membersService = new FirestoreService(`communities/${communityId}/members`);
     
-      const members = await membersService.getWhere("nickname", "==", nickname);
+      const members = await membersService.getWhere("nickname", "==", nickname.trim());
 
       return members.length === 0;
     } catch (error) {
-      console.error("Check nickname availability error:", error.message);
-      throw new Error("Failed to check nickname availability");
+      console.error("닉네임 중복 체크 오류:", error.message);
+      if (error.code === "BAD_REQUEST") {
+        throw error;
+      }
+      throw new Error("닉네임 중복 체크에 실패했습니다");
     }
   }
 
@@ -651,28 +666,64 @@ class CommunityService {
    */
   async addMemberToCommunity(communityId, userId, nickname) {
     try {
+      if (!communityId) {
+        const error = new Error("커뮤니티 ID가 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!userId) {
+        const error = new Error("사용자 ID가 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!nickname || nickname.trim().length === 0) {
+        const error = new Error("닉네임이 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      // 커뮤니티 존재 확인
+      const community = await this.firestoreService.getDocument("communities", communityId);
+      if (!community) {
+        const error = new Error("커뮤니티를 찾을 수 없습니다");
+        error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 이미 멤버인지 확인
       const membersService = new FirestoreService(`communities/${communityId}/members`);
+      const existingMember = await membersService.getById(userId);
+      if (existingMember) {
+        const error = new Error("이미 해당 커뮤니티의 멤버입니다");
+        error.code = "CONFLICT";
+        throw error;
+      }
       
       const memberData = {
         userId,
-        nickname,
+        nickname: nickname.trim(),
         role: "member",
-        joinedAt: this.firestoreService.admin.firestore.Timestamp.now(),
+        joinedAt: FieldValue.serverTimestamp(),
       };
 
       const memberId = userId;
-      await membersService.createDocument(memberId, memberData);
+      const result = await membersService.create(memberData, memberId);
 
       return {
         id: memberId,
         userId,
-        nickname,
+        nickname: nickname.trim(),
         role: "member",
-        joinedAt: memberData.joinedAt.toDate().toISOString(),
+        joinedAt: memberData.joinedAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
       };
     } catch (error) {
-      console.error("Add member to community error:", error.message);
-      throw new Error("Failed to add member to community");
+      console.error("커뮤니티 멤버 추가 오류:", error.message);
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "CONFLICT") {
+        throw error;
+      }
+      throw new Error("커뮤니티 멤버 추가에 실패했습니다");
     }
   }
 }
