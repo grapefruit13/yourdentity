@@ -62,6 +62,13 @@ const errorHandler = (err, req, res, next) => {
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;
 
+    case "TERMS_REQUIRED_FOR_EMAIL":
+    case "REQUIRED_TERM_NOT_AGREED":
+    case "REQUIRE_FIELDS_MISSING":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "필수 항목이 누락되었습니다";
+      break;
+
     case "DUPLICATE_REPORT":
     httpStatus = 400;
     if (!err.message) errorMessage = "이미 신고한 콘텐츠입니다";
