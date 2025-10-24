@@ -119,16 +119,12 @@ class UserService {
       throw e;
     }
 
-    // 6) 닉네임 점유 트랜잭션 (닉네임이 존재할 때만)
-    // ⚠️ 직접 Firestore 접근 (Guidelines 예외):
-    //    - Transaction 필요 (닉네임 중복 방지 + 사용자 업데이트 원자성)
-    //    - nicknames 컬렉션 접근 (FirestoreService는 단일 컬렉션만 지원)
+    // 6) 닉네임 설정 (중복 체크 및 예약)
     const nickname = update.nickname;
-    const doNicknameReservation = typeof nickname === "string" && nickname.trim().length > 0;
+    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
 
-    // 닉네임 처리 (별도 서비스로 위임)
-    if (doNicknameReservation) {
-      await this.nicknameService.reserveNickname(nickname, uid, existing.nickname);
+    if (setNickname) {
+      await this.nicknameService.setNickname(nickname, uid, existing.nickname);
     }
 
     // 온보딩 완료 처리
