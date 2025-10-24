@@ -283,22 +283,7 @@ class RoutineService {
         });
 
         if (activityNickname) {
-          const memberRef = this.firestoreService.db
-            .collection("communities")
-            .doc(routineId)
-            .collection("members")
-            .doc(userId);
-          
-          const memberData = {
-            userId,
-            nickname: activityNickname,
-            role: "member",
-            status: "active",
-            joinedAt: FieldValue.serverTimestamp(),
-            lastActiveAt: FieldValue.serverTimestamp(),
-          };
-
-          transaction.set(memberRef, memberData);
+          await this.communityService.addMemberToCommunity(routineId, userId, activityNickname);
         }
 
         return {
