@@ -20,9 +20,6 @@ const errorHandler = (err, req, res, next) => {
     case "VALIDATION_ERROR":
     case "INVALID_INPUT":
     case "MISSING_REQUIRED_FIELD":
-    case "TERMS_REQUIRED_FOR_EMAIL":
-    case "REQUIRED_TERM_NOT_AGREED":
-    case "REQUIRE_FIELDS_MISSING":
       httpStatus = 400;
       if (!err.message) errorMessage = "잘못된 요청입니다";
       break;
