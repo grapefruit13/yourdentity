@@ -93,9 +93,6 @@ const router = express.Router();
  *                     onboardingCompleted:
  *                       type: boolean
  *                       example: true
- *                 message:
- *                   type: string
- *                   example: ONBOARDING_UPDATED
  *       400:
  *         description: 잘못된 입력 (필드 형식 오류/필수값 누락)
  *         content:
