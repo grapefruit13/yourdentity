@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
+const {AUTH_TYPES, USER_ROLES, USER_STATUS} = require("../constants/userConstants");
 
 // Admin 초기화 (프로덕션에서는 기본 서비스 계정 사용)
 if (!admin.apps.length) {
@@ -28,7 +29,7 @@ exports.createUserDocument = functions
 
         // Provider ID 추출 및 정규화
         const providerId = user.providerData?.[0]?.providerId;
-        let provider = "email"; // 기본값
+        let provider = AUTH_TYPES.EMAIL; // 기본값
 
         if (providerId) {
           if (providerId.startsWith("oidc.")) {
@@ -36,7 +37,7 @@ exports.createUserDocument = functions
             provider = providerId.replace("oidc.", "");
           } else if (providerId === "password") {
             // 이메일/비밀번호 인증
-            provider = "email";
+            provider = AUTH_TYPES.EMAIL;
           } else {
             // 기타 제공자
             provider = providerId;
@@ -58,13 +59,13 @@ exports.createUserDocument = functions
           addressDetail: "",
 
           // 인증 정보
-          authType: provider === "email" ? "email" : "sns",
-          snsProvider: provider === "email" ? null : provider,
+          authType: provider === AUTH_TYPES.EMAIL ? AUTH_TYPES.EMAIL : AUTH_TYPES.SNS,
+          snsProvider: provider === AUTH_TYPES.EMAIL ? null : provider,
 
           // 사용자 상태
-          role: "user",
+          role: USER_ROLES.USER,
           onboardingCompleted: false, // 온보딩 완료 시 true로 변경
-          status: "CREATED", // CREATED → 온보딩 완료 시 PENDING → 이메일 인증 완료 시 ACTIVE
+          status: USER_STATUS.CREATED, // CREATED → 온보딩 완료 시 PENDING → 이메일 인증 완료 시 ACTIVE
 
           // 리워드 시스템
           rewardPoints: 0,

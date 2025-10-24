@@ -1,6 +1,7 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
+const {AUTH_TYPES, USER_STATUS} = require("../constants/userConstants");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -100,7 +101,7 @@ class UserService {
     const terms = payload.terms; // { SERVICE: true, PRIVACY: true, MARKETING: false }
     if (terms) {
       // 필수 약관 체크 (이메일만)
-      const isEmail = existing.authType === "email";
+      const isEmail = existing.authType === AUTH_TYPES.EMAIL;
       if (isEmail) {
         const requiredTerms = ["SERVICE", "PRIVACY"];
         for (const requiredType of requiredTerms) {
@@ -120,7 +121,7 @@ class UserService {
     }
 
     // 5) 제공자별 필수값 체크
-    const isEmail = existing.authType === "email";
+    const isEmail = existing.authType === AUTH_TYPES.EMAIL;
     const requiredForEmail = ["name", "nickname", "birthYear", "birthDate"];
     const requiredForKakao = ["nickname"];
     const required = isEmail ? requiredForEmail : requiredForKakao;
@@ -156,7 +157,7 @@ class UserService {
     const userUpdate = {
       ...update,
       onboardingCompleted: true, // 모든 필수 정보가 입력되었으므로 완료
-      status: "PENDING", // 이메일 인증 대기 상태
+      status: USER_STATUS.PENDING, // 이메일 인증 대기 상태
       updatedAt: FieldValue.serverTimestamp(),
     };
 
