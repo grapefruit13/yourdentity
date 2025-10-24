@@ -85,8 +85,8 @@ FINAL_USER=$(curl -s -X GET "$API/users/me" \
 echo "$FINAL_USER" | jq '.user | {name, nickname, authType, snsProvider, onboardingCompleted, status}'
 echo ""
 
-FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.user.onboardingCompleted')
-FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.user.status')
+FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')
+FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.data.user.status')
 
 if [ "$FINAL_ONBOARDING" = "true" ] && [ "$FINAL_STATUS" = "ACTIVE" ]; then
   echo -e "${GREEN}✅ 카카오 온보딩 테스트 성공!${NC}"
