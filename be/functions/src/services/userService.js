@@ -2,6 +2,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const {AUTH_TYPES, USER_STATUS} = require("../constants/userConstants");
+const {isValidPhoneNumber, formatDate} = require("../utils/helpers");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -59,34 +60,23 @@ class UserService {
       update.birthYear = y;
     }
     if (update.birthDate !== undefined) {
-      const re = /^\d{4}-\d{2}-\d{2}$/;
-      if (!re.test(String(update.birthDate))) {
-        const e = new Error("INVALID_BIRTH_DATE_FORMAT");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-      const d = new Date(update.birthDate);
-      // Date 유효성: toString() NaN 체크 및 월/일 보정
-      const [yy, mm, dd] = String(update.birthDate).split("-").map(Number);
-      if (
-        Number.isNaN(d.getTime()) ||
-        d.getUTCFullYear() !== yy ||
-        d.getUTCMonth() + 1 !== mm ||
-        d.getUTCDate() !== dd
-      ) {
-        const e = new Error("INVALID_BIRTH_DATE_VALUE");
+      try {
+        const formattedDate = formatDate(update.birthDate);
+        update.birthDate = formattedDate;
+      } catch (error) {
+        const e = new Error("올바른 날짜 형식이 아닙니다");
         e.code = "INVALID_INPUT";
         throw e;
       }
     }
     if (update.phoneNumber !== undefined) {
-      const normalized = String(update.phoneNumber).replace(/[^0-9+]/g, "");
-      if (normalized.length < 9) {
-        const e = new Error("INVALID_PHONE_NUMBER");
+      if (!isValidPhoneNumber(update.phoneNumber)) {
+        const e = new Error("올바른 전화번호 형식이 아닙니다");
         e.code = "INVALID_INPUT";
         throw e;
       }
-      update.phoneNumber = normalized;
+      // 전화번호 정규화 (숫자만 추출)
+      update.phoneNumber = update.phoneNumber.replace(/[^0-9+]/g, "");
     }
     if (update.gender !== undefined) {
       const validGenders = ["MALE", "FEMALE", null];

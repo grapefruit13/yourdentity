@@ -1,5 +1,6 @@
 const {admin} = require("../config/database");
 const FirestoreService = require("./firestoreService");
+const {isValidEmail} = require("../utils/helpers");
 
 // FirestoreService 인스턴스 생성
 const usersService = new FirestoreService("users");
@@ -17,8 +18,8 @@ const usersService = new FirestoreService("users");
  */
 const checkEmailAvailability = async (email) => {
   try {
-    if (!email) {
-      const error = new Error("이메일이 필요합니다");
+    if (!email || !isValidEmail(email)) {
+      const error = new Error("올바른 이메일 형식이 아닙니다");
       error.code = "BAD_REQUEST";
       throw error;
     }
