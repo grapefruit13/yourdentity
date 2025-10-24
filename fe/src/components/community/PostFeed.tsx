@@ -29,7 +29,7 @@ const PostFeed = ({ posts, onPostClick }: PostFeedProps) => {
     if (onPostClick) {
       onPostClick(post);
     } else {
-      router.push(`/community/${post.id}`);
+      router.push(`/community/${post.communityId}/post/${post.id}`);
     }
   };
 
