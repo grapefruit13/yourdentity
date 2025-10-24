@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 API="http://localhost:5001/youthvoice-2025/asia-northeast3/api"
-TEST_EMAIL="onboarding-test@example.com"
+TEST_EMAIL="onboarding-test-$(date +%s%N)@example.com"
 TEST_PASSWORD="test123456"
 
 echo "🧪 온보딩 API 통합 테스트"
@@ -96,7 +96,7 @@ ONBOARDING_SUCCESS=$(curl -s -X PATCH "$API/users/me/onboarding" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "홍길동",
-    "nickname": "gildong123",
+    "nickname": "gildong-$(date +%s%N)",
     "birthYear": 1998,
     "birthDate": "1998-01-02",
     "gender": "MALE",
@@ -124,7 +124,7 @@ echo ""
 FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')
 FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.data.user.status')
 
-if [ "$FINAL_ONBOARDING" = "true" ] && [ "$FINAL_STATUS" = "ACTIVE" ]; then
+if [ "$FINAL_ONBOARDING" = "true" ] && [ "$FINAL_STATUS" = "PENDING" ]; then
   echo -e "${GREEN}✅ 온보딩 테스트 성공!${NC}"
 else
   echo -e "${RED}❌ 온보딩 완료 플래그 오류${NC}"

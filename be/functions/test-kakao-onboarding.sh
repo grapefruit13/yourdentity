@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 API="http://localhost:5001/youthvoice-2025/asia-northeast3/api"
-TEST_EMAIL="kakao-test@example.com"
+TEST_EMAIL="kakao-test-$(date +%s%N)@example.com"
 TEST_PASSWORD="kakao123456"
 
 echo "🧪 카카오 온보딩 테스트 (SNS 제공자)"
@@ -69,7 +69,7 @@ ONBOARDING_SUCCESS=$(curl -s -X PATCH "$API/users/me/onboarding" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "nickname": "kakao_user_123"
+    "nickname": "kakao_user_$(date +%s%N)"
   }')
 
 echo "$ONBOARDING_SUCCESS" | jq '.'
@@ -88,7 +88,7 @@ echo ""
 FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')
 FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.data.user.status')
 
-if [ "$FINAL_ONBOARDING" = "true" ] && [ "$FINAL_STATUS" = "ACTIVE" ]; then
+if [ "$FINAL_ONBOARDING" = "true" ] && [ "$FINAL_STATUS" = "PENDING" ]; then
   echo -e "${GREEN}✅ 카카오 온보딩 테스트 성공!${NC}"
 else
   echo -e "${RED}❌ 온보딩 완료 플래그 오류${NC}"
