@@ -77,7 +77,7 @@ class UserService {
     }
 
     // 4) 약관 동의 처리
-    const terms = payload.terms; // { SERVICE: true, PRIVACY: true, MARKETING: false }
+    const terms = payload.terms; // { SERVICE: true, PRIVACY: true }
     if (terms) {
       // 필수 약관 체크 (이메일만)
       const isEmail = existing.authType === AUTH_TYPES.EMAIL;
