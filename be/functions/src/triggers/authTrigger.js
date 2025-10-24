@@ -56,7 +56,6 @@ exports.createUserDocument = functions
           phoneNumber: "", // 온보딩에서 선택 입력
           address: "",
           addressDetail: "",
-          phoneVerified: false,
 
           // 인증 정보
           authType: provider === "email" ? "email" : "sns",
