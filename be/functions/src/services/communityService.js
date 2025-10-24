@@ -684,7 +684,6 @@ class CommunityService {
         throw error;
       }
 
-      // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument("communities", communityId);
       if (!community) {
         const error = new Error("커뮤니티를 찾을 수 없습니다");
@@ -692,12 +691,18 @@ class CommunityService {
         throw error;
       }
 
-      // 이미 멤버인지 확인
       const membersService = new FirestoreService(`communities/${communityId}/members`);
       const existingMember = await membersService.getById(userId);
       if (existingMember) {
         const error = new Error("이미 해당 커뮤니티의 멤버입니다");
         error.code = "CONFLICT";
+        throw error;
+      }
+
+      const duplicateNickname = await membersService.getWhere("nickname", "==", nickname.trim());
+      if (duplicateNickname.length > 0) {
+        const error = new Error("이미 사용 중인 닉네임입니다");
+        error.code = "NICKNAME_DUPLICATE";
         throw error;
       }
       
