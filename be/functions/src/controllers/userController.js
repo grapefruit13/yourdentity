@@ -71,10 +71,7 @@ class UserController {
         err.code = "NOT_FOUND";
         throw err;
       }
-      return res.json({
-        status: 200,
-        user: user,
-      });
+      return res.success({user});
     } catch (error) {
       return next(error);
     }
@@ -136,11 +133,7 @@ class UserController {
         payload: {name, nickname, birthYear, birthDate, gender, phoneNumber, terms},
       });
 
-      return res.json({
-        status: 200,
-        message: "ONBOARDING_UPDATED",
-        data: {onboardingCompleted: result.onboardingCompleted},
-      });
+      return res.success({onboardingCompleted: result.onboardingCompleted});
     } catch (error) {
       return next(error);
     }
