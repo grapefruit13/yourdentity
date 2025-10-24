@@ -64,13 +64,15 @@ const CommunityDetailPage = () => {
 
   useEffect(() => {
     if (error) {
-      // API 에러 시 샘플 데이터에서 해당 postId 찾기
-      const foundPost = samplePosts.find((p) => p.id === postId);
+      // API 에러 시 샘플 데이터에서 해당 postId와 communityId 찾기
+      const foundPost = samplePosts.find(
+        (p) => p.id === postId && p.communityId === communityId
+      );
       if (foundPost) {
         setFallbackPost(foundPost);
       }
     }
-  }, [error, postId]);
+  }, [error, postId, communityId]);
 
   // API 데이터를 기존 타입으로 변환
   const apiPost = data?.data
