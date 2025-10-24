@@ -1,7 +1,7 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
-const {AUTH_TYPES, USER_STATUS} = require("../constants/userConstants");
+const {AUTH_TYPES} = require("../constants/userConstants");
 const {isValidPhoneNumber, formatDate} = require("../utils/helpers");
 
 /**
@@ -131,7 +131,6 @@ class UserService {
     const userUpdate = {
       ...update,
       onboardingCompleted: true, // 모든 필수 정보가 입력되었으므로 완료
-      status: USER_STATUS.PENDING, // 이메일 인증 대기 상태
       updatedAt: FieldValue.serverTimestamp(),
     };
 

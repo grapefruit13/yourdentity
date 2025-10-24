@@ -88,13 +88,12 @@ FINAL_USER=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$FINAL_USER" | jq '.data.user | {name, nickname, authType, snsProvider, onboardingCompleted, status}'
+echo "$FINAL_USER" | jq '.data.user | {name, nickname, authType, snsProvider, onboardingCompleted}'
 echo ""
 
 FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')
-FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.data.user.status')
 
-if [ "$FINAL_ONBOARDING" = "true" ] && [ "$FINAL_STATUS" = "PENDING" ]; then
+if [ "$FINAL_ONBOARDING" = "true" ]; then
   echo -e "${GREEN}✅ 카카오 온보딩 테스트 성공!${NC}"
 else
   echo -e "${RED}❌ 온보딩 완료 플래그 오류${NC}"

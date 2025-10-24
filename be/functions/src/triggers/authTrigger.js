@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
-const {AUTH_TYPES, USER_ROLES, USER_STATUS} = require("../constants/userConstants");
+const {AUTH_TYPES, USER_ROLES} = require("../constants/userConstants");
 
 // Admin 초기화 (프로덕션에서는 기본 서비스 계정 사용)
 if (!admin.apps.length) {
@@ -64,7 +64,6 @@ exports.createUserDocument = functions
           // 사용자 상태
           role: USER_ROLES.USER,
           onboardingCompleted: false, // 온보딩 완료 시 true로 변경
-          status: USER_STATUS.CREATED, // CREATED → 온보딩 완료 시 PENDING → 이메일 인증 완료 시 ACTIVE
 
           // 리워드 시스템
           rewardPoints: 0,

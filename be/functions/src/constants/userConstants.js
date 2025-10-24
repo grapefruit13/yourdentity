@@ -14,14 +14,6 @@ const USER_ROLES = {
   ADMIN: "admin",
 };
 
-// 사용자 상태
-const USER_STATUS = {
-  CREATED: "CREATED",     // 최초 가입
-  PENDING: "PENDING",     // 온보딩 완료, 이메일 인증 대기
-  ACTIVE: "ACTIVE",       // 이메일 인증 완료
-  SUSPENDED: "SUSPENDED", // 정지
-  DELETED: "DELETED",     // 삭제
-};
 
 // 성별
 const GENDER = {
@@ -32,6 +24,5 @@ const GENDER = {
 module.exports = {
   AUTH_TYPES,
   USER_ROLES,
-  USER_STATUS,
   GENDER,
 };
