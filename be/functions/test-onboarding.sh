@@ -53,8 +53,8 @@ USER_INFO=$(curl -s -X GET "$API/users/me" \
   -H "Content-Type: application/json")
 
 echo "$USER_INFO" | jq '.'
-AUTH_TYPE=$(echo "$USER_INFO" | jq -r '.user.authType // empty')
-ONBOARDING_COMPLETED=$(echo "$USER_INFO" | jq -r '.user.onboardingCompleted // false')
+AUTH_TYPE=$(echo "$USER_INFO" | jq -r '.data.user.authType // empty')
+ONBOARDING_COMPLETED=$(echo "$USER_INFO" | jq -r '.data.user.onboardingCompleted // false')
 
 echo ""
 echo "AuthType: $AUTH_TYPE"
@@ -118,7 +118,7 @@ FINAL_USER=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$FINAL_USER" | jq '.user | {name, nickname, authType, onboardingCompleted, status}'
+echo "$FINAL_USER" | jq '.data.user | {name, nickname, authType, onboardingCompleted, status}'
 echo ""
 
 FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')

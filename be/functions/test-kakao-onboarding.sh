@@ -59,7 +59,7 @@ USER_INFO=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$USER_INFO" | jq '.user | {name, authType, snsProvider, onboardingCompleted, status}'
+echo "$USER_INFO" | jq '.data.user | {name, authType, snsProvider, onboardingCompleted, status}'
 echo ""
 
 # 4. 카카오 온보딩 - nickname만 제출 (성공 예상)
@@ -82,7 +82,7 @@ FINAL_USER=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$FINAL_USER" | jq '.user | {name, nickname, authType, snsProvider, onboardingCompleted, status}'
+echo "$FINAL_USER" | jq '.data.user | {name, nickname, authType, snsProvider, onboardingCompleted, status}'
 echo ""
 
 FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')
@@ -126,7 +126,7 @@ FINAL_CHECK=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $NEW_ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$FINAL_CHECK" | jq '.user | {nickname, phoneNumber, onboardingCompleted}'
+echo "$FINAL_CHECK" | jq '.data.user | {nickname, phoneNumber, onboardingCompleted}'
 
 echo ""
 echo "================================"
