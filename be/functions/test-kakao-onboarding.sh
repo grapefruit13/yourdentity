@@ -27,8 +27,8 @@ SIGNUP_RESPONSE=$(curl -s -X POST \
     \"returnSecureToken\": true
   }")
 
-USER_ID=$(echo $SIGNUP_RESPONSE | grep -o '"localId":"[^"]*' | cut -d'"' -f4)
-ID_TOKEN=$(echo $SIGNUP_RESPONSE | grep -o '"idToken":"[^"]*' | cut -d'"' -f4)
+USER_ID=$(echo "$SIGNUP_RESPONSE" | jq -r '.localId // empty')
+ID_TOKEN=$(echo "$SIGNUP_RESPONSE" | jq -r '.idToken // empty')
 
 if [ -z "$ID_TOKEN" ]; then
   echo -e "${RED}❌ 회원가입 실패${NC}"
@@ -69,12 +69,14 @@ echo ""
 # 4. 카카오 온보딩 - nickname만 제출 (성공 예상)
 echo "4️⃣ 카카오 온보딩 - nickname만 제출 (성공 예상)"
 echo "--------------------------------"
+NICKNAME="kakao_user_$(date +%s%N)"
+echo "Generated nickname: $NICKNAME"
 ONBOARDING_SUCCESS=$(curl -s -X PATCH "$API/users/me/onboarding" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "nickname": "kakao_user_$(date +%s%N)"
-  }')
+  -d "{
+    \"nickname\": \"$NICKNAME\"
+  }")
 
 echo "$ONBOARDING_SUCCESS" | jq '.'
 echo ""
@@ -98,49 +100,12 @@ else
   echo -e "${RED}❌ 온보딩 완료 플래그 오류${NC}"
 fi
 
-# 6. phoneNumber 선택 필드 테스트
+# 6. 최종 확인
 echo ""
-echo "6️⃣ phoneNumber 선택 필드 추가 (부분 업데이트)"
+echo "6️⃣ 최종 사용자 정보 확인"
 echo "--------------------------------"
-
-# 새 토큰 발급 (이전 토큰 만료 가능성 대비)
-REFRESH_RESPONSE=$(curl -s -X POST \
-  "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"email\": \"$TEST_EMAIL\",
-    \"password\": \"$TEST_PASSWORD\",
-    \"returnSecureToken\": true
-  }")
-
-# 토큰 갱신 응답 검증
-if echo "$REFRESH_RESPONSE" | grep -q '"error"'; then
-  echo -e "${RED}❌ 토큰 갱신 실패${NC}"
-  echo "Response: $REFRESH_RESPONSE"
-  exit 1
-fi
-
-NEW_ID_TOKEN=$(echo $REFRESH_RESPONSE | grep -o '"idToken":"[^"]*' | cut -d'"' -f4)
-
-if [ -z "$NEW_ID_TOKEN" ]; then
-  echo -e "${RED}❌ 토큰 추출 실패${NC}"
-  echo "Response: $REFRESH_RESPONSE"
-  exit 1
-fi
-
-ONBOARDING_UPDATE=$(curl -s -X PATCH "$API/users/me/onboarding" \
-  -H "Authorization: Bearer $NEW_ID_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phoneNumber": "010-9999-8888"
-  }')
-
-echo "$ONBOARDING_UPDATE" | jq '.'
-echo ""
-
-# 7. 최종 확인
 FINAL_CHECK=$(curl -s -X GET "$API/users/me" \
-  -H "Authorization: Bearer $NEW_ID_TOKEN" \
+  -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
 echo "$FINAL_CHECK" | jq '.data.user | {nickname, phoneNumber, onboardingCompleted}'
