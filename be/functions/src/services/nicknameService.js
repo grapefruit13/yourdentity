@@ -23,19 +23,17 @@ class NicknameService {
    * @return {Promise<boolean>} 사용 가능 여부
    */
   async reserveNickname(nickname, uid, existingNickname = null) {
-    const lower = nickname.toLowerCase();
-    const nickRef = db.collection(this.collectionName).doc(lower);
+    const isAvailable = await this.checkNicknameAvailability(nickname, uid);
+    if (!isAvailable) {
+      const e = new Error("NICKNAME_TAKEN");
+      e.code = "NICKNAME_TAKEN";
+      throw e;
+    }
     
-    // 트랜잭션으로 닉네임 중복 체크 및 예약
+    // 트랜잭션으로 닉네임 예약
+    const lower = nickname.toLowerCase();
     return await db.runTransaction(async (tx) => {
-      const nickDoc = await tx.get(nickRef);
-      
-      // 이미 존재하고 다른 사용자가 사용 중인 경우
-      if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
-        const e = new Error("NICKNAME_TAKEN");
-        e.code = "NICKNAME_TAKEN";
-        throw e;
-      }
+      const nickRef = db.collection(this.collectionName).doc(lower);
       
       // 닉네임 예약
       tx.set(nickRef, {uid});
@@ -51,7 +49,7 @@ class NicknameService {
   }
 
   /**
-   * 닉네임 중복 체크 (예약 없이)
+   * 닉네임 중복 체크
    * @param {string} nickname - 닉네임
    * @param {string} uid - 사용자 UID (선택사항)
    * @return {Promise<boolean>} 사용 가능 여부
