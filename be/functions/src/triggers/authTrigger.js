@@ -64,7 +64,7 @@ exports.createUserDocument = functions
           // 사용자 상태
           role: "user",
           onboardingCompleted: false, // 온보딩 완료 시 true로 변경
-          status: "PENDING", // PENDING → 온보딩 완료 시 ACTIVE
+          status: "CREATED", // CREATED → 온보딩 완료 시 PENDING → 이메일 인증 완료 시 ACTIVE
 
           // 리워드 시스템
           rewardPoints: 0,
