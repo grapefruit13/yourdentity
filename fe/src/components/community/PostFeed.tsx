@@ -30,7 +30,7 @@ const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
     if (onPostClick) {
       onPostClick(post);
     } else {
-      router.push(`/community/${post.id}`);
+      router.push(`/community/${post.communityId}/post/${post.id}`);
     }
   };
 
