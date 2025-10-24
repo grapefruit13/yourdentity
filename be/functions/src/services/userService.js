@@ -119,25 +119,24 @@ class UserService {
       update.termsAgreedAt = FieldValue.serverTimestamp();
     }
 
-    // 5) 제공자별 필수값 계산 (기존값+업데이트 병합 후 판단)
-    const merged = {...existing, ...update};
-    //const isEmail = (existing.authType || existing.providerId) === "email" || existing.snsProvider === null || existing.providerId === "password";
+    // 5) 제공자별 필수값 체크
     const isEmail = existing.authType === "email";
     const requiredForEmail = ["name", "nickname", "birthYear", "birthDate"];
     const requiredForKakao = ["nickname"];
     const required = isEmail ? requiredForEmail : requiredForKakao;
 
-    // 이메일: 약관 동의 필수
-    if (isEmail && !terms) {
-      const e = new Error("TERMS_REQUIRED_FOR_EMAIL");
-      e.code = "TERMS_REQUIRED_FOR_EMAIL";
-      throw e;
-    }
-
-    const missing = required.filter((f) => !merged[f]);
+    // 필수 필드 체크
+    const missing = required.filter((f) => !payload[f]);
     if (missing.length > 0) {
       const e = new Error(`REQUIRE_FIELDS_MISSING: ${missing.join(",")}`);
       e.code = "REQUIRE_FIELDS_MISSING";
+      throw e;
+    }
+
+    // 약관 동의 체크 (이메일 사용자만)
+    if (isEmail && !terms) {
+      const e = new Error("TERMS_REQUIRED_FOR_EMAIL");
+      e.code = "TERMS_REQUIRED_FOR_EMAIL";
       throw e;
     }
 
@@ -153,28 +152,18 @@ class UserService {
       await this.nicknameService.reserveNickname(nickname, uid, existing.nickname);
     }
 
-    // 온보딩 완료 여부 (필수 필드 + 약관 동의 완료)
-    const fieldsCompleted = required.every((f) => !!merged[f]);
-    const termsCompleted = isEmail ? (merged.serviceTermsAgreed && merged.servicePrivacyAgreed) : true; // 이메일: 약관 필수, 카카오: 불필요
-    const onboardingCompleted = fieldsCompleted && termsCompleted;
-
+    // 온보딩 완료 처리
     const userUpdate = {
       ...update,
-      onboardingCompleted,
+      onboardingCompleted: true, // 모든 필수 정보가 입력되었으므로 완료
+      status: "PENDING", // 이메일 인증 대기 상태
       updatedAt: FieldValue.serverTimestamp(),
     };
-
-    // 온보딩 완료 시 status를 ACTIVE로 변경
-    if (onboardingCompleted) {
-      userUpdate.status = "ACTIVE";
-    }
 
     // 사용자 문서 업데이트 (FirestoreService 사용)
     await this.firestoreService.update(uid, userUpdate);
     
-    const result = {onboardingCompleted};
-
-    return result;
+    return {onboardingCompleted: true};
   }
 
   /**
