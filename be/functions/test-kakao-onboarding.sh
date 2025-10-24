@@ -49,7 +49,11 @@ echo ""
 echo "2️⃣ authType을 'sns'로 변경 (카카오 시뮬레이션)"
 echo "--------------------------------"
 
-node src/scripts/updateAuthType.js "$USER_ID" "sns" "kakao"
+if ! node src/scripts/updateAuthType.js "$USER_ID" "sns" "kakao"; then
+  echo -e "${RED}❌ authType 변경 실패${NC}"
+  echo "updateAuthType.js 스크립트 실행에 실패했습니다."
+  exit 1
+fi
 echo ""
 
 # 3. 사용자 정보 확인
@@ -109,7 +113,20 @@ REFRESH_RESPONSE=$(curl -s -X POST \
     \"returnSecureToken\": true
   }")
 
+# 토큰 갱신 응답 검증
+if echo "$REFRESH_RESPONSE" | grep -q '"error"'; then
+  echo -e "${RED}❌ 토큰 갱신 실패${NC}"
+  echo "Response: $REFRESH_RESPONSE"
+  exit 1
+fi
+
 NEW_ID_TOKEN=$(echo $REFRESH_RESPONSE | grep -o '"idToken":"[^"]*' | cut -d'"' -f4)
+
+if [ -z "$NEW_ID_TOKEN" ]; then
+  echo -e "${RED}❌ 토큰 추출 실패${NC}"
+  echo "Response: $REFRESH_RESPONSE"
+  exit 1
+fi
 
 ONBOARDING_UPDATE=$(curl -s -X PATCH "$API/users/me/onboarding" \
   -H "Authorization: Bearer $NEW_ID_TOKEN" \
