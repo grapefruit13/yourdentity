@@ -41,20 +41,6 @@ service cloud.firestore {
     }
     
     // ==========================================
-    // User Terms Collection (약관 동의)
-    // ==========================================
-    match /user_terms/{recordId} {
-      // 읽기: 본인의 약관 레코드만 읽기 가능
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      
-      // 쓰기: 본인의 약관 레코드만 생성 가능 (백엔드에서 처리)
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      
-      // 수정/삭제: 금지 (약관 히스토리 보존)
-      allow update, delete: if false;
-    }
-    
-    // ==========================================
     // Default: 모든 요청 거부
     // ==========================================
     match /{document=**} {
