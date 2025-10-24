@@ -1,4 +1,5 @@
 const UserService = require("../services/userService");
+const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
@@ -114,18 +115,33 @@ class UserController {
    * 
    * Body:
    * - name, nickname, birthYear, birthDate, gender, phoneNumber
-   * - terms: { SERVICE: boolean, PRIVACY: boolean, MARKETING: boolean }
+   * - terms: { SERVICE: boolean, PRIVACY: boolean }
    */
   async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
       const {name, nickname, birthYear, birthDate, gender, phoneNumber, terms} = req.body || {};
 
-      // 약관 검증 (형식 체크)
-      if (terms !== undefined && typeof terms !== "object") {
-        const err = new Error("약관 동의는 객체 형태여야 합니다.");
-        err.code = "INVALID_INPUT";
-        throw err;
+      // 약관 검증
+      if (terms !== undefined) {
+        // 필수 약관 동의 여부 확인
+        const requiredTerms = ["SERVICE", "PRIVACY"];
+        for (const term of requiredTerms) {
+          if (terms[term] !== true) {
+            const err = new Error(`필수 약관에 동의해야 합니다: ${term}`);
+            err.code = "INVALID_INPUT";
+            throw err;
+          }
+        }
+
+        // 약관 동의 값 타입 검증
+        for (const [key, value] of Object.entries(terms)) {
+          if (typeof value !== "boolean") {
+            const err = new Error(`약관 동의 값은 boolean 타입이어야 합니다: ${key}`);
+            err.code = "INVALID_INPUT";
+            throw err;
+          }
+        }
       }
 
       const result = await userService.updateOnboarding({
