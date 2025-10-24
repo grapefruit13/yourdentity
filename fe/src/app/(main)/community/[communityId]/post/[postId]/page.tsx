@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CommunityDetail from "@/components/community/CommunityDetail";
 import { samplePosts } from "@/constants/community/sampleData";
@@ -14,13 +15,6 @@ const transformApiDataToCommunityPost = (
   apiData: GETCommunityPostDetailRes,
   communityId: string
 ): CommunityPost => {
-  // content 배열에서 텍스트 내용들을 추출하여 하나의 문자열로 결합
-  const fullContent = apiData.content
-    .filter((item) => item.type === "text")
-    .sort((a, b) => a.order - b.order)
-    .map((item) => item.content)
-    .join("\n\n");
-
   return {
     id: apiData.id,
     communityId: communityId,
@@ -31,7 +25,7 @@ const transformApiDataToCommunityPost = (
       avatar: undefined, // 기본값, 추후 API에서 제공될 수 있음
     },
     date: apiData.timeAgo,
-    content: fullContent || apiData.preview.description, // content가 없으면 preview.description 사용
+    content: apiData.preview.description,
     category: apiData.category || "일상 공유",
     tags: apiData.tags,
     stats: {
@@ -53,13 +47,31 @@ const CommunityDetailPage = () => {
   const communityId = params.communityId as string;
   const postId = params.postId as string;
 
-  const { data, isLoading, isSuccess, error } = useGetCommunityPostDetail({
+  const { data, isLoading, error } = useGetCommunityPostDetail({
     communityId,
     postId,
   });
 
-  const post =
-    isSuccess && transformApiDataToCommunityPost(data.data, communityId);
+  // API 에러 시 샘플 데이터로 폴백
+  const [fallbackPost, setFallbackPost] = useState<CommunityPost | null>(null);
+
+  useEffect(() => {
+    if (error) {
+      // API 에러 시 샘플 데이터에서 해당 postId 찾기
+      const foundPost = samplePosts.find((p) => p.id === postId);
+      if (foundPost) {
+        setFallbackPost(foundPost);
+      }
+    }
+  }, [error, postId]);
+
+  // API 데이터를 기존 타입으로 변환
+  const apiPost = data?.data
+    ? transformApiDataToCommunityPost(data.data, communityId)
+    : null;
+
+  // API 성공 시 API 데이터, 에러 시 폴백 데이터 사용
+  const post = apiPost || fallbackPost;
 
   if (isLoading) {
     return (
@@ -74,20 +86,15 @@ const CommunityDetailPage = () => {
   if (!post) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex flex-col items-center justify-center py-8">
-          <div className="mb-4 text-gray-500">
+        <div className="flex items-center justify-center py-8">
+          <div className="text-gray-500">
             {error
               ? "포스트를 불러오는 중 오류가 발생했습니다."
               : "포스트를 찾을 수 없습니다."}
           </div>
-          {error && (
-            <div className="mb-4 text-sm text-gray-400">
-              {error.message || "알 수 없는 오류"}
-            </div>
-          )}
           <button
             onClick={() => router.push("/community")}
-            className="px-4 py-2 text-sm text-blue-600 underline hover:text-blue-800"
+            className="mt-2 text-sm text-blue-600 underline hover:text-blue-800"
           >
             커뮤니티로 돌아가기
           </button>

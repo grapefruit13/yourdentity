@@ -6,7 +6,11 @@ import { CommunityPost } from "@/types/community";
  */
 export const samplePosts: CommunityPost[] = [
   {
+<<<<<<< HEAD
     id: "AMrsQRg9tBY0ZGJMbKG2",
+=======
+    id: "1",
+>>>>>>> 576ba5d (fix: coderabbit 하드코딩 문제 수정)
     communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
@@ -25,7 +29,11 @@ export const samplePosts: CommunityPost[] = [
     thumbnail: "/imgs/mockup.jpg",
   },
   {
+<<<<<<< HEAD
     id: "jpb8WjP7poOmI07Z7tU8",
+=======
+    id: "2",
+>>>>>>> 576ba5d (fix: coderabbit 하드코딩 문제 수정)
     communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
@@ -44,7 +52,11 @@ export const samplePosts: CommunityPost[] = [
     thumbnail: "/imgs/mockup2.jpg",
   },
   {
+<<<<<<< HEAD
     id: "45Sb6iETW1lNgyHBVS75",
+=======
+    id: "3",
+>>>>>>> 576ba5d (fix: coderabbit 하드코딩 문제 수정)
     communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
