@@ -62,9 +62,6 @@ const router = express.Router();
  *                   PRIVACY:
  *                     type: boolean
  *                     description: 개인정보 처리방침 (필수)
- *                   MARKETING:
- *                     type: boolean
- *                     description: 마케팅 수신 동의 (선택)
  *             example:
  *               name: 홍길동
  *               nickname: gildong
@@ -75,7 +72,6 @@ const router = express.Router();
  *               terms:
  *                 SERVICE: true
  *                 PRIVACY: true
- *                 MARKETING: false
  *     responses:
  *       200:
  *         description: 온보딩 업데이트 성공

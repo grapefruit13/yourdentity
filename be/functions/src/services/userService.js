@@ -116,7 +116,6 @@ class UserService {
       // 약관 동의 정보를 users 필드에 저장 (true/false 구조)
       update.serviceTermsAgreed = terms.SERVICE === true;
       update.servicePrivacyAgreed = terms.PRIVACY === true;
-      update.marketingTermsAgreed = terms.MARKETING === true;
       update.termsAgreedAt = FieldValue.serverTimestamp();
     }
 
