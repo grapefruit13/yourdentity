@@ -52,10 +52,38 @@ const errorHandler = (err, req, res, next) => {
       break;
 
     case "RESOURCE_ALREADY_EXISTS":
-    case "USER_ALREADY_EXISTS":
-    case "EMAIL_ALREADY_EXISTS":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
+      break;
+
+    case "USER_ALREADY_EXISTS":
+      httpStatus = 409;
+      if (!err.message) errorMessage = "이미 존재하는 사용자입니다";
+      break;
+
+    case "EMAIL_ALREADY_EXISTS":
+      httpStatus = 409;
+      if (!err.message) errorMessage = "이미 사용 중인 이메일입니다";
+      break;
+
+    case "NICKNAME_TAKEN":
+      httpStatus = 409;
+      if (!err.message) errorMessage = "이미 사용 중인 닉네임입니다";
+      break;
+
+    case "TERMS_REQUIRED_FOR_EMAIL":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "이메일 회원가입 시 약관 동의가 필요합니다";
+      break;
+
+    case "REQUIRED_TERM_NOT_AGREED":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "필수 약관에 동의해야 합니다";
+      break;
+
+    case "REQUIRE_FIELDS_MISSING":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "필수 입력 항목이 누락되었습니다";
       break;
 
     case "DUPLICATE_REPORT":

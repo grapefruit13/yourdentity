@@ -1,4 +1,5 @@
 const UserService = require("../services/userService");
+const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
@@ -58,9 +59,44 @@ class UserController {
      * @param {Object} res - Express response object
      * @param {Function} next - Express next function
      */
+  /**
+   * 본인 정보 조회
+   * GET /users/me
+   */
+  async getMe(req, res, next) {
+    try {
+      const {uid} = req.user; // authGuard에서 설정
+      const user = await userService.getUserById(uid);
+      if (!user) {
+        const err = new Error("사용자를 찾을 수 없습니다");
+        err.code = "NOT_FOUND";
+        throw err;
+      }
+      return res.success({user});
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 특정 사용자 정보 조회 (Admin 또는 본인만)
+   * GET /users/:userId
+   */
   async getUserById(req, res, next) {
     try {
       const {userId} = req.params;
+      const {uid, customClaims} = req.user; // authGuard에서 설정
+
+      // 권한 체크: 본인이거나 Admin만 조회 가능
+      const isOwner = userId === uid;
+      const isAdmin = customClaims?.role === "admin";
+
+      if (!isOwner && !isAdmin) {
+        const err = new Error("권한이 없습니다");
+        err.code = "FORBIDDEN";
+        throw err;
+      }
+
       const user = await userService.getUserById(userId);
       if (!user) {
         const err = new Error("사용자를 찾을 수 없습니다");
@@ -74,52 +110,57 @@ class UserController {
   }
 
   /**
-   * 온보딩 과정용 : 사용자 정보 수정 API
-   *
-   * 사용 시나리오:
-   * - Auth Trigger로 이미 생성된 사용자 문서를 업데이트
-   * - 온보딩 과정에서 추가 정보 입력 시 (닉네임, 프로필 이미지 등)
-   * - 사용자가 프로필 정보를 수정할 때
-   *
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
+   * 온보딩 정보 업데이트
+   * PATCH /users/me/onboarding
+   * 
+   * Body:
+   * - name, nickname, birthDate, gender, phoneNumber
+   * - terms: { SERVICE: boolean, PRIVACY: boolean }
    */
-  async provisionUser(req, res, next) {
+  async updateOnboarding(req, res, next) {
     try {
-      // authGuard 미들웨어에서 설정한 req.user 사용
       const {uid} = req.user;
-      const {email, name, profileImageUrl, birthYear, authType, snsProvider} =
-          req.body;
+      const {name, nickname, birthDate, gender, phoneNumber, terms} = req.body || {};
 
-      // 사용자 정보 업데이트
-      const result = await userService.updateUserInfo(uid, {
-        email,
-        name,
-        profileImageUrl,
-        birthYear, // 추후 카카오 심사 후 제공
-        authType,
-        snsProvider,
+      // 약관 검증
+      if (terms !== undefined) {
+        // 필수 약관 동의 여부 확인
+        const requiredTerms = ["SERVICE", "PRIVACY"];
+        for (const term of requiredTerms) {
+          if (terms[term] !== true) {
+            const err = new Error(`필수 약관에 동의해야 합니다: ${term}`);
+            err.code = "INVALID_INPUT";
+            throw err;
+          }
+        }
+
+        // 약관 동의 값 타입 검증
+        for (const [key, value] of Object.entries(terms)) {
+          if (typeof value !== "boolean") {
+            const err = new Error(`약관 동의 값은 boolean 타입이어야 합니다: ${key}`);
+            err.code = "INVALID_INPUT";
+            throw err;
+          }
+        }
+      }
+
+      const result = await userService.updateOnboarding({
+        uid,
+        payload: {name, nickname, birthDate, gender, phoneNumber, terms},
       });
-      return res.success({user: result.user});
+
+      return res.success({onboardingCompleted: result.onboardingCompleted});
     } catch (error) {
-      console.error("사용자 프로비저닝 에러:", error);
       return next(error);
     }
   }
 
-  /**
-   * 사용자 정보 수정 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
   async updateUser(req, res, next) {
     try {
       const {userId} = req.params;
       const {
-        name, profileImageUrl, birthYear, rewardPoints, level, badges,
-        points, mainProfileId, onBoardingComplete, uploadQuotaBytes,
+        name, profileImageUrl, birthDate, rewardPoints, level, badges,
+        points, mainProfileId, onboardingCompleted, uploadQuotaBytes,
         usedStorageBytes,
       } = req.body;
 
@@ -137,9 +178,6 @@ class UserController {
       if (mainProfileId !== undefined) {
         updateData.mainProfileId = mainProfileId;
       }
-      if (birthYear !== undefined) {
-        updateData.birthYear = birthYear;
-      }
       if (rewardPoints !== undefined) {
         updateData.rewardPoints = rewardPoints;
       }
@@ -155,8 +193,11 @@ class UserController {
       if (badges !== undefined) {
         updateData.badges = badges;
       }
-      if (onBoardingComplete !== undefined) {
-        updateData.onBoardingComplete = onBoardingComplete;
+      if (onboardingCompleted !== undefined) {
+        updateData.onboardingCompleted = onboardingCompleted;
+      }
+      if (birthDate !== undefined) {
+        updateData.birthDate = birthDate;
       }
 
       if (Object.keys(updateData).length === 0) {

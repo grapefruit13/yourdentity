@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const {FieldValue} = require("firebase-admin/firestore");
+const {AUTH_TYPES, USER_ROLES} = require("../constants/userConstants");
 
 // Admin 초기화 (프로덕션에서는 기본 서비스 계정 사용)
 if (!admin.apps.length) {
@@ -28,7 +29,7 @@ exports.createUserDocument = functions
 
         // Provider ID 추출 및 정규화
         const providerId = user.providerData?.[0]?.providerId;
-        let provider = "email"; // 기본값
+        let provider = AUTH_TYPES.EMAIL; // 기본값
 
         if (providerId) {
           if (providerId.startsWith("oidc.")) {
@@ -36,7 +37,7 @@ exports.createUserDocument = functions
             provider = providerId.replace("oidc.", "");
           } else if (providerId === "password") {
             // 이메일/비밀번호 인증
-            provider = "email";
+            provider = AUTH_TYPES.EMAIL;
           } else {
             // 기타 제공자
             provider = providerId;
@@ -45,36 +46,44 @@ exports.createUserDocument = functions
 
         // 🆕 Firestore 사용자 문서 생성
         const userDoc = {
-        // 기본 정보
-          name: user.displayName || "사용자 이름", // 추후 온보딩에서 설정
+          // 기본 정보
+          name: user.displayName || "", // 이메일: 온보딩 필수, 카카오: 카카오에서 제공
           email: email || null,
+          nickname: "", // 온보딩에서 필수 입력
           profileImageUrl: user.photoURL || "",
-          birthYear: null, // 추후 카카오 심사 후 제공
-          phoneNumber: "",
-          phoneVerified: false,
+          birthDate: null, // 이메일: 온보딩 필수, 카카오: 카카오 심사 후 제공
+          gender: null, // 온보딩에서 선택 입력 (MALE | FEMALE | null)
+          phoneNumber: "", // 온보딩에서 선택 입력
+          address: "",
+          addressDetail: "",
 
           // 인증 정보
-          authType: provider === "email" ? "email" : "sns",
-          snsProvider: provider === "email" ? null : provider,
+          authType: provider === AUTH_TYPES.EMAIL ? AUTH_TYPES.EMAIL : AUTH_TYPES.SNS,
+          snsProvider: provider === AUTH_TYPES.EMAIL ? null : provider,
 
           // 사용자 상태
-          role: "user",
-          onBoardingComplete: false,
+          role: USER_ROLES.USER,
+          onboardingCompleted: false, // 온보딩 완료 시 true로 변경
 
           // 리워드 시스템
           rewardPoints: 0,
           level: 1,
           badges: [],
           points: "0",
-          mainProfileId: "", // 온보딩에서 멀티프로필 생성 후 설정
 
           // 스토리지 관리
           uploadQuotaBytes: 1073741824, // 1GB
           usedStorageBytes: 0,
 
+          // 마케팅/유입
+          utmSource: "",
+          inviter: null,
+          penalty: false,
+
           // 타임스탬프
           createdAt: FieldValue.serverTimestamp(),
           lastLogin: FieldValue.serverTimestamp(),
+          lastUpdated: FieldValue.serverTimestamp(),
         };
 
         // Firestore 문서 생성

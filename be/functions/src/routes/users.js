@@ -13,22 +13,15 @@ const router = express.Router();
 
 /**
  * @swagger
- * /users/provision:
- *   post:
- *     summary: 사용자 프로비저닝 (개발/테스트용)
+ * /users/me/onboarding:
+ *   patch:
+ *     summary: 온보딩 정보 업데이트 (본인)
  *     description: |
- *       ⚠️ **개발/테스트용 API**
+ *       이름/닉네임/출생년도/생년월일/성별/전화번호 등 온보딩 정보를 업데이트합니다.
  *       
- *       Auth Trigger로 생성된 사용자 문서를 수동으로 업데이트할 때 사용
- *       
- *       **실제 프로덕션 플로우:**
- *       1. FE에서 회원가입 (Firebase Client SDK)
- *       2. authTrigger 자동 실행 → Firestore 문서 생성
- *       3. 온보딩 API로 추가 정보 입력
- *       
- *       **이 API 사용 시나리오 (개발/테스트만):**
- *       - authTrigger 실패 시 수동 복구
- *       - 테스트 데이터 수정
+ *       **필수 필드 정책:**
+ *       - 카카오: nickname (필수), phoneNumber (선택), gender (선택)
+ *       - 이메일: name, nickname, birthDate, terms (필수), gender, phoneNumber (선택)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -39,56 +32,105 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: user@example.com
  *               name:
  *                 type: string
- *                 example: 홍길동
- *               profileImageUrl:
+ *                 description: 사용자 이름 (이메일 필수)
+ *               nickname:
  *                 type: string
- *                 example: https://example.com/photo.jpg
- *               birthYear:
- *                 type: number
- *                 example: 1990
- *               authType:
+ *                 description: 닉네임 (카카오/이메일 필수)
+ *               birthDate:
  *                 type: string
- *                 enum: [email, sns]
- *                 example: sns
- *               snsProvider:
+ *                 description: 생년월일 YYYY-MM-DD (이메일 필수)
+ *                 example: 2000-01-31
+ *               gender:
  *                 type: string
- *                 enum: [kakao, google]
- *                 example: kakao
+ *                 enum: [MALE, FEMALE, null]
+ *                 description: 성별 (선택)
+ *               phoneNumber:
+ *                 type: string
+ *                 description: 전화번호 (선택)
+ *               terms:
+ *                 type: object
+ *                 description: 약관 동의 (이메일 필수)
+ *                 properties:
+ *                   SERVICE:
+ *                     type: boolean
+ *                     description: 서비스 이용약관 (필수)
+ *                   PRIVACY:
+ *                     type: boolean
+ *                     description: 개인정보 처리방침 (필수)
+ *             example:
+ *               name: 홍길동
+ *               nickname: gildong
+ *               birthDate: 1998-01-02
+ *               gender: MALE
+ *               phoneNumber: 010-1234-5678
+ *               terms:
+ *                 SERVICE: true
+ *                 PRIVACY: true
  *     responses:
  *       200:
- *         description: 프로비저닝 성공
+ *         description: 온보딩 업데이트 성공
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/StandardResponse'
- *                 - type: object
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
  *                   properties:
- *                     data:
- *                       type: object
- *                       properties:
- *                         user:
- *                           $ref: '#/components/schemas/User'
+ *                     onboardingCompleted:
+ *                       type: boolean
+ *                       example: true
+ *       400:
+ *         description: 잘못된 입력 (필드 형식 오류/필수값 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: 닉네임 중복 등 충돌(NICKNAME_TAKEN)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Error'
  */
-router.post("/provision", authGuard, userController.provisionUser);
+
+/**
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: 본인 정보 조회
+ *     description: 인증된 사용자의 정보를 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 사용자 정보 조회 성공
+ *       401:
+ *         description: 인증 실패
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ */
+router.get("/me", authGuard, userController.getMe);
+
+router.patch("/me/onboarding", authGuard, userController.updateOnboarding);
 
 /**
  * @swagger
@@ -129,9 +171,6 @@ router.post("/provision", authGuard, userController.provisionUser);
  *               profileImageUrl:
  *                 type: string
  *                 example: https://example.com/profile.jpg
- *               birthYear:
- *                 type: number
- *                 example: 1990
  *               authType:
  *                 type: string
  *                 enum: [email, sns]
@@ -279,9 +318,6 @@ router.get("/:userId", userController.getUserById);
  *               profileImageUrl:
  *                 type: string
  *                 example: https://example.com/new-profile.jpg
- *               birthYear:
- *                 type: number
- *                 example: 1990
  *               rewardPoints:
  *                 type: number
  *                 example: 1000
@@ -299,7 +335,7 @@ router.get("/:userId", userController.getUserById);
  *               mainProfileId:
  *                 type: string
  *                 example: profile_abc123
- *               onBoardingComplete:
+ *               onboardingCompleted:
  *                 type: boolean
  *                 example: true
  *               uploadQuotaBytes:

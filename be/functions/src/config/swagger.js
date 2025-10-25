@@ -117,7 +117,7 @@ const options = {
               description: "사용자 권한",
               example: "user",
             },
-            onBoardingComplete: {
+            onboardingCompleted: {
               type: "boolean",
               description: "온보딩 완료 여부",
               example: false,
