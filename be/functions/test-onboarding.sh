@@ -1,9 +1,9 @@
 #!/bin/bash
+set -euo pipefail
 
 # 색상 정의
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 API="http://localhost:5001/youthvoice-2025/asia-northeast3/api"
