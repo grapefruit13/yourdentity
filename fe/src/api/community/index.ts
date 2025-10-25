@@ -3,10 +3,12 @@ import { get } from "@/lib/axios";
 import {
   GETCommunityListReq,
   GETCommunityPostListReq,
+  GETCommunityPostDetailReq,
 } from "@/types/community/request";
 import {
   GETCommunityListRes,
   GETCommunityPostListRes,
+  GETCommunityPostDetailRes,
 } from "@/types/community/response";
 import { Result } from "@/types/shared/response";
 
@@ -36,7 +38,18 @@ const getPostList = async (request: GETCommunityPostListReq) => {
   return response.data;
 };
 
+/**
+ * @description 커뮤니티 게시글 상세 조회
+ */
+const getPostDetail = async (request: GETCommunityPostDetailReq) => {
+  const response = await get<Result<GETCommunityPostDetailRes>>(
+    API_PATH.COMMUNITIES.POST_DETAIL(request.communityId, request.postId)
+  );
+  return response.data;
+};
+
 export const communityApi = {
   getList,
   getPostList,
+  getPostDetail,
 };

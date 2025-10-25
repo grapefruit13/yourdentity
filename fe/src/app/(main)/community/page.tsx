@@ -20,7 +20,7 @@ const Page = () => {
   const { posts, loading, error, refetch } = useCommunityPosts();
 
   const handlePostClick = (post: CommunityPost) => {
-    router.push(`/community/${post.id}`);
+    router.push(`/community/${post.communityId}/post/${post.id}`);
   };
 
   const handleFilterChange = (filter: string) => {

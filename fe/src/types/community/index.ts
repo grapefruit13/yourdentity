@@ -15,6 +15,7 @@ export interface PostStats {
 
 export interface CommunityPost {
   id: string;
+  communityId: string;
   title: string;
   author: Author;
   date: string;

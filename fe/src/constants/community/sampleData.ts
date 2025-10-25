@@ -7,6 +7,7 @@ import { CommunityPost } from "@/types/community";
 export const samplePosts: CommunityPost[] = [
   {
     id: "1",
+    communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
       name: "유어123",
@@ -25,6 +26,7 @@ export const samplePosts: CommunityPost[] = [
   },
   {
     id: "2",
+    communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
       name: "유어123",
@@ -43,6 +45,7 @@ export const samplePosts: CommunityPost[] = [
   },
   {
     id: "3",
+    communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
       name: "유어123",

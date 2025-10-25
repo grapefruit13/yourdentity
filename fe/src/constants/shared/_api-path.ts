@@ -73,6 +73,8 @@ const GATHERINGS = {
 const COMMUNITIES = {
   ROOT: BASE.COMMUNITIES,
   POSTS: `${BASE.COMMUNITIES}/${SEGMENTS.POSTS}`,
+  POST_DETAIL: (communityId: string, postId: string) =>
+    `${BASE.COMMUNITIES}/${communityId}/${SEGMENTS.POSTS}/${postId}`,
 } as const;
 
 const ANNOUNCEMENTS = {

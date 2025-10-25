@@ -9,3 +9,8 @@ export interface GETCommunityPostListReq {
   size: number;
   filter: string;
 }
+
+export interface GETCommunityPostDetailReq {
+  communityId: string;
+  postId: string;
+}
