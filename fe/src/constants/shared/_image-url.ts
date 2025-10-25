@@ -53,6 +53,10 @@ const ICON = {
       alt: "눈 닫힘",
     },
   },
+  check: {
+    url: "/icons/ic-check.svg",
+    alt: "체크",
+  },
 };
 
 const IMG = {
