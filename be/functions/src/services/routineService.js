@@ -1,5 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
+const CommunityService = require("./communityService");
 const {successResponse, maskPhoneNumber, isValidPhoneNumber} = require("../utils/helpers");
 
 /**
@@ -9,6 +10,7 @@ const {successResponse, maskPhoneNumber, isValidPhoneNumber} = require("../utils
 class RoutineService {
   constructor() {
     this.firestoreService = new FirestoreService("routines");
+    this.communityService = new CommunityService();
   }
 
   /**
@@ -211,6 +213,15 @@ class RoutineService {
         throw error;
       }
 
+      if (activityNickname) {
+        const isNicknameAvailable = await this.communityService.checkNicknameAvailability(routineId, activityNickname);
+        if (!isNicknameAvailable) {
+          const error = new Error("이미 사용 중인 닉네임입니다");
+          error.code = "NICKNAME_DUPLICATE";
+          throw error;
+        }
+      }
+
       const result = await this.firestoreService.runTransaction(async (transaction) => {
         const routineRef = this.firestoreService.db.collection("routines").doc(routineId);
         const routineDoc = await transaction.get(routineRef);
@@ -271,6 +282,10 @@ class RoutineService {
           updatedAt: FieldValue.serverTimestamp(),
         });
 
+        if (activityNickname) {
+          await this.communityService.addMemberToCommunity(routineId, userId, activityNickname);
+        }
+
         return {
           applicationId: applicationRef.id,
           routine,
@@ -306,7 +321,7 @@ class RoutineService {
       };
     } catch (error) {
       console.error("Apply to routine error:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_APPLIED" || error.code === "BAD_REQUEST") {
+      if (error.code === "NOT_FOUND" || error.code === "OUT_OF_STOCK" || error.code === "ALREADY_APPLIED" || error.code === "BAD_REQUEST" || error.code === "NICKNAME_DUPLICATE") {
         throw error;
       }
       throw new Error("Failed to apply to routine");
