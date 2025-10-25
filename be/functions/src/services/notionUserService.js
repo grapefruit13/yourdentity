@@ -88,7 +88,9 @@ class NotionUserService {
           //"기본 닉네임": { rich_text: [{ text: { content: user.multiProfiles?.[user.mainProfileId]?.nickname || "" } }] },
           "기본 닉네임": { rich_text: [{ text: { content: user.nickname || "" } }] },
           "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-          "상태": { select: { name: (user.status || "데이터 없음").toUpperCase() } },
+          "상태": user.status
+             ? { select: { name: user.status } }
+             : { select: { name: "데이터 없음" } },
           "역할": { select: { name: user.role || "user" } },
           "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
           "출생연도": { number: user.birthYear || null },
@@ -121,18 +123,18 @@ class NotionUserService {
           },
           "자격정지 상태": user.suspensionType ? {
             status: { name: user.suspensionType }
-          } : "",
+          } : undefined,
           "자격정지 기간(일시정지)": (user.suspensionStart && user.suspensionEnd) ? {
             date: {
               start: user.suspensionStart,
               end: user.suspensionEnd
             }
-          } : "",
+          } : undefined,
           "자격정지 정책 적용 일시": user.suspensionAppliedAt ? {
             date: { 
               start: user.suspensionAppliedAt 
             }
-          } : "",
+          } : undefined,
           "정지 사유": user.suspensionReason ? {
             rich_text: [{
               text: { content: user.suspensionReason }
@@ -275,7 +277,9 @@ async syncAllUserAccounts() {
             },
             "기본 닉네임": { rich_text: [{ text: { content: user.nickname || "" } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            "상태": { select: { name: (user.status || "데이터 없음").toUpperCase() } },
+            "상태": user.status
+               ? { select: { name: user.status } }
+               : { select: { name: "데이터 없음" } },
             "역할": { select: { name: user.role || "user" } },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "출생연도": { number: user.birthYear || null },
@@ -548,7 +552,6 @@ async syncPenaltyUsers() {
 
       // Firebase 자격정지 정보 업데이트
       await userRef.update({
-        suspended: true,
         suspensionType: penaltyStatus,
         suspensionReason: penaltyReason,
         suspensionStart: finalSuspensionStart,

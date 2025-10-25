@@ -21,7 +21,7 @@ class NotionUserController {
       res.success(`회원 전체 재동기화 완료: ${result.syncedCount}명`);
     } catch (error) {
       console.error("[Controller Error] syncAllUserAccounts:", error);
-      res.error(500, "회원 전체 재동기화 중 오류가 발생했습니다.");
+      res.error(error);
     }
   }
 
