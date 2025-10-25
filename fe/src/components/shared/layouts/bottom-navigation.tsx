@@ -13,7 +13,7 @@ const BottomNavigation = () => {
   const pathname = usePathname();
 
   return (
-    <nav className="pb-safe fixed bottom-0 left-1/2 z-50 flex w-full -translate-x-1/2 items-center justify-center gap-14 border-t border-gray-200 bg-white/90 pt-3 backdrop-blur-sm">
+    <nav className="pb-safe fixed bottom-0 left-1/2 z-50 flex w-full max-w-[470px] -translate-x-1/2 items-center justify-center gap-14 border-t border-gray-200 bg-white/90 pt-3 backdrop-blur-sm">
       {BOTTOM_NAV_TABS.map((tab) => {
         const isActive = pathname.startsWith(tab.href);
 

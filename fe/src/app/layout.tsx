@@ -257,7 +257,7 @@ export default function RootLayout({
       <body
         className={cn(
           notoSansKr.variable,
-          "mx-auto flex h-screen w-full max-w-[470px] flex-col"
+          "mx-auto flex h-screen w-full max-w-[470px] flex-col pt-12"
         )}
       >
         <QueryProvider>
