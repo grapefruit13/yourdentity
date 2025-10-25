@@ -203,6 +203,158 @@ class ProgramController {
     }
   }
 
+  /**
+   * 프로그램 신청
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async applyToProgram(req, res, next) {
+    try {
+      const { programId } = req.params;
+      const { applicantId, nickname } = req.body;
+
+      if (!programId) {
+        const error = new Error("프로그램 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      // 필수 필드 검증
+      if (!applicantId || !nickname) {
+        const error = new Error("신청자 ID와 참여용 닉네임은 필수 입력 항목입니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      // 닉네임 길이 검증
+      if (nickname.length < 1 || nickname.length > 50) {
+        const error = new Error("닉네임은 1-50자 사이여야 합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await programService.applyToProgram(programId, { applicantId, nickname });
+
+      res.success({
+        message: "프로그램 신청이 완료되었습니다.",
+        data: result
+      }, 201);
+
+    } catch (error) {
+      console.error("[ProgramController] 프로그램 신청 오류:", error.message);
+      
+      // 특정 에러 코드에 대한 상태 코드 설정
+      if (error.code === 'NICKNAME_DUPLICATE') {
+        error.statusCode = 409;
+      } else if (error.code === 'DUPLICATE_APPLICATION') {
+        error.statusCode = 409;
+      } else if (error.code === 'PROGRAM_NOT_FOUND') {
+        error.statusCode = 404;
+      }
+      
+      return next(error);
+    }
+  }
+
+ㅇ  /**
+   * 프로그램 신청 승인
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async approveApplication(req, res, next) {
+    try {
+      const { programId, applicationId } = req.params;
+      const { notionPageId } = req.query;
+
+      if (!programId || !applicationId) {
+        const error = new Error("프로그램 ID와 신청 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await programService.approveApplication(programId, applicationId, notionPageId);
+
+      // HTML 응답으로 반환 (Notion에서 링크로 호출)
+      const htmlResponse = `
+        <html>
+          <head>
+            <title>신청 승인 완료</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .success { color: #28a745; }
+              .info { color: #6c757d; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <h1 class="success">✅ 신청이 승인되었습니다!</h1>
+            <p class="info">이 페이지를 닫아도 됩니다.</p>
+          </body>
+        </html>
+      `;
+
+      res.set('Content-Type', 'text/html');
+      res.send(htmlResponse);
+
+    } catch (error) {
+      console.error("[ProgramController] 신청 승인 오류:", error.message);
+      
+      const errorHtml = `
+        <html>
+          <head>
+            <title>오류 발생</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .error { color: #dc3545; }
+            </style>
+          </head>
+          <body>
+            <h1 class="error">❌ 오류가 발생했습니다</h1>
+            <p>${error.message}</p>
+          </body>
+        </html>
+      `;
+      
+      res.set('Content-Type', 'text/html');
+      res.status(error.statusCode || 500).send(errorHtml);
+    }
+  }
+
+  /**
+   * 프로그램 신청 승인 취소
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async rejectApplication(req, res, next) {
+    try {
+      const { programId, applicationId } = req.params;
+
+      if (!programId || !applicationId) {
+        const error = new Error("프로그램 ID와 신청 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await programService.rejectApplication(programId, applicationId);
+
+      res.success({
+        message: "신청 승인이 취소되었습니다.",
+        data: result
+      });
+
+    } catch (error) {
+      console.error("[ProgramController] 신청 승인 취소 오류:", error.message);
+      return next(error);
+    }
+  }
+
 }
 
 module.exports = new ProgramController();
