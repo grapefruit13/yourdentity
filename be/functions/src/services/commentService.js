@@ -11,7 +11,9 @@ const {sanitizeContent} = require("../utils/sanitizeHelper");
 class CommentService {
   
   static MAX_PARENT_COMMENTS_FOR_REPLIES = 10; 
-  static MAX_NOTIFICATION_TEXT_LENGTH = 10;   constructor() {
+  static MAX_NOTIFICATION_TEXT_LENGTH = 10;
+
+  constructor() {
     this.firestoreService = new FirestoreService("comments");
     this.userService = new UserService();
   }
