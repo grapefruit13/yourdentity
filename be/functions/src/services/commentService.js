@@ -25,14 +25,12 @@ class CommentService {
     try {
       const {content, parentId = null} = commentData;
 
-      // 필수 필드 검증
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("댓글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // HTML에 텍스트가 있는지 간단 검증 (HTML 태그가 아닌 텍스트가 있어야 함)
       const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
       if (textWithoutTags.length === 0) {
         const error = new Error("댓글에 텍스트 내용이 필요합니다.");
@@ -40,7 +38,6 @@ class CommentService {
         throw error;
       }
 
-      // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument(
         "communities",
         communityId,
@@ -51,7 +48,6 @@ class CommentService {
         throw error;
       }
 
-      // 게시글 존재 확인
       const post = await this.firestoreService.getDocument(`communities/${communityId}/posts`, postId);
       if (!post) {
         const error = new Error("게시글을 찾을 수 없습니다.");
@@ -59,7 +55,6 @@ class CommentService {
         throw error;
       }
 
-      // 부모 댓글 존재 확인 (대댓글인 경우)
       let parentComment = null;
       if (parentId) {
         parentComment = await this.firestoreService.getDocument("comments", parentId);
@@ -69,7 +64,6 @@ class CommentService {
           throw error;
         }
 
-        // 대댓글은 2레벨까지만 허용
         if (parentComment.parentId) {
           const error = new Error("대댓글은 2레벨까지만 허용됩니다.");
           error.code = "BAD_REQUEST";
@@ -77,7 +71,6 @@ class CommentService {
         }
       }
 
-      // 댓글 작성자 닉네임 가져오기
       let author = "익명";
       try {
         const members = await this.firestoreService.getCollectionWhere(
@@ -145,13 +138,12 @@ class CommentService {
 
       
       if (parentId && parentComment && parentComment.userId !== userId) {
-        // 부모 댓글 내용 미리보기 생성 (HTML에서 텍스트 추출)
         const textOnly = typeof parentComment.content === 'string' 
           ? parentComment.content.replace(/<[^>]*>/g, '') 
           : parentComment.content;
         const commentPreview = textOnly || "댓글";
         const preview = commentPreview.length > 30 ? 
-          commentPreview.substring(0, 30) + "..." : 
+          commentPreview.substring(0, 10) + "..." : 
           commentPreview;
 
         console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
@@ -207,7 +199,6 @@ class CommentService {
       const pageNumber = parseInt(page);
       const pageSize = parseInt(size);
 
-      // 1️⃣ 부모 댓글 페이징 쿼리 (Firestore 레벨에서 페이징)
       const parentCommentsResult = await this.firestoreService.getWithPagination({
         page: pageNumber,
         size: pageSize,
@@ -252,7 +243,7 @@ class CommentService {
 
         for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
-          // Firestore Timestamp를 안전하게 처리
+         
           const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
@@ -315,28 +306,24 @@ class CommentService {
         throw error;
       }
 
-      // 소유권 검증
       if (comment.userId !== userId) {
         const error = new Error("댓글 수정 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
       }
 
-      // 삭제된 댓글은 수정 불가
       if (comment.isDeleted) {
         const error = new Error("삭제된 댓글은 수정할 수 없습니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // 필수 필드 검증
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("댓글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // HTML에 텍스트가 있는지 간단 검증
       const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
       if (textWithoutTags.length === 0) {
         const error = new Error("댓글에 텍스트 내용이 필요합니다.");
@@ -383,28 +370,24 @@ class CommentService {
         throw error;
       }
 
-      // 소유권 검증
       if (comment.userId !== userId) {
         const error = new Error("댓글 삭제 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
       }
 
-      // 이미 삭제된 댓글
       if (comment.isDeleted) {
         const error = new Error("이미 삭제된 댓글입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // 댓글을 완전 삭제하지 않고 isDeleted 플래그 설정 (대댓글 구조 유지)
       await this.firestoreService.updateDocument("comments", commentId, {
         isDeleted: true,
         content: "<p>삭제된 댓글입니다.</p>",
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // 게시글의 댓글 수 감소
       await this.firestoreService.updateDocument(
         `communities/${comment.communityId}/posts`,
         comment.postId,
@@ -447,7 +430,6 @@ class CommentService {
           throw error;
         }
 
-        // 결정적 문서 ID로 중복 생성 방지
         const likeRef = this.firestoreService.db
           .collection("likes")
           .doc(`COMMENT:${commentId}:${userId}`);
@@ -496,14 +478,13 @@ class CommentService {
             const liker = await this.userService.getUserById(userId);
             const likerName = liker?.name || "사용자";
 
-            // HTML에서 텍스트 추출
             const textOnly = typeof comment.content === 'string' 
               ? comment.content.replace(/<[^>]*>/g, '') 
               : comment.content;
             const commentPreview = textOnly || "댓글";
             const preview =
-              commentPreview.length > 50
-                ? commentPreview.substring(0, 50) + "..."
+              commentPreview.length > 30
+                ? commentPreview.substring(0, 10) + "..."
                 : commentPreview;
 
             fcmHelper
