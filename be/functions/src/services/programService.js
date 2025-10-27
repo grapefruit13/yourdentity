@@ -591,7 +591,14 @@ class ProgramService {
         throw error;
       }
 
-      // 2. 닉네임 중복 체크 (CommunityService 활용)
+      // 2. Community 존재 확인 및 생성
+      let community = await this.communityService.getCommunityMapping(programId);
+      if (!community) {
+        // Community가 없으면 프로그램 정보로 생성
+        community = await this.createCommunityFromProgram(programId, program);
+      }
+
+      // 3. 닉네임 중복 체크 (CommunityService 활용)
       const isNicknameAvailable = await this.communityService.checkNicknameAvailability(programId, nickname);
       if (!isNicknameAvailable) {
         const error = new Error("이미 사용 중인 닉네임입니다");
@@ -600,18 +607,25 @@ class ProgramService {
         throw error;
       }
 
-      // 3. CommunityService를 통해 멤버 추가
+      // 4. CommunityService를 통해 멤버 추가 (Firestore에 저장)
       const memberResult = await this.communityService.addMemberToCommunity(programId, applicantId, nickname);
 
-      // 4. Notion 프로그램신청자DB에 저장
-      const notionPageId = await this.saveToNotionApplication(programId, applicationData, program);
-
-      // 5. Firestore member에 Notion 페이지 ID 저장
-      await this.firestoreService.updateDocument(
-        `communities/${programId}/members`,
-        memberResult.id,
-        { notionPageId }
-      );
+      // 5. Notion 프로그램신청자DB에 저장
+      let notionPageId = null;
+      try {
+        notionPageId = await this.saveToNotionApplication(programId, applicationData, program);
+        
+        // 6. Notion 저장 성공 시, Firestore member에 notionPageId 업데이트
+        if (notionPageId) {
+          await this.firestoreService.updateDocument(
+            `communities/${programId}/members`,
+            applicantId,
+            { notionPageId }
+          );
+        }
+      } catch (notionError) {
+        console.warn('[ProgramService] Notion 저장 실패, Firestore만 유지:', notionError.message);
+      }
 
       return {
         applicationId: memberResult.id,
@@ -653,7 +667,8 @@ class ProgramService {
       
       const notionData = {
         parent: {
-          database_id: this.applicationDataSource
+          data_source_id: this.applicationDataSource,
+          type: "data_source_id"
         },
         properties: {
           '이름': {
@@ -687,8 +702,14 @@ class ProgramService {
       return response.id;
 
     } catch (error) {
-      console.error('[ProgramService] Notion 저장 오류:', error.message);
-      throw new Error('Notion 신청 정보 저장에 실패했습니다.');
+      console.error('[ProgramService] Notion 저장 오류:', error);
+      console.error('[ProgramService] Notion 저장 오류 상세:', {
+        message: error.message,
+        code: error.code,
+        status: error.status,
+        body: error.body
+      });
+      throw new Error(`Notion 신청 정보 저장에 실패했습니다: ${error.message}`);
     }
   }
 
@@ -794,6 +815,31 @@ class ProgramService {
       throw serviceError;
     }
   }
+
+  /**
+   * 프로그램 정보로 Community 생성
+   * @param {string} programId - 프로그램 ID (Community ID)
+   * @param {Object} program - 프로그램 정보
+   * @returns {Promise<Object>} 생성된 Community 정보
+   */
+  async createCommunityFromProgram(programId, program) {
+    try {
+      const communityData = {
+        id: programId
+      };
+
+      // Community 생성
+      await this.firestoreService.setDocument('communities', programId, communityData);
+
+      console.log(`[ProgramService] Community 생성 완료: ${programId}`);
+      return communityData;
+
+    } catch (error) {
+      console.error('[ProgramService] Community 생성 오류:', error.message);
+      throw new Error('Community 생성에 실패했습니다.');
+    }
+  }
+
 
 
 }
