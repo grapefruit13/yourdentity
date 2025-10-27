@@ -165,7 +165,7 @@ class CommentService {
         });
       }
 
-      const { isDeleted, media, ...commentWithoutDeleted } = created;
+      const { isDeleted, media, userId, ...commentWithoutDeleted } = created;
       
       return {
         id: commentId,
@@ -252,11 +252,11 @@ class CommentService {
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .map(reply => {
-              const { isDeleted, media, ...replyWithoutDeleted } = reply;
+              const { isDeleted, media, userId, ...replyWithoutDeleted } = reply;
               return replyWithoutDeleted;
             });
 
-          const { isDeleted, media, ...commentWithoutDeleted } = comment;
+          const { isDeleted, media, userId, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
@@ -343,7 +343,7 @@ class CommentService {
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
 
-      const { isDeleted, media, ...commentWithoutDeleted } = comment;
+      const { isDeleted, media, userId, ...commentWithoutDeleted } = comment;
       
       return {
         id: commentId,
