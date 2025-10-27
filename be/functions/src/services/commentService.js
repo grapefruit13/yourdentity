@@ -45,6 +45,13 @@ class CommentService {
 
       const sanitizedContent = sanitizeContent(content);
 
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      if (sanitizedText.length === 0) {
+        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
       const community = await this.firestoreService.getDocument(
         "communities",
         communityId,
@@ -342,6 +349,13 @@ class CommentService {
       }
 
       const sanitizedContent = sanitizeContent(content);
+
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      if (sanitizedText.length === 0) {
+        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       const updatedData = {
         content: sanitizedContent,
