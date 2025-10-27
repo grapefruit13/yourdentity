@@ -2,6 +2,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
+const {sanitizeContent} = require("../utils/sanitizeHelper");
 
 /**
  * Comment Service (비즈니스 로직 계층)
@@ -40,6 +41,8 @@ class CommentService {
         error.code = "BAD_REQUEST";
         throw error;
       }
+
+      const sanitizedContent = sanitizeContent(content);
 
       const community = await this.firestoreService.getDocument(
         "communities",
@@ -99,7 +102,7 @@ class CommentService {
         postId,
         userId,
         author,
-        content,
+        content: sanitizedContent,
         parentId,
         likesCount: 0,
         isDeleted: false,
@@ -162,7 +165,7 @@ class CommentService {
         });
       }
 
-      const { isDeleted, media, userId, ...commentWithoutDeleted } = created;
+      const { isDeleted, media, ...commentWithoutDeleted } = created;
       
       return {
         id: commentId,
@@ -249,11 +252,11 @@ class CommentService {
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .map(reply => {
-              const { isDeleted, media, userId, ...replyWithoutDeleted } = reply;
+              const { isDeleted, media, ...replyWithoutDeleted } = reply;
               return replyWithoutDeleted;
             });
 
-          const { isDeleted, media, userId, ...commentWithoutDeleted } = comment;
+          const { isDeleted, media, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
@@ -331,14 +334,16 @@ class CommentService {
         throw error;
       }
 
+      const sanitizedContent = sanitizeContent(content);
+
       const updatedData = {
-        content,
+        content: sanitizedContent,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
 
-      const { isDeleted, media, userId, ...commentWithoutDeleted } = comment;
+      const { isDeleted, media, ...commentWithoutDeleted } = comment;
       
       return {
         id: commentId,
