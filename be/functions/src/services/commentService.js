@@ -165,7 +165,8 @@ class CommentService {
         });
       }
 
-      const { isDeleted, media, userId, ...commentWithoutDeleted } = created;
+      // 응답에서 제외할 필드
+      const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = created;
       
       return {
         id: commentId,
@@ -252,11 +253,11 @@ class CommentService {
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .map(reply => {
-              const { isDeleted, media, userId, ...replyWithoutDeleted } = reply;
+              const { isDeleted, media, userId: _userId, ...replyWithoutDeleted } = reply;
               return replyWithoutDeleted;
             });
 
-          const { isDeleted, media, userId, ...commentWithoutDeleted } = comment;
+          const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
@@ -343,7 +344,7 @@ class CommentService {
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
 
-      const { isDeleted, media, userId, ...commentWithoutDeleted } = comment;
+      const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
       
       return {
         id: commentId,
