@@ -125,10 +125,6 @@ const authGuard = require("../middleware/authGuard");
  *                             type: string
  *                             description: 게시글 ID
  *                             example: "post_123"
- *                           userId:
- *                             type: string
- *                             description: 작성자 ID
- *                             example: "user123"
  *                           author:
  *                             type: string
  *                             description: 작성자 닉네임
@@ -278,10 +274,6 @@ router.get(
  *                       type: string
  *                       description: 게시글 ID
  *                       example: "post_123"
- *                     userId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
@@ -419,10 +411,6 @@ router.post(
  *                       type: string
  *                       description: 게시글 ID
  *                       example: "post_123"
- *                     userId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
