@@ -11,7 +11,6 @@ const {sanitizeContent} = require("../utils/sanitizeHelper");
 class CommentService {
   
   static MAX_PARENT_COMMENTS_FOR_REPLIES = 10; 
-  static MAX_NOTIFICATION_PREVIEW_LENGTH = 30; 
   static MAX_NOTIFICATION_TEXT_LENGTH = 10;   constructor() {
     this.firestoreService = new FirestoreService("comments");
     this.userService = new UserService();
@@ -148,7 +147,7 @@ class CommentService {
           ? parentComment.content.replace(/<[^>]*>/g, '') 
           : parentComment.content;
         const commentPreview = textOnly || "댓글";
-        const preview = commentPreview.length > CommentService.MAX_NOTIFICATION_PREVIEW_LENGTH ? 
+        const preview = commentPreview.length > CommentService.MAX_NOTIFICATION_TEXT_LENGTH ? 
           commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..." : 
           commentPreview;
 
@@ -494,7 +493,7 @@ class CommentService {
               : comment.content;
             const commentPreview = textOnly || "댓글";
             const preview =
-              commentPreview.length > CommentService.MAX_NOTIFICATION_PREVIEW_LENGTH
+              commentPreview.length > CommentService.MAX_NOTIFICATION_TEXT_LENGTH
                 ? commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..."
                 : commentPreview;
 
