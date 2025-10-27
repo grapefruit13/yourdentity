@@ -23,21 +23,18 @@ class CommentService {
    */
   async createComment(communityId, postId, userId, commentData) {
     try {
-      const {content = [], parentId = null} = commentData;
+      const {content, parentId = null} = commentData;
 
       // 필수 필드 검증
-      if (!content || content.length === 0) {
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("댓글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // content 배열 검증
-      const hasTextContent = content.some(
-        (item) =>
-          item.type === "text" && item.content && item.content.trim().length > 0,
-      );
-      if (!hasTextContent) {
+      // HTML에 텍스트가 있는지 간단 검증 (HTML 태그가 아닌 텍스트가 있어야 함)
+      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      if (textWithoutTags.length === 0) {
         const error = new Error("댓글에 텍스트 내용이 필요합니다.");
         error.code = "BAD_REQUEST";
         throw error;
@@ -80,31 +77,6 @@ class CommentService {
         }
       }
 
-      // content 배열에서 미디어 분리
-      const mediaItems = content.filter( (item) => item.type === "image" || item.type === "video");
-
-      // media 배열 형식으로 변환
-      const media = mediaItems.map((item, index) => {
-        const mediaItem = {
-          url: item.src || "",
-          type: item.type,
-          order: index + 1,
-          width: item.width,
-          height: item.height,
-        };
-
-        // undefined가 아닌 값만 추가
-        if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
-        if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-        if (item.videoSource !== undefined) mediaItem.videoSource = item.videoSource;
-        if (item.provider !== undefined) mediaItem.provider = item.provider;
-        if (item.duration !== undefined) mediaItem.duration = item.duration;
-        if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
-        if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-
-        return mediaItem;
-      });
-
       // 댓글 작성자 닉네임 가져오기
       let author = "익명";
       try {
@@ -132,10 +104,10 @@ class CommentService {
         userId,
         author,
         content,
-        media,
         parentId,
         likesCount: 0,
         isDeleted: false,
+        isLocked: false,
         depth: parentId ? 1 : 0,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -173,9 +145,11 @@ class CommentService {
 
       
       if (parentId && parentComment && parentComment.userId !== userId) {
-        // 부모 댓글 내용 미리보기 생성
-        const textContent = parentComment.content.find(item => item.type === "text");
-        const commentPreview = textContent ? textContent.content : "댓글";
+        // 부모 댓글 내용 미리보기 생성 (HTML에서 텍스트 추출)
+        const textOnly = typeof parentComment.content === 'string' 
+          ? parentComment.content.replace(/<[^>]*>/g, '') 
+          : parentComment.content;
+        const commentPreview = textOnly || "댓글";
         const preview = commentPreview.length > 30 ? 
           commentPreview.substring(0, 30) + "..." : 
           commentPreview;
@@ -193,9 +167,12 @@ class CommentService {
         });
       }
 
+      const { isDeleted, media, ...commentWithoutDeleted } = created;
+      
       return {
         id: commentId,
-        ...created,
+        ...commentWithoutDeleted,
+        isLocked: commentWithoutDeleted.isLocked || false,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -279,10 +256,16 @@ class CommentService {
           const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
-            .slice(0, 50);
+            .slice(0, 50)
+            .map(reply => {
+              const { isDeleted, media, ...replyWithoutDeleted } = reply;
+              return replyWithoutDeleted;
+            });
+
+          const { isDeleted, media, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
-            ...comment,
+            ...commentWithoutDeleted,
             replies: sortedReplies,
             repliesCount: replies.length, 
           };
@@ -347,62 +330,34 @@ class CommentService {
       }
 
       // 필수 필드 검증
-      if (!content || content.length === 0) {
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("댓글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // content 배열 검증
-      const hasTextContent = content.some(
-        (item) =>
-          item.type === "text" && item.content && item.content.trim().length > 0,
-      );
-      if (!hasTextContent) {
+      // HTML에 텍스트가 있는지 간단 검증
+      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      if (textWithoutTags.length === 0) {
         const error = new Error("댓글에 텍스트 내용이 필요합니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // content 배열에서 미디어 분리
-      const mediaItems = content.filter(
-        (item) => item.type === "image" || item.type === "video",
-      );
-
-      // media 배열 형식으로 변환
-      const media = mediaItems.map((item, index) => {
-        const mediaItem = {
-          url: item.src || "",
-          type: item.type,
-          order: index + 1,
-          width: item.width,
-          height: item.height,
-        };
-
-        // undefined가 아닌 값만 추가
-        if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
-        if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-        if (item.videoSource !== undefined) mediaItem.videoSource = item.videoSource;
-        if (item.provider !== undefined) mediaItem.provider = item.provider;
-        if (item.duration !== undefined) mediaItem.duration = item.duration;
-        if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
-        if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-
-        return mediaItem;
-      });
-
       const updatedData = {
         content,
-        media,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
 
+      const { isDeleted, media, ...commentWithoutDeleted } = comment;
+      
       return {
         id: commentId,
-        ...comment,
+        ...commentWithoutDeleted,
         ...updatedData,
+        isLocked: commentWithoutDeleted.isLocked || false,
       };
     } catch (error) {
       console.error("Update comment error:", error.message);
@@ -445,8 +400,7 @@ class CommentService {
       // 댓글을 완전 삭제하지 않고 isDeleted 플래그 설정 (대댓글 구조 유지)
       await this.firestoreService.updateDocument("comments", commentId, {
         isDeleted: true,
-        content: [{type: "text", content: "삭제된 댓글입니다."}],
-        media: [],
+        content: "<p>삭제된 댓글입니다.</p>",
         updatedAt: FieldValue.serverTimestamp(),
       });
 
@@ -542,8 +496,11 @@ class CommentService {
             const liker = await this.userService.getUserById(userId);
             const likerName = liker?.name || "사용자";
 
-            const textContent = comment.content.find((item) => item.type === "text");
-            const commentPreview = textContent ? textContent.content : "댓글";
+            // HTML에서 텍스트 추출
+            const textOnly = typeof comment.content === 'string' 
+              ? comment.content.replace(/<[^>]*>/g, '') 
+              : comment.content;
+            const commentPreview = textOnly || "댓글";
             const preview =
               commentPreview.length > 50
                 ? commentPreview.substring(0, 50) + "..."
