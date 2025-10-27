@@ -16,7 +16,7 @@ function sanitizeContent(dirty) {
     ],
     allowedAttributes: {
       "*": ["style"],
-      img: ["src", "width", "height", "alt"],
+      img: ["src", "width", "height", "alt", "data-blurhash", "data-mimetype"],
       iframe: ["src", "width", "height", "allowfullscreen"],
       a: ["href", "target"]
     },
@@ -28,7 +28,22 @@ function sanitizeContent(dirty) {
         "font-size": [/^\d+(px|em|rem|%)$/],
       }
     },
-    allowedSchemes: ["http", "https", "data"]
+    allowedSchemes: ["http", "https", "data"],
+    allowedSchemesByTag: {
+      a: ["http", "https", "mailto"],
+      img: ["http", "https", "data"]
+    },
+    transformTags: {
+      a: function(tagName, attribs) {
+        if (attribs.target === "_blank") {
+          attribs.rel = "noopener noreferrer";
+        }
+        return {
+          tagName: tagName,
+          attribs: attribs
+        };
+      }
+    }
   });
 }
 

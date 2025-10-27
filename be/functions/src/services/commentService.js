@@ -249,9 +249,14 @@ class CommentService {
         for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
          
-          const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
+          const ts = (t) => {
+            if (t && typeof t.toMillis === "function") return t.toMillis();
+            const ms = new Date(t).getTime();
+            return Number.isFinite(ms) ? ms : 0;
+          };
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
+            .slice(0, 50)
             .map(reply => {
               const { isDeleted, media, userId: _userId, ...replyWithoutDeleted } = reply;
               return replyWithoutDeleted;
