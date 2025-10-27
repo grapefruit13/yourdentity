@@ -8,7 +8,10 @@ const UserService = require("./userService");
  * 댓글 관련 모든 비즈니스 로직 처리
  */
 class CommentService {
-  constructor() {
+  
+  static MAX_PARENT_COMMENTS_FOR_REPLIES = 10; 
+  static MAX_NOTIFICATION_PREVIEW_LENGTH = 30; 
+  static MAX_NOTIFICATION_TEXT_LENGTH = 10;   constructor() {
     this.firestoreService = new FirestoreService("comments");
     this.userService = new UserService();
   }
@@ -142,8 +145,8 @@ class CommentService {
           ? parentComment.content.replace(/<[^>]*>/g, '') 
           : parentComment.content;
         const commentPreview = textOnly || "댓글";
-        const preview = commentPreview.length > 30 ? 
-          commentPreview.substring(0, 10) + "..." : 
+        const preview = commentPreview.length > CommentService.MAX_NOTIFICATION_PREVIEW_LENGTH ? 
+          commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..." : 
           commentPreview;
 
         console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
@@ -218,20 +221,18 @@ class CommentService {
       if (paginatedParentComments.length > 0) {
         const parentIds = paginatedParentComments.map(comment => comment.id);
         
-        if (parentIds.length > 10) {
-          console.warn(`부모댓글: (${parentIds.length}) 10개 초과`);
-          parentIds.splice(10);
+        if (parentIds.length > CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES) {
+          console.warn(`부모댓글: (${parentIds.length}) ${CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES}개 초과`);
+          parentIds.splice(CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES);
         }
 
-        const [allReplies] = await Promise.all([
-          this.firestoreService.getCollectionWhereMultiple(
-            "comments",
-            [
-              { field: "parentId", operator: "in", value: parentIds },
-              { field: "isDeleted", operator: "==", value: false }
-            ]
-          )
-        ]);
+        const allReplies = await this.firestoreService.getCollectionWhereMultiple(
+          "comments",
+          [
+            { field: "parentId", operator: "in", value: parentIds },
+            { field: "isDeleted", operator: "==", value: false }
+          ]
+        );
 
         const repliesByParentId = {};
         allReplies.forEach(reply => {
@@ -247,7 +248,6 @@ class CommentService {
           const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
-            .slice(0, 50)
             .map(reply => {
               const { isDeleted, media, ...replyWithoutDeleted } = reply;
               return replyWithoutDeleted;
@@ -483,8 +483,8 @@ class CommentService {
               : comment.content;
             const commentPreview = textOnly || "댓글";
             const preview =
-              commentPreview.length > 30
-                ? commentPreview.substring(0, 10) + "..."
+              commentPreview.length > CommentService.MAX_NOTIFICATION_PREVIEW_LENGTH
+                ? commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..."
                 : commentPreview;
 
             fcmHelper
