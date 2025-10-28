@@ -2,12 +2,15 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
+const {sanitizeContent} = require("../utils/sanitizeHelper");
 
 /**
  * Community Service (비즈니스 로직 계층)
  * 커뮤니티 관련 모든 비즈니스 로직 처리
  */
 class CommunityService {
+  static MAX_PREVIEW_TEXT_LENGTH = 30;
+
   constructor() {
     this.firestoreService = new FirestoreService("communities");
     this.userService = new UserService();
@@ -108,38 +111,54 @@ class CommunityService {
    * @return {Object} 프리뷰 객체
    */
   createPreview(post) {
-    const contentArr = Array.isArray(post.content) ? post.content : [];
-    const mediaArr = Array.isArray(post.media) ? post.media : [];
-    
-    const textContents = contentArr.filter(
-      (item) => item.type === "text" && item.text && item.text.trim(),
-    );
-    const description = textContents.length > 0 ?
-      textContents[0].text.substring(0, 100) +
-        (textContents[0].text.length > 100 ? "..." : "") :
-      "";
+    let description = "";
+    let thumbnail = null;
+
+    if (typeof post.content === 'string') {
+      const textOnly = post.content.replace(/<[^>]*>/g, '').trim();
+      description = textOnly.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) + (textOnly.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "");
+
+      const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+      if (imgMatch) {
+        const imgTag = post.content.match(/<img[^>]*>/i)?.[0] || "";
+        const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
+        const widthMatch = imgTag.match(/width=["']?(\d+)["']?/i);
+        const heightMatch = imgTag.match(/height=["']?(\d+)["']?/i);
+        const blurHashMatch = imgTag.match(/data-blurhash=["']([^"']+)["']/i);
+
+        thumbnail = {
+          url: srcMatch ? srcMatch[1] : imgMatch[1],
+          width: widthMatch ? parseInt(widthMatch[1]) : undefined,
+          height: heightMatch ? parseInt(heightMatch[1]) : undefined,
+          blurHash: blurHashMatch ? blurHashMatch[1] : undefined,
+        };
+      }
+    } else {
+      const contentArr = Array.isArray(post.content) ? post.content : [];
+      const mediaArr = Array.isArray(post.media) ? post.media : [];
+      
+      const textContents = contentArr.filter(
+        (item) => item.type === "text" && item.text && item.text.trim(),
+      );
+      description = textContents.length > 0 ?
+        textContents[0].text.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) +
+          (textContents[0].text.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "") :
+        "";
 
       const firstImage = mediaArr.find((item) => item.type === "image") ||
-      contentArr.find((item) => item.type === "image");
-    
-    const firstVideo = mediaArr.find((item) => item.type === "video") ||
-      contentArr.find((item) => item.type === "video");
+        contentArr.find((item) => item.type === "image");
 
-    const thumbnail = firstImage ? {
-      url: firstImage.url || firstImage.src,
-      blurHash: firstImage.blurHash,
-      width: firstImage.width,
-      height: firstImage.height,
-      ratio: firstImage.width && firstImage.height ?
-        `${firstImage.width}:${firstImage.height}` : "1:1",
-    } : null;
+      thumbnail = firstImage ? {
+        url: firstImage.url || firstImage.src,
+        blurHash: firstImage.blurHash,
+        width: firstImage.width,
+        height: firstImage.height,
+      } : null;
+    }
 
     return {
       description,
       thumbnail,
-      isVideo: !!firstVideo,
-      hasImage: !!firstImage,
-      hasVideo: !!firstVideo,
     };
   }
 
@@ -295,7 +314,7 @@ class CommunityService {
     try {
       const {
         title, 
-        content = [], 
+        content, 
         media = [], 
         type, 
         channel, 
@@ -303,6 +322,28 @@ class CommunityService {
         category,
         scheduledDate
       } = postData;
+
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        const error = new Error("게시글 내용은 필수입니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      if (textWithoutTags.length === 0) {
+        const error = new Error("게시글에 텍스트 내용이 필요합니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const sanitizedContent = sanitizeContent(content);
+
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      if (sanitizedText.length === 0) {
+        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument("communities", communityId);
@@ -339,7 +380,7 @@ class CommunityService {
         authorId: userId,
         author: author,
         title,
-        content,
+        content: sanitizedContent,
         media,
         type: type || community.postType || "GENERAL",
         channel: channel || community.channel || "general",
@@ -453,11 +494,36 @@ class CommunityService {
         throw error;
       }
 
-      // 소유권 검증
       if (post.authorId !== userId) {
         const error = new Error("게시글 수정 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
+      }
+
+      if (updateData.content) {
+        if (!updateData.content || typeof updateData.content !== 'string' || updateData.content.trim().length === 0) {
+          const error = new Error("게시글 내용은 필수입니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+
+        const textWithoutTags = updateData.content.replace(/<[^>]*>/g, '').trim();
+        if (textWithoutTags.length === 0) {
+          const error = new Error("게시글에 텍스트 내용이 필요합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+
+        const sanitizedContent = sanitizeContent(updateData.content);
+
+        const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+        if (sanitizedText.length === 0) {
+          const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+
+        updateData.content = sanitizedContent;
       }
 
       const updatedData = {

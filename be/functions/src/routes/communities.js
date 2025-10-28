@@ -27,9 +27,6 @@ const authGuard = require("../middleware/authGuard");
  *           type: string
  *           enum: [ROUTINE_CERT, GATHERING_REVIEW, TMI]
  *           description: 게시글 타입
- *         membersCount:
- *           type: integer
- *           description: 멤버 수
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -63,10 +60,9 @@ const authGuard = require("../middleware/authGuard");
      *           description: 게시글 타입
      *           example: "GENERAL"
  *         content:
- *           type: array
- *           description: 게시글 내용
- *           items:
- *             $ref: '#/components/schemas/ContentItem'
+ *           type: string
+ *           description: 게시글 HTML 내용
+ *           example: "<p>게시글 내용입니다!</p>"
  *         media:
  *           type: array
  *           description: 미디어 목록
@@ -437,22 +433,9 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 description: 게시글 제목
  *                 example: "오늘의 루틴 인증!"
  *               content:
- *                 type: array
- *                 description: 게시글 내용
- *                 items:
- *                   $ref: '#/components/schemas/ContentItem'
- *                 example:
- *                   - type: "text"
- *                     order: 1
- *                     content: "오늘도 화이팅!"
- *                   - type: "image"
- *                     order: 2
- *                     url: "https://example.com/image.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                     mimeType: "image/jpeg"
- *                     processingStatus: "ready"
+ *                 type: string
+ *                 description: 게시글 HTML 내용
+ *                 example: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *               visibility:
  *                 type: string
  *                 enum: [public, private]
@@ -470,18 +453,7 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 example: "2025-10-03T17:15:04.882Z"
  *           example:
  *             title: "오늘의 루틴 인증!"
- *             content:
- *               - type: "text"
- *                 order: 1
- *                 content: "오늘도 화이팅!"
- *               - type: "image"
- *                 order: 2
- *                 url: "https://example.com/image.jpg"
- *                 width: 1080
- *                 height: 1080
- *                 blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                 mimeType: "image/jpeg"
- *                 processingStatus: "ready"
+ *             content: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *             visibility: "public"
  *             category: "한끗루틴"
  *             scheduledDate: "2025-10-03T17:15:04.882Z"
@@ -528,10 +500,9 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       description: 게시글 제목
  *                       example: "오늘의 루틴 인증!"
  *                     content:
- *                       type: array
- *                       description: 게시글 내용
- *                       items:
- *                         $ref: '#/components/schemas/ContentItem'
+ *                       type: string
+ *                       description: 게시글 HTML 내용
+ *                       example: "<p>게시글 내용입니다!</p>"
  *                     media:
  *                       type: array
  *                       description: 미디어 목록
@@ -730,18 +701,7 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                 example: "2025-10-03T17:15:04.882Z"
  *           example:
  *             title: "수정된 루틴 인증!"
- *             content:
- *               - type: "text"
- *                 order: 1
- *                 content: "수정된 내용입니다!"
- *               - type: "image"
- *                 order: 2
- *                 url: "https://example.com/updated-image.jpg"
- *                 width: 1080
- *                 height: 1080
- *                 blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                 mimeType: "image/jpeg"
- *                 processingStatus: "ready"
+ *             content: "<p>수정된 내용입니다!</p><img src=\"https://example.com/updated-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *             visibility: "public"
  *             category: "한끗루틴"
  *             scheduledDate: "2025-10-03T17:15:04.882Z"
@@ -788,10 +748,9 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       description: 게시글 제목
  *                       example: "수정된 루틴 인증!"
  *                     content:
- *                       type: array
- *                       description: 게시글 내용
- *                       items:
- *                         $ref: '#/components/schemas/ContentItem'
+ *                       type: string
+ *                       description: 게시글 HTML 내용
+ *                       example: "<p>게시글 내용입니다!</p>"
  *                     media:
  *                       type: array
  *                       description: 미디어 목록
