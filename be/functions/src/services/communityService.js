@@ -136,14 +136,18 @@ class CommunityService {
     } else {
       const contentArr = Array.isArray(post.content) ? post.content : [];
       const mediaArr = Array.isArray(post.media) ? post.media : [];
-      
-      const textContents = contentArr.filter(
-        (item) => item.type === "text" && item.text && item.text.trim(),
+
+      const textItem = contentArr.find(
+        (item) =>
+          item.type === "text" &&
+          (item.content || item.text) &&
+          (item.content || item.text).trim(),
       );
-      description = textContents.length > 0 ?
-        textContents[0].text.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) +
-          (textContents[0].text.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "") :
-        "";
+      const text = textItem ? (textItem.content || textItem.text) : "";
+      description = text
+        ? text.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) +
+          (text.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "")
+        : "";
 
       const firstImage = mediaArr.find((item) => item.type === "image") ||
         contentArr.find((item) => item.type === "image");
@@ -323,6 +327,12 @@ class CommunityService {
       
       const visibility = "PUBLIC";
 
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        const error = new Error("제목은 필수입니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("게시글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
@@ -500,7 +510,7 @@ class CommunityService {
         throw error;
       }
 
-      if (updateData.content) {
+      if (Object.prototype.hasOwnProperty.call(updateData, "content")) {
         if (!updateData.content || typeof updateData.content !== 'string' || updateData.content.trim().length === 0) {
           const error = new Error("게시글 내용은 필수입니다.");
           error.code = "BAD_REQUEST";
