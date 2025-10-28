@@ -1,6 +1,9 @@
 const admin = require("firebase-admin");
 
-// Firebase Admin SDK 초기화 (에뮬레이터 없이 실제 프로젝트에 연결)
+// Firestore 에뮬레이터 호스트 지정
+process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8081";
+
+// Firebase Admin SDK 초기화
 admin.initializeApp({
   projectId: "youthvoice-2025",
 });

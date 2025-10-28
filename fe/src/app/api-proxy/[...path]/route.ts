@@ -5,38 +5,33 @@ const API_BASE_URL =
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: { path: string[] } }
 ) {
-  const resolvedParams = await params;
-  return proxy(req, resolvedParams);
+  return proxy(req, params);
 }
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: { path: string[] } }
 ) {
-  const resolvedParams = await params;
-  return proxy(req, resolvedParams);
+  return proxy(req, params);
 }
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: { path: string[] } }
 ) {
-  const resolvedParams = await params;
-  return proxy(req, resolvedParams);
+  return proxy(req, params);
 }
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: { path: string[] } }
 ) {
-  const resolvedParams = await params;
-  return proxy(req, resolvedParams);
+  return proxy(req, params);
 }
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: { path: string[] } }
 ) {
-  const resolvedParams = await params;
-  return proxy(req, resolvedParams);
+  return proxy(req, params);
 }
 
 async function proxy(req: NextRequest, params: { path: string[] }) {
@@ -45,6 +40,8 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     const search = new URL(req.url).search;
 
     const targetUrl = `${API_BASE_URL}/${rawPath}${search}`;
+
+    console.log(`[PROXY] ${req.method} ${req.url} -> ${targetUrl}`);
 
     const res = await fetch(targetUrl, {
       method: req.method,
@@ -70,12 +67,12 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
       status: res.status,
       headers: res.headers,
     });
-  } catch (e: unknown) {
-    const error = e as Error;
+  } catch (e: any) {
+    console.error("[PROXY ERROR]", e);
     return new Response(
       JSON.stringify({
         proxyError: true,
-        message: error?.message ?? "Proxy failed",
+        message: e?.message ?? "Proxy failed",
         targetUrl: `${API_BASE_URL}/${params.path.join("/")}`,
       }),
       {
@@ -85,3 +82,4 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     );
   }
 }
+
