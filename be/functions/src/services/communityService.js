@@ -317,10 +317,11 @@ class CommunityService {
         media: postMedia = [], 
         type, 
         channel, 
-        visibility = "PUBLIC",
         category,
         scheduledDate
       } = postData;
+      
+      const visibility = "PUBLIC";
 
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("게시글 내용은 필수입니다.");

@@ -397,12 +397,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 type: string
  *                 description: 게시글 HTML 내용
  *                 example: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
- *               visibility:
- *                 type: string
- *                 enum: [public, private]
- *                 default: public
- *                 description: 게시글 공개 범위
- *                 example: "public"
  *               category:
  *                 type: string
  *                 description: 카테고리
@@ -411,13 +405,12 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 type: string
  *                 format: date-time
  *                 description: 예약 발행 날짜
- *                 example: "2025-10-03T17:15:04.882Z"
+ *                 example: "2025-10-03"
  *           example:
  *             title: "오늘의 루틴 인증!"
  *             content: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
- *             visibility: "public"
  *             category: "한끗루틴"
- *             scheduledDate: "2025-10-03T17:15:04.882Z"
+ *             scheduledDate: "2025-10-03"
  *     responses:
  *       201:
  *         description: 게시글 작성 성공
@@ -619,12 +612,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                     mimeType: "image/jpeg"
  *                     processingStatus: "ready"
- *               visibility:
- *                 type: string
- *                 enum: [public, private]
- *                 default: public
- *                 description: 게시글 공개 범위
- *                 example: "public"
  *               category:
  *                 type: string
  *                 description: 카테고리
@@ -633,13 +620,12 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                 type: string
  *                 format: date-time
  *                 description: 예약 발행 날짜
- *                 example: "2025-10-03T17:15:04.882Z"
+ *                 example: "2025-10-03"
  *           example:
  *             title: "수정된 루틴 인증!"
  *             content: "<p>수정된 내용입니다!</p><img src=\"https://example.com/updated-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
- *             visibility: "public"
  *             category: "한끗루틴"
- *             scheduledDate: "2025-10-03T17:15:04.882Z"
+ *             scheduledDate: "2025-10-03"
  *     responses:
  *       200:
  *         description: 게시글 수정 성공
