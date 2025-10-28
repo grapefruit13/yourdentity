@@ -19,9 +19,6 @@ const authGuard = require("../middleware/authGuard");
  *         content:
  *           type: array
  *           description: 댓글 내용
- *         media:
- *           type: array
- *           description: 미디어 파일
  *         parent_id:
  *           type: string
  *           nullable: true
@@ -120,36 +117,22 @@ const authGuard = require("../middleware/authGuard");
  *                             type: string
  *                             description: 댓글 ID
  *                             example: "comment_123"
- *                           type:
+ *                           communityId:
  *                             type: string
- *                             description: 댓글 타입
- *                             example: "TMI"
- *                           targetId:
+ *                             description: 커뮤니티 ID
+ *                             example: "tmi-community"
+ *                           postId:
  *                             type: string
- *                             description: 대상 게시글 ID
+ *                             description: 게시글 ID
  *                             example: "post_123"
- *                           targetPath:
- *                             type: string
- *                             description: 대상 경로
- *                             example: "communities/tmi-community/posts/post_123"
- *                           userId:
- *                             type: string
- *                             description: 작성자 ID
- *                             example: "user123"
  *                           author:
  *                             type: string
  *                             description: 작성자 닉네임
  *                             example: "사용자닉네임"
  *                           content:
- *                             type: array
- *                             description: 댓글 내용
- *                             items:
- *                               $ref: '#/components/schemas/ContentItem'
- *                           media:
- *                             type: array
- *                             description: 미디어 파일
- *                             items:
- *                               $ref: '#/components/schemas/MediaItem'
+ *                             type: string
+ *                             description: 댓글 HTML 내용
+ *                             example: "<p>댓글 내용입니다!</p>"
  *                           parentId:
  *                             type: string
  *                             nullable: true
@@ -159,32 +142,18 @@ const authGuard = require("../middleware/authGuard");
  *                             type: number
  *                             description: 댓글 깊이
  *                             example: 0
- *                           isReply:
- *                             type: boolean
- *                             description: 답글 여부
- *                             example: false
  *                           isLocked:
  *                             type: boolean
  *                             description: 잠금 여부
  *                             example: false
- *                           reportsCount:
- *                             type: number
- *                             description: 신고 수
- *                             example: 0
  *                           likesCount:
  *                             type: number
  *                             description: 좋아요 수
  *                             example: 0
- *                           deleted:
- *                             type: boolean
- *                             description: 삭제 여부
- *                             example: false
- *                           deletedAt:
- *                             type: string
- *                             format: date-time
- *                             nullable: true
- *                             description: 삭제일시
- *                             example: null
+ *                           repliesCount:
+ *                             type: number
+ *                             description: 대댓글 수
+ *                             example: 2
  *                           createdAt:
  *                             type: string
  *                             format: date-time
@@ -268,40 +237,16 @@ router.get(
  *               - content
  *             properties:
  *               content:
- *                 type: array
- *                 description: 댓글 내용
- *                 items:
- *                   $ref: '#/components/schemas/ContentItem'
- *                 example:
- *                   - type: "text"
- *                     order: 1
- *                     content: "정말 좋은 글이네요!"
- *                   - type: "image"
- *                     order: 2
- *                     url: "https://example.com/comment-image.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                     mimeType: "image/jpeg"
- *                     processingStatus: "ready"
+ *                 type: string
+ *                 description: 댓글 HTML 내용
+ *                 example: "<p>정말 좋은 글이네요!</p><img src=\"https://example.com/comment-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *               parentId:
  *                 type: string
  *                 nullable: true
  *                 description: 부모 댓글 ID (대댓글인 경우)
  *                 example: "comment_123"
  *           example:
- *             content:
- *               - type: "text"
- *                 order: 1
- *                 content: "정말 좋은 글이네요!"
- *               - type: "image"
- *                 order: 2
- *                 url: "https://example.com/comment-image.jpg"
- *                 width: 1080
- *                 height: 1080
- *                 blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                 mimeType: "image/jpeg"
- *                 processingStatus: "ready"
+ *             content: "<p>정말 좋은 글이네요!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\"/>"
  *             parentId: "comment_123"
  *     responses:
  *       201:
@@ -321,36 +266,22 @@ router.get(
  *                       type: string
  *                       description: 댓글 ID
  *                       example: "comment_123"
- *                     type:
+ *                     communityId:
  *                       type: string
- *                       description: 댓글 타입
- *                       example: "TMI"
- *                     targetId:
+ *                       description: 커뮤니티 ID
+ *                       example: "tmi-community"
+ *                     postId:
  *                       type: string
- *                       description: 대상 게시글 ID
+ *                       description: 게시글 ID
  *                       example: "post_123"
- *                     targetPath:
- *                       type: string
- *                       description: 대상 경로
- *                       example: "communities/tmi-community/posts/post_123"
- *                     userId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
  *                       example: "사용자닉네임"
  *                     content:
- *                       type: array
- *                       description: 댓글 내용
- *                       items:
- *                         $ref: '#/components/schemas/ContentItem'
- *                     media:
- *                       type: array
- *                       description: 미디어 블록
- *                       items:
- *                         $ref: '#/components/schemas/MediaItem'
+ *                       type: string
+ *                       description: 댓글 HTML 내용
+ *                       example: "<p>좋은 글입니다!</p><img src=\"url\" width=\"1080\" height=\"1080\"/>"
  *                     parentId:
  *                       type: string
  *                       nullable: true
@@ -360,32 +291,14 @@ router.get(
  *                       type: number
  *                       description: 댓글 깊이
  *                       example: 0
- *                     isReply:
- *                       type: boolean
- *                       description: 답글 여부
- *                       example: false
  *                     isLocked:
  *                       type: boolean
  *                       description: 잠금 여부
  *                       example: false
- *                     reportsCount:
- *                       type: number
- *                       description: 신고 수
- *                       example: 0
  *                     likesCount:
  *                       type: number
  *                       description: 좋아요 수
  *                       example: 0
- *                     deleted:
- *                       type: boolean
- *                       description: 삭제 여부
- *                       example: false
- *                     deletedAt:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
- *                       description: 삭제일시
- *                       example: null
  *                     createdAt:
  *                       type: string
  *                       format: date-time
@@ -467,35 +380,11 @@ router.post(
  *               - content
  *             properties:
  *               content:
- *                 type: array
- *                 description: 수정된 댓글 내용
- *                 items:
- *                   $ref: '#/components/schemas/ContentItem'
- *                 example:
- *                   - type: "text"
- *                     order: 1
- *                     content: "수정된 댓글 내용입니다!"
- *                   - type: "image"
- *                     order: 2
- *                     url: "https://example.com/updated-comment-image.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                     mimeType: "image/jpeg"
- *                     processingStatus: "ready"
+ *                 type: string
+ *                 description: 수정된 댓글 HTML 내용
+ *                 example: "<p>수정된 댓글 내용입니다!</p><img src=\"https://example.com/updated-comment-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *           example:
- *             content:
- *               - type: "text"
- *                 order: 1
- *                 content: "수정된 댓글 내용입니다!"
- *               - type: "image"
- *                 order: 2
- *                 url: "https://example.com/updated-comment-image.jpg"
- *                 width: 1080
- *                 height: 1080
- *                 blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                 mimeType: "image/jpeg"
- *                 processingStatus: "ready"
+ *             content: "<p>수정된 댓글 내용입니다!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\"/>"
  *     responses:
  *       200:
  *         description: 댓글 수정 성공
@@ -514,36 +403,22 @@ router.post(
  *                       type: string
  *                       description: 댓글 ID
  *                       example: "comment_123"
- *                     type:
+ *                     communityId:
  *                       type: string
- *                       description: 댓글 타입
- *                       example: "TMI"
- *                     targetId:
+ *                       description: 커뮤니티 ID
+ *                       example: "tmi-community"
+ *                     postId:
  *                       type: string
- *                       description: 대상 게시글 ID
+ *                       description: 게시글 ID
  *                       example: "post_123"
- *                     targetPath:
- *                       type: string
- *                       description: 대상 경로
- *                       example: "communities/tmi-community/posts/post_123"
- *                     userId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
  *                       example: "사용자닉네임"
  *                     content:
- *                       type: array
- *                       description: 댓글 내용
- *                       items:
- *                         $ref: '#/components/schemas/ContentItem'
- *                     media:
- *                       type: array
- *                       description: 미디어 블록
- *                       items:
- *                         $ref: '#/components/schemas/MediaItem'
+ *                       type: string
+ *                       description: 댓글 HTML 내용
+ *                       example: "<p>수정된 댓글 내용입니다!</p>"
  *                     parentId:
  *                       type: string
  *                       nullable: true
@@ -553,32 +428,14 @@ router.post(
  *                       type: number
  *                       description: 댓글 깊이
  *                       example: 0
- *                     isReply:
- *                       type: boolean
- *                       description: 답글 여부
- *                       example: false
  *                     isLocked:
  *                       type: boolean
  *                       description: 잠금 여부
  *                       example: false
- *                     reportsCount:
- *                       type: number
- *                       description: 신고 수
- *                       example: 0
  *                     likesCount:
  *                       type: number
  *                       description: 좋아요 수
  *                       example: 0
- *                     deleted:
- *                       type: boolean
- *                       description: 삭제 여부
- *                       example: false
- *                     deletedAt:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
- *                       description: 삭제일시
- *                       example: null
  *                     createdAt:
  *                       type: string
  *                       format: date-time

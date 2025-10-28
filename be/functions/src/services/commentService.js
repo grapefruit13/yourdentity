@@ -2,12 +2,17 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
+const {sanitizeContent} = require("../utils/sanitizeHelper");
 
 /**
  * Comment Service (비즈니스 로직 계층)
  * 댓글 관련 모든 비즈니스 로직 처리
  */
 class CommentService {
+  
+  static MAX_PARENT_COMMENTS_FOR_REPLIES = 10; 
+  static MAX_NOTIFICATION_TEXT_LENGTH = 10;
+
   constructor() {
     this.firestoreService = new FirestoreService("comments");
     this.userService = new UserService();
@@ -23,27 +28,30 @@ class CommentService {
    */
   async createComment(communityId, postId, userId, commentData) {
     try {
-      const {content = [], parentId = null} = commentData;
+      const {content, parentId = null} = commentData;
 
-      // 필수 필드 검증
-      if (!content || content.length === 0) {
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("댓글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // content 배열 검증
-      const hasTextContent = content.some(
-        (item) =>
-          item.type === "text" && item.content && item.content.trim().length > 0,
-      );
-      if (!hasTextContent) {
+      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      if (textWithoutTags.length === 0) {
         const error = new Error("댓글에 텍스트 내용이 필요합니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // 커뮤니티 존재 확인
+      const sanitizedContent = sanitizeContent(content);
+
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      if (sanitizedText.length === 0) {
+        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
       const community = await this.firestoreService.getDocument(
         "communities",
         communityId,
@@ -54,7 +62,6 @@ class CommentService {
         throw error;
       }
 
-      // 게시글 존재 확인
       const post = await this.firestoreService.getDocument(`communities/${communityId}/posts`, postId);
       if (!post) {
         const error = new Error("게시글을 찾을 수 없습니다.");
@@ -62,7 +69,6 @@ class CommentService {
         throw error;
       }
 
-      // 부모 댓글 존재 확인 (대댓글인 경우)
       let parentComment = null;
       if (parentId) {
         parentComment = await this.firestoreService.getDocument("comments", parentId);
@@ -72,7 +78,6 @@ class CommentService {
           throw error;
         }
 
-        // 대댓글은 2레벨까지만 허용
         if (parentComment.parentId) {
           const error = new Error("대댓글은 2레벨까지만 허용됩니다.");
           error.code = "BAD_REQUEST";
@@ -80,32 +85,6 @@ class CommentService {
         }
       }
 
-      // content 배열에서 미디어 분리
-      const mediaItems = content.filter( (item) => item.type === "image" || item.type === "video");
-
-      // media 배열 형식으로 변환
-      const media = mediaItems.map((item, index) => {
-        const mediaItem = {
-          url: item.src || "",
-          type: item.type,
-          order: index + 1,
-          width: item.width,
-          height: item.height,
-        };
-
-        // undefined가 아닌 값만 추가
-        if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
-        if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-        if (item.videoSource !== undefined) mediaItem.videoSource = item.videoSource;
-        if (item.provider !== undefined) mediaItem.provider = item.provider;
-        if (item.duration !== undefined) mediaItem.duration = item.duration;
-        if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
-        if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-
-        return mediaItem;
-      });
-
-      // 댓글 작성자 닉네임 가져오기
       let author = "익명";
       try {
         const members = await this.firestoreService.getCollectionWhere(
@@ -131,11 +110,11 @@ class CommentService {
         postId,
         userId,
         author,
-        content,
-        media,
+        content: sanitizedContent,
         parentId,
         likesCount: 0,
         isDeleted: false,
+        isLocked: false,
         depth: parentId ? 1 : 0,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -173,11 +152,12 @@ class CommentService {
 
       
       if (parentId && parentComment && parentComment.userId !== userId) {
-        // 부모 댓글 내용 미리보기 생성
-        const textContent = parentComment.content.find(item => item.type === "text");
-        const commentPreview = textContent ? textContent.content : "댓글";
-        const preview = commentPreview.length > 30 ? 
-          commentPreview.substring(0, 30) + "..." : 
+        const textOnly = typeof parentComment.content === 'string' 
+          ? parentComment.content.replace(/<[^>]*>/g, '') 
+          : parentComment.content;
+        const commentPreview = textOnly || "댓글";
+        const preview = commentPreview.length > CommentService.MAX_NOTIFICATION_TEXT_LENGTH ? 
+          commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..." : 
           commentPreview;
 
         console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
@@ -193,9 +173,13 @@ class CommentService {
         });
       }
 
+      // 응답에서 제외할 필드
+      const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = created;
+      
       return {
         id: commentId,
-        ...created,
+        ...commentWithoutDeleted,
+        isLocked: commentWithoutDeleted.isLocked || false,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -230,7 +214,6 @@ class CommentService {
       const pageNumber = parseInt(page);
       const pageSize = parseInt(size);
 
-      // 1️⃣ 부모 댓글 페이징 쿼리 (Firestore 레벨에서 페이징)
       const parentCommentsResult = await this.firestoreService.getWithPagination({
         page: pageNumber,
         size: pageSize,
@@ -250,20 +233,18 @@ class CommentService {
       if (paginatedParentComments.length > 0) {
         const parentIds = paginatedParentComments.map(comment => comment.id);
         
-        if (parentIds.length > 10) {
-          console.warn(`부모댓글: (${parentIds.length}) 10개 초과`);
-          parentIds.splice(10);
+        if (parentIds.length > CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES) {
+          console.warn(`부모댓글: (${parentIds.length}) ${CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES}개 초과`);
+          parentIds.splice(CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES);
         }
 
-        const [allReplies] = await Promise.all([
-          this.firestoreService.getCollectionWhereMultiple(
-            "comments",
-            [
-              { field: "parentId", operator: "in", value: parentIds },
-              { field: "isDeleted", operator: "==", value: false }
-            ]
-          )
-        ]);
+        const allReplies = await this.firestoreService.getCollectionWhereMultiple(
+          "comments",
+          [
+            { field: "parentId", operator: "in", value: parentIds },
+            { field: "isDeleted", operator: "==", value: false }
+          ]
+        );
 
         const repliesByParentId = {};
         allReplies.forEach(reply => {
@@ -275,14 +256,24 @@ class CommentService {
 
         for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
-          // Firestore Timestamp를 안전하게 처리
-          const ts = (t) => (t?.toMillis?.() ?? new Date(t).getTime() ?? 0);
+         
+          const ts = (t) => {
+            if (t && typeof t.toMillis === "function") return t.toMillis();
+            const ms = new Date(t).getTime();
+            return Number.isFinite(ms) ? ms : 0;
+          };
           const sortedReplies = replies
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
-            .slice(0, 50);
+            .slice(0, 50)
+            .map(reply => {
+              const { isDeleted, media, userId: _userId, ...replyWithoutDeleted } = reply;
+              return replyWithoutDeleted;
+            });
+
+          const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
-            ...comment,
+            ...commentWithoutDeleted,
             replies: sortedReplies,
             repliesCount: replies.length, 
           };
@@ -332,77 +323,54 @@ class CommentService {
         throw error;
       }
 
-      // 소유권 검증
       if (comment.userId !== userId) {
         const error = new Error("댓글 수정 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
       }
 
-      // 삭제된 댓글은 수정 불가
       if (comment.isDeleted) {
         const error = new Error("삭제된 댓글은 수정할 수 없습니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // 필수 필드 검증
-      if (!content || content.length === 0) {
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
         const error = new Error("댓글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // content 배열 검증
-      const hasTextContent = content.some(
-        (item) =>
-          item.type === "text" && item.content && item.content.trim().length > 0,
-      );
-      if (!hasTextContent) {
+      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      if (textWithoutTags.length === 0) {
         const error = new Error("댓글에 텍스트 내용이 필요합니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // content 배열에서 미디어 분리
-      const mediaItems = content.filter(
-        (item) => item.type === "image" || item.type === "video",
-      );
+      const sanitizedContent = sanitizeContent(content);
 
-      // media 배열 형식으로 변환
-      const media = mediaItems.map((item, index) => {
-        const mediaItem = {
-          url: item.src || "",
-          type: item.type,
-          order: index + 1,
-          width: item.width,
-          height: item.height,
-        };
-
-        // undefined가 아닌 값만 추가
-        if (item.blurHash !== undefined) mediaItem.blurHash = item.blurHash;
-        if (item.thumbUrl !== undefined) mediaItem.thumbUrl = item.thumbUrl;
-        if (item.videoSource !== undefined) mediaItem.videoSource = item.videoSource;
-        if (item.provider !== undefined) mediaItem.provider = item.provider;
-        if (item.duration !== undefined) mediaItem.duration = item.duration;
-        if (item.sizeBytes !== undefined) mediaItem.sizeBytes = item.sizeBytes;
-        if (item.mimeType !== undefined) mediaItem.mimeType = item.mimeType;
-
-        return mediaItem;
-      });
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      if (sanitizedText.length === 0) {
+        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       const updatedData = {
-        content,
-        media,
+        content: sanitizedContent,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
       await this.firestoreService.updateDocument("comments", commentId, updatedData);
 
+      const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
+      
       return {
         id: commentId,
-        ...comment,
+        ...commentWithoutDeleted,
         ...updatedData,
+        isLocked: commentWithoutDeleted.isLocked || false,
       };
     } catch (error) {
       console.error("Update comment error:", error.message);
@@ -428,29 +396,24 @@ class CommentService {
         throw error;
       }
 
-      // 소유권 검증
       if (comment.userId !== userId) {
         const error = new Error("댓글 삭제 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
       }
 
-      // 이미 삭제된 댓글
       if (comment.isDeleted) {
         const error = new Error("이미 삭제된 댓글입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
-      // 댓글을 완전 삭제하지 않고 isDeleted 플래그 설정 (대댓글 구조 유지)
       await this.firestoreService.updateDocument("comments", commentId, {
         isDeleted: true,
-        content: [{type: "text", content: "삭제된 댓글입니다."}],
-        media: [],
+        content: "<p>삭제된 댓글입니다.</p>",
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // 게시글의 댓글 수 감소
       await this.firestoreService.updateDocument(
         `communities/${comment.communityId}/posts`,
         comment.postId,
@@ -493,7 +456,6 @@ class CommentService {
           throw error;
         }
 
-        // 결정적 문서 ID로 중복 생성 방지
         const likeRef = this.firestoreService.db
           .collection("likes")
           .doc(`COMMENT:${commentId}:${userId}`);
@@ -542,11 +504,13 @@ class CommentService {
             const liker = await this.userService.getUserById(userId);
             const likerName = liker?.name || "사용자";
 
-            const textContent = comment.content.find((item) => item.type === "text");
-            const commentPreview = textContent ? textContent.content : "댓글";
+            const textOnly = typeof comment.content === 'string' 
+              ? comment.content.replace(/<[^>]*>/g, '') 
+              : comment.content;
+            const commentPreview = textOnly || "댓글";
             const preview =
-              commentPreview.length > 50
-                ? commentPreview.substring(0, 50) + "..."
+              commentPreview.length > CommentService.MAX_NOTIFICATION_TEXT_LENGTH
+                ? commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..."
                 : commentPreview;
 
             fcmHelper
