@@ -13,9 +13,7 @@ const functions = require("firebase-functions");
 /**
  * Firebase Auth 사용자 생성 시 자동 실행되는 트리거
  * 최초 가입 시 Firestore users/{uid} 문서 생성
- * 
- * ⚠️ 이메일 중복 체크는 프론트엔드에서 checkEmailAvailability() 호출로 사전 검증됨
- * 이 트리거는 단순히 Firestore 문서 생성만 수행
+
  */
 exports.createUserDocument = functions
     .region("asia-northeast3")

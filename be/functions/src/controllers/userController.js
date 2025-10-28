@@ -9,35 +9,7 @@ const userService = new UserService();
  */
 
 class UserController {
-  /**
-   * 사용자 생성 API (Firebase Auth + Firestore 생성)
-   * 
-   * ⚠️ **테스트용 API - Firebase Admin SDK 방식**
-   * 
-   * **프로덕션에서는 사용하지 마세요!**
-   * - 실제 회원가입: 프론트엔드에서 Firebase Client SDK 사용
-   * - createUserWithEmailAndPassword(auth, email, password)
-   * - Auth Trigger가 자동으로 Firestore 문서 생성
-   *
-   * 사용 시나리오 (테스트/개발용):
-   * - 관리자가 수동으로 사용자를 생성해야 하는 경우
-   * - 테스트/개발용 사용자 생성
-   * - 이메일/비밀번호로 사용자 생성
-   *
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-  async createUser(req, res, next) {
-    try {
-      const result = await userService.createUser(req.body);
-      return res.success(result);
-    } catch (error) {
-      console.error("사용자 생성 에러:", error);
-      return next(error);
-    }
-  }
-
+  
   /**
    * 모든 사용자 조회 API
    * @param {Object} req - Express request object

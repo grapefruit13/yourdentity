@@ -141,69 +141,6 @@ class UserService {
   }
 
   /**
-   * 사용자 생성 (Firebase Auth + Firestore)
-   * 
-   * ⚠️ **테스트용 메서드 - Firebase Admin SDK 방식**
-   * 
-   * **프로덕션에서는 사용하지 마세요!**
-   * - 실제 회원가입: 프론트엔드에서 Firebase Client SDK 사용
-   * - createUserWithEmailAndPassword(auth, email, password)
-   * - Auth Trigger가 자동으로 Firestore 문서 생성
-   * 
-   * @param {Object} userData
-   * @return {Promise<Object>} 생성된 사용자 데이터
-   */
-  async createUser(userData) {
-    const {name, email, password, profileImageUrl, birthDate, authType = "email", snsProvider = null} = userData;
-    if (!name) {
-      const e = new Error("이름이 필요합니다");
-      e.code = "BAD_REQUEST";
-      throw e;
-    }
-    if (!email) {
-      const e = new Error("이메일이 필요합니다");
-      e.code = "BAD_REQUEST";
-      throw e;
-    }
-    if (!password) {
-      const e = new Error("비밀번호가 필요합니다");
-      e.code = "BAD_REQUEST";
-      throw e;
-    }
-
-    // Firebase Auth 사용자 생성
-    const authUser = await admin.auth().createUser({
-      email: email,
-      password: password,
-      displayName: name,
-      emailVerified: false,
-      photoURL: profileImageUrl || null,
-    });
-
-    // Firestore 사용자 문서 생성
-    const firestoreUser = {
-      name,
-      email: email,
-      profileImageUrl: profileImageUrl || "",
-      birthDate: birthDate || null,
-      authType,
-      snsProvider,
-      role: "user",
-      rewardPoints: 0,
-      level: 1,
-      badges: [],
-      points: "0",
-      mainProfileId: "",
-      onboardingCompleted: false,
-      uploadQuotaBytes: 1073741824, // 1GB
-      usedStorageBytes: 0,
-    };
-
-    const created = await this.firestoreService.create(firestoreUser, authUser.uid);
-    return {uid: authUser.uid, ...created};
-  }
-
-  /**
    * 모든 사용자 조회
    * @return {Promise<Array>} 사용자 목록
    */
