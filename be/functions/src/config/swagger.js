@@ -1079,7 +1079,7 @@ const options = {
                 description: {
                   type: "string",
                   description: "미리보기 설명",
-                  example: "string",
+                  example: "오늘도 화이팅!",
                 },
                 thumbnail: {
                   type: "object",
@@ -1089,7 +1089,7 @@ const options = {
                     url: {
                       type: "string",
                       description: "썸네일 URL",
-                      example: "https://example.com/updated-image.jpg",
+                      example: "https://example.com/image.jpg",
                     },
                     blurHash: {
                       type: "string",
@@ -1106,27 +1106,7 @@ const options = {
                       description: "높이",
                       example: 1080,
                     },
-                    ratio: {
-                      type: "string",
-                      description: "비율",
-                      example: "1080:1080",
-                    },
                   },
-                },
-                isVideo: {
-                  type: "boolean",
-                  description: "비디오 여부",
-                  example: false,
-                },
-                hasImage: {
-                  type: "boolean",
-                  description: "이미지 포함 여부",
-                  example: false,
-                },
-                hasVideo: {
-                  type: "boolean",
-                  description: "동영상 포함 여부",
-                  example: false,
                 },
               },
             },
@@ -1218,18 +1198,9 @@ const options = {
               example: "오늘의 루틴 인증!",
             },
             content: {
-              type: "array",
-              description: "내용",
-              items: {
-                type: "object",
-              },
-            },
-            media: {
-              type: "array",
-              description: "미디어",
-              items: {
-                type: "object",
-              },
+              type: "string",
+              description: "게시글 HTML 내용",
+              example: "<p>게시글 내용입니다!</p>",
             },
             channel: {
               type: "string",
@@ -1632,11 +1603,6 @@ const options = {
               description: "게시글 타입",
               example: "ROUTINE_CERT",
             },
-            authorId: {
-              type: "string",
-              description: "작성자 ID",
-              example: "user123",
-            },
             author: {
               type: "string",
               description: "작성자 닉네임",
@@ -1657,13 +1623,6 @@ const options = {
               description: "게시글 본문 내용",
               items: {
                 $ref: "#/components/schemas/ContentItem",
-              },
-            },
-            media: {
-              type: "array",
-              description: "미디어 목록",
-              items: {
-                $ref: "#/components/schemas/MediaItem",
               },
             },
             channel: {

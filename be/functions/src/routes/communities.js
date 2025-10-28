@@ -27,12 +27,6 @@ const authGuard = require("../middleware/authGuard");
  *           type: string
  *           enum: [ROUTINE_CERT, GATHERING_REVIEW, TMI]
  *           description: 게시글 타입
- *         membersCount:
- *           type: integer
- *           description: 멤버 수
- *         postsCount:
- *           type: integer
- *           description: 게시글 수
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -49,10 +43,6 @@ const authGuard = require("../middleware/authGuard");
      *           type: string
      *           description: 게시글 ID
      *           example: "TzZcfj7sTrhQdOvUW4f5"
-     *         authorId:
-     *           type: string
-     *           description: 작성자 ID (uid)
-     *           example: "KBmmDM8sdZQDpk2GIQJikPP7kapY"
      *         author:
      *           type: string
      *           description: 작성자 닉네임
@@ -66,15 +56,9 @@ const authGuard = require("../middleware/authGuard");
      *           description: 게시글 타입
      *           example: "GENERAL"
  *         content:
- *           type: array
- *           description: 게시글 내용
- *           items:
- *             $ref: '#/components/schemas/ContentItem'
- *         media:
- *           type: array
- *           description: 미디어 목록
- *           items:
- *             $ref: '#/components/schemas/MediaItem'
+ *           type: string
+ *           description: 게시글 HTML 내용
+ *           example: "<p>게시글 내용입니다!</p>"
  *         communityId:
  *           type: string
  *           description: 커뮤니티 ID
@@ -87,13 +71,7 @@ const authGuard = require("../middleware/authGuard");
      *           type: string
      *           description: 카테고리
      *           example: "한끗루틴"
-     *         tags:
-     *           type: array
-     *           description: 태그 목록
-     *           items:
-     *             type: string
-     *           example: ["운동", "루틴", "인증"]
- *         scheduledDate:
+     *         scheduledDate:
  *           type: string
  *           format: date-time
  *           description: 예약 발행 날짜
@@ -110,10 +88,6 @@ const authGuard = require("../middleware/authGuard");
  *           type: boolean
  *           description: 리워드 지급 여부
  *           example: false
- *         reactionsCount:
- *           type: integer
- *           description: 반응 수
- *           example: 0
  *         likesCount:
  *           type: integer
  *           description: 좋아요 수
@@ -330,23 +304,25 @@ router.get("/", communityController.getCommunities);
  *                       items:
  *                         $ref: '#/components/schemas/CommunityPost'
  *                       example:
- *                         - id: "AMrsQRg9tBY0ZGJMbKG2"
+ *                         - id: "jpb8WjP7poOmI07Z7tU8"
  *                           type: "TMI"
- *                           authorId: "user123"
  *                           author: "사용자닉네임"
- *                           title: "오늘의 루틴 인증!"
+ *                           title: "수정된 TMI 인증!"
  *                           preview:
- *                             description: "string"
- *                             thumbnail: null
- *                             isVideo: false
- *                             hasImage: false
- *                             hasVideo: false
+ *                             description: "오늘도 화이팅!"
+ *                             thumbnail:
+ *                               url: "https://example.com/image.jpg"
+ *                               width: 1080
+ *                               height: 1080
+ *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
- *                           tags: ["string"]
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
  *                           isLocked: false
  *                           visibility: "public"
+ *                           rewardGiven: false
+ *                           reportsCount: 0
+ *                           viewCount: 0
  *                           likesCount: 0
  *                           commentsCount: 0
  *                           createdAt: "2025-10-03T17:15:07.862Z"
@@ -356,36 +332,6 @@ router.get("/", communityController.getCommunities);
  *                             name: "TMI 자아탐색"
  *                           timeAgo: "2분 전"
  *                           communityPath: "communities/CP:VYTTZW33IH"
- *                           rewardGiven: false
- *                           reactionsCount: 0
- *                           reportsCount: 0
- *                           viewCount: 0
- *                         - id: "jpb8WjP7poOmI07Z7tU8"
- *                           type: "TMI"
- *                           authorId: "user456"
- *                           author: "사용자닉네임"
- *                           title: "수정된 TMI 인증!"
- *                           preview:
- *                             description: "수정된 내용입니다!"
- *                             thumbnail:
- *                               url: "https://example.com/updated-image.jpg"
- *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                               width: 1080
- *                               height: 1080
- *                               ratio: "1080:1080"
- *                             isVideo: false
- *                             hasImage: true
- *                             hasVideo: false
- *                           channel: "TMI 자아탐색"
- *                           category: "string"
- *                           tags: ["string"]
- *                           scheduledDate: "2025-10-03T17:15:04.882Z"
- *                           isLocked: false
- *                           visibility: "public"
- *                           likesCount: 0
- *                           commentsCount: 0
- *                           createdAt: "2025-10-03T17:15:07.862Z"
- *                           timeAgo: "2분 전"
  *                     pagination:
  *                       type: object
  *                       properties:
@@ -448,61 +394,23 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 description: 게시글 제목
  *                 example: "오늘의 루틴 인증!"
  *               content:
- *                 type: array
- *                 description: 게시글 내용
- *                 items:
- *                   $ref: '#/components/schemas/ContentItem'
- *                 example:
- *                   - type: "text"
- *                     order: 1
- *                     content: "오늘도 화이팅!"
- *                   - type: "image"
- *                     order: 2
- *                     url: "https://example.com/image.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                     mimeType: "image/jpeg"
- *                     processingStatus: "ready"
- *               visibility:
  *                 type: string
- *                 enum: [public, private]
- *                 default: public
- *                 description: 게시글 공개 범위
- *                 example: "public"
+ *                 description: 게시글 HTML 내용
+ *                 example: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *               category:
  *                 type: string
  *                 description: 카테고리
  *                 example: "한끗루틴"
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 태그 목록
- *                 example: ["운동", "루틴", "인증"]
  *               scheduledDate:
  *                 type: string
  *                 format: date-time
  *                 description: 예약 발행 날짜
- *                 example: "2025-10-03T17:15:04.882Z"
+ *                 example: "2025-10-03"
  *           example:
  *             title: "오늘의 루틴 인증!"
- *             content:
- *               - type: "text"
- *                 order: 1
- *                 content: "오늘도 화이팅!"
- *               - type: "image"
- *                 order: 2
- *                 url: "https://example.com/image.jpg"
- *                 width: 1080
- *                 height: 1080
- *                 blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                 mimeType: "image/jpeg"
- *                 processingStatus: "ready"
- *             visibility: "public"
+ *             content: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *             category: "한끗루틴"
- *             tags: ["운동", "루틴", "인증"]
- *             scheduledDate: "2025-10-03T17:15:04.882Z"
+ *             scheduledDate: "2025-10-03"
  *     responses:
  *       201:
  *         description: 게시글 작성 성공
@@ -529,10 +437,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: string
  *                       description: 커뮤니티 ID
  *                       example: "CP:VYTTZW33IH"
- *                     authorId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
@@ -546,15 +450,9 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       description: 게시글 제목
  *                       example: "오늘의 루틴 인증!"
  *                     content:
- *                       type: array
- *                       description: 게시글 내용
- *                       items:
- *                         $ref: '#/components/schemas/ContentItem'
- *                     media:
- *                       type: array
- *                       description: 미디어 목록
- *                       items:
- *                         $ref: '#/components/schemas/MediaItem'
+ *                       type: string
+ *                       description: 게시글 HTML 내용
+ *                       example: "<p>게시글 내용입니다!</p>"
  *                     channel:
  *                       type: string
  *                       description: 채널명
@@ -563,12 +461,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: string
  *                       description: 카테고리
  *                       example: "한끗루틴"
- *                     tags:
- *                       type: array
- *                       description: 태그 목록
- *                       items:
- *                         type: string
- *                       example: ["운동", "루틴", "인증"]
  *                     scheduledDate:
  *                       type: string
  *                       format: date-time
@@ -587,10 +479,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: boolean
  *                       description: 리워드 지급 여부
  *                       example: false
- *                     reactionsCount:
- *                       type: number
- *                       description: 반응 수
- *                       example: 0
  *                     likesCount:
  *                       type: number
  *                       description: 좋아요 수
@@ -607,16 +495,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: number
  *                       description: 조회수
  *                       example: 0
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       description: 생성일시
- *                       example: "2025-10-03T17:15:07.862Z"
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *                       description: 수정일시
- *                       example: "2025-10-03T17:15:07.862Z"
  *                     community:
  *                       type: object
  *                       description: 커뮤니티 정보
@@ -629,9 +507,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                           type: string
  *                           description: 커뮤니티 이름
  *                           example: "TMI 자아탐색"
- *                 message:
- *                   type: string
- *                   example: "게시글이 성공적으로 작성되었습니다."
  *       400:
  *         description: 잘못된 요청
  *       404:
@@ -737,45 +612,20 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                     mimeType: "image/jpeg"
  *                     processingStatus: "ready"
- *               visibility:
- *                 type: string
- *                 enum: [public, private]
- *                 default: public
- *                 description: 게시글 공개 범위
- *                 example: "public"
  *               category:
  *                 type: string
  *                 description: 카테고리
  *                 example: "한끗루틴"
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 태그 목록
- *                 example: ["운동", "루틴", "인증"]
  *               scheduledDate:
  *                 type: string
  *                 format: date-time
  *                 description: 예약 발행 날짜
- *                 example: "2025-10-03T17:15:04.882Z"
+ *                 example: "2025-10-03"
  *           example:
  *             title: "수정된 루틴 인증!"
- *             content:
- *               - type: "text"
- *                 order: 1
- *                 content: "수정된 내용입니다!"
- *               - type: "image"
- *                 order: 2
- *                 url: "https://example.com/updated-image.jpg"
- *                 width: 1080
- *                 height: 1080
- *                 blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                 mimeType: "image/jpeg"
- *                 processingStatus: "ready"
- *             visibility: "public"
+ *             content: "<p>수정된 내용입니다!</p><img src=\"https://example.com/updated-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *             category: "한끗루틴"
- *             tags: ["운동", "루틴", "인증"]
- *             scheduledDate: "2025-10-03T17:15:04.882Z"
+ *             scheduledDate: "2025-10-03"
  *     responses:
  *       200:
  *         description: 게시글 수정 성공
@@ -802,10 +652,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: string
  *                       description: 커뮤니티 ID
  *                       example: "CP:VYTTZW33IH"
- *                     authorId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
@@ -819,15 +665,9 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       description: 게시글 제목
  *                       example: "수정된 루틴 인증!"
  *                     content:
- *                       type: array
- *                       description: 게시글 내용
- *                       items:
- *                         $ref: '#/components/schemas/ContentItem'
- *                     media:
- *                       type: array
- *                       description: 미디어 목록
- *                       items:
- *                         $ref: '#/components/schemas/MediaItem'
+ *                       type: string
+ *                       description: 게시글 HTML 내용
+ *                       example: "<p>게시글 내용입니다!</p>"
  *                     channel:
  *                       type: string
  *                       description: 채널명
@@ -836,12 +676,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: string
  *                       description: 카테고리
  *                       example: "한끗루틴"
- *                     tags:
- *                       type: array
- *                       description: 태그 목록
- *                       items:
- *                         type: string
- *                       example: ["운동", "루틴", "인증"]
  *                     scheduledDate:
  *                       type: string
  *                       format: date-time
@@ -860,10 +694,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: boolean
  *                       description: 리워드 지급 여부
  *                       example: false
- *                     reactionsCount:
- *                       type: number
- *                       description: 반응 수
- *                       example: 0
  *                     likesCount:
  *                       type: number
  *                       description: 좋아요 수
@@ -902,9 +732,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                           type: string
  *                           description: 커뮤니티 이름
  *                           example: "TMI 자아탐색"
- *                 message:
- *                   type: string
- *                   example: "게시글이 성공적으로 수정되었습니다."
  *       400:
  *         description: 잘못된 요청
  *       403:

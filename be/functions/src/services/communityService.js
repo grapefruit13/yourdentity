@@ -2,12 +2,15 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
+const {sanitizeContent} = require("../utils/sanitizeHelper");
 
 /**
  * Community Service (비즈니스 로직 계층)
  * 커뮤니티 관련 모든 비즈니스 로직 처리
  */
 class CommunityService {
+  static MAX_PREVIEW_TEXT_LENGTH = 30;
+
   constructor() {
     this.firestoreService = new FirestoreService("communities");
     this.userService = new UserService();
@@ -108,38 +111,58 @@ class CommunityService {
    * @return {Object} 프리뷰 객체
    */
   createPreview(post) {
-    const contentArr = Array.isArray(post.content) ? post.content : [];
-    const mediaArr = Array.isArray(post.media) ? post.media : [];
-    
-    const textContents = contentArr.filter(
-      (item) => item.type === "text" && item.text && item.text.trim(),
-    );
-    const description = textContents.length > 0 ?
-      textContents[0].text.substring(0, 100) +
-        (textContents[0].text.length > 100 ? "..." : "") :
-      "";
+    let description = "";
+    let thumbnail = null;
+
+    if (typeof post.content === 'string') {
+      const textOnly = post.content.replace(/<[^>]*>/g, '').trim();
+      description = textOnly.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) + (textOnly.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "");
+
+      const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+      if (imgMatch) {
+        const imgTag = post.content.match(/<img[^>]*>/i)?.[0] || "";
+        const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
+        const widthMatch = imgTag.match(/width=["']?(\d+)["']?/i);
+        const heightMatch = imgTag.match(/height=["']?(\d+)["']?/i);
+        const blurHashMatch = imgTag.match(/data-blurhash=["']([^"']+)["']/i);
+
+        thumbnail = {
+          url: srcMatch ? srcMatch[1] : imgMatch[1],
+          width: widthMatch ? parseInt(widthMatch[1]) : undefined,
+          height: heightMatch ? parseInt(heightMatch[1]) : undefined,
+          blurHash: blurHashMatch ? blurHashMatch[1] : undefined,
+        };
+      }
+    } else {
+      const contentArr = Array.isArray(post.content) ? post.content : [];
+      const mediaArr = Array.isArray(post.media) ? post.media : [];
+
+      const textItem = contentArr.find(
+        (item) =>
+          item.type === "text" &&
+          (item.content || item.text) &&
+          (item.content || item.text).trim(),
+      );
+      const text = textItem ? (textItem.content || textItem.text) : "";
+      description = text
+        ? text.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) +
+          (text.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "")
+        : "";
 
       const firstImage = mediaArr.find((item) => item.type === "image") ||
-      contentArr.find((item) => item.type === "image");
-    
-    const firstVideo = mediaArr.find((item) => item.type === "video") ||
-      contentArr.find((item) => item.type === "video");
+        contentArr.find((item) => item.type === "image");
 
-    const thumbnail = firstImage ? {
-      url: firstImage.url || firstImage.src,
-      blurHash: firstImage.blurHash,
-      width: firstImage.width,
-      height: firstImage.height,
-      ratio: firstImage.width && firstImage.height ?
-        `${firstImage.width}:${firstImage.height}` : "1:1",
-    } : null;
+      thumbnail = firstImage ? {
+        url: firstImage.url || firstImage.src,
+        blurHash: firstImage.blurHash,
+        width: firstImage.width,
+        height: firstImage.height,
+      } : null;
+    }
 
     return {
       description,
       thumbnail,
-      isVideo: !!firstVideo,
-      hasImage: !!firstImage,
-      hasVideo: !!firstVideo,
     };
   }
 
@@ -234,22 +257,21 @@ class CommunityService {
       const paginatedPosts = allPosts.slice(startIndex, endIndex);
 
       const processedPosts = paginatedPosts.map((post) => {
+        const { authorId, ...postWithoutAuthorId } = post;
         const processedPost = {
-          ...post,
+          ...postWithoutAuthorId,
           createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
           updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
           scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
           timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
           communityPath: `communities/${post.communityId}`,
           rewardGiven: post.rewardGiven || false,
-          reactionsCount: post.reactionsCount || 0,
           reportsCount: post.reportsCount || 0,
           viewCount: post.viewCount || 0,
         };
 
         if (includeContent) {
           processedPost.content = post.content || [];
-          processedPost.media = post.media || [];
         } else {
           processedPost.preview = this.createPreview(post);
           delete processedPost.content;
@@ -295,15 +317,43 @@ class CommunityService {
     try {
       const {
         title, 
-        content = [], 
-        media = [], 
+        content, 
+        media: postMedia = [], 
         type, 
         channel, 
-        visibility = "PUBLIC",
         category,
-        tags = [],
         scheduledDate
       } = postData;
+      
+      const visibility = "PUBLIC";
+
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        const error = new Error("제목은 필수입니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        const error = new Error("게시글 내용은 필수입니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      if (textWithoutTags.length === 0) {
+        const error = new Error("게시글에 텍스트 내용이 필요합니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const sanitizedContent = sanitizeContent(content);
+
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      if (sanitizedText.length === 0) {
+        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument("communities", communityId);
@@ -340,17 +390,15 @@ class CommunityService {
         authorId: userId,
         author: author,
         title,
-        content,
-        media,
+        content: sanitizedContent,
+        media: postMedia,
         type: type || community.postType || "GENERAL",
         channel: channel || community.channel || "general",
         category: category || null,
-        tags: tags || [],
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         visibility,
         isLocked: false,
         rewardGiven: false,
-        reactionsCount: 0,
         likesCount: 0,
         commentsCount: 0,
         reportsCount: 0,
@@ -362,13 +410,12 @@ class CommunityService {
       const result = await postsService.create(newPost);
       const postId = result.id;
 
+      const {authorId, media: _media, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
+      
       return {
         id: postId,
-        ...newPost,
-        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
-        createdAt: newPost.createdAt?.toDate?.()?.toISOString?.() || newPost.createdAt,
-        updatedAt: newPost.updatedAt?.toDate?.()?.toISOString?.() || newPost.updatedAt,
-        scheduledDate: newPost.scheduledDate?.toDate?.()?.toISOString?.() || newPost.scheduledDate,
+        ...restNewPost,
+        scheduledDate: newPost.scheduledDate?.toISOString?.() || newPost.scheduledDate,
         communityPath: `communities/${communityId}`,
         community: {
           id: communityId,
@@ -413,8 +460,10 @@ class CommunityService {
       // 커뮤니티 정보 추가
       const community = await this.firestoreService.getDocument("communities", communityId);
 
+      const {authorId, media: _media, ...postWithoutMedia} = post;
+      
       return {
-        ...post,
+        ...postWithoutMedia,
         viewCount: newViewCount,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
@@ -455,11 +504,36 @@ class CommunityService {
         throw error;
       }
 
-      // 소유권 검증
       if (post.authorId !== userId) {
         const error = new Error("게시글 수정 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updateData, "content")) {
+        if (!updateData.content || typeof updateData.content !== 'string' || updateData.content.trim().length === 0) {
+          const error = new Error("게시글 내용은 필수입니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+
+        const textWithoutTags = updateData.content.replace(/<[^>]*>/g, '').trim();
+        if (textWithoutTags.length === 0) {
+          const error = new Error("게시글에 텍스트 내용이 필요합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+
+        const sanitizedContent = sanitizeContent(updateData.content);
+
+        const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+        if (sanitizedText.length === 0) {
+          const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+
+        updateData.content = sanitizedContent;
       }
 
       const updatedData = {
@@ -472,10 +546,11 @@ class CommunityService {
       const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
 
+      const {authorId, media: _media, ...freshWithoutMedia} = fresh;
+      
       return {
         id: postId,
-        ...fresh,
-        
+        ...freshWithoutMedia,
         createdAt: fresh.createdAt?.toDate?.()?.toISOString?.() || fresh.createdAt,
         updatedAt: fresh.updatedAt?.toDate?.()?.toISOString?.() || fresh.updatedAt,
         scheduledDate: fresh.scheduledDate?.toDate?.()?.toISOString?.() || fresh.scheduledDate,
