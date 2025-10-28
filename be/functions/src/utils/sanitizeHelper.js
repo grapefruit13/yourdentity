@@ -10,14 +10,13 @@ function sanitizeContent(dirty) {
     allowedTags: [
       "p", "b", "i", "u", "strong", "em",
       "blockquote", "br", "ul", "ol", "li",
-      "span", "img", "iframe", "a",
+      "span", "img", "a",
       "h1", "h2", "h3", "h4", "h5", "h6",
       "hr", "div"
     ],
     allowedAttributes: {
       "*": ["style"],
       img: ["src", "width", "height", "alt", "data-blurhash", "data-mimetype"],
-      iframe: ["src", "width", "height", "allowfullscreen"],
       a: ["href", "target"]
     },
     allowedStyles: {
