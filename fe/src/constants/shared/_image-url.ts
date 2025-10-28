@@ -53,6 +53,10 @@ const ICON = {
       alt: "눈 닫힘",
     },
   },
+  heading: {
+    url: "/icons/ic-heading.svg",
+    alt: "텍스트 에디터 - 가",
+  },
 };
 
 const IMG = {
