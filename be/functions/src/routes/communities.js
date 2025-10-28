@@ -43,10 +43,6 @@ const authGuard = require("../middleware/authGuard");
      *           type: string
      *           description: 게시글 ID
      *           example: "TzZcfj7sTrhQdOvUW4f5"
-     *         authorId:
-     *           type: string
-     *           description: 작성자 ID (uid)
-     *           example: "KBmmDM8sdZQDpk2GIQJikPP7kapY"
      *         author:
      *           type: string
      *           description: 작성자 닉네임
@@ -317,22 +313,25 @@ router.get("/", communityController.getCommunities);
  *                       items:
  *                         $ref: '#/components/schemas/CommunityPost'
  *                       example:
- *                         - id: "AMrsQRg9tBY0ZGJMbKG2"
+ *                         - id: "jpb8WjP7poOmI07Z7tU8"
  *                           type: "TMI"
- *                           authorId: "user123"
  *                           author: "사용자닉네임"
- *                           title: "오늘의 루틴 인증!"
+ *                           title: "수정된 TMI 인증!"
  *                           preview:
- *                             description: "string"
- *                             thumbnail: null
- *                             isVideo: false
- *                             hasImage: false
- *                             hasVideo: false
+ *                             description: "오늘도 화이팅!"
+ *                             thumbnail:
+ *                               url: "https://example.com/image.jpg"
+ *                               width: 1080
+ *                               height: 1080
+ *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
  *                           isLocked: false
  *                           visibility: "public"
+ *                           rewardGiven: false
+ *                           reportsCount: 0
+ *                           viewCount: 0
  *                           likesCount: 0
  *                           commentsCount: 0
  *                           createdAt: "2025-10-03T17:15:07.862Z"
@@ -342,35 +341,6 @@ router.get("/", communityController.getCommunities);
  *                             name: "TMI 자아탐색"
  *                           timeAgo: "2분 전"
  *                           communityPath: "communities/CP:VYTTZW33IH"
- *                           rewardGiven: false
- *                           reactionsCount: 0
- *                           reportsCount: 0
- *                           viewCount: 0
- *                         - id: "jpb8WjP7poOmI07Z7tU8"
- *                           type: "TMI"
- *                           authorId: "user456"
- *                           author: "사용자닉네임"
- *                           title: "수정된 TMI 인증!"
- *                           preview:
- *                             description: "수정된 내용입니다!"
- *                             thumbnail:
- *                               url: "https://example.com/updated-image.jpg"
- *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                               width: 1080
- *                               height: 1080
- *                               ratio: "1080:1080"
- *                             isVideo: false
- *                             hasImage: true
- *                             hasVideo: false
- *                           channel: "TMI 자아탐색"
- *                           category: "string"
- *                           scheduledDate: "2025-10-03T17:15:04.882Z"
- *                           isLocked: false
- *                           visibility: "public"
- *                           likesCount: 0
- *                           commentsCount: 0
- *                           createdAt: "2025-10-03T17:15:07.862Z"
- *                           timeAgo: "2분 전"
  *                     pagination:
  *                       type: object
  *                       properties:
@@ -483,10 +453,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: string
  *                       description: 커뮤니티 ID
  *                       example: "CP:VYTTZW33IH"
- *                     authorId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임
@@ -731,10 +697,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: string
  *                       description: 커뮤니티 ID
  *                       example: "CP:VYTTZW33IH"
- *                     authorId:
- *                       type: string
- *                       description: 작성자 ID
- *                       example: "user123"
  *                     author:
  *                       type: string
  *                       description: 작성자 닉네임

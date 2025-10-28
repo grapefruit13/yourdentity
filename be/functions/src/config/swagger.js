@@ -1079,7 +1079,7 @@ const options = {
                 description: {
                   type: "string",
                   description: "미리보기 설명",
-                  example: "string",
+                  example: "오늘도 화이팅!",
                 },
                 thumbnail: {
                   type: "object",
@@ -1089,7 +1089,7 @@ const options = {
                     url: {
                       type: "string",
                       description: "썸네일 URL",
-                      example: "https://example.com/updated-image.jpg",
+                      example: "https://example.com/image.jpg",
                     },
                     blurHash: {
                       type: "string",
@@ -1106,27 +1106,7 @@ const options = {
                       description: "높이",
                       example: 1080,
                     },
-                    ratio: {
-                      type: "string",
-                      description: "비율",
-                      example: "1080:1080",
-                    },
                   },
-                },
-                isVideo: {
-                  type: "boolean",
-                  description: "비디오 여부",
-                  example: false,
-                },
-                hasImage: {
-                  type: "boolean",
-                  description: "이미지 포함 여부",
-                  example: false,
-                },
-                hasVideo: {
-                  type: "boolean",
-                  description: "동영상 포함 여부",
-                  example: false,
                 },
               },
             },

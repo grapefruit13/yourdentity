@@ -253,15 +253,15 @@ class CommunityService {
       const paginatedPosts = allPosts.slice(startIndex, endIndex);
 
       const processedPosts = paginatedPosts.map((post) => {
+        const { authorId, ...postWithoutAuthorId } = post;
         const processedPost = {
-          ...post,
+          ...postWithoutAuthorId,
           createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
           updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
           scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
           timeAgo: post.createdAt ? this.getTimeAgo(new Date(post.createdAt?.toDate?.() || post.createdAt)) : "",
           communityPath: `communities/${post.communityId}`,
           rewardGiven: post.rewardGiven || false,
-          reactionsCount: post.reactionsCount || 0,
           reportsCount: post.reportsCount || 0,
           viewCount: post.viewCount || 0,
         };
@@ -389,7 +389,6 @@ class CommunityService {
         visibility,
         isLocked: false,
         rewardGiven: false,
-        reactionsCount: 0,
         likesCount: 0,
         commentsCount: 0,
         reportsCount: 0,
