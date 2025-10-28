@@ -288,10 +288,14 @@ const TextEditor = ({
   const handleTitleInput = React.useCallback(() => {
     if (titleRef.current && onTitleChange) {
       // 빈 링크 제거
-      const emptyLinks = titleRef.current.querySelectorAll(
-        "a:empty, a:not(:has(*)):not(:has(text))"
-      );
-      emptyLinks.forEach((link) => link.remove());
+      const anchors = titleRef.current.querySelectorAll("a");
+      anchors.forEach((link) => {
+        const text = (link.textContent || "").trim();
+        const hasChildren = link.children.length > 0;
+        if (!text && !hasChildren) {
+          link.remove();
+        }
+      });
 
       onTitleChange(titleRef.current.innerHTML);
     }
@@ -305,10 +309,14 @@ const TextEditor = ({
   const handleContentInput = React.useCallback(() => {
     if (contentRef.current && onContentChange) {
       // 빈 링크 제거
-      const emptyLinks = contentRef.current.querySelectorAll(
-        "a:empty, a:not(:has(*)):not(:has(text))"
-      );
-      emptyLinks.forEach((link) => link.remove());
+      const anchors = contentRef.current.querySelectorAll("a");
+      anchors.forEach((link) => {
+        const text = (link.textContent || "").trim();
+        const hasChildren = link.children.length > 0;
+        if (!text && !hasChildren) {
+          link.remove();
+        }
+      });
 
       onContentChange(contentRef.current.innerHTML);
     }
@@ -463,13 +471,14 @@ const TextEditor = ({
         if (!range.collapsed) {
           // 선택 영역의 텍스트만 추출하여 일반 텍스트로 삽입
           const selectedText = range.toString();
+          const textNode = document.createTextNode(selectedText);
           range.deleteContents();
-          range.insertNode(document.createTextNode(selectedText));
+          range.insertNode(textNode);
 
-          // 커서를 텍스트 뒤로 이동
+          // 커서를 방금 삽입한 텍스트 뒤로 이동 (삽입 노드 기준으로 결정적 위치 지정)
           const after = document.createRange();
-          after.setStartAfter(range.endContainer);
-          after.setEndAfter(range.endContainer);
+          after.setStartAfter(textNode);
+          after.setEndAfter(textNode);
           selection.removeAllRanges();
           selection.addRange(after);
         } else {
@@ -490,16 +499,15 @@ const TextEditor = ({
         const className = HEADING_CLASS_MAP[level];
 
         if (!range.collapsed) {
-          // 선택 영역 래핑
-          const selectedText = range.toString();
+          // 선택 영역 래핑 (내부 마크업 보존)
+          const fragment = range.extractContents();
           const span = document.createElement("span");
           span.setAttribute("class", className);
           span.setAttribute("data-heading", String(level));
-          span.textContent = selectedText;
-          range.deleteContents();
+          span.appendChild(fragment);
           range.insertNode(span);
 
-          // 커서를 span 뒤로 이동
+          // 커서를 span 뒤로 이동 (삽입 노드 기준 결정적 위치)
           const after = document.createRange();
           after.setStartAfter(span);
           after.setEndAfter(span);
