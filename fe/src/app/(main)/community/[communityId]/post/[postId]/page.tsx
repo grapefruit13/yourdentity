@@ -64,12 +64,27 @@ const CommunityDetailPage = () => {
 
   useEffect(() => {
     if (error) {
+      console.log("API 에러 발생, 샘플 데이터로 폴백 시도:", {
+        error,
+        postId,
+        communityId,
+      });
       // API 에러 시 샘플 데이터에서 해당 postId와 communityId 찾기
       const foundPost = samplePosts.find(
         (p) => p.id === postId && p.communityId === communityId
       );
+      console.log("찾은 샘플 데이터:", foundPost);
       if (foundPost) {
         setFallbackPost(foundPost);
+      } else {
+        console.warn("해당하는 샘플 데이터를 찾을 수 없음:", {
+          postId,
+          communityId,
+        });
+        // 첫 번째 샘플 데이터라도 사용
+        if (samplePosts.length > 0) {
+          setFallbackPost(samplePosts[0]);
+        }
       }
     }
   }, [error, postId, communityId]);
@@ -95,15 +110,20 @@ const CommunityDetailPage = () => {
   if (!post) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-8">
-          <div className="text-gray-500">
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="mb-4 text-gray-500">
             {error
-              ? "포스트를 불러오는 중 오류가 발생했습니다."
+              ? "포스트를 불러오는 중 오류가 발생했습니다. 샘플 데이터를 표시합니다."
               : "포스트를 찾을 수 없습니다."}
           </div>
+          {error && (
+            <div className="mb-4 text-sm text-gray-400">
+              API 서버 연결 실패: {error.message || "알 수 없는 오류"}
+            </div>
+          )}
           <button
             onClick={() => router.push("/community")}
-            className="mt-2 text-sm text-blue-600 underline hover:text-blue-800"
+            className="px-4 py-2 text-sm text-blue-600 underline hover:text-blue-800"
           >
             커뮤니티로 돌아가기
           </button>
