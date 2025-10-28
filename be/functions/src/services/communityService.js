@@ -449,8 +449,10 @@ class CommunityService {
       // 커뮤니티 정보 추가
       const community = await this.firestoreService.getDocument("communities", communityId);
 
+      const {authorId, media: _media, ...postWithoutMedia} = post;
+      
       return {
-        ...post,
+        ...postWithoutMedia,
         viewCount: newViewCount,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,

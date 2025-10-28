@@ -1198,11 +1198,9 @@ const options = {
               example: "오늘의 루틴 인증!",
             },
             content: {
-              type: "array",
-              description: "내용",
-              items: {
-                type: "object",
-              },
+              type: "string",
+              description: "게시글 HTML 내용",
+              example: "<p>게시글 내용입니다!</p>",
             },
             channel: {
               type: "string",
@@ -1605,11 +1603,6 @@ const options = {
               description: "게시글 타입",
               example: "ROUTINE_CERT",
             },
-            authorId: {
-              type: "string",
-              description: "작성자 ID",
-              example: "user123",
-            },
             author: {
               type: "string",
               description: "작성자 닉네임",
@@ -1630,13 +1623,6 @@ const options = {
               description: "게시글 본문 내용",
               items: {
                 $ref: "#/components/schemas/ContentItem",
-              },
-            },
-            media: {
-              type: "array",
-              description: "미디어 목록",
-              items: {
-                $ref: "#/components/schemas/MediaItem",
               },
             },
             channel: {
