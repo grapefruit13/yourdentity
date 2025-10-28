@@ -268,7 +268,6 @@ class CommunityService {
 
         if (includeContent) {
           processedPost.content = post.content || [];
-          processedPost.media = post.media || [];
         } else {
           processedPost.preview = this.createPreview(post);
           delete processedPost.content;
@@ -315,7 +314,7 @@ class CommunityService {
       const {
         title, 
         content, 
-        media = [], 
+        media: postMedia = [], 
         type, 
         channel, 
         visibility = "PUBLIC",
@@ -381,7 +380,7 @@ class CommunityService {
         author: author,
         title,
         content: sanitizedContent,
-        media,
+        media: postMedia,
         type: type || community.postType || "GENERAL",
         channel: channel || community.channel || "general",
         category: category || null,
@@ -400,13 +399,12 @@ class CommunityService {
       const result = await postsService.create(newPost);
       const postId = result.id;
 
+      const {authorId, media: _media, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
+      
       return {
         id: postId,
-        ...newPost,
-        // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
-        createdAt: newPost.createdAt?.toDate?.()?.toISOString?.() || newPost.createdAt,
-        updatedAt: newPost.updatedAt?.toDate?.()?.toISOString?.() || newPost.updatedAt,
-        scheduledDate: newPost.scheduledDate?.toDate?.()?.toISOString?.() || newPost.scheduledDate,
+        ...restNewPost,
+        scheduledDate: newPost.scheduledDate?.toISOString?.() || newPost.scheduledDate,
         communityPath: `communities/${communityId}`,
         community: {
           id: communityId,
@@ -535,10 +533,11 @@ class CommunityService {
       const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
 
+      const {authorId, media: _media, ...freshWithoutMedia} = fresh;
+      
       return {
         id: postId,
-        ...fresh,
-        
+        ...freshWithoutMedia,
         createdAt: fresh.createdAt?.toDate?.()?.toISOString?.() || fresh.createdAt,
         updatedAt: fresh.updatedAt?.toDate?.()?.toISOString?.() || fresh.updatedAt,
         scheduledDate: fresh.scheduledDate?.toDate?.()?.toISOString?.() || fresh.scheduledDate,

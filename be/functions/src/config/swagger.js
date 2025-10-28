@@ -1204,13 +1204,6 @@ const options = {
                 type: "object",
               },
             },
-            media: {
-              type: "array",
-              description: "미디어",
-              items: {
-                type: "object",
-              },
-            },
             channel: {
               type: "string",
               description: "채널명",

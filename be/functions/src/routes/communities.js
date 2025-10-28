@@ -59,11 +59,6 @@ const authGuard = require("../middleware/authGuard");
  *           type: string
  *           description: 게시글 HTML 내용
  *           example: "<p>게시글 내용입니다!</p>"
- *         media:
- *           type: array
- *           description: 미디어 목록
- *           items:
- *             $ref: '#/components/schemas/MediaItem'
  *         communityId:
  *           type: string
  *           description: 커뮤니티 ID
@@ -93,10 +88,6 @@ const authGuard = require("../middleware/authGuard");
  *           type: boolean
  *           description: 리워드 지급 여부
  *           example: false
- *         reactionsCount:
- *           type: integer
- *           description: 반응 수
- *           example: 0
  *         likesCount:
  *           type: integer
  *           description: 좋아요 수
@@ -469,11 +460,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: string
  *                       description: 게시글 HTML 내용
  *                       example: "<p>게시글 내용입니다!</p>"
- *                     media:
- *                       type: array
- *                       description: 미디어 목록
- *                       items:
- *                         $ref: '#/components/schemas/MediaItem'
  *                     channel:
  *                       type: string
  *                       description: 채널명
@@ -500,10 +486,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: boolean
  *                       description: 리워드 지급 여부
  *                       example: false
- *                     reactionsCount:
- *                       type: number
- *                       description: 반응 수
- *                       example: 0
  *                     likesCount:
  *                       type: number
  *                       description: 좋아요 수
@@ -520,16 +502,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: number
  *                       description: 조회수
  *                       example: 0
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       description: 생성일시
- *                       example: "2025-10-03T17:15:07.862Z"
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *                       description: 수정일시
- *                       example: "2025-10-03T17:15:07.862Z"
  *                     community:
  *                       type: object
  *                       description: 커뮤니티 정보
@@ -542,9 +514,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                           type: string
  *                           description: 커뮤니티 이름
  *                           example: "TMI 자아탐색"
- *                 message:
- *                   type: string
- *                   example: "게시글이 성공적으로 작성되었습니다."
  *       400:
  *         description: 잘못된 요청
  *       404:
@@ -713,11 +682,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: string
  *                       description: 게시글 HTML 내용
  *                       example: "<p>게시글 내용입니다!</p>"
- *                     media:
- *                       type: array
- *                       description: 미디어 목록
- *                       items:
- *                         $ref: '#/components/schemas/MediaItem'
  *                     channel:
  *                       type: string
  *                       description: 채널명
@@ -744,10 +708,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: boolean
  *                       description: 리워드 지급 여부
  *                       example: false
- *                     reactionsCount:
- *                       type: number
- *                       description: 반응 수
- *                       example: 0
  *                     likesCount:
  *                       type: number
  *                       description: 좋아요 수
@@ -786,9 +746,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                           type: string
  *                           description: 커뮤니티 이름
  *                           example: "TMI 자아탐색"
- *                 message:
- *                   type: string
- *                   example: "게시글이 성공적으로 수정되었습니다."
  *       400:
  *         description: 잘못된 요청
  *       403:
