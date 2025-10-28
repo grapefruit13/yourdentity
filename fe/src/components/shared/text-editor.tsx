@@ -324,6 +324,36 @@ const TextEditor = ({
   }, [onContentChange, checkPlaceholder]);
 
   /**
+   * 명령 실행 후 상태 업데이트를 통합 처리
+   */
+  const updateEditorState = React.useCallback(() => {
+    updateFormatFromSelection();
+    // 직전 사이클에 사용자 지정 색상 오버라이드가 있으면 그것을 우선 적용
+    if (pendingSelectedColorRef.current) {
+      setSelectedColor(pendingSelectedColorRef.current);
+      pendingSelectedColorRef.current = null;
+    } else {
+      updateColorFromSelection();
+    }
+    updateHeadingFromSelection();
+  }, [
+    updateFormatFromSelection,
+    updateColorFromSelection,
+    updateHeadingFromSelection,
+  ]);
+
+  /**
+   * 에디터 입력 이벤트 통합 처리
+   */
+  const handleEditorInput = React.useCallback(() => {
+    if (activeEditor === "title") {
+      handleTitleInput();
+    } else if (activeEditor === "content") {
+      handleContentInput();
+    }
+  }, [activeEditor, handleTitleInput, handleContentInput]);
+
+  /**
    * 문서 명령 실행
    * @param command - 실행할 명령 (bold, italic, foreColor 등)
    * @param value - 명령에 필요한 값 (색상 코드 등)
@@ -344,34 +374,17 @@ const TextEditor = ({
       }
 
       // 명령 실행 후 UI 상태 업데이트
-      setTimeout(() => {
-        updateFormatFromSelection();
-        // 직전 사이클에 사용자 지정 색상 오버라이드가 있으면 그것을 우선 적용
-        if (pendingSelectedColorRef.current) {
-          setSelectedColor(pendingSelectedColorRef.current);
-          pendingSelectedColorRef.current = null;
-        } else {
-          updateColorFromSelection();
-        }
-        updateHeadingFromSelection();
-      }, 0);
+      setTimeout(updateEditorState, 0);
 
       // 입력 이벤트 트리거
-      if (activeEditor === "content") {
-        handleContentInput();
-      } else if (activeEditor === "title") {
-        handleTitleInput();
-      }
+      handleEditorInput();
     },
     [
+      activeEditor,
       getActiveEditorRef,
       restoreSelection,
-      updateFormatFromSelection,
-      updateColorFromSelection,
-      updateHeadingFromSelection,
-      activeEditor,
-      handleTitleInput,
-      handleContentInput,
+      updateEditorState,
+      handleEditorInput,
     ]
   );
 
