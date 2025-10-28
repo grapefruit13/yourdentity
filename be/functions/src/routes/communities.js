@@ -30,9 +30,6 @@ const authGuard = require("../middleware/authGuard");
  *         membersCount:
  *           type: integer
  *           description: 멤버 수
- *         postsCount:
- *           type: integer
- *           description: 게시글 수
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -87,13 +84,7 @@ const authGuard = require("../middleware/authGuard");
      *           type: string
      *           description: 카테고리
      *           example: "한끗루틴"
-     *         tags:
-     *           type: array
-     *           description: 태그 목록
-     *           items:
-     *             type: string
-     *           example: ["운동", "루틴", "인증"]
- *         scheduledDate:
+     *         scheduledDate:
  *           type: string
  *           format: date-time
  *           description: 예약 발행 날짜
@@ -343,7 +334,6 @@ router.get("/", communityController.getCommunities);
  *                             hasVideo: false
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
- *                           tags: ["string"]
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
  *                           isLocked: false
  *                           visibility: "public"
@@ -378,7 +368,6 @@ router.get("/", communityController.getCommunities);
  *                             hasVideo: false
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
- *                           tags: ["string"]
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
  *                           isLocked: false
  *                           visibility: "public"
@@ -474,12 +463,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 type: string
  *                 description: 카테고리
  *                 example: "한끗루틴"
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 태그 목록
- *                 example: ["운동", "루틴", "인증"]
  *               scheduledDate:
  *                 type: string
  *                 format: date-time
@@ -501,7 +484,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 processingStatus: "ready"
  *             visibility: "public"
  *             category: "한끗루틴"
- *             tags: ["운동", "루틴", "인증"]
  *             scheduledDate: "2025-10-03T17:15:04.882Z"
  *     responses:
  *       201:
@@ -563,12 +545,6 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: string
  *                       description: 카테고리
  *                       example: "한끗루틴"
- *                     tags:
- *                       type: array
- *                       description: 태그 목록
- *                       items:
- *                         type: string
- *                       example: ["운동", "루틴", "인증"]
  *                     scheduledDate:
  *                       type: string
  *                       format: date-time
@@ -747,12 +723,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                 type: string
  *                 description: 카테고리
  *                 example: "한끗루틴"
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 태그 목록
- *                 example: ["운동", "루틴", "인증"]
  *               scheduledDate:
  *                 type: string
  *                 format: date-time
@@ -774,7 +744,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                 processingStatus: "ready"
  *             visibility: "public"
  *             category: "한끗루틴"
- *             tags: ["운동", "루틴", "인증"]
  *             scheduledDate: "2025-10-03T17:15:04.882Z"
  *     responses:
  *       200:
@@ -836,12 +805,6 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: string
  *                       description: 카테고리
  *                       example: "한끗루틴"
- *                     tags:
- *                       type: array
- *                       description: 태그 목록
- *                       items:
- *                         type: string
- *                       example: ["운동", "루틴", "인증"]
  *                     scheduledDate:
  *                       type: string
  *                       format: date-time

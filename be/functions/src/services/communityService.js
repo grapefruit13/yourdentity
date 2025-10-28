@@ -301,7 +301,6 @@ class CommunityService {
         channel, 
         visibility = "PUBLIC",
         category,
-        tags = [],
         scheduledDate
       } = postData;
 
@@ -345,7 +344,6 @@ class CommunityService {
         type: type || community.postType || "GENERAL",
         channel: channel || community.channel || "general",
         category: category || null,
-        tags: tags || [],
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         visibility,
         isLocked: false,
