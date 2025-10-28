@@ -214,6 +214,3 @@ exports.api = onRequest(
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
 exports.deleteUserDocument = deleteUserDocument;
-
-// 2세대 Callable Functions
-exports.checkEmailAvailability = require("./src/callables/checkEmailAvailability");
