@@ -6,6 +6,106 @@ const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *       description: Firebase ID Token
+ *   schemas:
+ *     ErrorResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: number
+ *           example: 400
+ *         message:
+ *           type: string
+ *           example: 잘못된 요청입니다
+ *         code:
+ *           type: string
+ *           example: BAD_REQUEST
+ *     StandardResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: number
+ *           example: 200
+ *         data:
+ *           type: object
+ *     User:
+ *       type: object
+ *       properties:
+ *         uid:
+ *           type: string
+ *           example: abc123def456
+ *         email:
+ *           type: string
+ *           example: user@example.com
+ *         name:
+ *           type: string
+ *           example: 홍길동
+ *         nickname:
+ *           type: string
+ *           example: gildong
+ *         authType:
+ *           type: string
+ *           example: kakao
+ *         snsProvider:
+ *           type: string
+ *           example: kakao
+ *         phoneNumber:
+ *           type: string
+ *           example: 01012345678
+ *         gender:
+ *           type: string
+ *           example: male
+ *         birthDate:
+ *           type: string
+ *           example: 1990-01-01
+ *         onboardingCompleted:
+ *           type: boolean
+ *           example: true
+ *         serviceTermsVersion:
+ *           type: string
+ *           example: "v1"
+ *         privacyTermsVersion:
+ *           type: string
+ *           example: "v1"
+ *         age14TermsVersion:
+ *           type: string
+ *           example: "v1"
+ *         pushTermsAgreed:
+ *           type: boolean
+ *           example: false
+ *         pushTermsVersion:
+ *           type: string
+ *           example: "v1"
+ *         termsAgreedAt:
+ *           type: string
+ *           format: date-time
+ *           example: 2024-01-01T00:00:00Z
+ *         profileImageUrl:
+ *           type: string
+ *           example: https://example.com/profile.jpg
+ *         bio:
+ *           type: string
+ *           example: 안녕하세요!
+ *         lastLogin:
+ *           type: string
+ *           format: date-time
+ *           example: 2024-01-01T00:00:00Z
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: 2024-01-01T00:00:00Z
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           example: 2024-01-01T00:00:00Z
+ * 
+ * @swagger
  * tags:
  *   name: Users
  *   description: 사용자 관리 API
@@ -17,8 +117,10 @@ const router = express.Router();
  *   patch:
  *     summary: 온보딩 정보 업데이트
  *     description: |
- *       최초 닉네임 정보를 업데이트합니다.
+ *       최초 온보딩 정보를 업데이트합니다.
  *       - nickname (필수)
+ *       - profileImageUrl (선택)
+ *       - bio (선택)
 
  *     tags: [Users]
  *     security:
@@ -33,8 +135,17 @@ const router = express.Router();
  *               nickname:
  *                 type: string
  *                 description: 닉네임 (필수)
+ *               profileImageUrl:
+ *                 type: string
+ *                 description: 프로필 이미지 URL (선택)
+ *               bio:
+ *                 type: string
+ *                 description: 자기소개 (선택)
+ *             required: [nickname]
  *             example:
  *               nickname: gildong
+ *               profileImageUrl: https://example.com/profile.jpg
+ *               bio: 안녕하세요!
  *     responses:
  *       200:
  *         description: 온보딩 업데이트 성공
@@ -57,25 +168,25 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       409:
  *         description: 닉네임 중복 등 충돌(NICKNAME_TAKEN)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 
 /**
@@ -90,14 +201,141 @@ const router = express.Router();
  *     responses:
  *       200:
  *         description: 사용자 정보 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/StandardResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/User'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/me", authGuard, userController.getMe);
 
+/**
+ * @swagger
+ * /users/nickname-availability:
+ *   get:
+ *     summary: 닉네임 가용성 확인
+ *     description: 닉네임 중복 여부를 확인합니다.
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: nickname
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 확인할 닉네임
+ *     responses:
+ *       200:
+ *         description: 가용성 확인 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     available:
+ *                       type: boolean
+ *                       example: true
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/nickname-availability", userController.checkNicknameAvailability);
+
 router.patch("/me/onboarding", authGuard, userController.updateOnboarding);
+
+
+/**
+ * @swagger
+ * /users/me/sync-kakao-profile:
+ *   post:
+ *     summary: 카카오 프로필 동기화
+ *     description: 카카오 Access Token으로 OIDC userinfo를 조회해 사용자 정보를 저장합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               accessToken:
+ *                 type: string
+ *             required: [accessToken]
+ *     responses:
+ *       200:
+ *         description: 동기화 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *       400:
+ *         description: 잘못된 입력 또는 카카오 호출 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile);
 
 /**
  * @swagger
@@ -140,8 +378,10 @@ router.get("/", userController.getAllUsers);
  * /users/{userId}:
  *   get:
  *     summary: 사용자 상세 조회
- *     description: 특정 사용자의 상세 정보를 조회합니다
+ *     description: 특정 사용자의 상세 정보를 조회합니다 (본인 또는 관리자만 조회 가능)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
@@ -162,6 +402,18 @@ router.get("/", userController.getAllUsers);
  *                   properties:
  *                     data:
  *                       $ref: '#/components/schemas/User'
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: 사용자를 찾을 수 없음
  *         content:
@@ -175,7 +427,7 @@ router.get("/", userController.getAllUsers);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:userId", userController.getUserById);
+router.get("/:userId", authGuard, userController.getUserById);
 
 /**
  * @swagger
@@ -183,11 +435,12 @@ router.get("/:userId", userController.getUserById);
  *   put:
  *     summary: 사용자 정보 수정 (관리자용)
  *     description: |
- *       사용자의 다양한 정보를 수정합니다
+ *       사용자의 다양한 정보를 수정합니다 (모든 필드 수정 가능)
  *       
- *       ⚠️ **주의:**
- *       - nickname은 authTrigger에 없음 (온보딩 브랜치에서 추가됨)
- *       - 현재 브랜치에서는 name, profileImageUrl 등만 수정 가능
+ *       **수정 가능한 필드:**
+ *       - email, nickname, name, birthDate, gender, phoneNumber
+ *       - profileImageUrl, bio, authType, snsProvider
+ *       - onboardingCompleted, 약관 관련 필드들
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -204,38 +457,52 @@ router.get("/:userId", userController.getUserById);
  *           schema:
  *             type: object
  *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               nickname:
+ *                 type: string
+ *                 example: gildong
  *               name:
  *                 type: string
  *                 example: 홍길동
+ *               birthDate:
+ *                 type: string
+ *                 example: 1990-01-01
+ *               gender:
+ *                 type: string
+ *                 enum: [MALE, FEMALE]
+ *                 example: MALE
+ *               phoneNumber:
+ *                 type: string
+ *                 example: 01012345678
  *               profileImageUrl:
  *                 type: string
- *                 example: https://example.com/new-profile.jpg
- *               rewardPoints:
- *                 type: number
- *                 example: 1000
- *               level:
- *                 type: number
- *                 example: 5
- *               badges:
- *                 type: array
- *                 items:
- *                   type: string
- *                 example: ["first_mission", "early_bird"]
- *               points:
+ *                 example: https://example.com/profile.jpg
+ *               bio:
  *                 type: string
- *                 example: "1500"
- *               mainProfileId:
+ *                 example: 안녕하세요!
+ *               authType:
  *                 type: string
- *                 example: profile_abc123
+ *                 example: sns
+ *               snsProvider:
+ *                 type: string
+ *                 example: kakao
  *               onboardingCompleted:
  *                 type: boolean
  *                 example: true
- *               uploadQuotaBytes:
- *                 type: number
- *                 example: 1073741824
- *               usedStorageBytes:
- *                 type: number
- *                 example: 52428800
+ *               serviceTermsVersion:
+ *                 type: string
+ *                 example: "v1"
+ *               privacyTermsVersion:
+ *                 type: string
+ *                 example: "v1"
+ *               age14TermsVersion:
+ *                 type: string
+ *                 example: "v1"
+ *               pushTermsAgreed:
+ *                 type: boolean
+ *                 example: false
  *     responses:
  *       200:
  *         description: 사용자 정보 수정 성공
