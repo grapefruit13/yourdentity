@@ -7,17 +7,14 @@ const FILES_FOLDER = "files";
 const MAX_UPLOAD_FILES = 5;
 
 class FileController {
-  async uploadMultipleFiles(req, res) {
+  async uploadMultipleFiles(req, res, next) {
     const startTime = Date.now();
     const userId = req.user?.uid;
 
     try {
       const contentType = req.headers["content-type"];
       if (!contentType || !contentType.includes("multipart/form-data")) {
-        return res.status(400).json({
-          status: 400,
-          message: "Content-Type은 multipart/form-data여야 합니다",
-        });
+        return res.error(400, "Content-Type은 multipart/form-data여야 합니다");
       }
 
       if (
@@ -25,10 +22,7 @@ class FileController {
         typeof req.body === "object" &&
         !Buffer.isBuffer(req.body)
       ) {
-        return res.status(400).json({
-          status: 400,
-          message: "요청 본문이 이미 파싱되었습니다. raw multipart 데이터를 사용해주세요.",
-        });
+        return res.error(400, "요청 본문이 이미 파싱되었습니다. raw multipart 데이터를 사용해주세요.");
       }
 
       const folder = FILES_FOLDER;
@@ -62,7 +56,10 @@ class FileController {
       const sendResponse = (statusCode, data) => {
         if (responseSent) return;
         responseSent = true;
-        res.status(statusCode).json({
+        if (statusCode === 201) {
+          return res.created(data);
+        }
+        return res.status(statusCode).json({
           status: statusCode,
           data: data,
         });
@@ -186,19 +183,18 @@ class FileController {
         // 모든 활성 스트림 종료
         cleanupStreams();
         
-        res.status(408).json({
-          status: 408,
-          message: "파일 업로드 시간이 초과되었습니다",
-        });
+        return res.error(408, "파일 업로드 시간이 초과되었습니다");
       }, 120000); 
 
       busboy.on("finish", () => {
         if (!fileReceived) {
+          if (responseSent) return;
+          
           console.error(`파일을 받지 못함 - 사용자: ${userId || "알 수 없음"}`);
-          res.status(400).json({
-            status: 400,
-            message: "업로드된 파일이 없습니다",
-          });
+          clearTimeout(timeout);
+          responseSent = true;
+          
+          return res.error(400, "업로드된 파일이 없습니다");
         } else {
           checkAndSendResponse();
         }
@@ -213,18 +209,15 @@ class FileController {
         // 에러 발생 시 스트림 정리
         cleanupStreams();
         
-        res.status(400).json({
-          status: 400,
-          message: "파일 업로드 중 오류가 발생했습니다: " + error.message,
-        });
+        // 에러를 중앙 errorHandler로 위임
+        error.code = "BAD_REQUEST";
+        error.message = "파일 업로드 중 오류가 발생했습니다: " + error.message;
+        return next(error);
       });
 
       stream.pipe(busboy);
     } catch (error) {
-      res.status(500).json({
-        status: 500,
-        message: error.message,
-      });
+      return res.error(500, error.message);
     }
   }
 
@@ -234,27 +227,18 @@ class FileController {
       const userId = req.user?.uid;
 
       if (!fileName) {
-        return res.status(400).json({
-          status: 400,
-          message: "파일명이 필요합니다",
-        });
+        return res.error(400, "파일명이 필요합니다");
       }
 
       const result = await fileService.deleteFile(fileName, userId);
 
       if (result.status === 200) {
-        res.status(204).end();
+        return res.noContent();
       } else {
-        res.status(result.status || 500).json({
-          status: result.status || 500,
-          message: result.message || result.error,
-        });
+        return res.error(result.status || 500, result.message || result.error);
       }
     } catch (error) {
-      res.status(500).json({
-        status: 500,
-        message: error.message,
-      });
+      return res.error(500, error.message);
     }
   }
 }

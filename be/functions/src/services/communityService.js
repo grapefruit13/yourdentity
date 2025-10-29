@@ -425,7 +425,7 @@ class CommunityService {
       const result = await postsService.create(newPost);
       const postId = result.id;
 
-      const {authorId, media: _media, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
+      const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
       
       return {
         id: postId,
