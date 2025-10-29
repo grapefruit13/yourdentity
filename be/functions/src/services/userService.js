@@ -1,8 +1,7 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
-const {AUTH_TYPES} = require("../constants/userConstants");
-const {isValidPhoneNumber, formatDate} = require("../utils/helpers");
+const {isValidPhoneNumber} = require("../utils/helpers");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -17,9 +16,8 @@ class UserService {
   /**
    * 온보딩 업데이트
    * - 허용 필드만 부분 업데이트
-   * - 제공자별 필수값 검증
-   * - 닉네임 중복 방지(트랜잭션, nicknames/{lowerNick})
-   * - 완료 조건 충족 시 onboardingCompleted=true
+   * - 닉네임 중복 방지(트랜잭션)
+   * - 닉네임이 유효하면 onboardingCompleted=true
    * @param {Object} params
    * @param {string} params.uid
    * @param {Object} params.payload
@@ -36,90 +34,22 @@ class UserService {
 
     // 2) 허용 필드 화이트리스트 적용
     const allowedFields = [
-      "name",
       "nickname",
-      "birthDate",
-      "gender",
-      "phoneNumber",
     ];
     const update = {};
     for (const key of allowedFields) {
       if (payload[key] !== undefined) update[key] = payload[key];
     }
 
-    // 3) 유효성 검증
-    if (update.birthDate !== undefined) {
-      try {
-        const formattedDate = formatDate(update.birthDate);
-        update.birthDate = formattedDate;
-      } catch (error) {
-        const e = new Error("올바른 날짜 형식이 아닙니다");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-    }
-    if (update.phoneNumber !== undefined) {
-      if (!isValidPhoneNumber(update.phoneNumber)) {
-        const e = new Error("올바른 전화번호 형식이 아닙니다");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-      // 전화번호 정규화 (숫자만 추출)
-      update.phoneNumber = update.phoneNumber.replace(/[^0-9+]/g, "");
-    }
-    if (update.gender !== undefined) {
-      const validGenders = ["MALE", "FEMALE", null];
-      if (!validGenders.includes(update.gender)) {
-        const e = new Error("INVALID_GENDER");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-    }
-
-    // 4) 약관 동의 처리
-    const terms = payload.terms; // { SERVICE: true, PRIVACY: true }
-    if (terms) {
-      // 필수 약관 체크 (이메일만)
-      const isEmail = existing.authType === AUTH_TYPES.EMAIL;
-      if (isEmail) {
-        const requiredTerms = ["SERVICE", "PRIVACY"];
-        for (const requiredType of requiredTerms) {
-          if (!terms[requiredType]) {
-            const e = new Error(`REQUIRED_TERM_NOT_AGREED: ${requiredType}`);
-            e.code = "REQUIRED_TERM_NOT_AGREED";
-            throw e;
-          }
-        }
-      }
-
-      // 약관 동의 정보를 users 필드에 저장 (true/false 구조)
-      update.serviceTermsAgreed = terms.SERVICE === true;
-      update.servicePrivacyAgreed = terms.PRIVACY === true;
-      update.termsAgreedAt = FieldValue.serverTimestamp();
-    }
-
-    // 5) 제공자별 필수값 체크
-    const isEmail = existing.authType === AUTH_TYPES.EMAIL;
-    const requiredForEmail = ["name", "nickname", "birthDate"];
-    const requiredForKakao = ["nickname"];
-    const required = isEmail ? requiredForEmail : requiredForKakao;
-
-    // 필수 필드 체크
-    const missing = required.filter((f) => !payload[f]);
-    if (missing.length > 0) {
-      const e = new Error(`REQUIRE_FIELDS_MISSING: ${missing.join(",")}`);
+    // 3) 필수 필드 체크 (카카오 전용: 닉네임만 필수)
+    const hasValidNickname = typeof update.nickname === "string" && update.nickname.trim().length > 0;
+    if (!hasValidNickname) {
+      const e = new Error("REQUIRE_FIELDS_MISSING: nickname");
       e.code = "REQUIRE_FIELDS_MISSING";
       throw e;
     }
 
-    // 약관 동의 체크 (이메일 사용자만)
-    if (isEmail && !terms) {
-      const e = new Error("TERMS_REQUIRED_FOR_EMAIL");
-      e.code = "TERMS_REQUIRED_FOR_EMAIL";
-      throw e;
-    }
-
-    // 6) 닉네임 설정 (중복 체크 및 예약)
+    // 4) 닉네임 설정 (중복 체크 및 예약)
     const nickname = update.nickname;
     const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
 
@@ -127,10 +57,10 @@ class UserService {
       await this.nicknameService.setNickname(nickname, uid, existing.nickname);
     }
 
-    // 온보딩 완료 처리
+    // 5) 온보딩 완료 처리
     const userUpdate = {
       ...update,
-      onboardingCompleted: true, // 모든 필수 정보가 입력되었으므로 완료
+      onboardingCompleted: true,
       updatedAt: FieldValue.serverTimestamp(),
     };
 

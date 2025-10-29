@@ -86,39 +86,16 @@ class UserController {
    * PATCH /users/me/onboarding
    * 
    * Body:
-   * - name, nickname, birthDate, gender, phoneNumber
-   * - terms: { SERVICE: boolean, PRIVACY: boolean }
+   * - nickname (필수)
    */
   async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
-      const {name, nickname, birthDate, gender, phoneNumber, terms} = req.body || {};
-
-      // 약관 검증
-      if (terms !== undefined) {
-        // 필수 약관 동의 여부 확인
-        const requiredTerms = ["SERVICE", "PRIVACY"];
-        for (const term of requiredTerms) {
-          if (terms[term] !== true) {
-            const err = new Error(`필수 약관에 동의해야 합니다: ${term}`);
-            err.code = "INVALID_INPUT";
-            throw err;
-          }
-        }
-
-        // 약관 동의 값 타입 검증
-        for (const [key, value] of Object.entries(terms)) {
-          if (typeof value !== "boolean") {
-            const err = new Error(`약관 동의 값은 boolean 타입이어야 합니다: ${key}`);
-            err.code = "INVALID_INPUT";
-            throw err;
-          }
-        }
-      }
+      const {nickname} = req.body || {};
 
       const result = await userService.updateOnboarding({
         uid,
-        payload: {name, nickname, birthDate, gender, phoneNumber, terms},
+        payload: {nickname},
       });
 
       return res.success({onboardingCompleted: result.onboardingCompleted});
