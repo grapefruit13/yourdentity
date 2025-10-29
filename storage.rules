@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 기본적으로 모든 접근 거부
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // files 폴더 - randomFolder 구조 (files/{randomFolder}/{fileName})
+    // 예: files/abc123def456/document_xyz789.pdf
+    match /files/{randomFolder}/{fileName} {
+      // 모든 인증된 사용자가 읽기 가능 (public: true로 설정되어 있음)
+      allow read: if request.auth != null;
+      
+      // 쓰기는 서버(Admin SDK)에서만 가능하므로 규칙상으로는 인증된 사용자 허용
+      // 실제로는 Admin SDK가 사용되므로 이 규칙은 클라이언트 직접 접근 시에만 적용
+      allow write: if request.auth != null;
+    }
+  }
+}
