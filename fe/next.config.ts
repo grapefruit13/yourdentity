@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
       {
         source: "/api-proxy/:path*",
         destination:
-          "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api/:path*",
+          "https://asia-northeast3-youthvoice-2025.cloudfunctions.net/api/:path*",
       },
     ];
   },
