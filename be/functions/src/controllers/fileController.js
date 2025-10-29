@@ -53,7 +53,7 @@ class FileController {
       });
 
       const files = [];
-      const activeFileStreams = []; // 활성 파일 스트림 추적
+      const activeFileStreams = [];
       let fileCount = 0;
       let fileReceived = false;
       let responseSent = false;
@@ -69,23 +69,21 @@ class FileController {
       };
 
       const cleanupStreams = () => {
-        // 모든 활성 파일 스트림 종료
         activeFileStreams.forEach((fileStream) => {
           if (fileStream && typeof fileStream.destroy === "function") {
             try {
               fileStream.destroy();
             } catch (err) {
-              console.error("Error destroying file stream:", err);
+              console.error("파일 스트림 종료 중 오류:", err);
             }
           }
         });
         activeFileStreams.length = 0;
 
-        // busboy 인스턴스 종료
         try {
           busboy.destroy();
         } catch (err) {
-          console.error("Error destroying busboy:", err);
+          console.error("Busboy 인스턴스 종료 중 오류:", err);
         }
 
         // 요청 스트림 종료
@@ -93,7 +91,7 @@ class FileController {
           try {
             stream.destroy();
           } catch (err) {
-            console.error("Error destroying request stream:", err);
+            console.error("요청 스트림 종료 중 오류:", err);
           }
         }
       };
@@ -182,7 +180,7 @@ class FileController {
       const timeout = setTimeout(() => {
         if (responseSent) return; // 이미 응답했으면 무시
         
-        console.error(`⏱️ Upload timeout for user: ${userId || "unknown"}`);
+        console.error(`파일 업로드 타임아웃 - 사용자: ${userId || "알 수 없음"}`);
         responseSent = true;
         
         // 모든 활성 스트림 종료
@@ -192,11 +190,11 @@ class FileController {
           status: 408,
           message: "파일 업로드 시간이 초과되었습니다",
         });
-      }, 120000); // 2분 타임아웃
+      }, 120000); 
 
       busboy.on("finish", () => {
         if (!fileReceived) {
-          console.error(`❌ No file received from user: ${userId || "unknown"}`);
+          console.error(`파일을 받지 못함 - 사용자: ${userId || "알 수 없음"}`);
           res.status(400).json({
             status: 400,
             message: "업로드된 파일이 없습니다",
