@@ -3,6 +3,7 @@ const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
+const fileService = require("./fileService");
 
 /**
  * Community Service (비즈니스 로직 계층)
@@ -591,6 +592,13 @@ class CommunityService {
         const error = new Error("게시글 삭제 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
+      }
+
+      if (post.media && post.media.length > 0) {
+        const deletePromises = post.media.map(filePath => 
+          fileService.deleteFile(filePath)
+        );
+        await Promise.all(deletePromises);
       }
 
       await postsService.delete(postId);
