@@ -96,6 +96,7 @@ export interface PaginationResponse {
 
   // 스키마 타입들 생성
   Object.entries(schemas).forEach(([name, schema]) => {
+    // 일반 object 스키마 처리
     if (schema && schema.type === "object" && schema.properties) {
       types += `export interface ${name} {\n`;
       Object.entries(schema.properties).forEach(
@@ -106,6 +107,61 @@ export interface PaginationResponse {
         }
       );
       types += `}\n\n`;
+    }
+    // allOf 스키마 처리 (상속/확장)
+    else if (schema && schema.allOf) {
+      // extends할 타입들 찾기
+      const extendsTypes: string[] = [];
+      const additionalProps: Array<[string, any, boolean]> = [];
+
+      schema.allOf.forEach((subSchema: any) => {
+        if (subSchema.$ref) {
+          // $ref를 통한 상속
+          const refName = subSchema.$ref.split("/").pop();
+          if (refName && availableSchemaNames.has(refName)) {
+            extendsTypes.push(`Schema.${refName}`);
+          }
+        } else if (subSchema.properties) {
+          // 추가 프로퍼티 수집
+          Object.entries(subSchema.properties).forEach(
+            ([propName, propSchema]: [string, any]) => {
+              const type = getTypeScriptType(propSchema);
+              const optional = subSchema.required?.includes(propName)
+                ? false
+                : true;
+              additionalProps.push([propName, type, optional]);
+            }
+          );
+        }
+      });
+
+      // interface 생성
+      if (extendsTypes.length > 0) {
+        types += `export interface ${name} extends ${extendsTypes.join(", ")} {\n`;
+      } else {
+        types += `export interface ${name} {\n`;
+      }
+
+      // 추가 프로퍼티 작성
+      additionalProps.forEach(([propName, type, optional]) => {
+        types += `  ${propName}${optional ? "?" : ""}: ${type};\n`;
+      });
+
+      types += `}\n\n`;
+    }
+    // anyOf, oneOf 스키마 처리 (유니온 타입)
+    else if (schema && (schema.anyOf || schema.oneOf)) {
+      const unionTypes = schema.anyOf || schema.oneOf;
+      const unionTypeStrings = unionTypes.map((subSchema: any) => {
+        if (subSchema.$ref) {
+          const refName = subSchema.$ref.split("/").pop();
+          return refName && availableSchemaNames.has(refName)
+            ? `Schema.${refName}`
+            : "any";
+        }
+        return getTypeScriptType(subSchema);
+      });
+      types += `export type ${name} = ${unionTypeStrings.join(" | ")};\n\n`;
     }
   });
 
