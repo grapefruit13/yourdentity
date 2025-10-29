@@ -7,11 +7,6 @@ const FILES_FOLDER = "files";
 const MAX_UPLOAD_FILES = 5;
 
 class FileController {
-  
-
-  /**
-   * 여러 파일 업로드
-   */
   async uploadMultipleFiles(req, res) {
     const startTime = Date.now();
     const userId = req.user?.uid;
@@ -76,7 +71,6 @@ class FileController {
         if (pendingUploads === 0 && fileReceived && !responseSent) {
           clearTimeout(timeout);
           const uploadDuration = Date.now() - startTime;
-          console.log(`📊 Upload session completed in ${uploadDuration}ms for user: ${userId || "unknown"}, ${files.length} files processed`);
 
           sendResponse(201, {
             uploaded: files.filter(f => f.success).length,
@@ -114,8 +108,6 @@ class FileController {
           mimeType = fileMimeType;
         }
 
-        console.log(`📤 Starting upload ${fileIndex + 1}: ${fileName} (${mimeType}) by user: ${userId || "unknown"}`);
-
         // 파일을 버퍼로 수집
         const chunks = [];
         for await (const chunk of file) {
@@ -133,20 +125,17 @@ class FileController {
           );
 
           if (result.success) {
-            console.log(`✅ File ${fileIndex + 1} uploaded successfully by user: ${userId || "unknown"}, file: ${fileName}, size: ${fileBuffer.length} bytes`);
             files.push({
               success: true,
               data: result.data,
             });
           } else {
-            console.error(`❌ File ${fileIndex + 1} upload failed: ${result.error}, user: ${userId || "unknown"}`);
             files.push({
               success: false,
               message: result.error,
             });
           }
         } catch (error) {
-          console.error(`❌ File ${fileIndex + 1} upload error: ${error.message}, user: ${userId || "unknown"}`);
           files.push({
             success: false,
             message: error.message,
@@ -166,7 +155,6 @@ class FileController {
       }, 120000); // 2분 타임아웃
 
       busboy.on("finish", () => {
-        console.log(`📋 Busboy finish event triggered. File received: ${fileReceived}, Pending uploads: ${pendingUploads}`);
         if (!fileReceived) {
           console.error(`❌ No file received from user: ${userId || "unknown"}`);
           res.status(400).json({
@@ -180,7 +168,6 @@ class FileController {
 
       busboy.on("error", (error) => {
         clearTimeout(timeout);
-        console.error(`❌ Busboy error for user: ${userId || "unknown"}, error: ${error.message}`);
         res.status(400).json({
           status: 400,
           message: "File upload error: " + error.message,
@@ -189,7 +176,6 @@ class FileController {
 
       stream.pipe(busboy);
     } catch (error) {
-      console.error(`❌ Controller error for user: ${userId || "unknown"}, error: ${error.message}`);
       res.status(500).json({
         status: 500,
         message: error.message,
@@ -197,9 +183,6 @@ class FileController {
     }
   }
 
-  /**
-   * 파일 삭제
-   */
   async deleteFile(req, res) {
     try {
       const fileName = req.params.fileName;
