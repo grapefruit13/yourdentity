@@ -429,13 +429,15 @@ import type { Result } from "@/types/shared/response";
           ? `Result<Types.${resTypeName}>`
           : "Result<any>";
         fileContent += `  const { ${pathParamNames}, ...data } = request;\n`;
-        fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, data);\n`;
+        // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
+        fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, data.data ?? data);\n`;
       } else if (hasRequestBody) {
         // POST/PUT/PATCH 요청 (pathParams 없는 경우)
         const responseType = hasResponseType
           ? `Result<Types.${resTypeName}>`
           : "Result<any>";
-        fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, request);\n`;
+        // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
+        fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, request.data ?? request);\n`;
       } else {
         // GET 요청 (pathParams만 있는 경우 또는 파라미터 없는 경우)
         const responseType = hasResponseType
