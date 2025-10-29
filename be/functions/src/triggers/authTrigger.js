@@ -1,11 +1,5 @@
-const admin = require("firebase-admin");
-const {FieldValue} = require("firebase-admin/firestore");
+const {admin, FieldValue} = require("../config/database");
 const {AUTH_TYPES, USER_ROLES} = require("../constants/userConstants");
-
-// Admin 초기화 (프로덕션에서는 기본 서비스 계정 사용)
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
 
 // Auth Triggers은 1세대 Functions 사용 (현재 파일에서 관리)
 const functions = require("firebase-functions");
@@ -13,7 +7,6 @@ const functions = require("firebase-functions");
 /**
  * Firebase Auth 사용자 생성 시 자동 실행되는 트리거
  * 최초 가입 시 Firestore users/{uid} 문서 생성
-
  */
 exports.createUserDocument = functions
     .region("asia-northeast3")
@@ -25,43 +18,44 @@ exports.createUserDocument = functions
 
         console.log("🔥 Auth Trigger: 사용자 생성 감지", {uid, email});
 
-        // Provider ID 추출 및 정규화
-        const providerId = user.providerData?.[0]?.providerId;
-        let provider = AUTH_TYPES.EMAIL; // 기본값
-
-        if (providerId) {
-          if (providerId.startsWith("oidc.")) {
-            // OIDC 제공자 (카카오, 구글 등)
-            provider = providerId.replace("oidc.", "");
-          } else if (providerId === "password") {
-            // 이메일/비밀번호 인증
-            provider = AUTH_TYPES.EMAIL;
-          } else {
-            // 기타 제공자
-            provider = providerId;
-          }
+        // Provider 정규화 및 검증
+        const providerId = user.providerData?.[0]?.providerId || "";
+        
+        // OIDC Provider인지 확인
+        if (!providerId || !providerId.startsWith("oidc.")) {
+          const err = new Error("지원하지 않는 Provider: 지원하는 OIDC가 아니며 Provider를 식별할 수 없습니다");
+          err.code = "UNSUPPORTED_PROVIDER";
+          throw err;
         }
 
-        // 🆕 Firestore 사용자 문서 생성
+        // 🆕 Firestore 사용자 문서 생성 (기본 정보만)
+        // 참고: gender, birthday, phoneNumber, terms는 동기화 API에서 채움
         const userDoc = {
           // 기본 정보
-          name: user.displayName || "", // 이메일: 온보딩 필수, 카카오: 카카오에서 제공
+          name: user.displayName || null,
           email: email || null,
-          nickname: "", // 온보딩에서 필수 입력
+          phoneNumber: null,
+          
+          // 프로필
+          nickname: "",
           profileImageUrl: user.photoURL || "",
-          birthDate: null, // 이메일: 온보딩 필수, 카카오: 카카오 심사 후 제공
-          gender: null, // 온보딩에서 선택 입력 (MALE | FEMALE | null)
-          phoneNumber: "", // 온보딩에서 선택 입력
+          bio: "",
+          
+          // 개인정보
+          birthDate: null,
+          gender: null,
+          
+          // 주소 정보
           address: "",
           addressDetail: "",
 
           // 인증 정보
-          authType: provider === AUTH_TYPES.EMAIL ? AUTH_TYPES.EMAIL : AUTH_TYPES.SNS,
-          snsProvider: provider === AUTH_TYPES.EMAIL ? null : provider,
+          authType: AUTH_TYPES.SNS,
+          snsProvider: "kakao",
 
           // 사용자 상태
           role: USER_ROLES.USER,
-          onboardingCompleted: false, // 온보딩 완료 시 true로 변경
+          onboardingCompleted: false,
 
           // 리워드 시스템
           rewardPoints: 0,
