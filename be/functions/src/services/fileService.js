@@ -132,36 +132,6 @@ class FileService {
       };
     }
   }
-
-  /**
-   * 파일 다운로드 URL 생성 (서명된 URL, 일정 시간만 유효)
-   * @param {string} fileName - Cloud Storage 내 파일명
-   * @param {number} expiresIn - URL 유효 기간 (초 단위, 기본 1시간)
-   * @returns {Promise<Object>} URL 생성 결과
-   */
-  async getSignedUrl(fileName, expiresIn = 3600) {
-    try {
-      const file = this.bucket.file(fileName);
-      const [url] = await file.getSignedUrl({
-        version: "v4",
-        action: "read",
-        expires: Date.now() + expiresIn * 1000,
-      });
-
-      return {
-        status: 200,
-        data: {
-          signedUrl: url,
-          expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
-        },
-      };
-    } catch (error) {
-      return {
-        status: 500,
-        message: error.message,
-      };
-    }
-  }
 }
 
 module.exports = new FileService();
