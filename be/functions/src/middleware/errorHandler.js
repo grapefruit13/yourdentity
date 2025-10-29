@@ -61,24 +61,9 @@ const errorHandler = (err, req, res, next) => {
       if (!err.message) errorMessage = "이미 존재하는 사용자입니다";
       break;
 
-    case "EMAIL_ALREADY_EXISTS":
-      httpStatus = 409;
-      if (!err.message) errorMessage = "이미 사용 중인 이메일입니다";
-      break;
-
     case "NICKNAME_TAKEN":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 사용 중인 닉네임입니다";
-      break;
-
-    case "TERMS_REQUIRED_FOR_EMAIL":
-      httpStatus = 400;
-      if (!err.message) errorMessage = "이메일 회원가입 시 약관 동의가 필요합니다";
-      break;
-
-    case "REQUIRED_TERM_NOT_AGREED":
-      httpStatus = 400;
-      if (!err.message) errorMessage = "필수 약관에 동의해야 합니다";
       break;
 
     case "REQUIRE_FIELDS_MISSING":
@@ -121,6 +106,26 @@ const errorHandler = (err, req, res, next) => {
     case "COMMENT_NOT_FOUND":
       httpStatus = 404;
       if (!err.message) errorMessage = "신고하려는 댓글을 찾을 수 없습니다.";
+      break;
+
+    case "KAKAO_USERINFO_FAILED":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "카카오 사용자 정보 조회에 실패했습니다";
+      break;
+
+    case "REQUIRED_FIELDS_MISSING":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "필수 입력 항목이 누락되었습니다";
+      break;
+
+    case "INTERNAL_ERROR":
+      httpStatus = 500;
+      if (!err.message) errorMessage = "서버 내부 오류가 발생했습니다";
+      break;
+
+    case "UNSUPPORTED_PROVIDER":
+      httpStatus = 400;
+      if (!err.message) errorMessage = "지원하지 않는 로그인 방식입니다";
       break;
    }
 

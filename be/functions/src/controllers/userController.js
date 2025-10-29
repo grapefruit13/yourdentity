@@ -1,20 +1,15 @@
 const UserService = require("../services/userService");
+const NicknameService = require("../services/nicknameService");
 const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
-
-/**
- * User Controller
- */
+const nicknameService = new NicknameService();
 
 class UserController {
   
   /**
    * 모든 사용자 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
    */
   async getAllUsers(req, res, next) {
     try {
@@ -26,18 +21,11 @@ class UserController {
   }
 
   /**
-     * 사용자 정보 조회 API
-     * @param {Object} req - Express request object
-     * @param {Object} res - Express response object
-     * @param {Function} next - Express next function
-     */
-  /**
    * 본인 정보 조회
-   * GET /users/me
    */
   async getMe(req, res, next) {
     try {
-      const {uid} = req.user; // authGuard에서 설정
+      const {uid} = req.user;
       const user = await userService.getUserById(uid);
       if (!user) {
         const err = new Error("사용자를 찾을 수 없습니다");
@@ -52,7 +40,6 @@ class UserController {
 
   /**
    * 특정 사용자 정보 조회 (Admin 또는 본인만)
-   * GET /users/:userId
    */
   async getUserById(req, res, next) {
     try {
@@ -83,19 +70,16 @@ class UserController {
 
   /**
    * 온보딩 정보 업데이트
-   * PATCH /users/me/onboarding
-   * 
-   * Body:
-   * - nickname (필수)
+   * @param {Object} req.body - { nickname, profileImageUrl?, bio? }
    */
   async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
-      const {nickname} = req.body || {};
+      const {nickname, profileImageUrl, bio} = req.body || {};
 
       const result = await userService.updateOnboarding({
         uid,
-        payload: {nickname},
+        payload: {nickname, profileImageUrl, bio},
       });
 
       return res.success({onboardingCompleted: result.onboardingCompleted});
@@ -104,6 +88,9 @@ class UserController {
     }
   }
 
+  /**
+   * 사용자 정보 수정 (관리자/일부 필드)
+   */
   async updateUser(req, res, next) {
     try {
       const {userId} = req.params;
@@ -164,10 +151,50 @@ class UserController {
   }
 
   /**
+   * 카카오 프로필 동기화
+   * @param {Object} req.body - { accessToken }
+   */
+  async syncKakaoProfile(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const {accessToken} = req.body || {};
+      if (!accessToken || typeof accessToken !== "string") {
+        const err = new Error("INVALID_INPUT: accessToken required");
+        err.code = "INVALID_INPUT";
+        throw err;
+      }
+
+      const result = await userService.syncKakaoProfile(uid, accessToken);
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 닉네임 가용성 확인
+   * GET /users/nickname-availability?nickname=...
+   */
+  async checkNicknameAvailability(req, res, next) {
+    try {
+      const {nickname} = req.query;
+      
+      if (!nickname || typeof nickname !== "string" || !nickname.trim()) {
+        const err = new Error("닉네임을 입력해주세요");
+        err.code = "BAD_REQUEST";
+        throw err;
+      }
+
+      const available = await nicknameService.checkAvailability(nickname);
+      
+      return res.success({available});
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
    * 사용자 삭제 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
    */
   async deleteUser(req, res, next) {
     try {
