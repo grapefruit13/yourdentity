@@ -15,13 +15,11 @@ const router = express.Router();
  * @swagger
  * /users/me/onboarding:
  *   patch:
- *     summary: 온보딩 정보 업데이트 (본인)
+ *     summary: 온보딩 정보 업데이트
  *     description: |
- *       이름/닉네임/출생년도/생년월일/성별/전화번호 등 온보딩 정보를 업데이트합니다.
- *       
- *       **필수 필드 정책:**
- *       - 카카오: nickname (필수), phoneNumber (선택), gender (선택)
- *       - 이메일: name, nickname, birthDate, terms (필수), gender, phoneNumber (선택)
+ *       최초 닉네임 정보를 업데이트합니다.
+ *       - nickname (필수)
+
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -32,42 +30,11 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               name:
- *                 type: string
- *                 description: 사용자 이름 (이메일 필수)
  *               nickname:
  *                 type: string
- *                 description: 닉네임 (카카오/이메일 필수)
- *               birthDate:
- *                 type: string
- *                 description: 생년월일 YYYY-MM-DD (이메일 필수)
- *                 example: 2000-01-31
- *               gender:
- *                 type: string
- *                 enum: [MALE, FEMALE, null]
- *                 description: 성별 (선택)
- *               phoneNumber:
- *                 type: string
- *                 description: 전화번호 (선택)
- *               terms:
- *                 type: object
- *                 description: 약관 동의 (이메일 필수)
- *                 properties:
- *                   SERVICE:
- *                     type: boolean
- *                     description: 서비스 이용약관 (필수)
- *                   PRIVACY:
- *                     type: boolean
- *                     description: 개인정보 처리방침 (필수)
+ *                 description: 닉네임 (필수)
  *             example:
- *               name: 홍길동
  *               nickname: gildong
- *               birthDate: 1998-01-02
- *               gender: MALE
- *               phoneNumber: 010-1234-5678
- *               terms:
- *                 SERVICE: true
- *                 PRIVACY: true
  *     responses:
  *       200:
  *         description: 온보딩 업데이트 성공
