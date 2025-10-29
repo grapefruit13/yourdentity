@@ -26,7 +26,7 @@ export const postCommunitiesPostsById = (
   const { communityId, ...data } = request;
   return post<Result<Types.TPOSTCommunitiesPostsByIdRes>>(
     `/communities/${request.communityId}/posts`,
-    data
+    data.data ?? data
   );
 };
 
@@ -44,7 +44,7 @@ export const putCommunitiesPostsByTwoIds = (
   const { communityId, postId, ...data } = request;
   return put<Result<Types.TPUTCommunitiesPostsByTwoIdsRes>>(
     `/communities/${request.communityId}/posts/${request.postId}`,
-    data
+    data.data ?? data
   );
 };
 

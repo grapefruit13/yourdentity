@@ -23,7 +23,10 @@ export const getStoreProductsById = (
 };
 
 export const postStorePurchase = (request: Types.TPOSTStorePurchaseReq) => {
-  return post<Result<Types.TPOSTStorePurchaseRes>>(`/store/purchase`, request);
+  return post<Result<Types.TPOSTStorePurchaseRes>>(
+    `/store/purchase`,
+    request.data ?? request
+  );
 };
 
 export const postStoreProductsLikeById = (
@@ -40,7 +43,7 @@ export const postStoreProductsQnaById = (
   const { productId, ...data } = request;
   return post<Result<Types.TPOSTStoreProductsQnaByIdRes>>(
     `/store/products/${request.productId}/qna`,
-    data
+    data.data ?? data
   );
 };
 
@@ -50,7 +53,7 @@ export const putStoreProductsQnaByTwoIds = (
   const { productId, qnaId, ...data } = request;
   return put<Result<Types.TPUTStoreProductsQnaByTwoIdsRes>>(
     `/store/products/${request.productId}/qna/${request.qnaId}`,
-    data
+    data.data ?? data
   );
 };
 

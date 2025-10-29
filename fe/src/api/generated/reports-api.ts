@@ -9,7 +9,10 @@ import type * as Types from "@/types/generated/reports-types";
 import type { Result } from "@/types/shared/response";
 
 export const postReportcontent = (request: Types.TPOSTReportContentReq) => {
-  return post<Result<Types.TPOSTReportContentRes>>(`/reportContent`, request);
+  return post<Result<Types.TPOSTReportContentRes>>(
+    `/reportContent`,
+    request.data ?? request
+  );
 };
 
 export const getReportcontentSyncNotionReports = () => {
@@ -21,6 +24,6 @@ export const getReportcontentSyncNotionReports = () => {
 export const postReportcontentMy = (request: Types.TPOSTReportContentMyReq) => {
   return post<Result<Types.TPOSTReportContentMyRes>>(
     `/reportContent/my`,
-    request
+    request.data ?? request
   );
 };

@@ -20,7 +20,7 @@ export const postTmisApplyById = (request: Types.TPOSTTmisApplyByIdReq) => {
   const { projectId, ...data } = request;
   return post<Result<Types.TPOSTTmisApplyByIdRes>>(
     `/tmis/${request.projectId}/apply`,
-    data
+    data.data ?? data
   );
 };
 
@@ -34,7 +34,7 @@ export const postTmisQnaById = (request: Types.TPOSTTmisQnaByIdReq) => {
   const { projectId, ...data } = request;
   return post<Result<Types.TPOSTTmisQnaByIdRes>>(
     `/tmis/${request.projectId}/qna`,
-    data
+    data.data ?? data
   );
 };
 
@@ -42,7 +42,7 @@ export const putTmisQnaByTwoIds = (request: Types.TPUTTmisQnaByTwoIdsReq) => {
   const { projectId, qnaId, ...data } = request;
   return put<Result<Types.TPUTTmisQnaByTwoIdsRes>>(
     `/tmis/${request.projectId}/qna/${request.qnaId}`,
-    data
+    data.data ?? data
   );
 };
 

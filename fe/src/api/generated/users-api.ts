@@ -13,7 +13,7 @@ export const patchUsersMeOnboarding = (
 ) => {
   return patch<Result<Types.TPATCHUsersMeOnboardingRes>>(
     `/users/me/onboarding`,
-    request
+    request.data ?? request
   );
 };
 
@@ -22,7 +22,7 @@ export const getUsersMe = () => {
 };
 
 export const postUsers = (request: Types.TPOSTUsersReq) => {
-  return post<Result<Types.TPOSTUsersRes>>(`/users`, request);
+  return post<Result<Types.TPOSTUsersRes>>(`/users`, request.data ?? request);
 };
 
 export const getUsers = () => {
@@ -35,7 +35,10 @@ export const getUsersById = (request: Types.TGETUsersByIdReq) => {
 
 export const putUsersById = (request: Types.TPUTUsersByIdReq) => {
   const { userId, ...data } = request;
-  return put<Result<Types.TPUTUsersByIdRes>>(`/users/${request.userId}`, data);
+  return put<Result<Types.TPUTUsersByIdRes>>(
+    `/users/${request.userId}`,
+    data.data ?? data
+  );
 };
 
 export const deleteUsersById = (request: Types.TDELETEUsersByIdReq) => {

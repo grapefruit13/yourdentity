@@ -14,7 +14,7 @@ export const postUsersMissionsById = (
   const { userId, ...data } = request;
   return post<Result<Types.TPOSTUsersMissionsByIdRes>>(
     `/users/${request.userId}/missions`,
-    data
+    data.data ?? data
   );
 };
 
@@ -41,7 +41,7 @@ export const putUsersMissionsByTwoIds = (
   const { userId, missionId, ...data } = request;
   return put<Result<Types.TPUTUsersMissionsByTwoIdsRes>>(
     `/users/${request.userId}/missions/${request.missionId}`,
-    data
+    data.data ?? data
   );
 };
 

@@ -9,7 +9,10 @@ import type * as Types from "@/types/generated/fcm-types";
 import type { Result } from "@/types/shared/response";
 
 export const postFcmToken = (request: Types.TPOSTFcmTokenReq) => {
-  return post<Result<Types.TPOSTFcmTokenRes>>(`/fcm/token`, request);
+  return post<Result<Types.TPOSTFcmTokenRes>>(
+    `/fcm/token`,
+    request.data ?? request
+  );
 };
 
 export const getFcmTokens = () => {
