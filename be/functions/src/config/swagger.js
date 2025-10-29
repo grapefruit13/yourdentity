@@ -54,6 +54,10 @@ const options = {
         name: "Programs",
         description: "프로그램 관련 API",
       },
+      {
+        name: "Files",
+        description: "파일 관리 API",
+      },
     ],
     servers: [
       {
@@ -254,6 +258,97 @@ const options = {
               type: "string",
               format: "binary",
               description: "업로드할 파일 (multipart/form-data)",
+            },
+          },
+        },
+        FileUploadResponse: {
+          type: "object",
+          required: ["status", "data"],
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 201,
+            },
+            data: {
+              type: "object",
+              required: ["uploaded", "failed", "files", "errors"],
+              properties: {
+                uploaded: {
+                  type: "number",
+                  description: "성공적으로 업로드된 파일 수",
+                  example: 1,
+                },
+                failed: {
+                  type: "number",
+                  description: "업로드 실패한 파일 수",
+                  example: 0,
+                },
+                files: {
+                  type: "array",
+                  description: "업로드된 파일 정보 목록",
+                  items: {
+                    type: "object",
+                    required: ["success"],
+                    properties: {
+                      success: {
+                        type: "boolean",
+                        description: "업로드 성공 여부",
+                        example: true,
+                      },
+                      data: {
+                        type: "object",
+                        description: "업로드 성공 시 파일 정보",
+                        properties: {
+                          fileUrl: {
+                            type: "string",
+                            description: "파일 접근 URL",
+                            example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/yzNfPCrnmwbqMV7ryNaAhQITjcC2/qr_ZFC_nDZJL_Fv.png",
+                          },
+                          fileName: {
+                            type: "string",
+                            description: "Cloud Storage 내 파일 경로",
+                            example: "files/yzNfPCrnmwbqMV7ryNaAhQITjcC2/qr_ZFC_nDZJL_Fv.png",
+                          },
+                          originalFileName: {
+                            type: "string",
+                            description: "원본 파일명",
+                            example: "qr.png",
+                          },
+                          mimeType: {
+                            type: "string",
+                            description: "MIME 타입",
+                            example: "image/png",
+                          },
+                          size: {
+                            type: "number",
+                            description: "파일 크기 (바이트)",
+                            example: 938831,
+                          },
+                          bucket: {
+                            type: "string",
+                            description: "Cloud Storage 버킷명",
+                            example: "youthvoice-2025.firebasestorage.app",
+                          },
+                          path: {
+                            type: "string",
+                            description: "파일 경로",
+                            example: "files/yzNfPCrnmwbqMV7ryNaAhQITjcC2/qr_ZFC_nDZJL_Fv.png",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                errors: {
+                  type: "array",
+                  description: "업로드 실패 시 에러 메시지 목록",
+                  items: {
+                    type: "string",
+                  },
+                  example: [],
+                },
+              },
             },
           },
         },
@@ -2433,6 +2528,44 @@ const options = {
                   example: "청년",
                 },
               },
+            },
+          },
+        },
+        Success: {
+          type: "object",
+          required: ["status"],
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 200,
+            },
+            data: {
+              description: "응답 데이터 (성공 시에만 포함)",
+              nullable: true,
+              oneOf: [
+                {type: "object", additionalProperties: true},
+                {type: "array", items: {type: "object"}},
+                {type: "string"},
+                {type: "number"},
+                {type: "boolean"},
+              ],
+            },
+          },
+        },
+        Error: {
+          type: "object",
+          required: ["status", "message"],
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 400,
+            },
+            message: {
+              type: "string",
+              description: "에러 메시지",
+              example: "잘못된 요청입니다",
             },
           },
         },
