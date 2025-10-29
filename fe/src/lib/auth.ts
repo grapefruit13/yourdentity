@@ -24,8 +24,15 @@ import { post } from "./axios";
 export const createKakaoProvider = () => {
   const provider = new OAuthProvider("oidc.kakao");
 
-  // Kakao OpenID Connect 표준 스코프 (추후 이름, 출생년도 추가 예정)
+  // Kakao OpenID Connect 스코프 설정
+  // - openid: OIDC 기본
+  // - name: 이름(카카오 동의항목에서 name 필수 설정 필요)
+  // - email: 이메일
+  // - phone: 전화번호(표준 클레임 phone_number)
   provider.addScope("openid");
+  provider.addScope("name");
+  provider.addScope("account_email");
+  provider.addScope("phone_number");
 
   return provider;
 };
