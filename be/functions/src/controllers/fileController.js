@@ -53,6 +53,7 @@ class FileController {
       });
 
       const files = [];
+      const activeFileStreams = []; // 활성 파일 스트림 추적
       let fileCount = 0;
       let fileReceived = false;
       let responseSent = false;
@@ -65,6 +66,36 @@ class FileController {
           status: statusCode,
           data: data,
         });
+      };
+
+      const cleanupStreams = () => {
+        // 모든 활성 파일 스트림 종료
+        activeFileStreams.forEach((fileStream) => {
+          if (fileStream && typeof fileStream.destroy === "function") {
+            try {
+              fileStream.destroy();
+            } catch (err) {
+              console.error("Error destroying file stream:", err);
+            }
+          }
+        });
+        activeFileStreams.length = 0;
+
+        // busboy 인스턴스 종료
+        try {
+          busboy.destroy();
+        } catch (err) {
+          console.error("Error destroying busboy:", err);
+        }
+
+        // 요청 스트림 종료
+        if (stream && typeof stream.destroy === "function") {
+          try {
+            stream.destroy();
+          } catch (err) {
+            console.error("Error destroying request stream:", err);
+          }
+        }
       };
 
       const checkAndSendResponse = () => {
@@ -91,6 +122,9 @@ class FileController {
 
         fileReceived = true;
         pendingUploads++;
+
+        // 활성 스트림 추적
+        activeFileStreams.push(file);
 
         const {filename, mimeType: fileMimeType} = info;
 
@@ -136,12 +170,24 @@ class FileController {
           });
         } finally {
           pendingUploads--;
+          // 완료된 스트림 제거
+          const streamIndex = activeFileStreams.indexOf(file);
+          if (streamIndex > -1) {
+            activeFileStreams.splice(streamIndex, 1);
+          }
           checkAndSendResponse();
         }
       });
 
       const timeout = setTimeout(() => {
+        if (responseSent) return; // 이미 응답했으면 무시
+        
         console.error(`⏱️ Upload timeout for user: ${userId || "unknown"}`);
+        responseSent = true;
+        
+        // 모든 활성 스트림 종료
+        cleanupStreams();
+        
         res.status(408).json({
           status: 408,
           message: "파일 업로드 시간이 초과되었습니다",
@@ -161,7 +207,14 @@ class FileController {
       });
 
       busboy.on("error", (error) => {
+        if (responseSent) return;
+        
         clearTimeout(timeout);
+        responseSent = true;
+        
+        // 에러 발생 시 스트림 정리
+        cleanupStreams();
+        
         res.status(400).json({
           status: 400,
           message: "파일 업로드 중 오류가 발생했습니다: " + error.message,

@@ -1,6 +1,5 @@
 const {admin} = require("../config/database");
 const {nanoid} = require("../utils/helpers");
-const {FieldValue} = require("firebase-admin/firestore");
 
 class FileService {
   constructor() {
@@ -37,7 +36,7 @@ class FileService {
           contentType: mimeType,
           metadata: {
             originalFileName: fileName,
-            uploadedAt: FieldValue.serverTimestamp(),
+            uploadedAt: new Date().toISOString(),
             uploadedBy: userId || "anonymous",
           },
         },
@@ -99,7 +98,7 @@ class FileService {
             contentType: mimeType,
             metadata: {
               originalFileName: fileName,
-              uploadedAt: FieldValue.serverTimestamp(),
+              uploadedAt: new Date().toISOString(),
               uploadedBy: userId || "anonymous",
             },
           },
