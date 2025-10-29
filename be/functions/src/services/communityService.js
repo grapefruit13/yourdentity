@@ -357,14 +357,14 @@ class CommunityService {
       }
 
       if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
-        const filesCheck = await fileService.filesExist(postMedia);
-        if (!filesCheck.allExist) {
+        const filesCheck = await fileService.filesExist(postMedia, userId);
+        if (!filesCheck.allOwned) {
           const missingFiles = Object.entries(filesCheck.results)
-            .filter(([_, exists]) => !exists)
+            .filter(([_, owned]) => !owned)
             .map(([fileName]) => fileName);
           
           const error = new Error(
-            `다음 파일들을 찾을 수 없습니다: ${missingFiles.join(", ")}`
+            `유효하지 않은 파일 또는 권한이 없습니다: ${missingFiles.join(", ")}`
           );
           error.code = "BAD_REQUEST";
           throw error;
@@ -556,12 +556,12 @@ class CommunityService {
         const requestedMedia = updateData.media || [];
         
         if (requestedMedia.length > 0) {
-          const check = await fileService.filesExist(requestedMedia);
-          if (!check.allExist) {
+          const check = await fileService.filesExist(requestedMedia, userId);
+          if (!check.allOwned) {
             const missing = Object.entries(check.results)
-              .filter(([, exists]) => !exists)
+              .filter(([, owned]) => !owned)
               .map(([filePath]) => filePath);
-            const error = new Error(`유효하지 않은 파일: ${missing.join(", ")}`);
+            const error = new Error(`유효하지 않은 파일 또는 권한이 없습니다: ${missing.join(", ")}`);
             error.code = "BAD_REQUEST";
             throw error;
           }

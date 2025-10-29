@@ -8,6 +8,13 @@ const FILES_FOLDER = "files";
 const MAX_UPLOAD_FILES = 5;
 
 class FileController {
+  /**
+   * 여러 파일을 동시에 업로드합니다.
+   * @param {Object} req - Express request 객체 (multipart/form-data)
+   * @param {Object} res - Express response 객체
+   * @param {Function} next - Express next 미들웨어 함수
+   * @returns {Promise<void>} 업로드 결과를 포함한 201 응답 또는 에러
+   */
   async uploadMultipleFiles(req, res, next) {
     const startTime = Date.now();
     const userId = req.user?.uid;
@@ -225,6 +232,13 @@ class FileController {
     }
   }
 
+  /**
+   * 파일을 삭제합니다 (소유권 검증 포함).
+   * @param {Object} req - Express request 객체
+   * @param {Object} res - Express response 객체
+   * @param {Function} next - Express next 미들웨어 함수
+   * @returns {Promise<void>} 204 No Content 또는 에러
+   */
   async deleteFile(req, res, next) {
     try {
       const filePath = req.params.filePath;

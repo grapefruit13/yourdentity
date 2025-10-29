@@ -221,41 +221,64 @@ class FileService {
   /**
    * 여러 파일 존재 여부 확인 (병렬 처리)
    * @param {Array<string>} fileNames - 파일 경로 배열
-   * @returns {Promise<Object>} 각 파일의 존재 여부 결과
+   * @param {string} userId - 사용자 ID (옵션, 제공 시 소유권 검증)
+   * @returns {Promise<Object>} 각 파일의 존재 여부 및 소유권 결과
    */
-  async filesExist(fileNames) {
+  async filesExist(fileNames, userId = null) {
     try {
       if (!Array.isArray(fileNames) || fileNames.length === 0) {
         return {
           allExist: true,
+          allOwned: true,
           results: {},
         };
       }
 
       const checkPromises = fileNames.map(async (fileName) => {
         const exists = await this.fileExists(fileName);
-        return {fileName, exists};
+        let owned = false;
+
+        // userId가 제공되고 파일이 존재하는 경우 소유권 검증
+        if (userId && exists) {
+          try {
+            const file = this.bucket.file(fileName);
+            const [metadata] = await file.getMetadata();
+            const uploadedBy = metadata?.metadata?.uploadedBy;
+            owned = uploadedBy === userId;
+          } catch (error) {
+            console.error(`File ownership check error for ${fileName}:`, error);
+            owned = false;
+          }
+        }
+
+        return {fileName, exists, owned: userId ? owned : exists};
       });
 
       const results = await Promise.all(checkPromises);
       const resultsMap = {};
       let allExist = true;
+      let allOwned = true;
 
-      results.forEach(({fileName, exists}) => {
-        resultsMap[fileName] = exists;
+      results.forEach(({fileName, exists, owned}) => {
+        resultsMap[fileName] = userId ? owned : exists;
         if (!exists) {
           allExist = false;
+        }
+        if (userId && !owned) {
+          allOwned = false;
         }
       });
 
       return {
         allExist,
+        allOwned: userId ? allOwned : allExist,
         results: resultsMap,
       };
     } catch (error) {
       console.error("Files exist check error:", error);
       return {
         allExist: false,
+        allOwned: false,
         results: {},
       };
     }
