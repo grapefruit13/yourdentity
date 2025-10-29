@@ -200,6 +200,65 @@ class FileService {
   }
 
   /**
+   * 파일 존재 여부 확인
+   * @param {string} fileName - Cloud Storage 내 파일명 (경로 포함)
+   * @returns {Promise<boolean>} 파일 존재 여부
+   */
+  async fileExists(fileName) {
+    try {
+      const file = this.bucket.file(fileName);
+      const [exists] = await file.exists();
+      return exists;
+    } catch (error) {
+      console.error("File exists check error:", error);
+      return false;
+    }
+  }
+
+  /**
+   * 여러 파일 존재 여부 확인 (병렬 처리)
+   * @param {Array<string>} fileNames - 파일 경로 배열
+   * @returns {Promise<Object>} 각 파일의 존재 여부 결과
+   */
+  async filesExist(fileNames) {
+    try {
+      if (!Array.isArray(fileNames) || fileNames.length === 0) {
+        return {
+          allExist: true,
+          results: {},
+        };
+      }
+
+      const checkPromises = fileNames.map(async (fileName) => {
+        const exists = await this.fileExists(fileName);
+        return {fileName, exists};
+      });
+
+      const results = await Promise.all(checkPromises);
+      const resultsMap = {};
+      let allExist = true;
+
+      results.forEach(({fileName, exists}) => {
+        resultsMap[fileName] = exists;
+        if (!exists) {
+          allExist = false;
+        }
+      });
+
+      return {
+        allExist,
+        results: resultsMap,
+      };
+    } catch (error) {
+      console.error("Files exist check error:", error);
+      return {
+        allExist: false,
+        results: {},
+      };
+    }
+  }
+
+  /**
    * 파일 삭제
    * @param {string} fileName - Cloud Storage 내 파일명 (경로 포함)
    * @param {string} userId - 요청한 사용자 ID (소유자 확인용)

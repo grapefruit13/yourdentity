@@ -356,6 +356,21 @@ class CommunityService {
         throw error;
       }
 
+      if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
+        const filesCheck = await fileService.filesExist(postMedia);
+        if (!filesCheck.allExist) {
+          const missingFiles = Object.entries(filesCheck.results)
+            .filter(([_, exists]) => !exists)
+            .map(([fileName]) => fileName);
+          
+          const error = new Error(
+            `다음 파일들을 찾을 수 없습니다: ${missingFiles.join(", ")}`
+          );
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+      }
+
       const community = await this.firestoreService.getDocument("communities", communityId);
       if (!community) {
         const error = new Error("Community not found");
