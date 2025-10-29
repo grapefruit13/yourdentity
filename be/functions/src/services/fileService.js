@@ -27,7 +27,6 @@ class FileService {
       const fileExtension = safeFileName.split(".").pop();
       const baseName = safeFileName.replace(/\.[^/.]+$/, "");
       
-      // 사용자 ID를 경로에 포함하지 않고 난수 기반 디렉터리 사용
       const randomFolder = nanoid(12);
       const uniqueFileName = `${folder}/${randomFolder}/${baseName}_${uniqueId}.${fileExtension}`;
 
@@ -79,7 +78,6 @@ class FileService {
    */
   async uploadMultipleFiles(files, folder = "files", userId = null) {
     try {
-      // 병렬 업로드 실행
       const uploadPromises = files.map((file) =>
         this.uploadFile(file.buffer, file.fileName, file.mimeType, folder, userId),
       );
@@ -121,7 +119,6 @@ class FileService {
         message: "File deleted successfully",
       };
     } catch (error) {
-      // 파일이 없어도 에러로 처리하지 않음
       if (error.code === 404) {
         return {
           status: 200,

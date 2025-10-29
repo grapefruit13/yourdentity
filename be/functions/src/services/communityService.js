@@ -356,7 +356,6 @@ class CommunityService {
         throw error;
       }
 
-      // 커뮤니티 존재 확인
       const community = await this.firestoreService.getDocument("communities", communityId);
       if (!community) {
         const error = new Error("Community not found");
@@ -461,10 +460,10 @@ class CommunityService {
       // 커뮤니티 정보 추가
       const community = await this.firestoreService.getDocument("communities", communityId);
 
-      const {authorId, media: _media, ...postWithoutMedia} = post;
+      const {authorId, ...postWithoutAuthorId} = post;
       
       return {
-        ...postWithoutMedia,
+        ...postWithoutAuthorId,
         viewCount: newViewCount,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
@@ -537,6 +536,20 @@ class CommunityService {
         updateData.content = sanitizedContent;
       }
 
+      if (Object.prototype.hasOwnProperty.call(updateData, "media")) {
+        const currentMedia = post.media || [];
+        const requestedMedia = updateData.media || [];
+        
+        const filesToDelete = currentMedia.filter(file => !requestedMedia.includes(file));
+        if (filesToDelete.length > 0) {
+          const deletePromises = filesToDelete.map(filePath => 
+            fileService.deleteFile(filePath)
+          );
+          await Promise.all(deletePromises);
+        }
+        
+      }
+
       const updatedData = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
@@ -547,11 +560,11 @@ class CommunityService {
       const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
 
-      const {authorId, media: _media, ...freshWithoutMedia} = fresh;
+      const {authorId, ...freshWithoutAuthorId} = fresh;
       
       return {
         id: postId,
-        ...freshWithoutMedia,
+        ...freshWithoutAuthorId,
         createdAt: fresh.createdAt?.toDate?.()?.toISOString?.() || fresh.createdAt,
         updatedAt: fresh.updatedAt?.toDate?.()?.toISOString?.() || fresh.updatedAt,
         scheduledDate: fresh.scheduledDate?.toDate?.()?.toISOString?.() || fresh.scheduledDate,

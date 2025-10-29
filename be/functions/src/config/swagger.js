@@ -1297,6 +1297,14 @@ const options = {
               description: "게시글 HTML 내용",
               example: "<p>게시글 내용입니다!</p>",
             },
+            media: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "미디어 파일 경로 목록",
+              example: ["files/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"],
+            },
             channel: {
               type: "string",
               description: "채널명",
