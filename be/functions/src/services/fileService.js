@@ -1,0 +1,171 @@
+const {admin} = require("../config/database");
+const {nanoid} = require("../utils/helpers");
+const {FieldValue} = require("firebase-admin/firestore");
+
+class FileService {
+  constructor() {
+    this.bucket = admin.storage().bucket();
+  }
+
+  /**
+   * 파일 업로드 (버퍼 방식 - 안정적)
+   * @param {Buffer} fileBuffer - 파일 버퍼
+   * @param {string} fileName - 원본 파일명
+   * @param {string} mimeType - MIME 타입
+   * @param {string} folder - 업로드할 폴더 경로
+   * @param {string} userId - 사용자 ID
+   * @returns {Promise<Object>} 업로드 결과
+   */
+  async uploadFile(fileBuffer, fileName, mimeType, folder = "files", userId = null) {
+    try {
+
+      const safeFileName = fileName
+          .replace(/[^a-zA-Z0-9.-]/g, "_")
+          .replace(/\s+/g, "_");
+
+      const uniqueId = nanoid(12);
+      const fileExtension = safeFileName.split(".").pop();
+      const baseName = safeFileName.replace(/\.[^/.]+$/, "");
+      
+      // 사용자 ID를 경로에 포함하지 않고 난수 기반 디렉터리 사용
+      const randomFolder = nanoid(12);
+      const uniqueFileName = `${folder}/${randomFolder}/${baseName}_${uniqueId}.${fileExtension}`;
+
+      const file = this.bucket.file(uniqueFileName);
+
+      await file.save(fileBuffer, {
+        metadata: {
+          contentType: mimeType,
+          metadata: {
+            originalFileName: fileName,
+            uploadedAt: FieldValue.serverTimestamp(),
+            uploadedBy: userId || "anonymous",
+          },
+        },
+        resumable: true,
+        validation: false,
+        public: true, 
+      });
+
+      const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${uniqueFileName}`;
+
+      return {
+        success: true,
+        data: {
+          fileUrl: publicUrl,
+          fileName: uniqueFileName,
+          originalFileName: fileName,
+          mimeType: mimeType,
+          size: fileBuffer.length,
+          bucket: this.bucket.name,
+          path: uniqueFileName,
+        },
+      };
+    } catch (error) {
+      console.error("File upload error:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * 여러 파일을 동시에 업로드 (병렬 처리)
+   * @param {Array<Object>} files - [{ stream, fileName, mimeType }] 형식의 배열
+   * @param {string} folder - 업로드할 폴더 경로
+   * @param {string} userId - 사용자 ID
+   * @returns {Promise<Object>} 업로드 결과
+   */
+  async uploadMultipleFiles(files, folder = "files", userId = null) {
+    try {
+      // 병렬 업로드 실행
+      const uploadPromises = files.map((file) =>
+        this.uploadFile(file.buffer, file.fileName, file.mimeType, folder, userId),
+      );
+
+      const results = await Promise.all(uploadPromises);
+
+      const successful = results.filter((r) => r.success);
+      const failed = results.filter((r) => !r.success);
+
+      return {
+        success: failed.length === 0,
+        data: {
+          uploaded: successful.length,
+          failed: failed.length,
+          files: successful.map((r) => r.data),
+          errors: failed.length > 0 ? failed.map((r) => r.error) : [],
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * 파일 삭제
+   * @param {string} fileName - Cloud Storage 내 파일명 (경로 포함)
+   * @returns {Promise<Object>} 삭제 결과
+   */
+  async deleteFile(fileName) {
+    try {
+      const file = this.bucket.file(fileName);
+      await file.delete();
+
+      return {
+        status: 200,
+        message: "File deleted successfully",
+      };
+    } catch (error) {
+      // 파일이 없어도 에러로 처리하지 않음
+      if (error.code === 404) {
+        return {
+          status: 200,
+          message: "File not found (may have been already deleted)",
+        };
+      }
+
+      return {
+        status: 500,
+        message: error.message,
+      };
+    }
+  }
+
+  /**
+   * 파일 다운로드 URL 생성 (서명된 URL, 일정 시간만 유효)
+   * @param {string} fileName - Cloud Storage 내 파일명
+   * @param {number} expiresIn - URL 유효 기간 (초 단위, 기본 1시간)
+   * @returns {Promise<Object>} URL 생성 결과
+   */
+  async getSignedUrl(fileName, expiresIn = 3600) {
+    try {
+      const file = this.bucket.file(fileName);
+      const [url] = await file.getSignedUrl({
+        version: "v4",
+        action: "read",
+        expires: Date.now() + expiresIn * 1000,
+      });
+
+      return {
+        status: 200,
+        data: {
+          signedUrl: url,
+          expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+        },
+      };
+    } catch (error) {
+      return {
+        status: 500,
+        message: error.message,
+      };
+    }
+  }
+}
+
+module.exports = new FileService();
+
