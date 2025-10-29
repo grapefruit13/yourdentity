@@ -24,33 +24,6 @@ export const useGetCommunitiesPosts = (
   });
 };
 
-export const useGetCommunitiesById = (
-  request: Types.TGETCommunitiesByIdReq
-) => {
-  return useQuery({
-    queryKey: communitiesKeys.getCommunitiesById(request),
-    queryFn: () => Api.getCommunitiesById(request),
-  });
-};
-
-export const useGetCommunitiesMembersById = (
-  request: Types.TGETCommunitiesMembersByIdReq
-) => {
-  return useQuery({
-    queryKey: communitiesKeys.getCommunitiesMembersById(request),
-    queryFn: () => Api.getCommunitiesMembersById(request),
-  });
-};
-
-export const useGetCommunitiesPostsById = (
-  request: Types.TGETCommunitiesPostsByIdReq
-) => {
-  return useQuery({
-    queryKey: communitiesKeys.getCommunitiesPostsById(request),
-    queryFn: () => Api.getCommunitiesPostsById(request),
-  });
-};
-
 export const usePostCommunitiesPostsById = () => {
   return useMutation({
     mutationFn: (request: Types.TPOSTCommunitiesPostsByIdReq) =>

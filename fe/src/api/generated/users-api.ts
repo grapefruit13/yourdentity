@@ -1,4 +1,4 @@
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @description Users 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -8,11 +8,17 @@ import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/users-types";
 import type { Result } from "@/types/shared/response";
 
-export const postUsersProvision = (request: Types.TPOSTUsersProvisionReq) => {
-  return post<Result<Types.TPOSTUsersProvisionRes>>(
-    `/users/provision`,
+export const patchUsersMeOnboarding = (
+  request: Types.TPATCHUsersMeOnboardingReq
+) => {
+  return patch<Result<Types.TPATCHUsersMeOnboardingRes>>(
+    `/users/me/onboarding`,
     request
   );
+};
+
+export const getUsersMe = () => {
+  return get<Result<any>>(`/users/me`);
 };
 
 export const postUsers = (request: Types.TPOSTUsersReq) => {

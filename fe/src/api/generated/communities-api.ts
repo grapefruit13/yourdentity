@@ -20,30 +20,6 @@ export const getCommunitiesPosts = (request: Types.TGETCommunitiesPostsReq) => {
   });
 };
 
-export const getCommunitiesById = (request: Types.TGETCommunitiesByIdReq) => {
-  return get<Result<Types.TGETCommunitiesByIdRes>>(
-    `/communities/${request.communityId}`
-  );
-};
-
-export const getCommunitiesMembersById = (
-  request: Types.TGETCommunitiesMembersByIdReq
-) => {
-  return get<Result<Types.TGETCommunitiesMembersByIdRes>>(
-    `/communities/${request.communityId}/members`,
-    { params: request }
-  );
-};
-
-export const getCommunitiesPostsById = (
-  request: Types.TGETCommunitiesPostsByIdReq
-) => {
-  return get<Result<Types.TGETCommunitiesPostsByIdRes>>(
-    `/communities/${request.communityId}/posts`,
-    { params: request }
-  );
-};
-
 export const postCommunitiesPostsById = (
   request: Types.TPOSTCommunitiesPostsByIdReq
 ) => {

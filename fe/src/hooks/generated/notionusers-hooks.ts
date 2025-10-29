@@ -14,3 +14,17 @@ export const useGetNotionusersSyncActive = () => {
     queryFn: () => Api.getNotionusersSyncActive(),
   });
 };
+
+export const useGetNotionusersSyncFull = () => {
+  return useQuery({
+    queryKey: notionusersKeys.getNotionusersSyncFull,
+    queryFn: () => Api.getNotionusersSyncFull(),
+  });
+};
+
+export const useGetNotionusersSyncPenalty = () => {
+  return useQuery({
+    queryKey: notionusersKeys.getNotionusersSyncPenalty,
+    queryFn: () => Api.getNotionusersSyncPenalty(),
+  });
+};

@@ -33,7 +33,7 @@ export interface User {
   authType?: "email" | "sns";
   snsProvider?: "kakao" | "google";
   role?: "user" | "admin";
-  onBoardingComplete?: boolean;
+  onboardingCompleted?: boolean;
   phoneNumber?: string;
   phoneVerified?: boolean;
   birthYear?: number;
@@ -253,11 +253,7 @@ export interface CommunityPostListItem {
       blurHash?: string;
       width?: number;
       height?: number;
-      ratio?: string;
     };
-    isVideo?: boolean;
-    hasImage?: boolean;
-    hasVideo?: boolean;
   };
   mediaCount?: number;
   channel?: string;
@@ -274,11 +270,10 @@ export interface CommunityPostListItem {
 
 export interface CommunityPost {
   id?: string;
-  type?: "ROUTINE_CERT" | "GATHERING_REVIEW" | "TMI";
+  type?: string;
   author?: string;
   title?: string;
   content?: Record<string, any>[];
-  media?: Record<string, any>[];
   channel?: string;
   isLocked?: boolean;
   visibility?: string;
@@ -286,25 +281,20 @@ export interface CommunityPost {
   commentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
-  authorId?: string;
-  preview?: {
-    description?: string;
-    thumbnail?: {
-      url?: string;
-      blurHash?: string;
-      width?: number;
-      height?: number;
-      ratio?: string;
-    };
-    isVideo?: boolean;
-    hasImage?: boolean;
-    hasVideo?: boolean;
-  };
-  mediaCount?: number;
+  communityId?: string;
   category?: string;
-  tags?: string[];
   scheduledDate?: string;
+  rewardGiven?: boolean;
+  reportsCount?: number;
+  viewCount?: number;
   timeAgo?: string;
+  communityPath?: string;
+  community?: {
+    id?: string;
+    name?: string;
+  };
+  authorId?: string;
+  media?: Record<string, any>[];
 }
 
 export interface Comment {
@@ -328,7 +318,6 @@ export interface Comment {
   updatedAt?: string;
   id?: string;
   author?: string;
-  media?: any[];
   parent_id?: string;
   vote_score?: number;
   up_vote_score?: number;
@@ -397,21 +386,16 @@ export interface Community {
   linkedChat?: string;
   channel?: string;
   postType?: "ROUTINE_CERT" | "GATHERING_REVIEW" | "TMI";
-  membersCount?: number;
-  postsCount?: number;
   updatedAt?: string;
 }
 
 export interface Post {
   id?: string;
   type?: "ROUTINE_CERT" | "TMI" | "GATHERING_REVIEW";
-  refId?: string;
-  authorId?: string;
   author?: string;
   communityPath?: string;
   title?: string;
   content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
   channel?: string;
   isLocked?: boolean;
   visibility?: "public" | "private" | "hidden";
@@ -427,7 +411,6 @@ export interface Post {
 export interface ActivityResponse {
   activityId?: string;
   type?: "GATHERING_REVIEW" | "ROUTINE_CERT" | "TMI_REVIEW";
-  refId?: string;
   userId?: string;
   title?: string;
   content?: string;
@@ -516,6 +499,104 @@ export interface FCMTokenListResponse {
 
 export interface FCMDeleteResponse {
   message?: string;
+}
+
+export interface Program {
+  id?: string;
+  title?: string;
+  programName?: string;
+  description?: string;
+  programType?: "ROUTINE" | "TMI" | "GATHERING";
+  recruitmentStatus?: "모집 전" | "모집 중" | "모집 완료" | "모집 취소";
+  programStatus?: "진행 전" | "진행 중" | "종료됨" | "진행 취소됨";
+  startDate?: string;
+  endDate?: string;
+  recruitmentStartDate?: string;
+  recruitmentEndDate?: string;
+  targetAudience?: string;
+  thumbnail?: {
+    name?: string;
+    url?: string;
+    type?: string;
+  }[];
+  linkUrl?: string;
+  isReviewRegistered?: boolean;
+  isBannerRegistered?: boolean;
+  participants?: {
+    name?: string;
+    id?: string;
+  }[];
+  notes?: string;
+  faqRelation?: {
+    relations?: {
+      id?: string;
+    }[];
+    has_more?: boolean;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  notionPageTitle?: string;
+}
+
+export interface ProgramDetail extends Schema.Program {
+  pageContent?: {
+    type?: string;
+    id?: string;
+    text?: string;
+    richText?: Record<string, any>[];
+    hasChildren?: boolean;
+    checked?: boolean;
+    icon?: Record<string, any>;
+    url?: string;
+    caption?: string;
+  }[];
+  faqList?: {
+    id?: string;
+    title?: string;
+    category?: string[];
+    content?: {
+      type?: string;
+      id?: string;
+      text?: string;
+    }[];
+    createdAt?: string;
+    updatedAt?: string;
+  }[];
+}
+
+export interface ProgramListResponse {
+  status?: number;
+  data?: {
+    message?: string;
+    programs?: Schema.Program[];
+    pagination?: {
+      hasMore?: boolean;
+      nextCursor?: string;
+      totalCount?: number;
+    };
+  };
+}
+
+export interface ProgramDetailResponse {
+  status?: number;
+  data?: {
+    message?: string;
+    program?: Schema.ProgramDetail;
+  };
+}
+
+export interface ProgramSearchResponse {
+  status?: number;
+  data?: {
+    message?: string;
+    programs?: Schema.Program[];
+    pagination?: {
+      hasMore?: boolean;
+      nextCursor?: string;
+      totalCount?: number;
+    };
+    searchTerm?: string;
+  };
 }
 
 export interface CommunityMember {

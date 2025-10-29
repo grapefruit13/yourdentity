@@ -6,18 +6,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
 
-export interface TPOSTUsersProvisionReq {
+export interface TPATCHUsersMeOnboardingReq {
   data: {
-    email?: string;
     name?: string;
-    profileImageUrl?: string;
-    birthYear?: number;
-    authType?: "email" | "sns";
-    snsProvider?: "kakao" | "google";
+    nickname?: string;
+    birthDate?: string;
+    gender?: "MALE" | "FEMALE" | "null";
+    phoneNumber?: string;
+    terms?: {
+      SERVICE?: boolean;
+      PRIVACY?: boolean;
+    };
   };
 }
 
-export type TPOSTUsersProvisionRes = any;
+export type TPATCHUsersMeOnboardingRes = {
+  onboardingCompleted?: boolean;
+};
 
 export interface TPOSTUsersReq {
   data: {
@@ -25,7 +30,6 @@ export interface TPOSTUsersReq {
     email: string;
     password: string;
     profileImageUrl?: string;
-    birthYear?: number;
     authType?: "email" | "sns";
     snsProvider?: "kakao" | "google";
   };
@@ -46,13 +50,12 @@ export interface TPUTUsersByIdReq {
   data: {
     name?: string;
     profileImageUrl?: string;
-    birthYear?: number;
     rewardPoints?: number;
     level?: number;
     badges?: string[];
     points?: string;
     mainProfileId?: string;
-    onBoardingComplete?: boolean;
+    onboardingCompleted?: boolean;
     uploadQuotaBytes?: number;
     usedStorageBytes?: number;
   };

@@ -46,61 +46,12 @@ export type TGETCommunitiesPostsRes = {
   };
 };
 
-export interface TGETCommunitiesByIdReq {
-  communityId: string;
-}
-
-export type TGETCommunitiesByIdRes = Schema.Community;
-
-export interface TGETCommunitiesMembersByIdReq {
-  communityId: string;
-  page?: number;
-  size?: number;
-}
-
-export type TGETCommunitiesMembersByIdRes = {
-  members?: Schema.CommunityMember[];
-  pagination?: {
-    pageNumber?: number;
-    pageSize?: number;
-    totalElements?: number;
-    totalPages?: number;
-    hasNext?: boolean;
-    hasPrevious?: boolean;
-    isFirst?: boolean;
-    isLast?: boolean;
-  };
-};
-
-export interface TGETCommunitiesPostsByIdReq {
-  communityId: string;
-  page?: number;
-  size?: number;
-}
-
-export type TGETCommunitiesPostsByIdRes = {
-  posts?: Schema.CommunityPost[];
-  pagination?: {
-    pageNumber?: number;
-    pageSize?: number;
-    totalElements?: number;
-    totalPages?: number;
-    hasNext?: boolean;
-    hasPrevious?: boolean;
-    isFirst?: boolean;
-    isLast?: boolean;
-  };
-};
-
 export interface TPOSTCommunitiesPostsByIdReq {
   communityId: string;
   data: {
     title: string;
-    content?: Schema.ContentItem[];
-    refId?: string;
-    visibility?: "public" | "private";
+    content?: string;
     category?: string;
-    tags?: string[];
     scheduledDate?: string;
   };
 }
@@ -108,26 +59,25 @@ export interface TPOSTCommunitiesPostsByIdReq {
 export type TPOSTCommunitiesPostsByIdRes = {
   id?: string;
   type?: string;
-  refId?: string;
-  authorId?: string;
+  communityId?: string;
   author?: string;
   communityPath?: string;
   title?: string;
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
+  content?: string;
   channel?: string;
   category?: string;
-  tags?: string[];
   scheduledDate?: string;
   isLocked?: boolean;
   visibility?: string;
   rewardGiven?: boolean;
-  reactionsCount?: number;
   likesCount?: number;
   commentsCount?: number;
   reportsCount?: number;
-  createdAt?: string;
-  updatedAt?: string;
+  viewCount?: number;
+  community?: {
+    id?: string;
+    name?: string;
+  };
 };
 
 export interface TGETCommunitiesPostsByTwoIdsReq {
@@ -143,10 +93,7 @@ export interface TPUTCommunitiesPostsByTwoIdsReq {
   data: {
     title?: string;
     content?: Schema.ContentItem[];
-    refId?: string;
-    visibility?: "public" | "private";
     category?: string;
-    tags?: string[];
     scheduledDate?: string;
   };
 }
@@ -154,26 +101,27 @@ export interface TPUTCommunitiesPostsByTwoIdsReq {
 export type TPUTCommunitiesPostsByTwoIdsRes = {
   id?: string;
   type?: string;
-  refId?: string;
-  authorId?: string;
+  communityId?: string;
   author?: string;
   communityPath?: string;
   title?: string;
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
+  content?: string;
   channel?: string;
   category?: string;
-  tags?: string[];
   scheduledDate?: string;
   isLocked?: boolean;
   visibility?: string;
   rewardGiven?: boolean;
-  reactionsCount?: number;
   likesCount?: number;
   commentsCount?: number;
   reportsCount?: number;
+  viewCount?: number;
   createdAt?: string;
   updatedAt?: string;
+  community?: {
+    id?: string;
+    name?: string;
+  };
 };
 
 export interface TDELETECommunitiesPostsByTwoIdsReq {
