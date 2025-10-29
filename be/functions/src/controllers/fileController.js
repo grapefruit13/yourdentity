@@ -1,6 +1,7 @@
 const fileService = require("../services/fileService");
 const Busboy = require("busboy");
 const {Readable} = require("stream");
+const path = require("path");
 
 // 파일 업로드 관련 상수
 const FILES_FOLDER = "files";
@@ -128,9 +129,12 @@ class FileController {
 
         if (filename) {
           try {
-            fileName = decodeURIComponent(filename);
+            const decoded = decodeURIComponent(filename);
+            const base = path.basename(decoded); // 경로 제거
+            fileName = base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 128);
           } catch (error) {
-            fileName = filename;
+            const base = path.basename(filename);
+            fileName = base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 128);
           }
         }
         if (fileMimeType) {
