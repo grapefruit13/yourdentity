@@ -543,7 +543,7 @@ class CommunityService {
         const filesToDelete = currentMedia.filter(file => !requestedMedia.includes(file));
         if (filesToDelete.length > 0) {
           const deletePromises = filesToDelete.map(filePath => 
-            fileService.deleteFile(filePath)
+            fileService.deleteFile(filePath, userId)
           );
           await Promise.all(deletePromises);
         }
@@ -609,7 +609,7 @@ class CommunityService {
 
       if (post.media && post.media.length > 0) {
         const deletePromises = post.media.map(filePath => 
-          fileService.deleteFile(filePath)
+          fileService.deleteFile(filePath, userId)
         );
         await Promise.all(deletePromises);
       }

@@ -16,7 +16,7 @@ class FileController {
       if (!contentType || !contentType.includes("multipart/form-data")) {
         return res.status(400).json({
           status: 400,
-          message: "Content-Type must be multipart/form-data",
+          message: "Content-Type은 multipart/form-data여야 합니다",
         });
       }
 
@@ -27,7 +27,7 @@ class FileController {
       ) {
         return res.status(400).json({
           status: 400,
-          message: "Request body already parsed. Please use raw multipart data.",
+          message: "요청 본문이 이미 파싱되었습니다. raw multipart 데이터를 사용해주세요.",
         });
       }
 
@@ -108,16 +108,10 @@ class FileController {
           mimeType = fileMimeType;
         }
 
-        // 파일을 버퍼로 수집
-        const chunks = [];
-        for await (const chunk of file) {
-          chunks.push(chunk);
-        }
-        const fileBuffer = Buffer.concat(chunks);
-
+        // 스트림을 직접 사용하여 업로드 (메모리 효율적)
         try {
-          const result = await fileService.uploadFile(
-              fileBuffer,
+          const result = await fileService.uploadFileStream(
+              file,
               fileName,
               mimeType,
               folder,
@@ -150,7 +144,7 @@ class FileController {
         console.error(`⏱️ Upload timeout for user: ${userId || "unknown"}`);
         res.status(408).json({
           status: 408,
-          message: "Upload timeout",
+          message: "파일 업로드 시간이 초과되었습니다",
         });
       }, 120000); // 2분 타임아웃
 
@@ -159,7 +153,7 @@ class FileController {
           console.error(`❌ No file received from user: ${userId || "unknown"}`);
           res.status(400).json({
             status: 400,
-            message: "No files uploaded",
+            message: "업로드된 파일이 없습니다",
           });
         } else {
           checkAndSendResponse();
@@ -170,7 +164,7 @@ class FileController {
         clearTimeout(timeout);
         res.status(400).json({
           status: 400,
-          message: "File upload error: " + error.message,
+          message: "파일 업로드 중 오류가 발생했습니다: " + error.message,
         });
       });
 
@@ -186,15 +180,16 @@ class FileController {
   async deleteFile(req, res) {
     try {
       const fileName = req.params.fileName;
+      const userId = req.user?.uid;
 
       if (!fileName) {
         return res.status(400).json({
           status: 400,
-          message: "File name is required",
+          message: "파일명이 필요합니다",
         });
       }
 
-      const result = await fileService.deleteFile(fileName);
+      const result = await fileService.deleteFile(fileName, userId);
 
       if (result.status === 200) {
         res.status(204).end();
