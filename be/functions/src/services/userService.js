@@ -239,22 +239,20 @@ class UserService {
       gender,
       phoneNumber: normalizedPhone,
       profileImageUrl,
-      lastUpdated: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     // 4. 문서 존재 여부 확인 후 upsert
     const existing = await this.firestoreService.getById(uid);
     if (!existing) {
-      const userRef = admin.firestore().collection("users").doc(uid);
-      await userRef.set({
+      await this.firestoreService.create({
         nickname: "",
         authType: "sns",
         snsProvider: "kakao",
         onboardingCompleted: false,
-        createdAt: FieldValue.serverTimestamp(),
         lastLogin: FieldValue.serverTimestamp(),
         ...update,
-      }, {merge: true});
+      }, uid);
     } else {
       await this.firestoreService.update(uid, update);
     }
