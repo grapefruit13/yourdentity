@@ -12,7 +12,8 @@ export const getCommentsCommunitiesPostsByTwoIds = (
   request: Types.TGETCommentsCommunitiesPostsByTwoIdsReq
 ) => {
   return get<Result<Types.TGETCommentsCommunitiesPostsByTwoIdsRes>>(
-    `/comments/communities/${request.communityId}/posts/${request.postId}`
+    `/comments/communities/${request.communityId}/posts/${request.postId}`,
+    { params: request }
   );
 };
 

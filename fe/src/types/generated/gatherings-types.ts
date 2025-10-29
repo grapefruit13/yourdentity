@@ -36,17 +36,21 @@ export interface TPOSTGatheringsApplyByIdReq {
   data: {
     selectedVariant?: string;
     quantity?: number;
-    customFieldsResponse?: Record<string, any>;
+    customFieldsRequest?: Record<string, any>;
+    activityNickname?: string;
+    activityPhoneNumber?: string;
+    region?: {
+      city?: string;
+      district?: string;
+    };
+    currentSituation?: string;
+    applicationSource?: string;
+    applicationMotivation?: string;
+    canAttendEvents?: boolean;
   };
 }
 
-export type TPOSTGatheringsApplyByIdRes = {
-  applicationId?: string;
-  type?: string;
-  targetId?: string;
-  userId?: string;
-  status?: string;
-};
+export type TPOSTGatheringsApplyByIdRes = Schema.ApplicationResponse;
 
 export interface TPOSTGatheringsLikeByIdReq {
   gatheringId: string;

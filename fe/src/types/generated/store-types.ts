@@ -87,7 +87,7 @@ export interface TPOSTStorePurchaseReq {
     productId: string;
     quantity?: number;
     selectedVariant?: string;
-    customFieldsResponse?: Record<string, any>;
+    customFieldsRequest?: Record<string, any>;
   };
 }
 

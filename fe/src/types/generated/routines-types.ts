@@ -36,7 +36,17 @@ export interface TPOSTRoutinesApplyByIdReq {
   data: {
     selectedVariant?: string;
     quantity?: number;
-    customFieldsResponse?: Record<string, any>;
+    customFieldsRequest?: Record<string, any>;
+    activityNickname?: string;
+    activityPhoneNumber?: string;
+    region?: {
+      city?: string;
+      district?: string;
+    };
+    currentSituation?: string;
+    applicationSource?: string;
+    applicationMotivation?: string;
+    canAttendEvents?: boolean;
   };
 }
 

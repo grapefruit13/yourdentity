@@ -85,7 +85,7 @@ export const commentsKeys = {
   ) =>
     __buildKey("comments", "getCommentsCommunitiesPostsByTwoIds", {
       path: { communityId: request.communityId, postId: request.postId },
-      query: {},
+      query: { page: request.page, size: request.size },
     }),
 } as const;
 

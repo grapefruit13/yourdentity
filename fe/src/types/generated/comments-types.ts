@@ -9,6 +9,8 @@ import type * as Schema from "./api-schema";
 export interface TGETCommentsCommunitiesPostsByTwoIdsReq {
   communityId: string;
   postId: string;
+  page?: number;
+  size?: number;
 }
 
 export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
@@ -18,7 +20,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     targetId?: string;
     targetPath?: string;
     userId?: string;
-    userNickname?: string;
+    author?: string;
     content?: Schema.ContentItem[];
     media?: Schema.MediaItem[];
     parentId?: string;
@@ -60,7 +62,7 @@ export type TPOSTCommentsCommunitiesPostsByTwoIdsRes = {
   targetId?: string;
   targetPath?: string;
   userId?: string;
-  userNickname?: string;
+  author?: string;
   content?: Schema.ContentItem[];
   media?: Schema.MediaItem[];
   parentId?: string;
@@ -88,7 +90,7 @@ export type TPUTCommentsByIdRes = {
   targetId?: string;
   targetPath?: string;
   userId?: string;
-  userNickname?: string;
+  author?: string;
   content?: Schema.ContentItem[];
   media?: Schema.MediaItem[];
   parentId?: string;
