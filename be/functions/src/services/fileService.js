@@ -41,7 +41,7 @@ class FileService {
           },
         },
         resumable: true,
-        validation: false,
+        validation: true,
         public: true, 
       });
 
@@ -109,6 +109,10 @@ class FileService {
 
         let uploadedSize = 0;
 
+        fileStream.on("data", (chunk) => {
+          uploadedSize += chunk.length;
+        });
+
         fileStream.pipe(writeStream);
 
         writeStream.on("error", (error) => {
@@ -119,12 +123,11 @@ class FileService {
           });
         });
 
-        writeStream.on("progress", (progress) => {
-          uploadedSize = progress.bytesWritten;
-        });
-
         writeStream.on("finish", async () => {
           try {
+            const [meta] = await file.getMetadata();
+            const actualSize = Number(meta.size) || uploadedSize;
+
             const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${uniqueFileName}`;
 
             resolve({
@@ -134,7 +137,7 @@ class FileService {
                 fileName: uniqueFileName,
                 originalFileName: fileName,
                 mimeType: mimeType,
-                size: uploadedSize,
+                size: actualSize,
                 bucket: this.bucket.name,
                 path: uniqueFileName,
               },
@@ -270,55 +273,53 @@ class FileService {
 
       const [exists] = await file.exists();
       if (!exists) {
-        return {
-          status: 404,
-          message: "파일을 찾을 수 없습니다",
-        };
+        const error = new Error("파일을 찾을 수 없습니다");
+        error.code = "NOT_FOUND";
+        throw error;
       }
 
       // userId가 없으면 삭제 불가 (보안상 필수)
       if (!userId) {
-        return {
-          status: 401,
-          message: "파일 삭제를 위해서는 사용자 인증이 필요합니다",
-        };
+        const error = new Error("파일 삭제를 위해서는 사용자 인증이 필요합니다");
+        error.code = "UNAUTHORIZED";
+        throw error;
       }
+
       // 메타데이터에서 소유자 확인
       const [metadata] = await file.getMetadata();
       const uploadedBy = metadata?.metadata?.uploadedBy;
       
       if (!uploadedBy) {
-        return {
-          status: 403,
-          message: "파일 소유자 정보를 찾을 수 없어 삭제할 수 없습니다",
-        };
+        const error = new Error("파일 소유자 정보를 찾을 수 없어 삭제할 수 없습니다");
+        error.code = "FORBIDDEN";
+        throw error;
       }
       
       if (uploadedBy !== userId) {
-        return {
-          status: 403,
-          message: "이 파일을 삭제할 권한이 없습니다",
-        };
+        const error = new Error("이 파일을 삭제할 권한이 없습니다");
+        error.code = "FORBIDDEN";
+        throw error;
       }
 
       await file.delete();
 
-      return {
-        status: 200,
-        message: "파일이 성공적으로 삭제되었습니다",
-      };
+      return { success: true };
     } catch (error) {
-      if (error.code === 404) {
-        return {
-          status: 404,
-          message: "파일을 찾을 수 없습니다",
-        };
+      // 이미 에러 객체에 code가 있으면 그대로 재throw
+      if (error.code === "NOT_FOUND" || error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN") {
+        throw error;
       }
 
-      return {
-        status: 500,
-        message: error.message,
-      };
+      // 예상치 못한 에러
+      if (error.code === 404) {
+        const notFoundError = new Error("파일을 찾을 수 없습니다");
+        notFoundError.code = "NOT_FOUND";
+        throw notFoundError;
+      }
+
+      const internalError = new Error("파일 삭제 중 오류가 발생했습니다");
+      internalError.code = "INTERNAL";
+      throw internalError;
     }
   }
 }

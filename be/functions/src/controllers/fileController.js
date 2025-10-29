@@ -230,15 +230,11 @@ class FileController {
         return res.error(400, "파일명이 필요합니다");
       }
 
-      const result = await fileService.deleteFile(fileName, userId);
+      await fileService.deleteFile(fileName, userId);
 
-      if (result.status === 200) {
-        return res.noContent();
-      } else {
-        return res.error(result.status || 500, result.message || result.error);
-      }
+      return res.noContent();
     } catch (error) {
-      return res.error(500, error.message);
+      return next(error);
     }
   }
 }
