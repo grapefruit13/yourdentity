@@ -13,42 +13,6 @@ class TermsService {
   }
 
   /**
-   * 약관 동의 저장
-   * @param {string} uid
-   * @param {{serviceVersion:string, privacyVersion:string, age14Version:string, pushAgreed:boolean}} payload
-   */
-  async saveConsent(uid, payload) {
-    const {serviceVersion, privacyVersion, age14Version, pushAgreed} = payload || {};
-    
-    // 필수 필드 검증
-    if (!serviceVersion || !privacyVersion || !age14Version) {
-      const e = new Error("INVALID_INPUT: serviceVersion, privacyVersion, age14Version are required");
-      e.code = "INVALID_INPUT";
-      throw e;
-    }
-    
-    if (typeof pushAgreed !== "boolean") {
-      const e = new Error("INVALID_INPUT: pushAgreed must be boolean");
-      e.code = "INVALID_INPUT";
-      throw e;
-    }
-
-    // users/{uid} 업데이트
-    const userUpdate = {
-      serviceTermsVersion: serviceVersion,
-      privacyTermsVersion: privacyVersion,
-      age14TermsVersion: age14Version,
-      pushTermsAgreed: pushAgreed,
-      pushTermsVersion: TERMS_VERSIONS.PUSH,
-      termsAgreedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-    await this.firestoreService.update(uid, userUpdate);
-
-    return {success: true};
-  }
-
-  /**
    * 카카오 약관 동기화 (전체 프로세스)
    * @param {string} uid
    * @param {string} accessToken
