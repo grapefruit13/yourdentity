@@ -555,6 +555,18 @@ class CommunityService {
         const currentMedia = post.media || [];
         const requestedMedia = updateData.media || [];
         
+        if (requestedMedia.length > 0) {
+          const check = await fileService.filesExist(requestedMedia);
+          if (!check.allExist) {
+            const missing = Object.entries(check.results)
+              .filter(([, exists]) => !exists)
+              .map(([filePath]) => filePath);
+            const error = new Error(`유효하지 않은 파일: ${missing.join(", ")}`);
+            error.code = "BAD_REQUEST";
+            throw error;
+          }
+        }
+        
         const filesToDelete = currentMedia.filter(file => !requestedMedia.includes(file));
         if (filesToDelete.length > 0) {
           const deletePromises = filesToDelete.map(filePath => 
