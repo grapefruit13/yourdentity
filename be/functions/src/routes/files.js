@@ -78,20 +78,20 @@ router.post(
 
 /**
  * @swagger
- * /files/{fileName}:
+ * /files/{filePath}:
  *   delete:
  *     summary: 파일 삭제
- *     description: Cloud Storage에서 파일을 삭제합니다
+ *     description: Cloud Storage에서 파일을 삭제합니다. 파일 경로에 슬래시(/)가 포함될 수 있습니다.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: fileName
+ *         name: filePath
  *         required: true
  *         schema:
  *           type: string
- *         description: Cloud Storage 내 파일 경로
+ *         description: Cloud Storage 내 파일 경로 (슬래시 포함 가능)
  *         example: "files/user123/document_abc123.pdf"
  *     responses:
  *       204:
@@ -127,7 +127,7 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:fileName", authGuard, fileController.deleteFile);
+router.delete("/:filePath(*)", authGuard, fileController.deleteFile);
 
 
 module.exports = router;

@@ -221,16 +221,16 @@ class FileController {
     }
   }
 
-  async deleteFile(req, res) {
+  async deleteFile(req, res, next) {
     try {
-      const fileName = req.params.fileName;
+      const filePath = req.params.filePath;
       const userId = req.user?.uid;
 
-      if (!fileName) {
-        return res.error(400, "파일명이 필요합니다");
+      if (!filePath) {
+        return res.error(400, "파일 경로가 필요합니다");
       }
 
-      await fileService.deleteFile(fileName, userId);
+      await fileService.deleteFile(filePath, userId);
 
       return res.noContent();
     } catch (error) {
