@@ -9,26 +9,22 @@ import type * as Schema from "./api-schema";
 export interface TGETCommentsCommunitiesPostsByTwoIdsReq {
   communityId: string;
   postId: string;
+  page?: number;
+  size?: number;
 }
 
 export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
   comments?: {
     id?: string;
-    type?: string;
-    targetId?: string;
-    targetPath?: string;
-    userId?: string;
-    userNickname?: string;
-    content?: Schema.ContentItem[];
-    media?: Schema.MediaItem[];
+    communityId?: string;
+    postId?: string;
+    author?: string;
+    content?: string;
     parentId?: string;
     depth?: number;
-    isReply?: boolean;
     isLocked?: boolean;
-    reportsCount?: number;
     likesCount?: number;
-    deleted?: boolean;
-    deletedAt?: string;
+    repliesCount?: number;
     createdAt?: string;
     updatedAt?: string;
     replies?: Record<string, any>[];
@@ -49,28 +45,21 @@ export interface TPOSTCommentsCommunitiesPostsByTwoIdsReq {
   communityId: string;
   postId: string;
   data: {
-    content: Schema.ContentItem[];
+    content: string;
     parentId?: string;
   };
 }
 
 export type TPOSTCommentsCommunitiesPostsByTwoIdsRes = {
   id?: string;
-  type?: string;
-  targetId?: string;
-  targetPath?: string;
-  userId?: string;
-  userNickname?: string;
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
+  communityId?: string;
+  postId?: string;
+  author?: string;
+  content?: string;
   parentId?: string;
   depth?: number;
-  isReply?: boolean;
   isLocked?: boolean;
-  reportsCount?: number;
   likesCount?: number;
-  deleted?: boolean;
-  deletedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -78,27 +67,20 @@ export type TPOSTCommentsCommunitiesPostsByTwoIdsRes = {
 export interface TPUTCommentsByIdReq {
   commentId: string;
   data: {
-    content: Schema.ContentItem[];
+    content: string;
   };
 }
 
 export type TPUTCommentsByIdRes = {
   id?: string;
-  type?: string;
-  targetId?: string;
-  targetPath?: string;
-  userId?: string;
-  userNickname?: string;
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
+  communityId?: string;
+  postId?: string;
+  author?: string;
+  content?: string;
   parentId?: string;
   depth?: number;
-  isReply?: boolean;
   isLocked?: boolean;
-  reportsCount?: number;
   likesCount?: number;
-  deleted?: boolean;
-  deletedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };

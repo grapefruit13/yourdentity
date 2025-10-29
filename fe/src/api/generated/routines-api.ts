@@ -24,7 +24,7 @@ export const postRoutinesApplyById = (
   const { routineId, ...data } = request;
   return post<Result<Types.TPOSTRoutinesApplyByIdRes>>(
     `/routines/${request.routineId}/apply`,
-    data
+    data.data ?? data
   );
 };
 
@@ -40,7 +40,7 @@ export const postRoutinesQnaById = (request: Types.TPOSTRoutinesQnaByIdReq) => {
   const { routineId, ...data } = request;
   return post<Result<Types.TPOSTRoutinesQnaByIdRes>>(
     `/routines/${request.routineId}/qna`,
-    data
+    data.data ?? data
   );
 };
 
@@ -50,7 +50,7 @@ export const putRoutinesQnaByTwoIds = (
   const { routineId, qnaId, ...data } = request;
   return put<Result<Types.TPUTRoutinesQnaByTwoIdsRes>>(
     `/routines/${request.routineId}/qna/${request.qnaId}`,
-    data
+    data.data ?? data
   );
 };
 

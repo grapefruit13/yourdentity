@@ -1,4 +1,3 @@
-
 /**
  * @description NotionUsers 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -11,5 +10,17 @@ import type { Result } from "@/types/shared/response";
 export const getNotionusersSyncActive = () => {
   return get<Result<Types.TGETNotionUsersSyncActiveRes>>(
     `/notionUsers/sync/active`
+  );
+};
+
+export const getNotionusersSyncFull = () => {
+  return get<Result<Types.TGETNotionUsersSyncFullRes>>(
+    `/notionUsers/sync/full`
+  );
+};
+
+export const getNotionusersSyncPenalty = () => {
+  return get<Result<Types.TGETNotionUsersSyncPenaltyRes>>(
+    `/notionUsers/sync/penalty`
   );
 };

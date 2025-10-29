@@ -12,7 +12,8 @@ export const getCommentsCommunitiesPostsByTwoIds = (
   request: Types.TGETCommentsCommunitiesPostsByTwoIdsReq
 ) => {
   return get<Result<Types.TGETCommentsCommunitiesPostsByTwoIdsRes>>(
-    `/comments/communities/${request.communityId}/posts/${request.postId}`
+    `/comments/communities/${request.communityId}/posts/${request.postId}`,
+    { params: request }
   );
 };
 
@@ -22,7 +23,7 @@ export const postCommentsCommunitiesPostsByTwoIds = (
   const { communityId, postId, ...data } = request;
   return post<Result<Types.TPOSTCommentsCommunitiesPostsByTwoIdsRes>>(
     `/comments/communities/${request.communityId}/posts/${request.postId}`,
-    data
+    data.data ?? data
   );
 };
 
@@ -30,7 +31,7 @@ export const putCommentsById = (request: Types.TPUTCommentsByIdReq) => {
   const { commentId, ...data } = request;
   return put<Result<Types.TPUTCommentsByIdRes>>(
     `/comments/${request.commentId}`,
-    data
+    data.data ?? data
   );
 };
 

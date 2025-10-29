@@ -8,10 +8,17 @@ import * as Api from "@/api/generated/users-api";
 import { usersKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/users-types";
 
-export const usePostUsersProvision = () => {
+export const usePatchUsersMeOnboarding = () => {
   return useMutation({
-    mutationFn: (request: Types.TPOSTUsersProvisionReq) =>
-      Api.postUsersProvision(request),
+    mutationFn: (request: Types.TPATCHUsersMeOnboardingReq) =>
+      Api.patchUsersMeOnboarding(request),
+  });
+};
+
+export const useGetUsersMe = () => {
+  return useQuery({
+    queryKey: usersKeys.getUsersMe,
+    queryFn: () => Api.getUsersMe(),
   });
 };
 

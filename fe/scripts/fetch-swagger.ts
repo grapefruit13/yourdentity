@@ -12,9 +12,9 @@ import { debug } from "@/utils/shared/debugger";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SWAGGER_URL =
-  process.env.NEXT_PUBLIC_SWAGGER_URL ||
-  "http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api/api-docs.json";
+// 환경변수 : 노션 env 참고
+const SWAGGER_URL = process.env.NEXT_PUBLIC_SWAGGER_URL!;
+
 const OUTPUT_FILE = path.join(__dirname, "../swagger.json");
 
 async function fetchSwaggerSpec() {

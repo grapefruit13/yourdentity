@@ -26,7 +26,7 @@ export const postGatheringsApplyById = (
   const { gatheringId, ...data } = request;
   return post<Result<Types.TPOSTGatheringsApplyByIdRes>>(
     `/gatherings/${request.gatheringId}/apply`,
-    data
+    data.data ?? data
   );
 };
 
@@ -44,7 +44,7 @@ export const postGatheringsQnaById = (
   const { gatheringId, ...data } = request;
   return post<Result<Types.TPOSTGatheringsQnaByIdRes>>(
     `/gatherings/${request.gatheringId}/qna`,
-    data
+    data.data ?? data
   );
 };
 
@@ -54,7 +54,7 @@ export const putGatheringsQnaByTwoIds = (
   const { gatheringId, qnaId, ...data } = request;
   return put<Result<Types.TPUTGatheringsQnaByTwoIdsRes>>(
     `/gatherings/${request.gatheringId}/qna/${request.qnaId}`,
-    data
+    data.data ?? data
   );
 };
 

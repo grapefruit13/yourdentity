@@ -20,37 +20,13 @@ export const getCommunitiesPosts = (request: Types.TGETCommunitiesPostsReq) => {
   });
 };
 
-export const getCommunitiesById = (request: Types.TGETCommunitiesByIdReq) => {
-  return get<Result<Types.TGETCommunitiesByIdRes>>(
-    `/communities/${request.communityId}`
-  );
-};
-
-export const getCommunitiesMembersById = (
-  request: Types.TGETCommunitiesMembersByIdReq
-) => {
-  return get<Result<Types.TGETCommunitiesMembersByIdRes>>(
-    `/communities/${request.communityId}/members`,
-    { params: request }
-  );
-};
-
-export const getCommunitiesPostsById = (
-  request: Types.TGETCommunitiesPostsByIdReq
-) => {
-  return get<Result<Types.TGETCommunitiesPostsByIdRes>>(
-    `/communities/${request.communityId}/posts`,
-    { params: request }
-  );
-};
-
 export const postCommunitiesPostsById = (
   request: Types.TPOSTCommunitiesPostsByIdReq
 ) => {
   const { communityId, ...data } = request;
   return post<Result<Types.TPOSTCommunitiesPostsByIdRes>>(
     `/communities/${request.communityId}/posts`,
-    data
+    data.data ?? data
   );
 };
 
@@ -68,7 +44,7 @@ export const putCommunitiesPostsByTwoIds = (
   const { communityId, postId, ...data } = request;
   return put<Result<Types.TPUTCommunitiesPostsByTwoIdsRes>>(
     `/communities/${request.communityId}/posts/${request.postId}`,
-    data
+    data.data ?? data
   );
 };
 

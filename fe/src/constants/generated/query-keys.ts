@@ -15,6 +15,7 @@ import type * as gatheringsTypes from "@/types/generated/gatherings-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
+import type * as programsTypes from "@/types/generated/programs-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
 import type * as routinesTypes from "@/types/generated/routines-types";
 import type * as storeTypes from "@/types/generated/store-types";
@@ -85,7 +86,7 @@ export const commentsKeys = {
   ) =>
     __buildKey("comments", "getCommentsCommunitiesPostsByTwoIds", {
       path: { communityId: request.communityId, postId: request.postId },
-      query: {},
+      query: { page: request.page, size: request.size },
     }),
 } as const;
 
@@ -100,25 +101,6 @@ export const communitiesKeys = {
     __buildKey("communities", "getCommunitiesPosts", {
       path: {},
       query: { page: request.page, size: request.size, filter: request.filter },
-    }),
-  getCommunitiesById: (request: communitiesTypes.TGETCommunitiesByIdReq) =>
-    __buildKey("communities", "getCommunitiesById", {
-      path: { communityId: request.communityId },
-      query: {},
-    }),
-  getCommunitiesMembersById: (
-    request: communitiesTypes.TGETCommunitiesMembersByIdReq
-  ) =>
-    __buildKey("communities", "getCommunitiesMembersById", {
-      path: { communityId: request.communityId },
-      query: { page: request.page, size: request.size },
-    }),
-  getCommunitiesPostsById: (
-    request: communitiesTypes.TGETCommunitiesPostsByIdReq
-  ) =>
-    __buildKey("communities", "getCommunitiesPostsById", {
-      path: { communityId: request.communityId },
-      query: { page: request.page, size: request.size },
     }),
   getCommunitiesPostsByTwoIds: (
     request: communitiesTypes.TGETCommunitiesPostsByTwoIdsReq
@@ -191,6 +173,43 @@ export const notionusersKeys = {
     "notionusers",
     "getNotionusersSyncActive"
   ),
+  getNotionusersSyncFull: __buildKey("notionusers", "getNotionusersSyncFull"),
+  getNotionusersSyncPenalty: __buildKey(
+    "notionusers",
+    "getNotionusersSyncPenalty"
+  ),
+} as const;
+
+// Programs Query Keys
+export const programsKeys = {
+  getApiPrograms: (request: programsTypes.TGETApiProgramsReq) =>
+    __buildKey("programs", "getApiPrograms", {
+      path: {},
+      query: {
+        recruitmentStatus: request.recruitmentStatus,
+        programStatus: request.programStatus,
+        programType: request.programType,
+        pageSize: request.pageSize,
+        cursor: request.cursor,
+      },
+    }),
+  getApiProgramsSearch: (request: programsTypes.TGETApiProgramsSearchReq) =>
+    __buildKey("programs", "getApiProgramsSearch", {
+      path: {},
+      query: {
+        q: request.q,
+        recruitmentStatus: request.recruitmentStatus,
+        programStatus: request.programStatus,
+        programType: request.programType,
+        pageSize: request.pageSize,
+        cursor: request.cursor,
+      },
+    }),
+  getApiProgramsById: (request: programsTypes.TGETApiProgramsByIdReq) =>
+    __buildKey("programs", "getApiProgramsById", {
+      path: { programId: request.programId },
+      query: {},
+    }),
 } as const;
 
 // Reports Query Keys
@@ -245,6 +264,7 @@ export const tmiKeys = {
 
 // Users Query Keys
 export const usersKeys = {
+  getUsersMe: __buildKey("users", "getUsersMe"),
   getUsers: __buildKey("users", "getUsers"),
   getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
     __buildKey("users", "getUsersById", {

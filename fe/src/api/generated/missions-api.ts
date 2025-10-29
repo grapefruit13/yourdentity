@@ -1,4 +1,3 @@
-
 /**
  * @description Missions 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -14,7 +13,7 @@ export const postUsersMissionsById = (
   const { userId, ...data } = request;
   return post<Result<Types.TPOSTUsersMissionsByIdRes>>(
     `/users/${request.userId}/missions`,
-    data
+    data.data ?? data
   );
 };
 
@@ -41,7 +40,7 @@ export const putUsersMissionsByTwoIds = (
   const { userId, missionId, ...data } = request;
   return put<Result<Types.TPUTUsersMissionsByTwoIdsRes>>(
     `/users/${request.userId}/missions/${request.missionId}`,
-    data
+    data.data ?? data
   );
 };
 
