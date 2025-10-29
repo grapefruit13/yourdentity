@@ -17,6 +17,8 @@ const router = express.Router();
  *     summary: 여러 파일 업로드 (multipart/form-data)
  *     description: 업로드 대상 폴더는 자동으로 files 로 지정되며, 한 번에 최대 5개의 파일만 업로드됩니다.
  *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -43,6 +45,24 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 401
+ *               message: "인증이 필요합니다"
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 403
+ *               message: "권한이 없습니다"
  *       500:
  *         description: 서버 오류
  *         content:
@@ -82,6 +102,24 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 401
+ *               message: "인증이 필요합니다"
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 403
+ *               message: "권한이 없습니다"
  *       500:
  *         description: 서버 오류
  *         content:
