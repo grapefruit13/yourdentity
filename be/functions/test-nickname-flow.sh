@@ -108,7 +108,7 @@ echo "$AVAILABILITY_RESPONSE_2" | jq '.'
 echo ""
 
 AVAILABLE_2=$(echo "$AVAILABILITY_RESPONSE_2" | jq -r '.data.available')
-echo "Available value: '$AVAILABLE_2' (type: $(echo "$AVAILABILITY_RESPONSE_2" | jq -r 'type(.data.available)'))"
+echo "Available value: '$AVAILABLE_2' (type: $(echo "$AVAILABILITY_RESPONSE_2" | jq -r '.data.available | type'))"
 
 if [ "$AVAILABLE_2" = "false" ]; then
   echo -e "${GREEN}✅ 닉네임 중복 확인됨 (예상: false)${NC}"

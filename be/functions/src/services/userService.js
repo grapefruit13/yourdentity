@@ -3,7 +3,7 @@ const {admin} = require("../config/database");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
-const {isValidPhoneNumber, formatDate} = require("../utils/helpers");
+const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -220,13 +220,14 @@ class UserService {
       throw e;
     }
 
-    // phone 정규화
-    const phoneNumber = String(phoneRaw).replace(/[^0-9+]/g, "");
-    if (!isValidPhoneNumber(phoneNumber)) {
+    // 한국 번호 검증은 helper 내부에서 정규화 포함 수행
+    if (!isValidPhoneNumber(String(phoneRaw))) {
       const e = new Error("카카오에서 받은 전화번호 정보가 유효하지 않습니다");
       e.code = "INVALID_INPUT";
       throw e;
     }
+    // 저장은 정규화된 국내형으로
+    const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
     // 2. 서비스 약관 동의 내역 조회
     await this.termsService.syncFromKakao(uid, accessToken);
@@ -236,7 +237,7 @@ class UserService {
       name: name || null,
       birthDate,
       gender,
-      phoneNumber,
+      phoneNumber: normalizedPhone,
       profileImageUrl,
       lastUpdated: FieldValue.serverTimestamp(),
     };
