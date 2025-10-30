@@ -56,8 +56,7 @@ exports.createUserDocument = functions
           snsProvider: SNS_PROVIDERS.KAKAO,
 
           // 사용자 상태
-          onboardingCompleted: false,
-          status: USER_STATUS.ACTIVE,
+          status: USER_STATUS.PENDING,
 
           // 리워드 시스템
           level: 1,
@@ -81,7 +80,7 @@ exports.createUserDocument = functions
           reportCount: 0,
 
           // 징계/정지 정보
-          suspensionType: SUSPENSION_TYPES.ACTIVE,
+          suspensionType: SUSPENSION_TYPES.NULL,
           suspensionReason: "",
           suspensionAppliedAt: null,
           suspensionStartAt: null,

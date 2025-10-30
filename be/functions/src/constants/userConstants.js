@@ -11,15 +11,16 @@ const SNS_PROVIDERS = {
 
 // 사용자 상태
 const USER_STATUS = {
+  PENDING: "pending",
   ACTIVE: "active",
-  INACTIVE: "inactive",
+  SUSPENDED: "suspended",
 };
 
 // 자격 정지 상태
 const SUSPENSION_TYPES = {
   TEMPORARY: "temporary",
   PERMANENT: "permanent",
-  ACTIVE: "active", // 제재 미적용 상태 의미
+  NULL: "null", // 제재 미적용 상태 의미
 };
 
 // 기본 업로드 쿼터 (1GB)
