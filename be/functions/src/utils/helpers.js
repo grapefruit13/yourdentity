@@ -42,8 +42,11 @@ const isValidPhoneNumber = (phoneNumber) => {
     return false;
   }
 
+  // 한국용 정규화 먼저 수행
+  const normalized = normalizeKoreanPhoneNumber(phoneNumber);
+
   // 숫자만 추출
-  const numbers = phoneNumber.replace(/\D/g, '');
+  const numbers = normalized.replace(/\D/g, '');
   
   // 한국 휴대폰 번호 패턴: 010-XXXX-XXXX (11자리)
   if (numbers.length === 11 && numbers.startsWith('010')) {
@@ -61,6 +64,21 @@ const isValidPhoneNumber = (phoneNumber) => {
   }
   
   return false;
+};
+
+/**
+ * 한국 전화번호 정규화
+ * - 공백/하이픈 등 제거
+ * - +82 또는 82 국가코드를 국내 0 프리픽스로 변환
+ * @param {string} phone - 원본 전화번호
+ * @return {string} 정규화된 국내형 번호
+ */
+const normalizeKoreanPhoneNumber = (phone) => {
+  if (!phone || typeof phone !== 'string') return '';
+  const rawClean = phone.replace(/[^0-9+]/g, '');
+  if (rawClean.startsWith('+82')) return '0' + rawClean.slice(3);
+  if (rawClean.startsWith('82')) return '0' + rawClean.slice(2);
+  return rawClean;
 };
 
 /**
@@ -187,6 +205,7 @@ module.exports = {
   validateMissionStatus,
   isValidEmail,
   isValidPhoneNumber,
+  normalizeKoreanPhoneNumber,
 
   // ID 생성
   generateId,

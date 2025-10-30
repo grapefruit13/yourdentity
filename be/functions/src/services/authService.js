@@ -6,60 +6,6 @@ const {isValidEmail} = require("../utils/helpers");
 const usersService = new FirestoreService("users");
 
 /**
- * 이메일 중복 체크 (회원가입 전 사전 검증)
- * 
- * @description
- * Firebase Auth는 provider별로 계정을 관리하므로,
- * 이메일+카카오, 이메일+이메일 크로스 중복을 감지하지 못함.
- * 따라서 Firestore users 컬렉션을 직접 조회하여 중복 확인 필요.
- * 
- * @param {string} email - 확인할 이메일
- * @returns {{ available: boolean, existingProvider?: string, existingAuthType?: string }}
- */
-const checkEmailAvailability = async (email) => {
-  try {
-    if (!email || !isValidEmail(email)) {
-      const error = new Error("올바른 이메일 형식이 아닙니다");
-      error.code = "BAD_REQUEST";
-      throw error;
-    }
-
-    // FirestoreService를 통한 이메일 중복 체크
-    const existingUsers = await usersService.getWhere("email", "==", email);
-
-    if (existingUsers.length > 0) {
-      // 중복된 이메일 발견
-      const existingUser = existingUsers[0];
-
-      console.log("📧 이메일 중복 감지:", {
-        email,
-        existingUID: existingUser.id,
-        authType: existingUser.authType,
-        snsProvider: existingUser.snsProvider,
-      });
-
-      return {
-        available: false,
-        existingAuthType: existingUser.authType, // "email" or "sns"
-        existingProvider:
-          existingUser.authType === "email"
-            ? "email"
-            : existingUser.snsProvider, // "kakao", "google" etc
-      };
-    }
-
-    // 사용 가능한 이메일
-    console.log("✅ 이메일 사용 가능:", {email});
-    return {
-      available: true,
-    };
-  } catch (error) {
-    console.error("❌ 이메일 중복 체크 실패:", error);
-    throw error;
-  }
-};
-
-/**
  * 로그아웃 - Refresh Token 무효화
  * 
  * @description
@@ -99,7 +45,6 @@ const logout = async (uid) => {
 };
 
 module.exports = {
-  checkEmailAvailability,
   logout,
 };
 

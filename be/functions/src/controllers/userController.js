@@ -1,48 +1,15 @@
 const UserService = require("../services/userService");
-const {AUTH_TYPES} = require("../constants/userConstants");
+const NicknameService = require("../services/nicknameService");
+// const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
-
-/**
- * User Controller
- */
+const nicknameService = new NicknameService();
 
 class UserController {
-  /**
-   * 사용자 생성 API (Firebase Auth + Firestore 생성)
-   * 
-   * ⚠️ **테스트용 API - Firebase Admin SDK 방식**
-   * 
-   * **프로덕션에서는 사용하지 마세요!**
-   * - 실제 회원가입: 프론트엔드에서 Firebase Client SDK 사용
-   * - createUserWithEmailAndPassword(auth, email, password)
-   * - Auth Trigger가 자동으로 Firestore 문서 생성
-   *
-   * 사용 시나리오 (테스트/개발용):
-   * - 관리자가 수동으로 사용자를 생성해야 하는 경우
-   * - 테스트/개발용 사용자 생성
-   * - 이메일/비밀번호로 사용자 생성
-   *
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
-   */
-  async createUser(req, res, next) {
-    try {
-      const result = await userService.createUser(req.body);
-      return res.success(result);
-    } catch (error) {
-      console.error("사용자 생성 에러:", error);
-      return next(error);
-    }
-  }
-
+  
   /**
    * 모든 사용자 조회 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
    */
   async getAllUsers(req, res, next) {
     try {
@@ -54,18 +21,11 @@ class UserController {
   }
 
   /**
-     * 사용자 정보 조회 API
-     * @param {Object} req - Express request object
-     * @param {Object} res - Express response object
-     * @param {Function} next - Express next function
-     */
-  /**
    * 본인 정보 조회
-   * GET /users/me
    */
   async getMe(req, res, next) {
     try {
-      const {uid} = req.user; // authGuard에서 설정
+      const {uid} = req.user;
       const user = await userService.getUserById(uid);
       if (!user) {
         const err = new Error("사용자를 찾을 수 없습니다");
@@ -79,19 +39,17 @@ class UserController {
   }
 
   /**
-   * 특정 사용자 정보 조회 (Admin 또는 본인만)
-   * GET /users/:userId
+   * 특정 사용자 정보 조회 (본인만)
    */
   async getUserById(req, res, next) {
     try {
       const {userId} = req.params;
-      const {uid, customClaims} = req.user; // authGuard에서 설정
+      const {uid} = req.user; // authGuard에서 설정
 
       // 권한 체크: 본인이거나 Admin만 조회 가능
       const isOwner = userId === uid;
-      const isAdmin = customClaims?.role === "admin";
 
-      if (!isOwner && !isAdmin) {
+      if (!isOwner) {
         const err = new Error("권한이 없습니다");
         err.code = "FORBIDDEN";
         throw err;
@@ -111,42 +69,16 @@ class UserController {
 
   /**
    * 온보딩 정보 업데이트
-   * PATCH /users/me/onboarding
-   * 
-   * Body:
-   * - name, nickname, birthDate, gender, phoneNumber
-   * - terms: { SERVICE: boolean, PRIVACY: boolean }
+   * @param {Object} req.body - { nickname, profileImageUrl?, bio? }
    */
   async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
-      const {name, nickname, birthDate, gender, phoneNumber, terms} = req.body || {};
-
-      // 약관 검증
-      if (terms !== undefined) {
-        // 필수 약관 동의 여부 확인
-        const requiredTerms = ["SERVICE", "PRIVACY"];
-        for (const term of requiredTerms) {
-          if (terms[term] !== true) {
-            const err = new Error(`필수 약관에 동의해야 합니다: ${term}`);
-            err.code = "INVALID_INPUT";
-            throw err;
-          }
-        }
-
-        // 약관 동의 값 타입 검증
-        for (const [key, value] of Object.entries(terms)) {
-          if (typeof value !== "boolean") {
-            const err = new Error(`약관 동의 값은 boolean 타입이어야 합니다: ${key}`);
-            err.code = "INVALID_INPUT";
-            throw err;
-          }
-        }
-      }
+      const {nickname, profileImageUrl, bio} = req.body || {};
 
       const result = await userService.updateOnboarding({
         uid,
-        payload: {name, nickname, birthDate, gender, phoneNumber, terms},
+        payload: {nickname, profileImageUrl, bio},
       });
 
       return res.success({onboardingCompleted: result.onboardingCompleted});
@@ -155,6 +87,9 @@ class UserController {
     }
   }
 
+  /**
+   * 사용자 정보 수정 (일부 필드)
+   */
   async updateUser(req, res, next) {
     try {
       const {userId} = req.params;
@@ -215,10 +150,49 @@ class UserController {
   }
 
   /**
+   * 카카오 프로필 동기화
+   * @param {Object} req.body - { accessToken }
+   */
+  async syncKakaoProfile(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const {accessToken} = req.body || {};
+      if (!accessToken || typeof accessToken !== "string") {
+        const err = new Error("INVALID_INPUT: accessToken required");
+        err.code = "INVALID_INPUT";
+        throw err;
+      }
+
+      const result = await userService.syncKakaoProfile(uid, accessToken);
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 닉네임 가용성 확인
+   */
+  async checkNicknameAvailability(req, res, next) {
+    try {
+      const {nickname} = req.query;
+      
+      if (!nickname || typeof nickname !== "string" || !nickname.trim()) {
+        const err = new Error("닉네임을 입력해주세요");
+        err.code = "BAD_REQUEST";
+        throw err;
+      }
+
+      const available = await nicknameService.checkAvailability(nickname);
+      
+      return res.success({available});
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
    * 사용자 삭제 API
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next function
    */
   async deleteUser(req, res, next) {
     try {

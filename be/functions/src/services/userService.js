@@ -1,8 +1,10 @@
-const {FieldValue} = require("firebase-admin/firestore");
+const {FieldValue, Timestamp} = require("firebase-admin/firestore");
+const {admin} = require("../config/database");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
-const {AUTH_TYPES} = require("../constants/userConstants");
-const {isValidPhoneNumber, formatDate} = require("../utils/helpers");
+const TermsService = require("./termsService");
+const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
+const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -12,21 +14,24 @@ class UserService {
   constructor() {
     this.firestoreService = new FirestoreService("users");
     this.nicknameService = new NicknameService();
+    this.termsService = new TermsService();
   }
 
   /**
    * 온보딩 업데이트
    * - 허용 필드만 부분 업데이트
-   * - 제공자별 필수값 검증
-   * - 닉네임 중복 방지(트랜잭션, nicknames/{lowerNick})
-   * - 완료 조건 충족 시 onboardingCompleted=true
+   * - 닉네임 중복 방지(트랜잭션)
+   * - 닉네임이 유효하면 onboardingCompleted=true
    * @param {Object} params
-   * @param {string} params.uid
-   * @param {Object} params.payload
+   * @param {string} params.uid - 사용자 ID
+   * @param {Object} params.payload - 업데이트할 데이터
+   * @param {string} params.payload.nickname - 닉네임 (필수)
+   * @param {string} [params.payload.profileImageUrl] - 프로필 이미지 URL (선택)
+   * @param {string} [params.payload.bio] - 자기소개 (선택)
    * @return {Promise<{onboardingCompleted:boolean}>}
    */
   async updateOnboarding({uid, payload}) {
-    // 1) 현재 사용자 문서 조회 (FirestoreService 사용)
+    // 1) 현재 사용자 문서 조회
     const existing = await this.firestoreService.getById(uid);
     if (!existing) {
       const e = new Error("User document not found");
@@ -36,90 +41,23 @@ class UserService {
 
     // 2) 허용 필드 화이트리스트 적용
     const allowedFields = [
-      "name",
       "nickname",
-      "birthDate",
-      "gender",
-      "phoneNumber",
+      "profileImageUrl",
+      "bio",
     ];
     const update = {};
     for (const key of allowedFields) {
       if (payload[key] !== undefined) update[key] = payload[key];
     }
 
-    // 3) 유효성 검증
-    if (update.birthDate !== undefined) {
-      try {
-        const formattedDate = formatDate(update.birthDate);
-        update.birthDate = formattedDate;
-      } catch (error) {
-        const e = new Error("올바른 날짜 형식이 아닙니다");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-    }
-    if (update.phoneNumber !== undefined) {
-      if (!isValidPhoneNumber(update.phoneNumber)) {
-        const e = new Error("올바른 전화번호 형식이 아닙니다");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-      // 전화번호 정규화 (숫자만 추출)
-      update.phoneNumber = update.phoneNumber.replace(/[^0-9+]/g, "");
-    }
-    if (update.gender !== undefined) {
-      const validGenders = ["MALE", "FEMALE", null];
-      if (!validGenders.includes(update.gender)) {
-        const e = new Error("INVALID_GENDER");
-        e.code = "INVALID_INPUT";
-        throw e;
-      }
-    }
-
-    // 4) 약관 동의 처리
-    const terms = payload.terms; // { SERVICE: true, PRIVACY: true }
-    if (terms) {
-      // 필수 약관 체크 (이메일만)
-      const isEmail = existing.authType === AUTH_TYPES.EMAIL;
-      if (isEmail) {
-        const requiredTerms = ["SERVICE", "PRIVACY"];
-        for (const requiredType of requiredTerms) {
-          if (!terms[requiredType]) {
-            const e = new Error(`REQUIRED_TERM_NOT_AGREED: ${requiredType}`);
-            e.code = "REQUIRED_TERM_NOT_AGREED";
-            throw e;
-          }
-        }
-      }
-
-      // 약관 동의 정보를 users 필드에 저장 (true/false 구조)
-      update.serviceTermsAgreed = terms.SERVICE === true;
-      update.servicePrivacyAgreed = terms.PRIVACY === true;
-      update.termsAgreedAt = FieldValue.serverTimestamp();
-    }
-
-    // 5) 제공자별 필수값 체크
-    const isEmail = existing.authType === AUTH_TYPES.EMAIL;
-    const requiredForEmail = ["name", "nickname", "birthDate"];
-    const requiredForKakao = ["nickname"];
-    const required = isEmail ? requiredForEmail : requiredForKakao;
-
-    // 필수 필드 체크
-    const missing = required.filter((f) => !payload[f]);
-    if (missing.length > 0) {
-      const e = new Error(`REQUIRE_FIELDS_MISSING: ${missing.join(",")}`);
+    // 3) 필수 필드 체크
+    if (!(typeof update.nickname === "string" && update.nickname.trim().length > 0)) {
+      const e = new Error("REQUIRE_FIELDS_MISSING: nickname");
       e.code = "REQUIRE_FIELDS_MISSING";
       throw e;
     }
 
-    // 약관 동의 체크 (이메일 사용자만)
-    if (isEmail && !terms) {
-      const e = new Error("TERMS_REQUIRED_FOR_EMAIL");
-      e.code = "TERMS_REQUIRED_FOR_EMAIL";
-      throw e;
-    }
-
-    // 6) 닉네임 설정 (중복 체크 및 예약)
+    // 4) 닉네임 설정
     const nickname = update.nickname;
     const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
 
@@ -127,92 +65,31 @@ class UserService {
       await this.nicknameService.setNickname(nickname, uid, existing.nickname);
     }
 
-    // 온보딩 완료 처리
+    // 5) 온보딩 완료 처리
     const userUpdate = {
       ...update,
-      onboardingCompleted: true, // 모든 필수 정보가 입력되었으므로 완료
+      onboardingCompleted: true,
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    // 사용자 문서 업데이트 (FirestoreService 사용)
+    // 사용자 문서 업데이트
     await this.firestoreService.update(uid, userUpdate);
     
     return {onboardingCompleted: true};
   }
 
   /**
-   * 사용자 생성 (Firebase Auth + Firestore)
-   * 
-   * ⚠️ **테스트용 메서드 - Firebase Admin SDK 방식**
-   * 
-   * **프로덕션에서는 사용하지 마세요!**
-   * - 실제 회원가입: 프론트엔드에서 Firebase Client SDK 사용
-   * - createUserWithEmailAndPassword(auth, email, password)
-   * - Auth Trigger가 자동으로 Firestore 문서 생성
-   * 
-   * @param {Object} userData
-   * @return {Promise<Object>} 생성된 사용자 데이터
-   */
-  async createUser(userData) {
-    const {name, email, password, profileImageUrl, birthDate, authType = "email", snsProvider = null} = userData;
-    if (!name) {
-      const e = new Error("이름이 필요합니다");
-      e.code = "BAD_REQUEST";
-      throw e;
-    }
-    if (!email) {
-      const e = new Error("이메일이 필요합니다");
-      e.code = "BAD_REQUEST";
-      throw e;
-    }
-    if (!password) {
-      const e = new Error("비밀번호가 필요합니다");
-      e.code = "BAD_REQUEST";
-      throw e;
-    }
-
-    // Firebase Auth 사용자 생성
-    const authUser = await admin.auth().createUser({
-      email: email,
-      password: password,
-      displayName: name,
-      emailVerified: false,
-      photoURL: profileImageUrl || null,
-    });
-
-    // Firestore 사용자 문서 생성
-    const firestoreUser = {
-      name,
-      email: email,
-      profileImageUrl: profileImageUrl || "",
-      birthDate: birthDate || null,
-      authType,
-      snsProvider,
-      role: "user",
-      rewardPoints: 0,
-      level: 1,
-      badges: [],
-      points: "0",
-      mainProfileId: "",
-      onboardingCompleted: false,
-      uploadQuotaBytes: 1073741824, // 1GB
-      usedStorageBytes: 0,
-    };
-
-    const created = await this.firestoreService.create(firestoreUser, authUser.uid);
-    return {uid: authUser.uid, ...created};
-  }
-
-  /**
    * 모든 사용자 조회
-   * @return {Promise<Array>} 사용자 목록
+   * @return {Promise<Array<Object>>} 사용자 목록
    */
   async getAllUsers() {
     try {
       return await this.firestoreService.getAll();
     } catch (error) {
       console.error("사용자 목록 조회 에러:", error.message);
-      throw new Error("사용자 목록을 조회할 수 없습니다");
+      const e = new Error("사용자 목록을 조회할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
     }
   }
 
@@ -226,19 +103,21 @@ class UserService {
       return await this.firestoreService.getById(uid);
     } catch (error) {
       console.error("사용자 조회 에러:", error.message);
-      throw new Error("사용자를 조회할 수 없습니다");
+      const e = new Error("사용자를 조회할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
     }
   }
 
   /**
-   * 일반 수정용 : 사용자 정보 업데이트
+   * 사용자 정보 업데이트 (관리자용)
+   * - 모든 필드 업데이트 가능
    * @param {string} uid - 사용자 ID
    * @param {Object} updateData - 업데이트할 데이터
    * @return {Promise<Object>} 업데이트된 사용자 정보
    */
   async updateUser(uid, updateData) {
     try {
-      // 업데이트 데이터에 updatedAt 추가
       const updatePayload = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
@@ -247,7 +126,9 @@ class UserService {
       return await this.firestoreService.update(uid, updatePayload);
     } catch (error) {
       console.error("사용자 업데이트 에러:", error.message);
-      throw new Error("사용자 정보를 업데이트할 수 없습니다");
+      const e = new Error("사용자 정보를 업데이트할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
     }
   }
 
@@ -262,8 +143,124 @@ class UserService {
       await this.firestoreService.delete(uid);
     } catch (error) {
       console.error("사용자 삭제 에러:", error.message);
-      throw new Error("사용자를 삭제할 수 없습니다");
+      const e = new Error("사용자를 삭제할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
     }
+  }
+
+  /**
+   * 카카오 OIDC userinfo + 서비스 약관 동기화
+   * @param {string} uid
+   * @param {string} accessToken
+   */
+  async syncKakaoProfile(uid, accessToken) {
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    let userinfoJson;
+
+    // 에뮬레이터 환경: Firebase Auth customClaims에서 더미 데이터 사용
+    if (isEmulator && accessToken === "test") {
+      const userRecord = await admin.auth().getUser(uid);
+      const customClaims = userRecord.customClaims || {};
+      
+      userinfoJson = {
+        name: customClaims.kakaoName || "테스트유저",
+        gender: customClaims.kakaoGender || "MALE",
+        birthdate: customClaims.kakaoBirthdate || "2000-01-01",
+        phone_number: customClaims.kakaoPhoneNumber || "01012345678",
+        picture: customClaims.kakaoPicture || "",
+      };
+    } else {
+      // 실제 환경: 카카오 API 호출
+      const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
+      const userinfoRes = await fetch(userinfoUrl, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!userinfoRes.ok) {
+        const text = await userinfoRes.text();
+        const e = new Error(`KAKAO_USERINFO_FAILED: ${userinfoRes.status} ${text}`);
+        e.code = "KAKAO_USERINFO_FAILED";
+        throw e;
+      }
+
+      userinfoJson = await userinfoRes.json();
+    }
+
+    const name = userinfoJson.name || "";
+    const genderRaw = userinfoJson.gender || null; // MALE|FEMALE (대문자 기대)
+    const birthdateRaw = userinfoJson.birthdate || null; // YYYY-MM-DD 기대
+    const phoneRaw = userinfoJson.phone_number || "";
+    const profileImageUrl = userinfoJson.picture || "";
+
+    // 기본 검증 (카카오 콘솔에서 필수 동의로 설정 가정)
+    if (!genderRaw || !birthdateRaw || !phoneRaw) {
+      const e = new Error("카카오에서 필수 정보를 받아올 수 없습니다");
+      e.code = "REQUIRE_FIELDS_MISSING";
+      throw e;
+    }
+
+    // gender 정규화
+    const gender = genderRaw === "MALE" || genderRaw === "FEMALE" ? genderRaw : null;
+    if (!gender) {
+      const e = new Error("카카오에서 받은 성별 정보가 유효하지 않습니다");
+      e.code = "INVALID_INPUT";
+      throw e;
+    }
+
+    // birthDate 정규화
+    let birthDate;
+    try {
+      birthDate = formatDate(birthdateRaw);
+    } catch (_) {
+      const e = new Error("카카오에서 받은 생년월일 정보가 유효하지 않습니다");
+      e.code = "INVALID_INPUT";
+      throw e;
+    }
+
+    // 한국 번호 검증은 helper 내부에서 정규화 포함 수행
+    if (!isValidPhoneNumber(String(phoneRaw))) {
+      const e = new Error("카카오에서 받은 전화번호 정보가 유효하지 않습니다");
+      e.code = "INVALID_INPUT";
+      throw e;
+    }
+    // 저장은 정규화된 국내형으로
+    const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
+
+    // 2. 서비스 약관 동의 내역 조회
+    await this.termsService.syncFromKakao(uid, accessToken);
+
+    // 3. Firestore 업데이트 준비
+    const update = {
+      name: name || null,
+      birthDate,
+      gender,
+      phoneNumber: normalizedPhone,
+      profileImageUrl,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // 4. 문서 존재 여부 확인 후 upsert
+    const existing = await this.firestoreService.getById(uid);
+    if (!existing) {
+      await this.firestoreService.create({
+        nickname: "",
+        authType: AUTH_TYPES.SNS,
+        snsProvider: SNS_PROVIDERS.KAKAO,
+        onboardingCompleted: false,
+        createdAt: FieldValue.serverTimestamp(),
+        lastLogin: FieldValue.serverTimestamp(),
+        ...update,
+      }, uid);
+    } else {
+      await this.firestoreService.update(uid, update);
+    }
+
+
+    return {success: true};
   }
 }
 
