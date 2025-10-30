@@ -4,6 +4,7 @@ const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
+const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -247,8 +248,8 @@ class UserService {
     if (!existing) {
       await this.firestoreService.create({
         nickname: "",
-        authType: "sns",
-        snsProvider: "kakao",
+        authType: AUTH_TYPES.SNS,
+        snsProvider: SNS_PROVIDERS.KAKAO,
         onboardingCompleted: false,
         createdAt: FieldValue.serverTimestamp(),
         lastLogin: FieldValue.serverTimestamp(),

@@ -10,7 +10,12 @@ const USER_ROLES = {
   ADMIN: "admin",
 };
 
+const SNS_PROVIDERS = {
+  KAKAO: "kakao",
+};
+
 module.exports = {
   AUTH_TYPES,
   USER_ROLES,
+  SNS_PROVIDERS,
 };
