@@ -566,6 +566,12 @@ const TextEditor = ({
    * 이미지 업로드 버튼 클릭 처리
    */
   const handleImageClick = React.useCallback(() => {
+    // 에디터가 비어있거나 포커스가 없을 수 있으므로 내용 시작 위치로 커서 설정 후 선택 영역 저장
+    contentRef.current?.focus();
+    if (contentRef.current) {
+      setCursorPosition(contentRef.current, false);
+      saveSelection();
+    }
     imageInputRef.current?.click();
   }, []);
 
@@ -573,6 +579,11 @@ const TextEditor = ({
    * 파일 업로드 버튼 클릭 처리
    */
   const handleFileClick = React.useCallback(() => {
+    contentRef.current?.focus();
+    if (contentRef.current) {
+      setCursorPosition(contentRef.current, false);
+      saveSelection();
+    }
     fileInputRef.current?.click();
   }, []);
 
@@ -581,12 +592,23 @@ const TextEditor = ({
    * @param imageUrl - 삽입할 이미지 URL
    */
   const insertImageToEditor = React.useCallback(
-    (imageUrl: string) => {
+    (imageUrl: string, clientId?: string) => {
       contentRef.current?.focus();
+      // 파일 선택 과정에서 선택영역이 사라진 경우 시작 위치로 커서 보정
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        if (contentRef.current) {
+          setCursorPosition(contentRef.current, false);
+        }
+      }
       restoreSelection();
-
-      const img = `<img src="${imageUrl}" alt="업로드된 이미지" class="max-w-full h-auto w-auto block mx-auto" />`;
-      document.execCommand("insertHTML", false, img);
+      const clientAttr = clientId ? ` data-client-id="${clientId}"` : "";
+      const img = `<img src="${imageUrl}" alt="업로드된 이미지" class="max-w-full h-auto w-auto block mx-auto"${clientAttr} />`;
+      const ok = document.execCommand("insertHTML", false, img);
+      if (!ok && contentRef.current) {
+        // execCommand 실패 시 직접 삽입 (빈 편집기 첫 삽입 등 브라우저 이슈 대비)
+        contentRef.current.insertAdjacentHTML("beforeend", img);
+      }
       handleContentInput();
     },
     [restoreSelection, handleContentInput]
@@ -598,51 +620,69 @@ const TextEditor = ({
    * @param fileUrl - 파일 URL
    */
   const insertFileToEditor = React.useCallback(
-    (fileName: string, fileUrl: string) => {
+    (fileName: string, fileUrl: string, clientId?: string) => {
       contentRef.current?.focus();
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        if (contentRef.current) {
+          setCursorPosition(contentRef.current, false);
+        }
+      }
       restoreSelection();
 
       // 파일 첨부 블록을 원자적으로 다루기 위해 컨테이너로 래핑하고 편집 불가 처리
+      const fileAttr = clientId ? ` data-file-id="${clientId}"` : "";
       const attachment = `<span data-attachment="file" class="inline-flex items-center gap-1 select-none" contenteditable="false">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#99A1AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>
-        <a href="${fileUrl}" download="${fileName}"><span class="text-blue-500 underline">${fileName}</span></a>
+        <a href="${fileUrl}" download="${fileName}"${fileAttr}><span class="text-blue-500 underline">${fileName}</span></a>
       </span>`;
-      document.execCommand("insertHTML", false, attachment + "&nbsp;");
+      const ok = document.execCommand(
+        "insertHTML",
+        false,
+        attachment + "&nbsp;"
+      );
+      if (!ok && contentRef.current) {
+        contentRef.current.insertAdjacentHTML(
+          "beforeend",
+          attachment + "&nbsp;"
+        );
+      }
       handleContentInput();
     },
     [restoreSelection, handleContentInput]
   );
 
   const handleImageChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const imageUrl = URL.createObjectURL(file);
-      insertImageToEditor(imageUrl);
-
-      if (onImageUpload) {
-        onImageUpload(file);
-      }
-
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
+      try {
+        // 즉시 업로드는 하지 않고, clientId만 발급 받아 data-client-id로 심어 둠
+        const clientId = onImageUpload
+          ? await Promise.resolve(onImageUpload(file))
+          : undefined;
+        const previewUrl = URL.createObjectURL(file);
+        insertImageToEditor(previewUrl, clientId);
+      } finally {
+        if (imageInputRef.current) {
+          imageInputRef.current.value = "";
+        }
       }
     },
     [onImageUpload, insertImageToEditor]
   );
 
   const handleFileChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
+      const clientId = onFileUpload
+        ? await Promise.resolve(onFileUpload(file))
+        : undefined;
       const fileUrl = URL.createObjectURL(file);
-      insertFileToEditor(file.name, fileUrl);
-
-      if (onFileUpload) {
-        onFileUpload(file);
-      }
+      insertFileToEditor(file.name, fileUrl, clientId);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -1001,7 +1041,7 @@ const TextEditor = ({
     <div
       ref={containerRef}
       className={cn(
-        "bg-background relative flex max-w-full flex-col border-gray-300",
+        "bg-background border-gray-30 relative flex max-w-full flex-col bg-white",
         className
       )}
     >
@@ -1248,7 +1288,7 @@ const TextEditor = ({
           contentEditable
           suppressContentEditableWarning
           className={cn(
-            "word-break-break-word overflow-wrap-break-word w-full p-4 text-2xl font-bold break-words outline-none",
+            "word-break-break-word overflow-wrap-break-word w-full p-4 pb-0 text-2xl font-bold break-words outline-none",
             showTitlePlaceholder &&
               "[&:empty]:before:text-base [&:empty]:before:leading-[150%] [&:empty]:before:font-bold [&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
             "touch-manipulation",
