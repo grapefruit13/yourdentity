@@ -368,9 +368,9 @@ router.get('/:programId/applications/:applicationId/approve', programController.
 /**
  * @swagger
  * /programs/{programId}/applications/{applicationId}/reject:
- *   patch:
- *     summary: 프로그램 신청 승인 취소
- *     description: 특정 프로그램 신청 승인을 취소합니다.
+ *   get:
+ *     summary: 프로그램 신청 거부
+ *     description: 특정 프로그램 신청을 거부합니다. (Notion에서 링크로 호출)
  *     tags: [Programs]
  *     parameters:
  *       - in: path
@@ -384,43 +384,30 @@ router.get('/:programId/applications/:applicationId/approve', programController.
  *         required: true
  *         schema:
  *           type: string
- *         description: 신청 ID (Notion 페이지 ID)
+ *         description: 신청 ID (Firestore member ID)
  *     responses:
  *       200:
- *         description: 신청 승인 취소 성공
+ *         description: 신청 거부 성공
  *         content:
- *           application/json:
+ *           text/html:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "신청 승인이 취소되었습니다."
- *                 data:
- *                   type: object
- *                   properties:
- *                     applicationId:
- *                       type: string
- *                       description: 신청 ID
- *                     status:
- *                       type: string
- *                       example: "rejected"
+ *               type: string
+ *               example: "<html><body><h1>신청이 거부되었습니다!</h1><p>이 페이지를 닫아도 됩니다.</p></body></html>"
  *       404:
  *         description: 신청을 찾을 수 없음
  *         content:
- *           application/json:
+ *           text/html:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: string
+ *               example: "<html><body><h1>오류: 신청을 찾을 수 없습니다.</h1></body></html>"
  *       500:
  *         description: 서버 오류
  *         content:
- *           application/json:
+ *           text/html:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: string
+ *               example: "<html><body><h1>서버 오류가 발생했습니다.</h1></body></html>"
  */
-router.patch('/:programId/applications/:applicationId/reject', programController.rejectApplication);
+router.get('/:programId/applications/:applicationId/reject', programController.rejectApplication);
 
 module.exports = router;

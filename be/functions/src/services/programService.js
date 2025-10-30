@@ -1,10 +1,8 @@
 const { Client } = require('@notionhq/client');
 const { 
-  buildNotionHeadersFromEnv,
   getTextContent,
   getTitleValue,
   getSelectValue,
-  getMultiSelectNames,
   getDateValue,
   getCheckboxValue,
   getUrlValue,
@@ -717,12 +715,24 @@ class ProgramService {
    * 프로그램 신청 승인
    * @param {string} programId - 프로그램 ID
    * @param {string} applicationId - 신청 ID (Firestore member ID)
-   * @param {string} notionPageId - Notion 페이지 ID (선택사항)
    * @returns {Promise<Object>} 승인 결과
    */
-  async approveApplication(programId, applicationId, notionPageId = null) {
+  async approveApplication(programId, applicationId) {
     try {
-      // 1. Firestore member의 status를 'approved'로 업데이트
+      // 1. Firestore member 데이터 조회
+      const member = await this.firestoreService.getDocument(
+        `communities/${programId}/members`,
+        applicationId
+      );
+
+      if (!member) {
+        const error = new Error('신청 정보를 찾을 수 없습니다.');
+        error.code = 'NOT_FOUND';
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // 2. Firestore member의 status를 'approved'로 업데이트
       await this.firestoreService.updateDocument(
         `communities/${programId}/members`,
         applicationId,
@@ -732,11 +742,11 @@ class ProgramService {
         }
       );
 
-      // 2. Notion 페이지의 승인 상태도 업데이트 (선택사항)
-      if (notionPageId) {
+      // 3. Notion 페이지의 승인 상태도 업데이트 (member에 notionPageId가 있는 경우)
+      if (member.notionPageId) {
         try {
           await this.notion.pages.update({
-            page_id: notionPageId,
+            page_id: member.notionPageId,
             properties: {
               '승인 상태': {
                 status: {
@@ -759,6 +769,11 @@ class ProgramService {
     } catch (error) {
       console.error('[ProgramService] 신청 승인 오류:', error.message);
       
+      // 이미 정의된 에러는 그대로 전달
+      if (error.code === 'NOT_FOUND') {
+        throw error;
+      }
+      
       const serviceError = new Error(`신청 승인 중 오류가 발생했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;
       serviceError.originalError = error;
@@ -774,7 +789,20 @@ class ProgramService {
    */
   async rejectApplication(programId, applicationId) {
     try {
-      // 1. Firestore member의 status를 'rejected'로 업데이트
+      // 1. Firestore member 데이터 조회
+      const member = await this.firestoreService.getDocument(
+        `communities/${programId}/members`,
+        applicationId
+      );
+
+      if (!member) {
+        const error = new Error('신청 정보를 찾을 수 없습니다.');
+        error.code = 'NOT_FOUND';
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // 2. Firestore member의 status를 'rejected'로 업데이트
       await this.firestoreService.updateDocument(
         `communities/${programId}/members`,
         applicationId,
@@ -784,20 +812,22 @@ class ProgramService {
         }
       );
 
-      // 2. Notion 페이지의 승인 상태도 업데이트 (선택사항)
-      try {
-        await this.notion.pages.update({
-          page_id: applicationId, // applicationId가 Notion 페이지 ID인 경우
-          properties: {
-            '승인 상태': {
-              status: {
-                name: '거부됨'
+      // 3. Notion 페이지의 승인 상태도 업데이트 (member에 notionPageId가 있는 경우)
+      if (member.notionPageId) {
+        try {
+          await this.notion.pages.update({
+            page_id: member.notionPageId,
+            properties: {
+              '승인 상태': {
+                status: {
+                  name: '거부됨'
+                }
               }
             }
-          }
-        });
-      } catch (notionError) {
-        console.warn('[ProgramService] Notion 업데이트 실패 (무시됨):', notionError.message);
+          });
+        } catch (notionError) {
+          console.warn('[ProgramService] Notion 업데이트 실패 (무시됨):', notionError.message);
+        }
       }
 
       return {
@@ -808,6 +838,11 @@ class ProgramService {
 
     } catch (error) {
       console.error('[ProgramService] 신청 승인 취소 오류:', error.message);
+      
+      // 이미 정의된 에러는 그대로 전달
+      if (error.code === 'NOT_FOUND') {
+        throw error;
+      }
       
       const serviceError = new Error(`신청 승인 취소 중 오류가 발생했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;

@@ -260,7 +260,7 @@ class ProgramController {
     }
   }
 
-ㅇ  /**
+  /**
    * 프로그램 신청 승인
    * @param {Object} req - Express 요청 객체
    * @param {Object} res - Express 응답 객체
@@ -269,7 +269,6 @@ class ProgramController {
   async approveApplication(req, res, next) {
     try {
       const { programId, applicationId } = req.params;
-      const { notionPageId } = req.query;
 
       if (!programId || !applicationId) {
         const error = new Error("프로그램 ID와 신청 ID가 필요합니다.");
@@ -278,7 +277,7 @@ class ProgramController {
         return next(error);
       }
 
-      const result = await programService.approveApplication(programId, applicationId, notionPageId);
+      const result = await programService.approveApplication(programId, applicationId);
 
       // HTML 응답으로 반환 (Notion에서 링크로 호출)
       const htmlResponse = `
@@ -326,7 +325,7 @@ class ProgramController {
   }
 
   /**
-   * 프로그램 신청 승인 취소
+   * 프로그램 신청 거부
    * @param {Object} req - Express 요청 객체
    * @param {Object} res - Express 응답 객체
    * @param {Function} next - Express next 함수
@@ -344,14 +343,48 @@ class ProgramController {
 
       const result = await programService.rejectApplication(programId, applicationId);
 
-      res.success({
-        message: "신청 승인이 취소되었습니다.",
-        data: result
-      });
+      // HTML 응답으로 반환 (Notion에서 링크로 호출)
+      const htmlResponse = `
+        <html>
+          <head>
+            <title>신청 거부 완료</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .warning { color: #dc3545; }
+              .info { color: #6c757d; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <h1 class="warning">❌ 신청이 거부되었습니다</h1>
+            <p class="info">이 페이지를 닫아도 됩니다.</p>
+          </body>
+        </html>
+      `;
+
+      res.set('Content-Type', 'text/html');
+      res.send(htmlResponse);
 
     } catch (error) {
-      console.error("[ProgramController] 신청 승인 취소 오류:", error.message);
-      return next(error);
+      console.error("[ProgramController] 신청 거부 오류:", error.message);
+      
+      const errorHtml = `
+        <html>
+          <head>
+            <title>오류 발생</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .error { color: #dc3545; }
+            </style>
+          </head>
+          <body>
+            <h1 class="error">❌ 오류가 발생했습니다</h1>
+            <p>${error.message}</p>
+          </body>
+        </html>
+      `;
+      
+      res.set('Content-Type', 'text/html');
+      res.status(error.statusCode || 500).send(errorHtml);
     }
   }
 

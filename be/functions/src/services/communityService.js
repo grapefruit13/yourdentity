@@ -1198,6 +1198,7 @@ class CommunityService {
         userId,
         nickname: nickname.trim(),
         role: MEMBER_ROLES.MEMBER,
+        status: 'pending',
         joinedAt: FieldValue.serverTimestamp(),
       };
 
