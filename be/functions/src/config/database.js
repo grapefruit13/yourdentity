@@ -12,9 +12,9 @@ if (!admin.apps || admin.apps.length === 0) {
   const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
   
   if (isEmulator) {
-    // 에뮬레이터 환경에서는 projectId만 설정
     admin.initializeApp({
-      projectId: 'youthvoice-2025'
+      projectId: 'youthvoice-2025',
+      storageBucket: process.env.STORAGE_BUCKET || 'youthvoice-2025.appspot.com'
     });
   } else {
     // 프로덕션 환경에서는 기본 초기화

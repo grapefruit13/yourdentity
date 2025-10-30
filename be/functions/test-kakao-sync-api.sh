@@ -8,26 +8,73 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-API="http://localhost:5001/youthvoice-2025/asia-northeast3/api"
+# 환경 변수 기반 설정
+EMULATOR_MODE="${EMULATOR_MODE:-all}"
+
+API="http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api"
 TEST_EMAIL="kakao-sync-test-$(date +%s%N)@example.com"
 TEST_PASSWORD="test123456"
 
 echo "🧪 카카오 동기화 API 테스트"
 echo "================================"
+
+# Auth URL 설정
+if [ "$EMULATOR_MODE" = "all" ]; then
+  AUTH_URL="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
+  API_KEY="fake-api-key"
+  echo -e "${BLUE}🔧 테스트 모드: 전체 에뮬레이터 (Auth + Firestore + Functions)${NC}"
+else
+  AUTH_URL="https://identitytoolkit.googleapis.com/v1"
+  API_KEY="${FIREBASE_WEB_API_KEY:-AIzaSyDrUoph1tb6UeIPiEcUjyaolThcxWKbHy0}"
+  echo -e "${BLUE}🔧 테스트 모드: Functions만 에뮬레이터 (실제 Auth + Firestore 사용)${NC}"
+fi
 echo ""
+
+# Pretty print JSON if valid, else raw
+pp_json() {
+  local resp="$1"
+  if echo "$resp" | jq -e . >/dev/null 2>&1; then
+    echo "$resp" | jq '.'
+  else
+    echo "$resp"
+  fi
+}
+
+# JSON 응답 대기/검증 유틸 (최대 10회 재시도)
+curl_json() {
+  method=$1
+  url=$2
+  data=${3:-}
+  token=${4:-}
+  resp=""
+  for i in {1..10}; do
+    if [ -n "$token" ]; then
+      if [ -n "$data" ]; then
+        resp=$(curl -s -X "$method" "$url" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d "$data")
+      else
+        resp=$(curl -s -X "$method" "$url" -H "Content-Type: application/json" -H "Authorization: Bearer $token")
+      fi
+    else
+      if [ -n "$data" ]; then
+        resp=$(curl -s -X "$method" "$url" -H "Content-Type: application/json" -d "$data")
+      else
+        resp=$(curl -s -X "$method" "$url" -H "Content-Type: application/json")
+      fi
+    fi
+    if echo "$resp" | jq -e . >/dev/null 2>&1; then
+      echo "$resp"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "$resp"
+}
 
 # 1. Firebase Auth 계정 생성 (onCreate 트리거 작동)
 echo "1️⃣ Firebase Auth 계정 생성 (onCreate 트리거 작동)"
 echo "--------------------------------"
 
-SIGNUP_RESPONSE=$(curl -s -X POST \
-  "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"email\": \"$TEST_EMAIL\",
-    \"password\": \"$TEST_PASSWORD\",
-    \"returnSecureToken\": true
-  }")
+SIGNUP_RESPONSE=$(curl_json POST "$AUTH_URL/accounts:signUp?key=$API_KEY" "{\"email\": \"$TEST_EMAIL\", \"password\": \"$TEST_PASSWORD\", \"returnSecureToken\": true}")
 
 USER_ID=$(echo "$SIGNUP_RESPONSE" | jq -r '.localId // empty')
 ID_TOKEN=$(echo "$SIGNUP_RESPONSE" | jq -r '.idToken // empty')
@@ -42,9 +89,9 @@ echo -e "${GREEN}✅ 회원가입 성공${NC}"
 echo "User ID: $USER_ID"
 echo ""
 
-# 2초 대기 (authTrigger 처리 대기)
-echo "⏳ authTrigger 처리 대기 중... (2초)"
-sleep 2
+# authTrigger 처리 대기
+echo "⏳ authTrigger 처리 대기 중... (3초)"
+sleep 3
 echo ""
 
 # 2-1. 카카오 테스트용 customClaims 설정
@@ -58,11 +105,9 @@ echo ""
 # 2. onCreate로 생성된 문서 확인
 echo "2️⃣ onCreate로 생성된 사용자 문서 확인"
 echo "--------------------------------"
-USER_INFO=$(curl -s -X GET "$API/users/me" \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H "Content-Type: application/json")
+USER_INFO=$(curl_json GET "$API/users/me" "" "$ID_TOKEN")
 
-echo "$USER_INFO" | jq '.data.user | {uid, email, name, authType, snsProvider, onboardingCompleted, gender, birthDate, phoneNumber, serviceTermsAgreed, privacyTermsAgreed, age14TermsAgreed, pushTermsAgreed}'
+pp_json "$USER_INFO"
 echo ""
 
 AUTH_TYPE=$(echo "$USER_INFO" | jq -r '.data.user.authType // empty')
@@ -93,7 +138,7 @@ SYNC_RESPONSE=$(curl -s -X POST "$API/users/me/sync-kakao-profile" \
   -H "Content-Type: application/json" \
   -d "{\"accessToken\": \"$KAKAO_ACCESS_TOKEN\"}")
 
-echo "$SYNC_RESPONSE" | jq '.'
+pp_json "$SYNC_RESPONSE"
 echo ""
 
 # 에러 체크
@@ -107,11 +152,9 @@ fi
 # 동기화 후 사용자 정보 확인
 echo "📋 동기화 후 사용자 정보 확인"
 echo "--------------------------------"
-SYNC_USER_INFO=$(curl -s -X GET "$API/users/me" \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H "Content-Type: application/json")
+SYNC_USER_INFO=$(curl_json GET "$API/users/me" "" "$ID_TOKEN")
 
-echo "$SYNC_USER_INFO" | jq '.data.user | {name, gender, birthDate, phoneNumber, serviceTermsVersion, privacyTermsVersion, age14TermsAgreed, pushTermsAgreed}'
+pp_json "$SYNC_USER_INFO"
 echo ""
 
 GENDER=$(echo "$SYNC_USER_INFO" | jq -r '.data.user.gender // "null"')
@@ -141,29 +184,25 @@ echo "Generated nickname: $NICKNAME"
 ONBOARDING_RESPONSE=$(curl -s -X PATCH "$API/users/me/onboarding" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"nickname\": \"$NICKNAME\"
-  }")
+  -d "{\"nickname\": \"$NICKNAME\"}")
 
-echo "$ONBOARDING_RESPONSE" | jq '.'
+pp_json "$ONBOARDING_RESPONSE"
 echo ""
 
 # 5. 최종 사용자 정보 확인
 echo "5️⃣ 최종 사용자 정보 확인"
 echo "--------------------------------"
-FINAL_USER=$(curl -s -X GET "$API/users/me" \
-  -H "Authorization: Bearer $ID_TOKEN" \
-  -H "Content-Type: application/json")
+FINAL_USER=$(curl_json GET "$API/users/me" "" "$ID_TOKEN")
 
-echo "$FINAL_USER" | jq '.data.user | {nickname, onboardingCompleted, gender, birthDate, phoneNumber, serviceTermsVersion, privacyTermsVersion, age14TermsAgreed, pushTermsAgreed}'
+pp_json "$FINAL_USER"
 echo ""
 
-FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')
+FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.data.user.status // empty')
 
-if [ "$FINAL_ONBOARDING" = "true" ]; then
-  echo -e "${GREEN}✅ 온보딩 완료!${NC}"
+if [ "$FINAL_STATUS" = "active" ]; then
+  echo -e "${GREEN}✅ 온보딩 완료(status=active)!${NC}"
 else
-  echo -e "${RED}❌ 온보딩 완료 플래그 오류${NC}"
+  echo -e "${RED}❌ 온보딩 상태 오류${NC}"
 fi
 
 echo ""
