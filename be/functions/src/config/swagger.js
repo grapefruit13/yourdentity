@@ -142,11 +142,6 @@ const options = {
               description: "출생년도",
               example: 1990,
             },
-            rewardPoints: {
-              type: "number",
-              description: "리워드 포인트",
-              example: 1000,
-            },
             rewards: {
               type: "number",
               description: "리워드 총합",
@@ -164,11 +159,6 @@ const options = {
               },
               description: "획득한 배지 목록",
               example: ["first_mission", "early_bird"],
-            },
-            points: {
-              type: "string",
-              description: "사용자 포인트 (문자열 형태)",
-              example: "1500",
             },
             mainProfileId: {
               type: "string",

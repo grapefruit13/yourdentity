@@ -95,8 +95,8 @@ class UserController {
     try {
       const {userId} = req.params;
       const {
-        name, profileImageUrl, birthDate, rewardPoints, level, badges,
-        points, mainProfileId, uploadQuotaBytes,
+        name, profileImageUrl, birthDate, level, badges,
+        mainProfileId, uploadQuotaBytes,
         usedStorageBytes,
         rewards, status,
         activityParticipationCount, certificationPosts, reportCount,
@@ -113,14 +113,8 @@ class UserController {
       if (profileImageUrl !== undefined) {
         updateData.profileImageUrl = profileImageUrl;
       }
-      if (points !== undefined) {
-        updateData.points = points;
-      }
       if (mainProfileId !== undefined) {
         updateData.mainProfileId = mainProfileId;
-      }
-      if (rewardPoints !== undefined) {
-        updateData.rewardPoints = rewardPoints;
       }
       if (level !== undefined) {
         updateData.level = level;

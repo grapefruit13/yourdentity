@@ -483,6 +483,10 @@ router.get("/:userId", authGuard, userController.getUserById);
  *               bio:
  *                 type: string
  *                 example: 안녕하세요!
+ *               rewards:
+ *                 type: number
+ *                 description: 리워드 총합
+ *                 example: 0
  *               authType:
  *                 type: string
  *                 example: sns
