@@ -18,17 +18,9 @@ exports.createUserDocument = functions
 
         console.log("🔥 Auth Trigger: 사용자 생성 감지", {uid, email});
 
-        // Provider 정규화 및 검증 (에뮬레이터에서는 건너뜀)
-        const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
-        if (!isEmulator) {
-          const providerId = user.providerData?.[0]?.providerId || "";
-          // OIDC Provider인지 확인
-          if (!providerId || !providerId.startsWith("oidc.")) {
-            const err = new Error("지원하지 않는 Provider: 지원하는 OIDC가 아니며 Provider를 식별할 수 없습니다");
-            err.code = "UNSUPPORTED_PROVIDER";
-            throw err;
-          }
-        }
+    // Provider 확인
+    const providerId = user.providerData?.[0]?.providerId || "";
+    console.log("Provider ID:", providerId);
 
         // 🆕 Firestore 사용자 문서 생성
         // 참고: gender, birthday, phoneNumber, terms는 동기화 API에서 채움
