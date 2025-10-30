@@ -7,6 +7,10 @@ import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/images-types";
 import type { Result } from "@/types/shared/response";
 
-export const postImagesUploadImage = () => {
-  return post<Result<Types.TPOSTImagesUploadImageRes>>(`/images/upload-image`);
+export const postImagesUploadImage = (formData: FormData) => {
+  return post<Result<Types.TPOSTImagesUploadImageRes>>(
+    `/images/upload-image`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
 };

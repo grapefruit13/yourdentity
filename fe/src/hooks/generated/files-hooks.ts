@@ -10,7 +10,7 @@ import type * as Types from "@/types/generated/files-types";
 
 export const usePostFilesUploadMultiple = () => {
   return useMutation({
-    mutationFn: () => Api.postFilesUploadMultiple(),
+    mutationFn: (formData: FormData) => Api.postFilesUploadMultiple(formData),
   });
 };
 

@@ -10,6 +10,6 @@ import type * as Types from "@/types/generated/images-types";
 
 export const usePostImagesUploadImage = () => {
   return useMutation({
-    mutationFn: () => Api.postImagesUploadImage(),
+    mutationFn: (formData: FormData) => Api.postImagesUploadImage(formData),
   });
 };

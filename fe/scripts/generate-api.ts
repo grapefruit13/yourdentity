@@ -384,8 +384,10 @@ import type { Result } from "@/types/shared/response";
       // 파라미터 타입 생성
       const pathParams = parameters.filter((p: any) => p.in === "path");
       const queryParams = parameters.filter((p: any) => p.in === "query");
-      const hasRequestBody =
+      const isMultipart = !!requestBody?.content?.["multipart/form-data"];
+      const hasJsonBody =
         requestBody && requestBody.content?.["application/json"]?.schema;
+      const hasRequestBody = isMultipart || hasJsonBody;
 
       // 응답 스키마 확인
       const successResponse =
@@ -406,10 +408,31 @@ import type { Result } from "@/types/shared/response";
       const axiosMethod = httpMethod === "delete" ? "del" : httpMethod;
 
       // 함수 생성
-      const hasRequestParams =
-        pathParams.length > 0 || queryParams.length > 0 || hasRequestBody;
       const hasResponseType = hasResponseSchema;
 
+      // 멀티파트: 시그니처와 호출을 별도로 처리
+      if (isMultipart) {
+        const responseType = hasResponseType
+          ? `Result<Types.${resTypeName}>`
+          : "Result<any>";
+        if (pathParams.length === 0 && queryParams.length === 0) {
+          fileContent += `export const ${funcName} = (formData: FormData) => {\n`;
+          fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, formData, { headers: { \"Content-Type\": \"multipart/form-data\" } });\n`;
+          fileContent += `};\n\n`;
+          return;
+        } else if (pathParams.length > 0 && queryParams.length === 0) {
+          const pathParamNames = pathParams.map((p: any) => p.name).join(", ");
+          fileContent += `export const ${funcName} = (request: Types.${reqTypeName}, formData: FormData) => {\n`;
+          fileContent += `  const { ${pathParamNames} } = request;\n`;
+          fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, formData, { headers: { \"Content-Type\": \"multipart/form-data\" } });\n`;
+          fileContent += `};\n\n`;
+          return;
+        }
+      }
+
+      // 멀티파트가 아닌 경우: 함수 시그니처 열기
+      const hasRequestParams =
+        pathParams.length > 0 || queryParams.length > 0 || hasRequestBody;
       if (hasRequestParams) {
         fileContent += `export const ${funcName} = (request: Types.${reqTypeName}) => {\n`;
       } else {
@@ -713,10 +736,14 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
       // 파라미터가 있는지 확인
       const pathParams = parameters.filter((p: any) => p.in === "path");
       const queryParams = parameters.filter((p: any) => p.in === "query");
+      const isMultipart = !!requestBody?.content?.["multipart/form-data"];
       const hasRequestBody =
         requestBody && requestBody.content?.["application/json"]?.schema;
       const hasRequestParams =
-        pathParams.length > 0 || queryParams.length > 0 || hasRequestBody;
+        pathParams.length > 0 ||
+        queryParams.length > 0 ||
+        hasRequestBody ||
+        isMultipart;
 
       if (method.toLowerCase() === "get") {
         // Query Hook
@@ -738,7 +765,30 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         }
       } else {
         // Mutation Hook
-        if (hasRequestParams) {
+        if (isMultipart) {
+          if (pathParams.length === 0 && queryParams.length === 0) {
+            fileContent += `export const ${hookName} = () => {\n`;
+            fileContent += `  return useMutation({\n`;
+            fileContent += `    mutationFn: (formData: FormData) => Api.${funcName}(formData),\n`;
+            fileContent += `  });\n`;
+            fileContent += `};\n\n`;
+          } else if (pathParams.length > 0 && queryParams.length === 0) {
+            const reqTypeName = generateTypeName(method, path, "Req");
+            fileContent += `export const ${hookName} = () => {\n`;
+            fileContent += `  return useMutation({\n`;
+            fileContent += `    mutationFn: ({ request, formData }: { request: Types.${reqTypeName}; formData: FormData }) => Api.${funcName}(request, formData),\n`;
+            fileContent += `  });\n`;
+            fileContent += `};\n\n`;
+          } else {
+            // 보수적으로 request 타입만 허용하는 기본 형태
+            const reqTypeName = generateTypeName(method, path, "Req");
+            fileContent += `export const ${hookName} = () => {\n`;
+            fileContent += `  return useMutation({\n`;
+            fileContent += `    mutationFn: (request: Types.${reqTypeName}) => Api.${funcName}(request as any),\n`;
+            fileContent += `  });\n`;
+            fileContent += `};\n\n`;
+          }
+        } else if (hasRequestParams) {
           const reqTypeName = generateTypeName(method, path, "Req");
           fileContent += `export const ${hookName} = () => {\n`;
           fileContent += `  return useMutation({\n`;

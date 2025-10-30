@@ -8,9 +8,11 @@ import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/files-types";
 import type { Result } from "@/types/shared/response";
 
-export const postFilesUploadMultiple = () => {
+export const postFilesUploadMultiple = (formData: FormData) => {
   return post<Result<Types.TPOSTFilesUploadMultipleRes>>(
-    `/files/upload-multiple`
+    `/files/upload-multiple`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
   );
 };
 
