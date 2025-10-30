@@ -5,7 +5,10 @@ const ButtonBase = ({ className, ...props }: ComponentProps<"button">) => {
   return (
     <button
       type="button"
-      className={cn("hover:cursor-pointer focus:outline-none", className)}
+      className={cn(
+        "flex items-center justify-center hover:cursor-pointer focus:outline-none",
+        className
+      )}
       {...props}
     />
   );
