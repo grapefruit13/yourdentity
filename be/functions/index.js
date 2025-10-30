@@ -66,26 +66,31 @@ const allowedOrigins = [
   "https://asia-northeast3-youthvoice-2025.cloudfunctions.net",
   "https://asia-northeast3-yourdentity.cloudfunctions.net",
 ];
+const corsOptions = {
+  origin: (origin, callback) => {
+    const isAllowed = allowedOrigins.includes(origin);
 
-app.use(
+    if (process.env.NODE_ENV === "development") {
+      if (!origin || isAllowed) {
+        return callback(null, true);
+      }
+      console.log("❌ [CORS-DEV] 차단된 Origin:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    }
 
-    cors({
-      origin: (origin, callback) => {
-      // 개발 환경에서는 origin이 없는 요청도 허용
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          console.log("CORS blocked origin:", origin);
-          callback(new Error("Not allowed by CORS"));
-        }
-      },
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    }),
+    if (isAllowed) {
+      return callback(null, true);
+    } else {
+      console.warn("🚫 [CORS-PROD] 차단된 Origin:", origin || "없음");
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+};
 
-);
-
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(responseHandler); // 표준 response 메서드 추가 (res.success, res.error, res.paginate)
 
