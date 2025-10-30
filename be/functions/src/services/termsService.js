@@ -163,7 +163,7 @@ class TermsService {
 
     const update = {};
 
-    // 약관 정보 추가
+    // 약관 정보가 있으면 추가
     if (serviceVersion || privacyVersion || age14Agreed || pushAgreed) {
       if (serviceVersion) update.serviceTermsVersion = serviceVersion;
       if (privacyVersion) update.privacyTermsVersion = privacyVersion;
@@ -174,6 +174,14 @@ class TermsService {
       } else {
         update.termsAgreedAt = FieldValue.serverTimestamp();
       }
+    } else {
+      // 약관 정보가 없으면 기본값으로 초기화 (최초 동기화 시)
+      console.log(`[TermsService] 약관 정보 없음, 기본값으로 초기화 (uid: ${uid})`);
+      update.serviceTermsVersion = null;
+      update.privacyTermsVersion = null;
+      update.age14TermsAgreed = false;
+      update.pushTermsAgreed = false;
+      update.termsAgreedAt = null;
     }
 
     await this.firestoreService.update(uid, update);

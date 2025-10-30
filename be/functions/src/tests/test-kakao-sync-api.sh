@@ -97,8 +97,22 @@ echo ""
 # 2-1. 카카오 테스트용 customClaims 설정
 echo "2-1️⃣ 카카오 테스트용 customClaims 설정"
 echo "--------------------------------"
-if ! node src/scripts/setKakaoTestClaims.js "$USER_ID"; then
+if ! node ../scripts/setKakaoTestClaims.js "$USER_ID"; then
   echo -e "${YELLOW}⚠️  customClaims 설정 실패 (계속 진행)${NC}"
+fi
+
+# customClaims 설정 후 새로운 ID Token 발급
+echo "⏳ customClaims 반영을 위한 새 토큰 발급 중..."
+if [ "$EMULATOR_MODE" = "all" ]; then
+  # 에뮬레이터 환경: 재로그인으로 토큰 갱신
+  REFRESH_RESPONSE=$(curl_json POST "$AUTH_URL/accounts:signInWithPassword?key=$API_KEY" "{\"email\": \"$TEST_EMAIL\", \"password\": \"$TEST_PASSWORD\", \"returnSecureToken\": true}")
+  ID_TOKEN=$(echo "$REFRESH_RESPONSE" | jq -r '.idToken // empty')
+  
+  if [ -z "$ID_TOKEN" ]; then
+    echo -e "${RED}❌ 토큰 갱신 실패${NC}"
+    exit 1
+  fi
+  echo "✅ 새 ID Token 발급 완료 (customClaims 반영됨)"
 fi
 echo ""
 
