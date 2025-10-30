@@ -107,7 +107,6 @@ class FileController {
       const checkAndSendResponse = () => {
         if (pendingUploads === 0 && fileReceived && !responseSent) {
           clearTimeout(timeout);
-          const uploadDuration = Date.now() - startTime;
 
           sendResponse(201, {
             uploaded: files.filter(f => f.success).length,
