@@ -1,14 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
+import {
+  deleteFilesById,
+  postFilesUploadMultiple,
+} from "@/api/generated/files-api";
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
-import { post, del } from "@/lib/axios";
 import type * as CommunityTypes from "@/types/generated/communities-types";
 import { cn } from "@/utils/shared/cn";
 
@@ -16,27 +20,6 @@ type WriteFormValues = {
   title: string;
   content: string; // HTML 포함
   category: "한끗 루틴" | "TMI 프로젝트" | "월간 소모임";
-};
-
-type UploadMultipleRes = {
-  status: number;
-  data: {
-    uploaded: number;
-    failed: number;
-    files: {
-      success: boolean;
-      data?: {
-        fileUrl: string;
-        fileName: string;
-        path: string;
-        originalFileName?: string;
-        mimeType?: string;
-        size?: number;
-        bucket?: string;
-      };
-    }[];
-    errors: string[];
-  };
 };
 
 const MAX_FILES = 5;
@@ -158,13 +141,9 @@ const Page = () => {
       formData.append("file", renamed);
     });
 
-    const res = await post<UploadMultipleRes>(
-      `/files/upload-multiple`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
+    const res = await postFilesUploadMultiple(formData);
 
-    const items = res.data?.data?.files ?? [];
+    const items = (res as any)?.data?.data?.files ?? [];
     const byIdToPath = new Map<string, string>();
     const byIdToUrl = new Map<string, string>();
     for (const item of items) {
@@ -221,13 +200,9 @@ const Page = () => {
       formData.append("file", renamed);
     });
 
-    const res = await post<UploadMultipleRes>(
-      `/files/upload-multiple`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
+    const res = await postFilesUploadMultiple(formData);
 
-    const items = res.data?.data?.files ?? [];
+    const items = (res as any)?.data?.data?.files ?? [];
     const byIdToPath = new Map<string, string>();
     const byIdToUrl = new Map<string, string>();
     for (const item of items) {
@@ -272,7 +247,9 @@ const Page = () => {
    */
   const deleteFilesByPath = async (paths: string[]) => {
     if (!paths.length) return;
-    await Promise.allSettled(paths.map((p) => del(`/files/${p}`)));
+    await Promise.allSettled(
+      paths.map((p) => deleteFilesById({ filePath: p }))
+    );
   };
 
   /**
