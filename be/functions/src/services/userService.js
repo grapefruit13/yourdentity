@@ -250,6 +250,7 @@ class UserService {
         authType: "sns",
         snsProvider: "kakao",
         onboardingCompleted: false,
+        createdAt: FieldValue.serverTimestamp(),
         lastLogin: FieldValue.serverTimestamp(),
         ...update,
       }, uid);
