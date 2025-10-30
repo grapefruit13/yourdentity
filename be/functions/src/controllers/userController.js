@@ -1,5 +1,6 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
+const {USER_STATUS, SUSPENSION_TYPES} = require("../constants/userConstants");
 // const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
@@ -81,26 +82,31 @@ class UserController {
         payload: {nickname, profileImageUrl, bio},
       });
 
-      return res.success({onboardingCompleted: result.onboardingCompleted});
+      return res.success({status: result.status});
     } catch (error) {
       return next(error);
     }
   }
 
   /**
-   * 사용자 정보 수정 (일부 필드)
+   * 사용자 정보 수정 (테스트용)
    */
   async updateUser(req, res, next) {
     try {
       const {userId} = req.params;
       const {
         name, profileImageUrl, birthDate, rewardPoints, level, badges,
-        points, mainProfileId, onboardingCompleted, uploadQuotaBytes,
+        points, mainProfileId, uploadQuotaBytes,
         usedStorageBytes,
+        rewards, status,
+        activityParticipationCount, certificationPosts, reportCount,
+        suspensionType, suspensionReason, suspensionAppliedAt,
+        suspensionStartAt, suspensionEndAt,
       } = req.body;
 
       const updateData = {};
 
+      // 입력 검증은 서비스 레이어에서 수행 (컨트롤러는 DTO 수집만)
       if (name !== undefined) {
         updateData.name = name;
       }
@@ -128,11 +134,38 @@ class UserController {
       if (badges !== undefined) {
         updateData.badges = badges;
       }
-      if (onboardingCompleted !== undefined) {
-        updateData.onboardingCompleted = onboardingCompleted;
-      }
       if (birthDate !== undefined) {
         updateData.birthDate = birthDate;
+      }
+      if (rewards !== undefined) {
+        updateData.rewards = rewards;
+      }
+      if (status !== undefined) {
+        updateData.status = status;
+      }
+      if (activityParticipationCount !== undefined) {
+        updateData.activityParticipationCount = activityParticipationCount;
+      }
+      if (certificationPosts !== undefined) {
+        updateData.certificationPosts = certificationPosts;
+      }
+      if (reportCount !== undefined) {
+        updateData.reportCount = reportCount;
+      }
+      if (suspensionType !== undefined) {
+        updateData.suspensionType = suspensionType;
+      }
+      if (suspensionReason !== undefined) {
+        updateData.suspensionReason = suspensionReason;
+      }
+      if (suspensionAppliedAt !== undefined) {
+        updateData.suspensionAppliedAt = suspensionAppliedAt;
+      }
+      if (suspensionStartAt !== undefined) {
+        updateData.suspensionStartAt = suspensionStartAt;
+      }
+      if (suspensionEndAt !== undefined) {
+        updateData.suspensionEndAt = suspensionEndAt;
       }
 
       if (Object.keys(updateData).length === 0) {
