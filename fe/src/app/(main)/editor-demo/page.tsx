@@ -15,18 +15,19 @@ const EditorDemoPage = () => {
     setContent(value);
   }, []);
 
-  const handleImageUpload = React.useCallback((file: File) => {
-    // 이미지 업로드 처리
-    // 여기서 실제 업로드 로직 구현
-    // 예: API 호출, Firebase Storage 등
-    void file; // 데모용: 파일 사용 표시
+  const handleImageUpload = React.useCallback((file: File): Promise<string> => {
+    return Promise.resolve(file.name);
   }, []);
 
-  const handleFileUpload = React.useCallback((file: File) => {
-    // 파일 업로드 처리
-    // 여기서 실제 업로드 로직 구현
-    void file; // 데모용: 파일 사용 표시
-  }, []);
+  const handleFileUpload = React.useCallback(
+    (file: File): Promise<string> | string => {
+      // 파일 업로드 처리
+      // 여기서 실제 업로드 로직 구현
+      void file; // 데모용: 파일 사용 표시
+      return Promise.resolve(file.name);
+    },
+    []
+  );
 
   return (
     <div className="space-y-6">
