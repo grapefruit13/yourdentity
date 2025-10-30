@@ -8,15 +8,9 @@ import type * as Schema from "./api-schema";
 
 export interface TPATCHUsersMeOnboardingReq {
   data: {
-    name?: string;
-    nickname?: string;
-    birthDate?: string;
-    gender?: "MALE" | "FEMALE" | "null";
-    phoneNumber?: string;
-    terms?: {
-      SERVICE?: boolean;
-      PRIVACY?: boolean;
-    };
+    nickname: string;
+    profileImageUrl?: string;
+    bio?: string;
   };
 }
 
@@ -24,18 +18,25 @@ export type TPATCHUsersMeOnboardingRes = {
   onboardingCompleted?: boolean;
 };
 
-export interface TPOSTUsersReq {
+export type TGETUsersMeRes = any;
+
+export interface TGETUsersNicknameAvailabilityReq {
+  nickname: string;
+}
+
+export type TGETUsersNicknameAvailabilityRes = {
+  available?: boolean;
+};
+
+export interface TPOSTUsersMeSyncKakaoProfileReq {
   data: {
-    name: string;
-    email: string;
-    password: string;
-    profileImageUrl?: string;
-    authType?: "email" | "sns";
-    snsProvider?: "kakao" | "google";
+    accessToken: string;
   };
 }
 
-export type TPOSTUsersRes = any;
+export type TPOSTUsersMeSyncKakaoProfileRes = {
+  success?: boolean;
+};
 
 export type TGETUsersRes = any;
 
@@ -48,16 +49,21 @@ export type TGETUsersByIdRes = any;
 export interface TPUTUsersByIdReq {
   userId: string;
   data: {
+    email?: string;
+    nickname?: string;
     name?: string;
+    birthDate?: string;
+    gender?: "MALE" | "FEMALE";
+    phoneNumber?: string;
     profileImageUrl?: string;
-    rewardPoints?: number;
-    level?: number;
-    badges?: string[];
-    points?: string;
-    mainProfileId?: string;
+    bio?: string;
+    authType?: string;
+    snsProvider?: string;
     onboardingCompleted?: boolean;
-    uploadQuotaBytes?: number;
-    usedStorageBytes?: number;
+    serviceTermsVersion?: string;
+    privacyTermsVersion?: string;
+    age14TermsAgreed?: boolean;
+    pushTermsAgreed?: boolean;
   };
 }
 

@@ -11,6 +11,7 @@ import type * as commentsTypes from "@/types/generated/comments-types";
 import type * as communitiesTypes from "@/types/generated/communities-types";
 import type * as faqsTypes from "@/types/generated/faqs-types";
 import type * as fcmTypes from "@/types/generated/fcm-types";
+import type * as filesTypes from "@/types/generated/files-types";
 import type * as gatheringsTypes from "@/types/generated/gatherings-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
@@ -133,6 +134,9 @@ export const faqsKeys = {
 export const fcmKeys = {
   getFcmTokens: __buildKey("fcm", "getFcmTokens"),
 } as const;
+
+// Files Query Keys
+export const filesKeys = {} as const;
 
 // Gatherings Query Keys
 export const gatheringsKeys = {
@@ -265,6 +269,13 @@ export const tmiKeys = {
 // Users Query Keys
 export const usersKeys = {
   getUsersMe: __buildKey("users", "getUsersMe"),
+  getUsersNicknameAvailability: (
+    request: usersTypes.TGETUsersNicknameAvailabilityReq
+  ) =>
+    __buildKey("users", "getUsersNicknameAvailability", {
+      path: {},
+      query: { nickname: request.nickname },
+    }),
   getUsers: __buildKey("users", "getUsers"),
   getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
     __buildKey("users", "getUsersById", {

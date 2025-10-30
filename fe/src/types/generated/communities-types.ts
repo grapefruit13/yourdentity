@@ -51,6 +51,7 @@ export interface TPOSTCommunitiesPostsByIdReq {
   data: {
     title: string;
     content?: string;
+    media?: string[];
     category?: string;
     scheduledDate?: string;
   };
@@ -64,6 +65,7 @@ export type TPOSTCommunitiesPostsByIdRes = {
   communityPath?: string;
   title?: string;
   content?: string;
+  media?: string[];
   channel?: string;
   category?: string;
   scheduledDate?: string;
@@ -92,7 +94,8 @@ export interface TPUTCommunitiesPostsByTwoIdsReq {
   postId: string;
   data: {
     title?: string;
-    content?: Schema.ContentItem[];
+    content?: string;
+    media?: string[];
     category?: string;
     scheduledDate?: string;
   };
@@ -106,6 +109,7 @@ export type TPUTCommunitiesPostsByTwoIdsRes = {
   communityPath?: string;
   title?: string;
   content?: string;
+  media?: string[];
   channel?: string;
   category?: string;
   scheduledDate?: string;

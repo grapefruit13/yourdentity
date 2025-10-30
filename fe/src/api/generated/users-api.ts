@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @description Users 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -18,11 +17,25 @@ export const patchUsersMeOnboarding = (
 };
 
 export const getUsersMe = () => {
-  return get<Result<any>>(`/users/me`);
+  return get<Result<Types.TGETUsersMeRes>>(`/users/me`);
 };
 
-export const postUsers = (request: Types.TPOSTUsersReq) => {
-  return post<Result<Types.TPOSTUsersRes>>(`/users`, request.data ?? request);
+export const getUsersNicknameAvailability = (
+  request: Types.TGETUsersNicknameAvailabilityReq
+) => {
+  return get<Result<Types.TGETUsersNicknameAvailabilityRes>>(
+    `/users/nickname-availability`,
+    { params: request }
+  );
+};
+
+export const postUsersMeSyncKakaoProfile = (
+  request: Types.TPOSTUsersMeSyncKakaoProfileReq
+) => {
+  return post<Result<Types.TPOSTUsersMeSyncKakaoProfileRes>>(
+    `/users/me/sync-kakao-profile`,
+    request.data ?? request
+  );
 };
 
 export const getUsers = () => {

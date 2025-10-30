@@ -46,6 +46,16 @@ export interface User {
   usedStorageBytes?: number;
   createdAt?: string;
   lastLogin?: string;
+  nickname?: string;
+  gender?: string;
+  birthDate?: string;
+  serviceTermsVersion?: string;
+  privacyTermsVersion?: string;
+  age14TermsAgreed?: boolean;
+  pushTermsAgreed?: boolean;
+  termsAgreedAt?: string;
+  bio?: string;
+  updatedAt?: string;
 }
 
 export interface Mission {
@@ -65,6 +75,27 @@ export interface ImageUpload {
 
 export interface FileUpload {
   file: string;
+}
+
+export interface FileUploadResponse {
+  status: number;
+  data: {
+    uploaded: number;
+    failed: number;
+    files: {
+      success: boolean;
+      data?: {
+        fileUrl?: string;
+        fileName?: string;
+        originalFileName?: string;
+        mimeType?: string;
+        size?: number;
+        bucket?: string;
+        path?: string;
+      };
+    }[];
+    errors: string[];
+  };
 }
 
 export interface Image {
@@ -121,12 +152,13 @@ export interface MediaItem {
 
 export interface StandardResponse {
   status: number;
-  data?: any;
+  data?: Record<string, any>;
 }
 
 export interface ErrorResponse {
   status: number;
   message: string;
+  code?: string;
 }
 
 export interface PaginatedResponse {
@@ -274,6 +306,7 @@ export interface CommunityPost {
   author?: string;
   title?: string;
   content?: Record<string, any>[];
+  media?: Record<string, any>[];
   channel?: string;
   isLocked?: boolean;
   visibility?: string;
@@ -294,7 +327,6 @@ export interface CommunityPost {
     name?: string;
   };
   authorId?: string;
-  media?: Record<string, any>[];
 }
 
 export interface Comment {
@@ -597,6 +629,16 @@ export interface ProgramSearchResponse {
     };
     searchTerm?: string;
   };
+}
+
+export interface Success {
+  status: number;
+  data?: any;
+}
+
+export interface Error {
+  status: number;
+  message: string;
 }
 
 export interface CommunityMember {

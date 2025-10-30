@@ -22,9 +22,19 @@ export const useGetUsersMe = () => {
   });
 };
 
-export const usePostUsers = () => {
+export const useGetUsersNicknameAvailability = (
+  request: Types.TGETUsersNicknameAvailabilityReq
+) => {
+  return useQuery({
+    queryKey: usersKeys.getUsersNicknameAvailability(request),
+    queryFn: () => Api.getUsersNicknameAvailability(request),
+  });
+};
+
+export const usePostUsersMeSyncKakaoProfile = () => {
   return useMutation({
-    mutationFn: (request: Types.TPOSTUsersReq) => Api.postUsers(request),
+    mutationFn: (request: Types.TPOSTUsersMeSyncKakaoProfileReq) =>
+      Api.postUsersMeSyncKakaoProfile(request),
   });
 };
 

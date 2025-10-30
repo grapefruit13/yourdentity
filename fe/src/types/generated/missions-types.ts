@@ -47,4 +47,4 @@ export interface TDELETEUsersMissionsByTwoIdsReq {
   missionId: string;
 }
 
-export type TDELETEUsersMissionsByTwoIdsRes = any;
+export type TDELETEUsersMissionsByTwoIdsRes = Schema.Success;
