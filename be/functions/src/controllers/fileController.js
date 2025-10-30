@@ -4,8 +4,13 @@ const {Readable} = require("stream");
 const path = require("path");
 
 // 파일 업로드 관련 상수
-const FILES_FOLDER = "files";
-const MAX_UPLOAD_FILES = 5;
+const FILES_FOLDER = "files";// 스토리지에 저장되는 기본 폴더 이름
+const MAX_UPLOAD_FILES = 5; // 5개 - 업로드 가능한 파일의 개수(이미지, 파일 등)
+const FILE_UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 한 파일 최대 크기 (10MB)
+const FILE_UPLOAD_MAX_FIELDS = 10; // 파일 외 필드 최대 개수 (여유롭게 10개)
+const BUSBOY_PARAM_CHARSET = "utf8"; // 업로드 파라미터 문자셋 (일반적으로 utf8)
+const BUSBOY_HIGH_WATER_MARK = 64 * 1024; // 스트림 버퍼 크기 (안전한 기본값)
+const FILE_UPLOAD_TIMEOUT_MS = 120000; // 업로드 타임아웃 (2분, 너무 오래 걸리면 중단)
 
 class FileController {
   /**
@@ -33,8 +38,6 @@ class FileController {
         return res.error(400, "요청 본문이 이미 파싱되었습니다. raw multipart 데이터를 사용해주세요.");
       }
 
-      const folder = FILES_FOLDER;
-      const maxFiles = MAX_UPLOAD_FILES;
 
       let stream = req;
       if (Buffer.isBuffer(req.body)) {
@@ -46,12 +49,12 @@ class FileController {
       const busboy = Busboy({
         headers: req.headers,
         limits: {
-          fileSize: 10 * 1024 * 1024, // 10MB
-          files: maxFiles,
-          fields: 10,
+          fileSize: FILE_UPLOAD_MAX_SIZE,
+          files: MAX_UPLOAD_FILES,
+          fields: FILE_UPLOAD_MAX_FIELDS,
         },
-        defParamCharset: "utf8",
-        highWaterMark: 64 * 1024,
+        defParamCharset: BUSBOY_PARAM_CHARSET,
+        highWaterMark: BUSBOY_HIGH_WATER_MARK,
       });
 
       const files = [];
@@ -118,7 +121,7 @@ class FileController {
       busboy.on("file", async (fieldname, file, info) => {
         const fileIndex = fileCount++;
 
-        if (fileIndex >= maxFiles) {
+        if (fileIndex >= MAX_UPLOAD_FILES) {
           file.destroy();
           return;
         }
@@ -154,7 +157,7 @@ class FileController {
               file,
               fileName,
               mimeType,
-              folder,
+              FILES_FOLDER,
               userId,
           );
 
@@ -195,7 +198,7 @@ class FileController {
         cleanupStreams();
         
         return res.error(408, "파일 업로드 시간이 초과되었습니다");
-      }, 120000); 
+      }, FILE_UPLOAD_TIMEOUT_MS); 
 
       busboy.on("finish", () => {
         if (!fileReceived) {
