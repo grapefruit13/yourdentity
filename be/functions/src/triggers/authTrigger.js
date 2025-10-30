@@ -1,5 +1,5 @@
 const {admin, FieldValue} = require("../config/database");
-const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
+const {AUTH_TYPES, SNS_PROVIDERS, USER_STATUS, SUSPENSION_TYPES, DEFAULT_UPLOAD_QUOTA_BYTES} = require("../constants/userConstants");
 
 // Auth Triggers은 1세대 Functions 사용 (현재 파일에서 관리)
 const functions = require("firebase-functions");
@@ -30,7 +30,7 @@ exports.createUserDocument = functions
           }
         }
 
-        // 🆕 Firestore 사용자 문서 생성 (기본 정보만)
+        // 🆕 Firestore 사용자 문서 생성
         // 참고: gender, birthday, phoneNumber, terms는 동기화 API에서 채움
         const userDoc = {
           // 기본 정보
@@ -44,7 +44,7 @@ exports.createUserDocument = functions
           bio: "",
           
           // 개인정보
-          birthDate: null,
+          birthDate: "",
           gender: null,
           
           // 주소 정보
@@ -57,21 +57,35 @@ exports.createUserDocument = functions
 
           // 사용자 상태
           onboardingCompleted: false,
+          status: USER_STATUS.ACTIVE,
 
           // 리워드 시스템
-          rewardPoints: 0,
           level: 1,
           badges: [],
-          points: "0",
+          rewards: 0,
 
           // 스토리지 관리
-          uploadQuotaBytes: 1073741824, // 1GB
+          uploadQuotaBytes: DEFAULT_UPLOAD_QUOTA_BYTES,
           usedStorageBytes: 0,
 
-          // 마케팅/유입
-          utmSource: "",
-          inviter: null,
-          penalty: false,
+          // 약관 기본값 (동기화 시 갱신)
+          serviceTermsVersion: null,
+          privacyTermsVersion: null,
+          age14TermsAgreed: false,
+          pushTermsAgreed: false,
+          termsAgreedAt: null,
+
+          // 활동 카운트
+          activityParticipationCount: 0,
+          certificationPosts: 0,
+          reportCount: 0,
+
+          // 징계/정지 정보
+          suspensionType: SUSPENSION_TYPES.ACTIVE,
+          suspensionReason: "",
+          suspensionAppliedAt: null,
+          suspensionStartAt: null,
+          suspensionEndAt: null,
 
           // 타임스탬프
           createdAt: FieldValue.serverTimestamp(),
