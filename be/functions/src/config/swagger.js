@@ -121,10 +121,11 @@ const options = {
               description: "사용자 권한",
               example: "user",
             },
-            onboardingCompleted: {
-              type: "boolean",
-              description: "온보딩 완료 여부",
-              example: false,
+            status: {
+              type: "string",
+              enum: ["pending", "active", "suspended"],
+              description: "사용자 상태",
+              example: "active",
             },
             phoneNumber: {
               type: "string",
@@ -145,6 +146,11 @@ const options = {
               type: "number",
               description: "리워드 포인트",
               example: 1000,
+            },
+            rewards: {
+              type: "number",
+              description: "리워드 총합",
+              example: 0,
             },
             level: {
               type: "number",
@@ -179,6 +185,82 @@ const options = {
               type: "number",
               description: "사용 중인 스토리지 (바이트)",
               example: 52428800,
+            },
+            status: {
+              type: "string",
+              enum: ["active", "inactive"],
+              description: "회원 상태",
+              example: "active",
+            },
+            activityParticipationCount: {
+              type: "number",
+              description: "활동 참여 횟수",
+              example: 0,
+            },
+            certificationPosts: {
+              type: "number",
+              description: "누적 인증 게시글 수",
+              example: 0,
+            },
+            reportCount: {
+              type: "number",
+              description: "누적 신고 횟수",
+              example: 0,
+            },
+            suspensionType: {
+              type: "string",
+              enum: ["temporary", "permanent", "active"],
+              description: "자격정지 상태",
+              example: "active",
+            },
+            suspensionReason: {
+              type: "string",
+              description: "정지 사유",
+              example: "욕설 다수",
+            },
+            suspensionAppliedAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "자격정지 정책 적용일시",
+            },
+            suspensionStartAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "자격정지 시작",
+            },
+            suspensionEndAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "자격정지 종료",
+            },
+            serviceTermsVersion: {
+              type: "string",
+              nullable: true,
+              description: "서비스 약관 버전",
+            },
+            privacyTermsVersion: {
+              type: "string",
+              nullable: true,
+              description: "개인정보처리방침 버전",
+            },
+            age14TermsAgreed: {
+              type: "boolean",
+              description: "만 14세 이상 동의",
+              example: false,
+            },
+            pushTermsAgreed: {
+              type: "boolean",
+              description: "푸시 알림 동의",
+              example: false,
+            },
+            termsAgreedAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "약관 동의 시각",
             },
             createdAt: {
               type: "string",
