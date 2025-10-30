@@ -3,6 +3,7 @@ const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
+const fileService = require("./fileService");
 
 /**
  * Community Service (비즈니스 로직 계층)
@@ -355,7 +356,21 @@ class CommunityService {
         throw error;
       }
 
-      // 커뮤니티 존재 확인
+      if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
+        const filesCheck = await fileService.filesExist(postMedia, userId);
+        if (!filesCheck.allOwned) {
+          const missingFiles = Object.entries(filesCheck.results)
+            .filter(([_, owned]) => !owned)
+            .map(([fileName]) => fileName);
+          
+          const error = new Error(
+            `유효하지 않은 파일 또는 권한이 없습니다: ${missingFiles.join(", ")}`
+          );
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+      }
+
       const community = await this.firestoreService.getDocument("communities", communityId);
       if (!community) {
         const error = new Error("Community not found");
@@ -410,7 +425,7 @@ class CommunityService {
       const result = await postsService.create(newPost);
       const postId = result.id;
 
-      const {authorId, media: _media, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
+      const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
       
       return {
         id: postId,
@@ -460,10 +475,10 @@ class CommunityService {
       // 커뮤니티 정보 추가
       const community = await this.firestoreService.getDocument("communities", communityId);
 
-      const {authorId, media: _media, ...postWithoutMedia} = post;
+      const {authorId, ...postWithoutAuthorId} = post;
       
       return {
-        ...postWithoutMedia,
+        ...postWithoutAuthorId,
         viewCount: newViewCount,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
@@ -536,6 +551,32 @@ class CommunityService {
         updateData.content = sanitizedContent;
       }
 
+      if (Object.prototype.hasOwnProperty.call(updateData, "media")) {
+        const currentMedia = post.media || [];
+        const requestedMedia = updateData.media || [];
+        
+        if (requestedMedia.length > 0) {
+          const check = await fileService.filesExist(requestedMedia, userId);
+          if (!check.allOwned) {
+            const missing = Object.entries(check.results)
+              .filter(([, owned]) => !owned)
+              .map(([filePath]) => filePath);
+            const error = new Error(`유효하지 않은 파일 또는 권한이 없습니다: ${missing.join(", ")}`);
+            error.code = "BAD_REQUEST";
+            throw error;
+          }
+        }
+        
+        const filesToDelete = currentMedia.filter(file => !requestedMedia.includes(file));
+        if (filesToDelete.length > 0) {
+          const deletePromises = filesToDelete.map(filePath => 
+            fileService.deleteFile(filePath, userId)
+          );
+          await Promise.all(deletePromises);
+        }
+        
+      }
+
       const updatedData = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
@@ -546,11 +587,11 @@ class CommunityService {
       const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
 
-      const {authorId, media: _media, ...freshWithoutMedia} = fresh;
+      const {authorId, ...freshWithoutAuthorId} = fresh;
       
       return {
         id: postId,
-        ...freshWithoutMedia,
+        ...freshWithoutAuthorId,
         createdAt: fresh.createdAt?.toDate?.()?.toISOString?.() || fresh.createdAt,
         updatedAt: fresh.updatedAt?.toDate?.()?.toISOString?.() || fresh.updatedAt,
         scheduledDate: fresh.scheduledDate?.toDate?.()?.toISOString?.() || fresh.scheduledDate,
@@ -591,6 +632,13 @@ class CommunityService {
         const error = new Error("게시글 삭제 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
+      }
+
+      if (post.media && post.media.length > 0) {
+        const deletePromises = post.media.map(filePath => 
+          fileService.deleteFile(filePath, userId)
+        );
+        await Promise.all(deletePromises);
       }
 
       await postsService.delete(postId);

@@ -7,6 +7,11 @@
  * - Error 관련: middleware/errorHandler.js 사용
  */
 
+const {admin} = require("../config/database");
+
+// Cloud Storage 관련 상수
+const SIGNED_URL_EXPIRY_HOURS = 1; // 서명된 URL 만료 시간 (시간)
+
 /**
  * 미션 상태 검증
  * @param {string} status - 미션 상태
@@ -64,6 +69,21 @@ const isValidPhoneNumber = (phoneNumber) => {
  */
 const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+/**
+ * nanoid 함수 (URL-safe unique ID generator)
+ * @param {number} length - ID 길이 (기본값: 21)
+ * @return {string} 생성된 ID
+ */
+const nanoid = (length = 21) => {
+  const alphabet = 
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let id = '';
+  for (let i = 0; i < length; i++) {
+    id += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+  }
+  return id;
 };
 
 /**
@@ -170,6 +190,7 @@ module.exports = {
 
   // ID 생성
   generateId,
+  nanoid,
 
   // 포맷팅
   formatDate,
@@ -181,5 +202,6 @@ module.exports = {
   chunkArray,
   removeNullValues,
   deepClone,
+
 };
 

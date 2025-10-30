@@ -397,6 +397,12 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 type: string
  *                 description: 게시글 HTML 내용
  *                 example: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
+ *               media:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 미디어 파일 경로 목록 (파일 업로드 후 받은 fileName 값들)
+ *                 example: ["files/user123/image_abc123.jpg", "files/user123/video_def456.mp4"]
  *               category:
  *                 type: string
  *                 description: 카테고리
@@ -409,6 +415,7 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *           example:
  *             title: "오늘의 루틴 인증!"
  *             content: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
+ *             media: ["files/user123/image_abc123.jpg"]
  *             category: "한끗루틴"
  *             scheduledDate: "2025-10-03"
  *     responses:
@@ -453,6 +460,12 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: string
  *                       description: 게시글 HTML 내용
  *                       example: "<p>게시글 내용입니다!</p>"
+ *                     media:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: 미디어 파일 경로 목록
+ *                       example: ["files/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"]
  *                     channel:
  *                       type: string
  *                       description: 채널명
@@ -596,22 +609,15 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                 description: 게시글 제목
  *                 example: "수정된 루틴 인증!"
  *               content:
+ *                 type: string
+ *                 description: 게시글 HTML 내용
+ *                 example: "<p>수정된 내용입니다!</p><img src=\"https://example.com/updated-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
+ *               media:
  *                 type: array
- *                 description: 게시글 내용
  *                 items:
- *                   $ref: '#/components/schemas/ContentItem'
- *                 example:
- *                   - type: "text"
- *                     order: 1
- *                     content: "수정된 내용입니다!"
- *                   - type: "image"
- *                     order: 2
- *                     url: "https://example.com/updated-image.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                     mimeType: "image/jpeg"
- *                     processingStatus: "ready"
+ *                   type: string
+ *                 description: 미디어 파일 경로 목록 (파일 업로드 후 받은 fileName 값들)
+ *                 example: ["files/user123/image_abc123.jpg", "files/user123/video_def456.mp4"]
  *               category:
  *                 type: string
  *                 description: 카테고리
@@ -624,6 +630,7 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *           example:
  *             title: "수정된 루틴 인증!"
  *             content: "<p>수정된 내용입니다!</p><img src=\"https://example.com/updated-image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
+ *             media: ["files/user123/image_abc123.jpg"]
  *             category: "한끗루틴"
  *             scheduledDate: "2025-10-03"
  *     responses:
@@ -668,6 +675,12 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: string
  *                       description: 게시글 HTML 내용
  *                       example: "<p>게시글 내용입니다!</p>"
+ *                     media:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: 미디어 파일 경로 목록
+ *                       example: ["files/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"]
  *                     channel:
  *                       type: string
  *                       description: 채널명
