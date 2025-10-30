@@ -73,15 +73,12 @@ const router = express.Router();
  *         privacyTermsVersion:
  *           type: string
  *           example: "v1"
- *         age14TermsVersion:
- *           type: string
- *           example: "v1"
+ *         age14TermsAgreed:
+ *           type: boolean
+ *           example: true
  *         pushTermsAgreed:
  *           type: boolean
  *           example: false
- *         pushTermsVersion:
- *           type: string
- *           example: "v1"
  *         termsAgreedAt:
  *           type: string
  *           format: date-time
@@ -497,9 +494,9 @@ router.get("/:userId", authGuard, userController.getUserById);
  *               privacyTermsVersion:
  *                 type: string
  *                 example: "v1"
- *               age14TermsVersion:
- *                 type: string
- *                 example: "v1"
+ *               age14TermsAgreed:
+ *                 type: boolean
+ *                 example: true
  *               pushTermsAgreed:
  *                 type: boolean
  *                 example: false

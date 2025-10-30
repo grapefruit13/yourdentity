@@ -111,7 +111,7 @@ SYNC_USER_INFO=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$SYNC_USER_INFO" | jq '.data.user | {name, gender, birthDate, phoneNumber, serviceTermsVersion, privacyTermsVersion, age14TermsVersion, pushTermsAgreed}'
+echo "$SYNC_USER_INFO" | jq '.data.user | {name, gender, birthDate, phoneNumber, serviceTermsVersion, privacyTermsVersion, age14TermsAgreed, pushTermsAgreed}'
 echo ""
 
 GENDER=$(echo "$SYNC_USER_INFO" | jq -r '.data.user.gender // "null"')
@@ -155,7 +155,7 @@ FINAL_USER=$(curl -s -X GET "$API/users/me" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json")
 
-echo "$FINAL_USER" | jq '.data.user | {nickname, onboardingCompleted, gender, birthDate, phoneNumber, serviceTermsVersion, privacyTermsVersion, age14TermsVersion, pushTermsAgreed}'
+echo "$FINAL_USER" | jq '.data.user | {nickname, onboardingCompleted, gender, birthDate, phoneNumber, serviceTermsVersion, privacyTermsVersion, age14TermsAgreed, pushTermsAgreed}'
 echo ""
 
 FINAL_ONBOARDING=$(echo "$FINAL_USER" | jq -r '.data.user.onboardingCompleted')

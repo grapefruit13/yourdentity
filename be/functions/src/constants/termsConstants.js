@@ -4,8 +4,6 @@
 const TERMS_VERSIONS = {
   SERVICE: "v1",
   PRIVACY: "v1",
-  AGE14: "v1",
-  PUSH: "v1",
 };
 
 // 카카오 간편가입 약관 태그 (카카오 콘솔 설정과 일치해야 함)

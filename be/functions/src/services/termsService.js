@@ -43,7 +43,7 @@ class TermsService {
     
     let serviceVersion = null;
     let privacyVersion = null;
-    let age14Version = null;
+    let age14Agreed = false;
     let pushAgreed = false;
     let termsAgreedAt = null;
 
@@ -61,7 +61,7 @@ class TermsService {
         }
       }
       if (term.tag === TERMS_TAGS.AGE14) {
-        age14Version = TERMS_VERSIONS.AGE14;
+        age14Agreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
@@ -77,7 +77,7 @@ class TermsService {
     return {
       serviceVersion,
       privacyVersion,
-      age14Version,
+      age14Agreed,
       pushAgreed,
       termsAgreedAt
     };
@@ -112,7 +112,7 @@ class TermsService {
     
     let serviceVersion = null;
     let privacyVersion = null;
-    let age14Version = null;
+    let age14Agreed = false;
     let pushAgreed = false;
     let termsAgreedAt = null;
 
@@ -131,7 +131,7 @@ class TermsService {
         }
       }
       if (term.tag === TERMS_TAGS.AGE14) {
-        age14Version = TERMS_VERSIONS.AGE14;
+        age14Agreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
@@ -147,7 +147,7 @@ class TermsService {
     return {
       serviceVersion,
       privacyVersion,
-      age14Version,
+      age14Agreed,
       pushAgreed,
       termsAgreedAt
     };
@@ -159,17 +159,16 @@ class TermsService {
    * @param {Object} termsData
    */
   async updateUserTerms(uid, termsData) {
-    const {serviceVersion, privacyVersion, age14Version, pushAgreed, termsAgreedAt} = termsData;
+    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed, termsAgreedAt} = termsData;
 
     const update = {};
 
     // 약관 정보 추가
-    if (serviceVersion || privacyVersion || age14Version || pushAgreed) {
+    if (serviceVersion || privacyVersion || age14Agreed || pushAgreed) {
       if (serviceVersion) update.serviceTermsVersion = serviceVersion;
       if (privacyVersion) update.privacyTermsVersion = privacyVersion;
-      if (age14Version) update.age14TermsVersion = age14Version;
-      update.pushTermsAgreed = pushAgreed;
-      update.pushTermsVersion = TERMS_VERSIONS.PUSH;
+      update.age14TermsAgreed = !!age14Agreed;
+      update.pushTermsAgreed = !!pushAgreed;
       if (termsAgreedAt) {
         update.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
       } else {
