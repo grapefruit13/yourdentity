@@ -1,6 +1,6 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
-const {AUTH_TYPES} = require("../constants/userConstants");
+// const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
@@ -39,18 +39,17 @@ class UserController {
   }
 
   /**
-   * 특정 사용자 정보 조회 (Admin 또는 본인만)
+   * 특정 사용자 정보 조회 (본인만)
    */
   async getUserById(req, res, next) {
     try {
       const {userId} = req.params;
-      const {uid, customClaims} = req.user; // authGuard에서 설정
+      const {uid} = req.user; // authGuard에서 설정
 
       // 권한 체크: 본인이거나 Admin만 조회 가능
       const isOwner = userId === uid;
-      const isAdmin = customClaims?.role === "admin";
 
-      if (!isOwner && !isAdmin) {
+      if (!isOwner) {
         const err = new Error("권한이 없습니다");
         err.code = "FORBIDDEN";
         throw err;
@@ -89,7 +88,7 @@ class UserController {
   }
 
   /**
-   * 사용자 정보 수정 (관리자/일부 필드)
+   * 사용자 정보 수정 (일부 필드)
    */
   async updateUser(req, res, next) {
     try {
@@ -173,7 +172,6 @@ class UserController {
 
   /**
    * 닉네임 가용성 확인
-   * GET /users/nickname-availability?nickname=...
    */
   async checkNicknameAvailability(req, res, next) {
     try {

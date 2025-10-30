@@ -1,5 +1,5 @@
 const {admin, FieldValue} = require("../config/database");
-const {AUTH_TYPES, USER_ROLES, SNS_PROVIDERS} = require("../constants/userConstants");
+const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 
 // Auth Triggers은 1세대 Functions 사용 (현재 파일에서 관리)
 const functions = require("firebase-functions");
@@ -56,7 +56,6 @@ exports.createUserDocument = functions
           snsProvider: SNS_PROVIDERS.KAKAO,
 
           // 사용자 상태
-          role: USER_ROLES.USER,
           onboardingCompleted: false,
 
           // 리워드 시스템

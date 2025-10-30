@@ -338,9 +338,11 @@ router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile
  * @swagger
  * /users:
  *   get:
- *     summary: 모든 사용자 조회
- *     description: 시스템의 모든 사용자 목록을 조회합니다
+ *     summary: 모든 사용자 조회 (인증 필요)
+ *     description: 시스템의 모든 사용자 목록을 조회합니다.
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: 사용자 목록 조회 성공
@@ -368,14 +370,14 @@ router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/", userController.getAllUsers);
+router.get("/", authGuard, userController.getAllUsers);
 
 /**
  * @swagger
  * /users/{userId}:
  *   get:
  *     summary: 사용자 상세 조회
- *     description: 특정 사용자의 상세 정보를 조회합니다 (본인 또는 관리자만 조회 가능)
+ *     description: 특정 사용자의 상세 정보를 조회합니다 (본인만 조회 가능)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
