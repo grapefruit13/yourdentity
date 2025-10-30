@@ -8,12 +8,13 @@ export const BOTTOM_NAV_TABS = [
     href: LINK_URL.HOME,
     icon: IMAGE_URL.ICON.home.url,
   },
-  {
-    key: "mission" as const,
-    label: "미션",
-    href: LINK_URL.MISSION,
-    icon: IMAGE_URL.ICON.mission.url,
-  },
+  // MVP 범위에서 제외
+  // {
+  //   key: "mission" as const,
+  //   label: "미션",
+  //   href: LINK_URL.MISSION,
+  //   icon: IMAGE_URL.ICON.mission.url,
+  // },
   {
     key: "community" as const,
     label: "커뮤니티",
