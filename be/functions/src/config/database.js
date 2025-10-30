@@ -13,11 +13,9 @@ if (!admin.apps || admin.apps.length === 0) {
   
   if (isEmulator) {
     admin.initializeApp({
-      projectId: 'youthvoice-2025',
       storageBucket: process.env.STORAGE_BUCKET || 'youthvoice-2025.appspot.com'
     });
   } else {
-    // 프로덕션 환경에서는 기본 초기화
     admin.initializeApp();
   }
 }
