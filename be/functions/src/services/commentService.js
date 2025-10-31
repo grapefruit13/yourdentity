@@ -123,12 +123,19 @@ class CommentService {
       const result = await this.firestoreService.runTransaction(async (transaction) => {
         const commentRef = this.firestoreService.db.collection("comments").doc();
         const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc(postId);
+        const commentedPostRef = this.firestoreService.db.collection(`users/${userId}/commentedPosts`).doc(postId);
         
         transaction.set(commentRef, newComment);
         transaction.update(postRef, {
           commentsCount: FieldValue.increment(1),
           updatedAt: FieldValue.serverTimestamp(),
         });
+        // 집계 컬렉션 업데이트: 댓글 단 게시글 추적
+        transaction.set(commentedPostRef, {
+          postId,
+          communityId,
+          lastCommentedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
         
         return { commentId: commentRef.id };
       });
@@ -402,26 +409,40 @@ class CommentService {
         throw error;
       }
 
-      if (comment.isDeleted) {
-        const error = new Error("이미 삭제된 댓글입니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+      // 트랜잭션 전에 남은 댓글 수 확인
+      const remainingCommentsQuery = await this.firestoreService.db
+        .collection("comments")
+        .where("postId", "==", comment.postId)
+        .where("userId", "==", userId)
+        .get();
+      
+      // 현재 삭제할 댓글을 제외한 남은 댓글 수
+      const remainingCount = remainingCommentsQuery.docs.filter(
+        doc => doc.id !== commentId
+      ).length;
 
-      await this.firestoreService.updateDocument("comments", commentId, {
-        isDeleted: true,
-        content: "<p>삭제된 댓글입니다.</p>",
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      await this.firestoreService.runTransaction(async (transaction) => {
+        const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
+        const postRef = this.firestoreService.db.collection(
+          `communities/${comment.communityId}/posts`
+        ).doc(comment.postId);
+        const commentedPostRef = this.firestoreService.db.collection(
+          `users/${userId}/commentedPosts`
+        ).doc(comment.postId);
 
-      await this.firestoreService.updateDocument(
-        `communities/${comment.communityId}/posts`,
-        comment.postId,
-        {
+        // 댓글 실제 삭제
+        transaction.delete(commentRef);
+
+        transaction.update(postRef, {
           commentsCount: FieldValue.increment(-1),
           updatedAt: FieldValue.serverTimestamp(),
-        },
-      );
+        });
+
+        // 남은 댓글이 없으면 commentedPosts에서 제거
+        if (remainingCount === 0) {
+          transaction.delete(commentedPostRef);
+        }
+      });
     } catch (error) {
       console.error("Delete comment error:", error.message);
       if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
