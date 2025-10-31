@@ -117,6 +117,41 @@ class FirestoreService {
   }
 
   /**
+   * 여러 조건과 정렬을 지원하는 문서 조회
+   * @param {Array} whereConditions - [{field, operator, value}, ...]
+   * @param {string} orderBy - 정렬 필드
+   * @param {string} orderDirection - 정렬 방향 (asc|desc)
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getWhereMultiple(whereConditions = [], orderBy = null, orderDirection = "desc") {
+    let query = db.collection(this.collectionName);
+
+    whereConditions.forEach((condition) => {
+      query = query.where(condition.field, condition.operator, condition.value);
+    });
+    if (orderBy) {
+      query = query.orderBy(orderBy, orderDirection);
+    }
+
+    const snapshot = await query.get();
+    const items = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt:
+          data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      });
+    });
+
+    return items;
+  }
+
+  /**
    * 여러 값으로 WHERE IN 쿼리 수행 (N+1 쿼리 문제 해결용)
    * @param {string} field - 필드명
    * @param {Array} values - 값 배열

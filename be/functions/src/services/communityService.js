@@ -177,6 +177,8 @@ class CommunityService {
         orderBy = "createdAt",
         orderDirection = "desc",
         authorId,
+        likedBy,
+        commentedBy,
       } = options;
 
       const postTypeMapping = {
@@ -184,6 +186,132 @@ class CommunityService {
         gathering: "GATHERING_REVIEW",
         tmi: "TMI",
       };
+
+      let likedPostIds = [];
+      let likedPostIdSet = new Set();
+      let likedPostTimestamps = {};
+
+      let commentedPostIds = [];
+      let commentedPostIdSet = new Set();
+      let commentedPostTimestamps = {};
+      let commentedPostMap = {}; 
+
+      if (likedBy) {
+        try {
+          const likesService = new FirestoreService("likes");
+          const likesData = await likesService.getWhereMultiple(
+            [
+              { field: "userId", operator: "==", value: likedBy },
+              { field: "type", operator: "==", value: "POST" },
+            ],
+            "createdAt",
+            "desc"
+          );
+
+          likesData.forEach((likeData) => {
+            const postId = likeData.targetId;
+            likedPostIds.push(postId);
+            likedPostIdSet.add(postId);
+            likedPostTimestamps[postId] = likeData.createdAt;
+          });
+        } catch (error) {
+          console.error("Get liked posts error:", error.message);
+          return {
+            content: [],
+            pagination: {
+              pageNumber: 0,
+              pageSize: size,
+              totalElements: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrevious: false,
+              isFirst: true,
+              isLast: true,
+            },
+          };
+        }
+
+        // 좋아요한 게시글이 없으면 빈 결과 반환
+        if (likedPostIds.length === 0) {
+          return {
+            content: [],
+            pagination: {
+              pageNumber: 0,
+              pageSize: size,
+              totalElements: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrevious: false,
+              isFirst: true,
+              isLast: true,
+            },
+          };
+        }
+      }
+
+      if (commentedBy) {
+        try {
+          const commentsService = new FirestoreService("comments");
+          const commentsData = await commentsService.getWhereMultiple(
+            [
+              { field: "userId", operator: "==", value: commentedBy },
+              { field: "isDeleted", operator: "==", value: false },
+            ],
+            "createdAt",
+            "desc"
+          );
+
+          commentsData.forEach((commentData) => {
+            const postId = commentData.postId;
+            const communityId = commentData.communityId;
+            
+            if (postId && communityId) {
+              commentedPostIds.push(postId);
+              commentedPostIdSet.add(postId);
+              commentedPostMap[postId] = { communityId, postId };
+              
+              const commentTime = commentData.createdAt;
+              if (!commentedPostTimestamps[postId] || 
+                  (typeof commentTime === 'string' && commentTime > commentedPostTimestamps[postId]) ||
+                  (commentTime instanceof Date && commentTime.getTime() > new Date(commentedPostTimestamps[postId]).getTime())) {
+                commentedPostTimestamps[postId] = commentTime;
+              }
+            }
+          });
+        } catch (error) {
+          console.error("Get commented posts error:", error.message);
+          return {
+            content: [],
+            pagination: {
+              pageNumber: 0,
+              pageSize: size,
+              totalElements: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrevious: false,
+              isFirst: true,
+              isLast: true,
+            },
+          };
+        }
+
+        // 댓글 단 게시글이 없으면 빈 결과 반환
+        if (commentedPostIds.length === 0) {
+          return {
+            content: [],
+            pagination: {
+              pageNumber: 0,
+              pageSize: size,
+              totalElements: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrevious: false,
+              isFirst: true,
+              isLast: true,
+            },
+          };
+        }
+      }
 
       const communities = await this.firestoreService.getCollection("communities");
 
@@ -230,15 +358,35 @@ class CommunityService {
           }
 
           const postsService = new FirestoreService(`communities/${community.id}/posts`);
-          const postsResult = await postsService.getWithPagination({
-            page: page,
-            size: size,
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            where: whereConditions,
-          });
-
-          const communityPosts = (postsResult.content || []).map(post => ({
+          
+          // likedBy 또는 commentedBy가 있을 때는 페이지네이션 제거하고 전체 조회 (메모리에서 필터링할 예정)
+          let postsArray;
+          if (likedBy || commentedBy) {
+            // 전체 조회 (필터링은 메모리에서 수행)
+            const allPosts = await postsService.getAll();
+            // type, authorId 필터 적용
+            postsArray = allPosts.filter(post => {
+              if (type && postTypeMapping[type] && post.type !== postTypeMapping[type]) {
+                return false;
+              }
+              if (authorId && post.authorId !== authorId) {
+                return false;
+              }
+              return true;
+            });
+          } else {
+            // 기존 페이지네이션 로직
+            const postsResult = await postsService.getWithPagination({
+              page: page,
+              size: size,
+              orderBy: "createdAt",
+              orderDirection: "desc",
+              where: whereConditions,
+            });
+            postsArray = postsResult.content || [];
+          }
+          
+          let communityPosts = postsArray.map(post => ({
             ...post,
             communityId: community.id,
             community: {
@@ -246,6 +394,20 @@ class CommunityService {
               name: community.name,
             },
           }));
+
+          // likedBy가 있는 경우 좋아요한 게시글만 필터링
+          if (likedBy && likedPostIdSet.size > 0) {
+            communityPosts = communityPosts.filter(post => likedPostIdSet.has(post.id));
+          }
+
+          // commentedBy가 있는 경우 댓글 단 게시글만 필터링 (해당 커뮤니티인 경우만)
+          if (commentedBy && commentedPostIdSet.size > 0) {
+            communityPosts = communityPosts.filter(post => {
+              const postKey = `${post.communityId || community.id}_${post.id}`;
+              return commentedPostMap[post.id] && 
+                     commentedPostMap[post.id].communityId === community.id;
+            });
+          }
 
           return communityPosts;
         } catch (error) {
@@ -256,11 +418,36 @@ class CommunityService {
       const postsArrays = await Promise.all(postPromises);
       allPosts.push(...postsArrays.flat());
 
-      allPosts.sort((a, b) => {
-        const aTime = new Date(a.createdAt).getTime();
-        const bTime = new Date(b.createdAt).getTime();
-        return bTime - aTime;
-      });
+      // 정렬 로직: likedBy > commentedBy > 게시글 생성 시간
+      const getTimestamp = (timestamp) => {
+        if (!timestamp) return 0;
+        if (timestamp instanceof Date) return timestamp.getTime();
+        if (typeof timestamp === 'number') return timestamp;
+        if (typeof timestamp === 'string') return new Date(timestamp).getTime();
+        return 0;
+      };
+
+      if (likedBy && likedPostTimestamps && Object.keys(likedPostTimestamps).length > 0) {
+        // 좋아요한 시간 기준으로 정렬
+        allPosts.sort((a, b) => {
+          const aLikeTime = getTimestamp(likedPostTimestamps[a.id]);
+          const bLikeTime = getTimestamp(likedPostTimestamps[b.id]);
+          return bLikeTime - aLikeTime; // 최신 좋아요가 먼저
+        });
+      } else if (commentedBy && commentedPostTimestamps && Object.keys(commentedPostTimestamps).length > 0) {
+        // 댓글 단 시간 기준으로 정렬
+        allPosts.sort((a, b) => {
+          const aCommentTime = getTimestamp(commentedPostTimestamps[a.id]);
+          const bCommentTime = getTimestamp(commentedPostTimestamps[b.id]);
+          return bCommentTime - aCommentTime; // 최신 댓글이 먼저
+        });
+      } else {
+        allPosts.sort((a, b) => {
+          const aTime = new Date(a.createdAt).getTime();
+          const bTime = new Date(b.createdAt).getTime();
+          return bTime - aTime;
+        });
+      }
 
       const startIndex = page * size;
       const endIndex = startIndex + size;
@@ -703,6 +890,7 @@ class CommunityService {
             type: "POST",
             targetId: postId,
             userId,
+            communityId, // communityId 저장 추가
             createdAt: FieldValue.serverTimestamp(),
           });
           isLiked = true;
