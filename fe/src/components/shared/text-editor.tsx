@@ -462,7 +462,7 @@ const TextEditor = ({
   }, [showHeadingMenu]);
 
   const handleHeadingChange = useCallback(
-    (level: 1 | 2 | 3) => {
+    (level: 1 | 2 | 3 | 4) => {
       if (activeEditor === "title") {
         setShowHeadingMenu(false);
         return;
@@ -479,71 +479,39 @@ const TextEditor = ({
       }
 
       const range = selection.getRangeAt(0);
+      const className = HEADING_CLASS_MAP[level];
 
-      // H3는 기존 헤딩을 제거하고 일반 텍스트로 변환
-      if (level === 3) {
-        if (!range.collapsed) {
-          // 선택 영역의 텍스트만 추출하여 일반 텍스트로 삽입
-          const selectedText = range.toString();
-          const textNode = document.createTextNode(selectedText);
-          range.deleteContents();
-          range.insertNode(textNode);
+      if (!range.collapsed) {
+        // 선택 영역 래핑 (내부 마크업 보존)
+        const fragment = range.extractContents();
+        const span = document.createElement("span");
+        span.setAttribute("class", className);
+        span.setAttribute("data-heading", String(level));
+        span.appendChild(fragment);
+        range.insertNode(span);
 
-          // 커서를 방금 삽입한 텍스트 뒤로 이동 (삽입 노드 기준으로 결정적 위치 지정)
-          const after = document.createRange();
-          after.setStartAfter(textNode);
-          after.setEndAfter(textNode);
-          selection.removeAllRanges();
-          selection.addRange(after);
-        } else {
-          // 커서만 있을 때 일반 텍스트 노드 삽입
-          const textNode = document.createTextNode("\u200B"); // zero-width space
-          range.insertNode(textNode);
-
-          const inside = document.createRange();
-          inside.setStart(textNode, 0);
-          inside.setEnd(textNode, 0);
-          selection.removeAllRanges();
-          selection.addRange(inside);
-        }
-
-        setIsHeadingActive(false);
+        // 커서를 span 뒤로 이동 (삽입 노드 기준 결정적 위치)
+        const after = document.createRange();
+        after.setStartAfter(span);
+        after.setEndAfter(span);
+        selection.removeAllRanges();
+        selection.addRange(after);
       } else {
-        // H1, H2는 기존 로직 유지
-        const className = HEADING_CLASS_MAP[level];
+        // 커서만 있을 때 비어있는 span 삽입 후 내부로 커서 이동
+        const span = document.createElement("span");
+        span.setAttribute("class", className);
+        span.setAttribute("data-heading", String(level));
+        span.textContent = "\u200B"; // zero-width space
+        range.insertNode(span);
 
-        if (!range.collapsed) {
-          // 선택 영역 래핑 (내부 마크업 보존)
-          const fragment = range.extractContents();
-          const span = document.createElement("span");
-          span.setAttribute("class", className);
-          span.setAttribute("data-heading", String(level));
-          span.appendChild(fragment);
-          range.insertNode(span);
-
-          // 커서를 span 뒤로 이동 (삽입 노드 기준 결정적 위치)
-          const after = document.createRange();
-          after.setStartAfter(span);
-          after.setEndAfter(span);
-          selection.removeAllRanges();
-          selection.addRange(after);
-        } else {
-          // 커서만 있을 때 비어있는 span 삽입 후 내부로 커서 이동
-          const span = document.createElement("span");
-          span.setAttribute("class", className);
-          span.setAttribute("data-heading", String(level));
-          span.textContent = "\u200B"; // zero-width space
-          range.insertNode(span);
-
-          const inside = document.createRange();
-          inside.selectNodeContents(span);
-          inside.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(inside);
-        }
-
-        setIsHeadingActive(true);
+        const inside = document.createRange();
+        inside.selectNodeContents(span);
+        inside.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(inside);
       }
+
+      setIsHeadingActive(true);
 
       if (activeEditor === "content") {
         handleContentInput();
@@ -1096,21 +1064,28 @@ const TextEditor = ({
                   className="block w-full px-3 py-2 text-left text-[22px] leading-snug font-bold hover:bg-gray-50"
                   onClick={() => handleHeadingChange(1)}
                 >
-                  제목 1 (H1)
+                  제목1
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-[18px] leading-snug font-semibold hover:bg-gray-50"
+                  className="block w-full px-3 py-2 text-left text-[16px] leading-snug font-bold hover:bg-gray-50"
                   onClick={() => handleHeadingChange(2)}
                 >
-                  제목 2 (H2)
+                  제목2
                 </button>
                 <button
                   type="button"
                   className="block w-full px-3 py-2 text-left text-[16px] leading-snug font-medium hover:bg-gray-50"
                   onClick={() => handleHeadingChange(3)}
                 >
-                  본문 (H3)
+                  본문1
+                </button>
+                <button
+                  type="button"
+                  className="block w-full px-3 py-2 text-left text-[14px] leading-snug font-medium hover:bg-gray-50"
+                  onClick={() => handleHeadingChange(4)}
+                >
+                  본문2
                 </button>
               </div>,
               document.body

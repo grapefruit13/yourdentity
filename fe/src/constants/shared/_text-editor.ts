@@ -21,7 +21,8 @@ export const TEXT_EDITOR = {
   DEFAULT_MIN_HEIGHT: 300,
   HEADING_CLASS_MAP: {
     1: "text-[22px] leading-snug font-bold",
-    2: "text-[18px] leading-snug font-semibold",
+    2: "text-[16px] leading-snug font-bold",
     3: "text-[16px] leading-snug font-medium",
-  } as Record<1 | 2 | 3, string>,
+    4: "text-[14px] leading-snug font-medium",
+  } as Record<1 | 2 | 3 | 4, string>,
 } as const;
