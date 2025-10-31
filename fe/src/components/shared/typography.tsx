@@ -121,8 +121,8 @@ const Typography = forwardRef<HTMLElement, TypographyProps>(
       : { size: undefined, weight: undefined };
 
     const finalFont = font ?? "noto";
-    const finalSize = size ?? variantStyle.size ?? "16";
-    const finalWeight = weight ?? variantStyle.weight ?? "regular";
+    const finalSize = size ?? variantStyle?.size ?? "16";
+    const finalWeight = weight ?? variantStyle?.weight ?? "regular";
     const finalColor = color ?? "black";
 
     return (
