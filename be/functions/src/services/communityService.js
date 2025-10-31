@@ -176,6 +176,7 @@ class CommunityService {
         includeContent = false,
         orderBy = "createdAt",
         orderDirection = "desc",
+        authorId,
       } = options;
 
       const postTypeMapping = {
@@ -217,6 +218,14 @@ class CommunityService {
               field: "type",
               operator: "==",
               value: postTypeMapping[type],
+            });
+          }
+
+          if (authorId) {
+            whereConditions.push({
+              field: "authorId",
+              operator: "==",
+              value: authorId,
             });
           }
 

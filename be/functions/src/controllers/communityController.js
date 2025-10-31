@@ -44,12 +44,26 @@ class CommunityController {
         channel,
         communityId,
         includeContent = false,
+        authorId: rawAuthorId,
       } = req.query;
       const page = parseInt(req.query.page, 10) || 0;
       const size = parseInt(req.query.size, 10) || 10;
 
       // filter 파라미터를 type으로 매핑 (하위 호환성)
       const finalType = type || filter;
+
+      let authorId = undefined;
+      if (rawAuthorId) {
+        if (rawAuthorId === "me") {
+          // authorId=me일 때는 인증이 필수
+          if (!req.user || !req.user.uid) {
+            return res.error(401, "인증이 필요합니다 (authorId=me 사용 시 로그인 필수)");
+          }
+          authorId = req.user.uid;
+        } else {
+          authorId = rawAuthorId;
+        }
+      }
 
       const result = await communityService.getAllCommunityPosts({
         type: finalType,
@@ -58,6 +72,7 @@ class CommunityController {
         page,
         size,
         includeContent: includeContent === "true",
+        authorId,
       });
 
       // data 객체 안에 posts 배열과 pagination 객체 분리

@@ -285,6 +285,11 @@ router.get("/", communityController.getCommunities);
  *           type: string
  *           enum: [routine, gathering, tmi]
  *         description: 게시글 타입 필터
+ *       - in: query
+ *         name: authorId
+ *         schema:
+ *           type: string
+ *         description: 작성자 ID로 필터 (현재 사용자면 'me' 사용 가능, 로그인 필요)
  *     responses:
  *       200:
  *         description: 전체 커뮤니티 포스트 조회 성공
@@ -360,7 +365,15 @@ router.get("/", communityController.getCommunities);
  *       500:
  *         description: 서버 오류
  */
-router.get("/posts", communityController.getAllCommunityPosts);
+const conditionalAuthGuard = (req, res, next) => {
+  const authorId = req.query.authorId;
+  if (authorId === "me") {
+    return authGuard(req, res, next);
+  }
+  next();
+};
+
+router.get("/posts", conditionalAuthGuard, communityController.getAllCommunityPosts);
 
 
 
