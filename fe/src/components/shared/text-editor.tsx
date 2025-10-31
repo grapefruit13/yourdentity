@@ -12,6 +12,7 @@ import {
   AlignCenter,
   AlignRight,
   Link,
+  Check,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
@@ -88,6 +89,74 @@ const TextEditor = ({
   });
   const [showTitlePlaceholder, setShowTitlePlaceholder] = useState(true);
   const [showContentPlaceholder, setShowContentPlaceholder] = useState(true);
+  // 다음 입력에 적용할 헤딩 레벨 (커서만 있을 때 스타일 지정 시 사용)
+  const [pendingHeadingLevel, setPendingHeadingLevel] = useState<
+    1 | 2 | 3 | 4 | null
+  >(null);
+  // beforeinput에서 DOM을 수동 조작 중인지 표시하는 플래그
+  const skipOnInputRef = useRef(false);
+  // 선택 래핑 직후 첫 입력은 해당 span 뒤(outside)로만 들어가도록 강제
+  const afterSpanTargetRef = useRef<HTMLElement | null>(null);
+  // 스타일 변경 직후, 다음 입력을 강제로 이 스팬으로 유도하기 위한 타깃
+  const insertionTargetRef = useRef<HTMLElement | null>(null);
+
+  // 라인(개행) 단위 스타일 적용을 위한 유틸: 현재 라인 DIV를 찾아 없으면 생성
+  const getOrCreateCurrentLine = useCallback((): HTMLElement | null => {
+    const editor = contentRef.current;
+    if (!editor) return null;
+
+    // 비어있으면 라인 하나 생성
+    if (editor.childNodes.length === 0) {
+      const line = document.createElement("div");
+      line.setAttribute("data-heading", "3");
+      line.setAttribute("class", HEADING_CLASS_MAP[3]);
+      line.appendChild(document.createTextNode(""));
+      editor.appendChild(line);
+      return line;
+    }
+
+    const selection = window.getSelection();
+    const range =
+      selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (!range) {
+      // 선택이 없으면 마지막 라인 반환(필요시 승격)
+      const last = editor.lastChild as HTMLElement | null;
+      if (
+        last &&
+        last.nodeType === Node.ELEMENT_NODE &&
+        last.tagName === "DIV"
+      ) {
+        return last;
+      }
+      const line = document.createElement("div");
+      line.setAttribute("data-heading", "3");
+      line.setAttribute("class", HEADING_CLASS_MAP[3]);
+      while (editor.firstChild) line.appendChild(editor.firstChild);
+      editor.appendChild(line);
+      return line;
+    }
+
+    // 현재 커서에서 contentRef의 직계 DIV까지 거슬러 올라감
+    let node: Node | null = range.startContainer;
+    while (node && node !== editor) {
+      if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        (node as HTMLElement).parentElement === editor &&
+        (node as HTMLElement).tagName === "DIV"
+      ) {
+        return node as HTMLElement;
+      }
+      node = node.parentNode;
+    }
+
+    // 직계 DIV가 없으면 전체를 라인으로 승격
+    const line = document.createElement("div");
+    line.setAttribute("data-heading", "3");
+    line.setAttribute("class", HEADING_CLASS_MAP[3]);
+    while (editor.firstChild) line.appendChild(editor.firstChild);
+    editor.appendChild(line);
+    return line;
+  }, [HEADING_CLASS_MAP]);
 
   /**
    * 현재 선택 영역을 저장
@@ -123,9 +192,37 @@ const TextEditor = ({
       if (!element) return;
 
       const isEmpty = isElementEmpty(element);
-      // 논리적으로 비어있다면 실제 DOM도 비워 :empty를 충족시켜 placeholder가 항상 보이게 함
-      if (isEmpty && element.innerHTML !== "") {
-        element.innerHTML = "";
+
+      // content의 경우 DIV 구조는 유지 (라인 단위 모델)
+      // 완전히 비어있을 때만 innerHTML을 지움
+      if (type === "content") {
+        const hasOnlyEmptyDivs = Array.from(element.childNodes).every(
+          (node) => {
+            if (
+              node.nodeType === Node.ELEMENT_NODE &&
+              (node as HTMLElement).tagName === "DIV"
+            ) {
+              return isElementEmpty(node as HTMLElement);
+            }
+            return (
+              node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()
+            );
+          }
+        );
+
+        // 완전히 비어있거나, DIV 구조가 없으면 지움
+        if (
+          isEmpty &&
+          element.childNodes.length === 0 &&
+          element.innerHTML !== ""
+        ) {
+          element.innerHTML = "";
+        }
+      } else {
+        // title은 기존 로직 유지
+        if (isEmpty && element.innerHTML !== "") {
+          element.innerHTML = "";
+        }
       }
 
       if (type === "title") {
@@ -239,11 +336,13 @@ const TextEditor = ({
     setActiveFormats(formats);
   }, []);
 
-  // 헤딩 상태 감지 (H1, H2만 활성화, H3는 비활성화)
+  // 헤딩 상태 감지 및 현재 레벨 설정
+
   const updateHeadingFromSelection = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
       setIsHeadingActive(false);
+      setPendingHeadingLevel(3); // 기본값: 본문1
       return;
     }
 
@@ -251,6 +350,7 @@ const TextEditor = ({
     let el: HTMLElement | null = null;
     if (!node) {
       setIsHeadingActive(false);
+      setPendingHeadingLevel(3);
       return;
     }
     el = (
@@ -259,27 +359,32 @@ const TextEditor = ({
         : (node.parentElement as HTMLElement | null)
     ) as HTMLElement | null;
 
-    const isHeadingSpan = (target: HTMLElement | null): boolean => {
-      if (!target) return false;
+    const getHeadingLevel = (
+      target: HTMLElement | null
+    ): 1 | 2 | 3 | 4 | null => {
+      if (!target) return null;
       if (target.dataset && typeof target.dataset.heading !== "undefined") {
-        // H3는 헤딩 비활성화 (본문으로 취급)
         const level = parseInt(target.dataset.heading);
-        return level === 1 || level === 2;
+        if (level >= 1 && level <= 4) {
+          return level as 1 | 2 | 3 | 4;
+        }
       }
-      // 클래스 토큰 기반 체크 (H1/H2만 활성화)
-      const activeTokens = ["text-[22px]", "text-[18px]"];
-      return activeTokens.some((t) => target.classList.contains(t));
+      return null;
     };
 
     const container = contentRef.current || undefined;
     while (el && el !== container && el !== document.body) {
-      if (isHeadingSpan(el)) {
+      const level = getHeadingLevel(el);
+      if (level) {
         setIsHeadingActive(true);
+        setPendingHeadingLevel(level);
         return;
       }
       el = el.parentElement;
     }
+    // 헤딩 스타일이 없으면 기본값(본문1)
     setIsHeadingActive(false);
+    setPendingHeadingLevel(3);
   }, []);
 
   /**
@@ -308,6 +413,22 @@ const TextEditor = ({
    * 내용 변경 시 호출되며 플레이스홀더 상태도 업데이트
    */
   const handleContentInput = useCallback(() => {
+    // ZWSP 정리 및 플레이스홀더 업데이트
+    if (contentRef.current) {
+      const spans =
+        contentRef.current.querySelectorAll<HTMLSpanElement>(
+          "span[data-heading]"
+        );
+      spans.forEach((sp) => {
+        if (sp.firstChild && sp.firstChild.nodeType === Node.TEXT_NODE) {
+          sp.firstChild.nodeValue = (sp.firstChild.nodeValue || "").replace(
+            /\u200B/g,
+            ""
+          );
+        }
+      });
+    }
+
     if (contentRef.current && onContentChange) {
       // 빈 링크 제거
       const anchors = contentRef.current.querySelectorAll("a");
@@ -469,7 +590,13 @@ const TextEditor = ({
       }
 
       const editorRef = getActiveEditorRef();
-      editorRef.current?.focus();
+      const editor = editorRef.current;
+      if (!editor) {
+        setShowHeadingMenu(false);
+        return;
+      }
+
+      editor.focus();
       restoreSelection();
 
       const selection = window.getSelection();
@@ -481,42 +608,40 @@ const TextEditor = ({
       const range = selection.getRangeAt(0);
       const className = HEADING_CLASS_MAP[level];
 
-      if (!range.collapsed) {
-        // 선택 영역 래핑 (내부 마크업 보존)
-        const fragment = range.extractContents();
-        const span = document.createElement("span");
-        span.setAttribute("class", className);
-        span.setAttribute("data-heading", String(level));
-        span.appendChild(fragment);
-        range.insertNode(span);
+      // 기존 헤딩 스타일 제거 함수
+      const removeExistingHeadingStyles = (container: Node) => {
+        const headingElements =
+          container instanceof Element
+            ? Array.from(container.querySelectorAll("[data-heading]"))
+            : [];
 
-        // 커서를 span 뒤로 이동 (삽입 노드 기준 결정적 위치)
-        const after = document.createRange();
-        after.setStartAfter(span);
-        after.setEndAfter(span);
-        selection.removeAllRanges();
-        selection.addRange(after);
-      } else {
-        // 커서만 있을 때 비어있는 span 삽입 후 내부로 커서 이동
-        const span = document.createElement("span");
-        span.setAttribute("class", className);
-        span.setAttribute("data-heading", String(level));
-        span.textContent = "\u200B"; // zero-width space
-        range.insertNode(span);
+        headingElements.forEach((elem) => {
+          if (elem instanceof HTMLElement) {
+            const parent = elem.parentNode;
+            while (elem.firstChild) {
+              parent?.insertBefore(elem.firstChild, elem);
+            }
+            parent?.removeChild(elem);
+          }
+        });
+      };
 
-        const inside = document.createRange();
-        inside.selectNodeContents(span);
-        inside.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(inside);
-      }
-
-      setIsHeadingActive(true);
-
-      if (activeEditor === "content") {
-        handleContentInput();
-      } else if (activeEditor === "title") {
-        handleTitleInput();
+      try {
+        // 라인 단위 적용: 현재 라인 DIV의 헤딩 클래스를 교체
+        const line = getOrCreateCurrentLine();
+        if (line) {
+          line.setAttribute("data-heading", String(level));
+          line.setAttribute("class", HEADING_CLASS_MAP[level]);
+          setIsHeadingActive(true);
+          setPendingHeadingLevel(level);
+        }
+        if (activeEditor === "content") {
+          handleContentInput();
+        } else if (activeEditor === "title") {
+          handleTitleInput();
+        }
+      } catch (error) {
+        console.error("헤딩 스타일 적용 중 오류:", error);
       }
 
       setShowHeadingMenu(false);
@@ -525,6 +650,7 @@ const TextEditor = ({
       activeEditor,
       getActiveEditorRef,
       restoreSelection,
+      saveSelection,
       handleContentInput,
       handleTitleInput,
       HEADING_CLASS_MAP,
@@ -680,6 +806,18 @@ const TextEditor = ({
   const handleContentFocus = useCallback(() => {
     setActiveEditor("content");
     setTimeout(() => {
+      const selection = window.getSelection();
+      const range =
+        selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+      // 빈 영역 클릭 시 기본 스타일(본문1 = level 3) 설정
+      if (contentRef.current && range) {
+        const isEmpty = isElementEmpty(contentRef.current);
+        if (isEmpty) {
+          setPendingHeadingLevel(3); // 기본값: 본문1
+        }
+      }
+
       updateColorFromSelection();
       updateFormatFromSelection();
       checkPlaceholder(contentRef.current, "content");
@@ -698,6 +836,18 @@ const TextEditor = ({
       }
     }, 0);
   }, []);
+
+  /**
+   * 내용 영역 입력 전 처리 (beforeinput)
+   * pendingHeadingLevel이 있으면 입력 텍스트에 스타일 적용
+   */
+  const handleContentBeforeInput = useCallback(
+    (e: React.FormEvent<HTMLDivElement>) => {
+      // 라인 단위 모델: 특별 조작 불필요
+      return;
+    },
+    []
+  );
 
   /**
    * 포커스를 제목 영역으로 이동
@@ -777,6 +927,8 @@ const TextEditor = ({
    */
   const handleContentKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // Enter 키는 네이티브 이벤트 리스너(useEffect)에서 처리함
+
       // Delete/Backspace 처리
       if ((e.key === "Backspace" || e.key === "Delete") && contentRef.current) {
         const selection = window.getSelection();
@@ -877,7 +1029,12 @@ const TextEditor = ({
         }
       }
     },
-    [moveFocusToTitle]
+    [
+      moveFocusToTitle,
+      handleContentInput,
+      HEADING_CLASS_MAP,
+      getOrCreateCurrentLine,
+    ]
   );
 
   // 블러 처리
@@ -938,6 +1095,146 @@ const TextEditor = ({
     checkPlaceholder(titleRef.current, "title");
     checkPlaceholder(contentRef.current, "content");
   }, [checkPlaceholder]);
+
+  // 네이티브 beforeinput 이벤트 리스너 (React 합성 이벤트 문제 해결)
+  useEffect(() => {
+    const contentElement = contentRef.current;
+    const titleElement = titleRef.current;
+
+    const handleContentBeforeInputNative = (e: InputEvent) => {
+      if (
+        e.inputType === "insertParagraph" ||
+        e.inputType === "insertLineBreak"
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const editor = contentRef.current;
+        if (!editor) return;
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+
+        // 에디터가 완전히 비어있는 경우
+        if (editor.childNodes.length === 0 || isElementEmpty(editor)) {
+          const firstLine = document.createElement("div");
+          firstLine.setAttribute("data-heading", "3");
+          firstLine.setAttribute("class", HEADING_CLASS_MAP[3]);
+          firstLine.appendChild(document.createTextNode(""));
+
+          const secondLine = document.createElement("div");
+          secondLine.setAttribute("data-heading", "3");
+          secondLine.setAttribute("class", HEADING_CLASS_MAP[3]);
+          secondLine.appendChild(document.createTextNode(""));
+
+          editor.appendChild(firstLine);
+          editor.appendChild(secondLine);
+
+          const newRange = document.createRange();
+          newRange.setStart(secondLine, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+
+          setPendingHeadingLevel(3);
+          setIsHeadingActive(false);
+          handleContentInput();
+          return;
+        }
+
+        const currentLine = getOrCreateCurrentLine();
+        if (!currentLine) return;
+
+        try {
+          const currentHeadingLevel =
+            currentLine.getAttribute("data-heading") || "3";
+          const currentHeadingClass =
+            currentLine.getAttribute("class") || HEADING_CLASS_MAP[3];
+
+          const newLine = document.createElement("div");
+          newLine.setAttribute("data-heading", currentHeadingLevel);
+          newLine.setAttribute("class", currentHeadingClass);
+          newLine.appendChild(document.createTextNode(""));
+
+          const afterRange = document.createRange();
+
+          if (currentLine.childNodes.length === 0) {
+            afterRange.setStart(currentLine, 0);
+            afterRange.setEnd(currentLine, 0);
+          } else {
+            afterRange.setStart(range.endContainer, range.endOffset);
+            const lastChild = currentLine.lastChild;
+            if (lastChild) {
+              if (lastChild.nodeType === Node.TEXT_NODE) {
+                afterRange.setEnd(
+                  lastChild,
+                  lastChild.textContent?.length || 0
+                );
+              } else {
+                afterRange.setEndAfter(lastChild);
+              }
+            } else {
+              afterRange.setEnd(currentLine, currentLine.childNodes.length);
+            }
+          }
+
+          const afterContent = afterRange.extractContents();
+
+          if (
+            afterContent.childNodes.length > 0 &&
+            afterContent.textContent?.trim()
+          ) {
+            newLine.innerHTML = "";
+            newLine.appendChild(afterContent);
+          }
+
+          if (currentLine.parentNode === editor) {
+            editor.insertBefore(newLine, currentLine.nextSibling);
+          } else {
+            editor.appendChild(newLine);
+          }
+
+          const newRange = document.createRange();
+          if (newLine.firstChild) {
+            newRange.setStart(newLine.firstChild, 0);
+          } else {
+            newRange.setStart(newLine, 0);
+          }
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+
+          const inheritedLevel = parseInt(currentHeadingLevel) as 1 | 2 | 3 | 4;
+          setPendingHeadingLevel(inheritedLevel);
+          setIsHeadingActive(inheritedLevel !== 3);
+
+          handleContentInput();
+        } catch (error) {
+          console.error("Enter 키 처리 중 오류:", error);
+        }
+      }
+    };
+
+    if (contentElement) {
+      contentElement.addEventListener(
+        "beforeinput",
+        handleContentBeforeInputNative,
+        true
+      );
+    }
+
+    return () => {
+      if (contentElement) {
+        contentElement.removeEventListener(
+          "beforeinput",
+          handleContentBeforeInputNative,
+          true
+        );
+      }
+    };
+  }, [HEADING_CLASS_MAP, getOrCreateCurrentLine, handleContentInput]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1032,20 +1329,13 @@ const TextEditor = ({
             onClick={handleHeadingMenuToggle}
             aria-label="글자 크기"
             tabIndex={-1}
-            disabled={activeEditor === "title"}
           >
-            {/* '가' 아이콘 형태 */}
+            {/* '가' 아이콘 형태 - 항상 활성(검정) */}
             <Icon
               src={IMAGE_URL.ICON.heading.url}
               width={16}
               height={16}
-              className={cn(
-                activeEditor === "title"
-                  ? "text-gray-300"
-                  : isHeadingActive
-                    ? "text-black"
-                    : "text-gray-400"
-              )}
+              className="text-black"
             />
           </Button>
 
@@ -1061,31 +1351,55 @@ const TextEditor = ({
               >
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-[22px] leading-snug font-bold hover:bg-gray-50"
+                  className={cn(
+                    "flex w-full items-center justify-between px-3 py-2 text-left text-[22px] leading-snug font-bold hover:bg-gray-50",
+                    pendingHeadingLevel === 1 && "text-pink-500"
+                  )}
                   onClick={() => handleHeadingChange(1)}
                 >
-                  제목1
+                  <span>제목1</span>
+                  {pendingHeadingLevel === 1 && (
+                    <Check className="h-4 w-4 text-pink-500" />
+                  )}
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-[16px] leading-snug font-bold hover:bg-gray-50"
+                  className={cn(
+                    "flex w-full items-center justify-between px-3 py-2 text-left text-[16px] leading-snug font-bold hover:bg-gray-50",
+                    pendingHeadingLevel === 2 && "text-pink-500"
+                  )}
                   onClick={() => handleHeadingChange(2)}
                 >
-                  제목2
+                  <span>제목2</span>
+                  {pendingHeadingLevel === 2 && (
+                    <Check className="h-4 w-4 text-pink-500" />
+                  )}
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-[16px] leading-snug font-medium hover:bg-gray-50"
+                  className={cn(
+                    "flex w-full items-center justify-between px-3 py-2 text-left text-[16px] leading-snug font-medium hover:bg-gray-50",
+                    pendingHeadingLevel === 3 && "text-pink-500"
+                  )}
                   onClick={() => handleHeadingChange(3)}
                 >
-                  본문1
+                  <span>본문1</span>
+                  {pendingHeadingLevel === 3 && (
+                    <Check className="h-4 w-4 text-pink-500" />
+                  )}
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-[14px] leading-snug font-medium hover:bg-gray-50"
+                  className={cn(
+                    "flex w-full items-center justify-between px-3 py-2 text-left text-[14px] leading-snug font-medium hover:bg-gray-50",
+                    pendingHeadingLevel === 4 && "text-pink-500"
+                  )}
                   onClick={() => handleHeadingChange(4)}
                 >
-                  본문2
+                  <span>본문2</span>
+                  {pendingHeadingLevel === 4 && (
+                    <Check className="h-4 w-4 text-pink-500" />
+                  )}
                 </button>
               </div>,
               document.body
@@ -1276,23 +1590,27 @@ const TextEditor = ({
           onKeyDown={handleTitleKeyDown}
           onMouseUp={() => {
             saveSelection();
+            insertionTargetRef.current = null;
             updateColorFromSelection();
             updateFormatFromSelection();
             updateHeadingFromSelection();
           }}
           onKeyUp={() => {
             saveSelection();
+            insertionTargetRef.current = null;
             updateColorFromSelection();
             updateFormatFromSelection();
             updateHeadingFromSelection();
           }}
           onSelect={() => {
             saveSelection();
+            insertionTargetRef.current = null;
             updateColorFromSelection();
             updateFormatFromSelection();
             updateHeadingFromSelection();
           }}
           onClick={() => {
+            insertionTargetRef.current = null;
             updateColorFromSelection();
             updateFormatFromSelection();
             updateHeadingFromSelection();
@@ -1322,6 +1640,7 @@ const TextEditor = ({
             minHeight: `${minHeight}px`,
             maxHeight: `${minHeight}px`,
           }}
+          onBeforeInput={handleContentBeforeInput}
           onInput={handleContentInput}
           onFocus={handleContentFocus}
           onBlur={handleBlur}

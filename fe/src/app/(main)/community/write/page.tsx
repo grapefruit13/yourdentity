@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import {
@@ -11,7 +12,9 @@ import {
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor";
 import { Typography } from "@/components/shared/typography";
+// TopBar는 레이아웃에서 자동 렌더링됩니다.
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
+import Dialog from "@/components/shared/ui/dialog";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
 import type * as CommunityTypes from "@/types/generated/communities-types";
 import { cn } from "@/utils/shared/cn";
@@ -28,8 +31,11 @@ const MAX_FILES = 5;
  * @description 커뮤니티 글 작성 페이지
  */
 const Page = () => {
+  const router = useRouter();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
+  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
   const COMMUNITY_ID = "CP:VYTTZW33IH";
 
@@ -46,6 +52,81 @@ const Page = () => {
 
   const selectedCategory = watch("category");
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+
+  /**
+   * 뒤로가기 버튼 클릭 핸들러
+   * - 작성 중인 내용이 있으면 확인 모달 표시
+   * - 없으면 바로 뒤로가기
+   */
+  const handleBackClick = useCallback(() => {
+    if (isDirty) {
+      setIsExitDialogOpen(true);
+    } else {
+      router.back();
+    }
+  }, [isDirty, router]);
+
+  /**
+   * 완료 버튼 클릭 핸들러
+   * - 게시 확인 모달 표시
+   */
+  const handleCompleteClick = useCallback(() => {
+    if (!isDirty) return;
+    setIsPublishDialogOpen(true);
+  }, [isDirty]);
+
+  /**
+   * 레이아웃 TopBar의 '완료' 버튼 클릭 이벤트 연동
+   * - layout.tsx에서 `community-write:request-complete` 커스텀 이벤트를 디스패치
+   * - 여기서 수신하여 기존 완료 처리 핸들러 호출
+   */
+  useEffect(() => {
+    const listener = () => handleCompleteClick();
+    window.addEventListener(
+      "community-write:request-complete",
+      listener as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "community-write:request-complete",
+        listener as EventListener
+      );
+    };
+  }, [handleCompleteClick]);
+
+  /**
+   * 나가기 확인 핸들러
+   * - 작성 내용 초기화 후 뒤로가기
+   */
+  const handleConfirmExit = useCallback(() => {
+    setValue("title", "", { shouldDirty: false });
+    setValue("content", "", { shouldDirty: false });
+    setAttachFiles([]);
+    setImageQueue([]);
+    setFileQueue([]);
+    router.back();
+  }, [setValue, router]);
+
+  /**
+   * 브라우저/디바이스 뒤로가기 감지
+   */
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        window.history.pushState(null, "", window.location.href);
+        setIsExitDialogOpen(true);
+      }
+    };
+
+    // 현재 상태를 히스토리에 추가
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isDirty]);
 
   const [attachFiles, setAttachFiles] = useState<File[]>([]);
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
@@ -253,381 +334,433 @@ const Page = () => {
   };
 
   /**
-   * 제출 핸들러
+   * 게시 처리 핸들러 (모달에서 확인 시 호출)
    * - 제목/내용 유효성 검사 후 첨부 파일 업로드 → 글 등록까지 수행
    * - 실패 시 업로드된 파일들 롤백 삭제
    */
-  const onSubmit = useCallback(
-    async (values: WriteFormValues) => {
-      const trimmedTitle = values.title.trim();
-      const hasContent = (() => {
-        const html = values.content || "";
-        const text = html
-          .replace(/<[^>]*>/g, "") // 태그 제거
-          .replace(/&nbsp;/g, " ") // nbsp 치환
-          .trim();
-        return text.length > 0;
-      })();
+  const handlePublish = useCallback(async () => {
+    const values = getValues();
+    const trimmedTitle = values.title.trim();
+    const hasContent = (() => {
+      const html = values.content || "";
+      const text = html
+        .replace(/<[^>]*>/g, "") // 태그 제거
+        .replace(/&nbsp;/g, " ") // nbsp 치환
+        .trim();
+      return text.length > 0;
+    })();
 
-      if (!trimmedTitle) {
-        alert("제목을 입력해주세요.");
-        return;
-      }
-      if (!hasContent) {
-        alert("내용을 입력해주세요.");
-        return;
-      }
+    if (!trimmedTitle) {
+      alert("제목을 입력해주세요.");
+      return;
+    }
+    if (!hasContent) {
+      alert("내용을 입력해주세요.");
+      return;
+    }
 
-      if (imageQueue.length > MAX_FILES || attachFiles.length > MAX_FILES) {
-        alert(`이미지/파일은 각각 최대 ${MAX_FILES}개까지만 첨부할 수 있어요.`);
-        return;
-      }
+    if (imageQueue.length > MAX_FILES || attachFiles.length > MAX_FILES) {
+      alert(`이미지/파일은 각각 최대 ${MAX_FILES}개까지만 첨부할 수 있어요.`);
+      return;
+    }
 
-      let uploadedImagePathsLocal: string[] = [];
-      let uploadedFilePaths: string[] = [];
+    let uploadedImagePathsLocal: string[] = [];
+    let uploadedFilePaths: string[] = [];
 
-      try {
-        // 이미지 일괄 업로드 및 콘텐츠 내 src 교체
-        const { byIdToPath: imgIdToPath, byIdToUrl: imgIdToUrl } =
-          await uploadQueuedImages();
-        uploadedImagePathsLocal = Array.from(imgIdToPath.values());
-        let contentWithUrls = replaceEditorImageSrcWithUploadedUrls(
-          values.content,
-          imgIdToUrl
-        );
-        // 파일 큐 업로드 및 a[href] 교체
-        const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
-          await uploadQueuedFiles();
-        // 파일 업로드 경로는 큐 결과만 사용 (중복 업로드 방지)
-        const uploadedFilePathsSet = Array.from(fileIdToPath.values());
-        contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
-          contentWithUrls,
-          fileIdToUrl
-        );
-        setValue("content", contentWithUrls, {
-          shouldDirty: true,
-          shouldValidate: false,
-        });
-        // 첨부 리스트 업로드는 제거하고(중복 방지), 큐 업로드 결과만 사용
-        uploadedFilePaths = uploadedFilePathsSet;
+    try {
+      // 이미지 일괄 업로드 및 콘텐츠 내 src 교체
+      const { byIdToPath: imgIdToPath, byIdToUrl: imgIdToUrl } =
+        await uploadQueuedImages();
+      uploadedImagePathsLocal = Array.from(imgIdToPath.values());
+      let contentWithUrls = replaceEditorImageSrcWithUploadedUrls(
+        values.content,
+        imgIdToUrl
+      );
+      // 파일 큐 업로드 및 a[href] 교체
+      const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
+        await uploadQueuedFiles();
+      // 파일 업로드 경로는 큐 결과만 사용 (중복 업로드 방지)
+      const uploadedFilePathsSet = Array.from(fileIdToPath.values());
+      contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
+        contentWithUrls,
+        fileIdToUrl
+      );
+      setValue("content", contentWithUrls, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      // 첨부 리스트 업로드는 제거하고(중복 방지), 큐 업로드 결과만 사용
+      uploadedFilePaths = uploadedFilePathsSet;
 
-        // 글 작성
-        await new Promise<void>((resolve, reject) => {
-          const requestParam = {
-            communityId: COMMUNITY_ID,
-            data: {
-              title: trimmedTitle,
-              content: contentWithUrls,
-              category: values.category,
-              media: [
-                ...uploadedImagePathsLocal,
-                ...uploadedFilePaths,
-              ] as string[],
-            },
-          } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
+      // TODO: 글 작성 API 연동
+      // await new Promise<void>((resolve, reject) => {
+      //   const requestParam = {
+      //     communityId: COMMUNITY_ID,
+      //     data: {
+      //       title: trimmedTitle,
+      //       content: contentWithUrls,
+      //       category: values.category,
+      //       media: [
+      //         ...uploadedImagePathsLocal,
+      //         ...uploadedFilePaths,
+      //       ] as string[],
+      //     },
+      //   } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
+      //
+      //   mutate(requestParam, {
+      //     onSuccess: (response) => {
+      //       // TODO: 게시글 상세 페이지로 라우팅
+      //       // const postId = response?.data?.postId;
+      //       // router.push(`/community/posts/${postId}`);
+      //       resolve();
+      //     },
+      //     onError: (err) => reject(err),
+      //   });
+      // });
 
-          mutate(requestParam, {
-            onSuccess: () => resolve(),
-            onError: (err) => reject(err),
-          });
-        });
+      alert("게시물이 등록되었습니다.");
+      // 상태 초기화
+      setAttachFiles([]);
+      setImageQueue([]);
+      setFileQueue([]);
+      setValue("title", "", { shouldDirty: false });
+      setValue("content", "", { shouldDirty: false });
 
-        alert("게시물이 등록되었습니다.");
-        // 상태 초기화
-        setAttachFiles([]);
-        setImageQueue([]);
-        setFileQueue([]);
-        setValue("title", "");
-        setValue("content", "");
-      } catch {
-        await deleteFilesByPath([
-          ...uploadedImagePathsLocal,
-          ...uploadedFilePaths,
-        ]);
-        alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
-      }
-    },
-    [
-      mutate,
-      imageQueue,
-      attachFiles,
-      setValue,
-      uploadQueuedImages,
-      uploadQueuedFiles,
-    ]
-  );
+      // TODO: 게시글 상세 페이지로 라우팅
+      // router.push(`/community/posts/${postId}`);
+    } catch {
+      await deleteFilesByPath([
+        ...uploadedImagePathsLocal,
+        ...uploadedFilePaths,
+      ]);
+      alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  }, [
+    getValues,
+    mutate,
+    imageQueue,
+    attachFiles,
+    setValue,
+    uploadQueuedImages,
+    uploadQueuedFiles,
+    router,
+  ]);
+
+  /**
+   * 제출 핸들러 (폼 submit 이벤트용 - 현재는 사용하지 않음)
+   */
+  const onSubmit = useCallback(async (values: WriteFormValues) => {
+    // 완료 버튼으로만 제출하도록 변경
+    console.log("Form submitted", values);
+  }, []);
+
+  // TopBar는 레이아웃에서 관리. 페이지 내 버튼만 유지
 
   return (
-    <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
-      <div className="flex flex-col gap-4 bg-gray-100 px-5 py-3">
-        {/* 카테고리 선택 */}
-        <div className="flex border-collapse flex-col rounded-lg border border-gray-200 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-200 p-4">
-            <div className="flex items-center">
-              <Typography font="noto" variant="label1M">
-                게시판
-              </Typography>
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-primary-600"
-              >
-                *
-              </Typography>
-            </div>
-            <ButtonBase className="flex items-center gap-1">
-              <Typography font="noto" variant="body2M">
-                프로그램
-              </Typography>
-              <ChevronDown size={16} className="text-gray-950" />
-            </ButtonBase>
-          </div>
-          <div className="flex items-center justify-between border-b border-gray-200 p-4">
-            <div className="flex items-center">
-              <Typography font="noto" variant="label1M">
-                카테고리
-              </Typography>
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-primary-600"
-              >
-                *
-              </Typography>
-            </div>
-            <ButtonBase
-              className="flex items-center gap-1"
-              onClick={() => setIsCategorySheetOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={isCategorySheetOpen}
-              aria-controls="category-bottom-sheet"
-            >
-              <Typography font="noto" variant="body2M">
-                {selectedCategory}
-              </Typography>
-              <ChevronDown size={16} className="text-gray-950" />
-            </ButtonBase>
-          </div>
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center">
-              <Typography font="noto" variant="label1M">
-                날짜
-              </Typography>
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-primary-600"
-              >
-                *
-              </Typography>
-            </div>
-            <ButtonBase className="flex items-center gap-1">
-              <Typography font="noto" variant="body2M">
-                2025년 10월 29일(목)
-              </Typography>
-              <ChevronDown size={16} className="text-gray-950" />
-            </ButtonBase>
-          </div>
-        </div>
-        {/* 인증방법 */}
-        <div className="border-primary-300 bg-primary-50 flex flex-col rounded-xl border px-5 py-4">
-          <div className="flex items-center justify-between">
-            <Typography font="noto" variant="label1M" className="text-gray-800">
-              인증 방법
-            </Typography>
-
-            <ButtonBase
-              className="size-8"
-              onClick={() => setIsAuthGuideOpen((prev) => !prev)}
-              aria-expanded={isAuthGuideOpen}
-              aria-controls="auth-guide-content"
-            >
-              {isAuthGuideOpen ? (
-                <ChevronUp size={16} className="text-gray-800" />
-              ) : (
-                <ChevronDown size={16} className="text-gray-800" />
-              )}
-            </ButtonBase>
-          </div>
-          {isAuthGuideOpen && (
-            <p
-              id="auth-guide-content"
-              className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
-            >
-              1. 인증 글 제목 예시 : 9/17 [아침] 정은 인증 <br />
-              &nbsp;날짜 / [아침,점심,저녁] / 닉네임 <br />
-              2. 9월 한끗루틴은 아침, 점심, 저녁 총 세 번의 루틴을 인증하기
-              때문에&nbsp;
-              <Typography font="noto" variant="body3B">
-                태그
-              </Typography>
-              를 꼭 걸어주세요!
-              <br />
-              3. 모든 루틴 인증글에는 타임스탬프(날짜, 시간 포함) 사진이
-              필수입니다. <br />
-              4. 루틴 인증 소감, 이야기도 꼭 남겨주세요!
-            </p>
-          )}
-        </div>
-      </div>
-      <TextEditor
-        onImageUpload={registerImage}
-        onFileUpload={addAttachFile}
-        onTitleChange={(title) =>
-          setValue("title", title, { shouldDirty: true, shouldValidate: true })
-        }
-        onContentChange={(content) =>
-          setValue("content", content, {
-            shouldDirty: true,
-            shouldValidate: false,
-          })
-        }
-      />
-
-      {/* 카테고리 선택 바텀시트 */}
-      <BottomSheet
-        isOpen={isCategorySheetOpen}
-        onClose={() => setIsCategorySheetOpen(false)}
-      >
-        <Typography font="noto" variant="body1B" className="mb-3">
-          카테고리 선택
-        </Typography>
-        <div className="flex flex-col gap-2">
-          {(["한끗 루틴", "TMI 프로젝트", "월간 소모임"] as const).map(
-            (label) => {
-              const checked = selectedCategory === label;
-              return (
-                <label
-                  key={label}
-                  className={
-                    "flex w-full cursor-pointer items-center gap-4 rounded-lg px-4 py-3"
-                  }
+    <>
+      <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex flex-col gap-4 bg-gray-100 px-5 py-3">
+          {/* 카테고리 선택 */}
+          <div className="flex border-collapse flex-col rounded-lg border border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4">
+              <div className="flex items-center">
+                <Typography font="noto" variant="label1M">
+                  게시판
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  className="text-primary-600"
                 >
-                  <input
-                    type="radio"
-                    name="category"
-                    className="peer sr-only"
-                    checked={checked}
-                    onChange={() =>
-                      setValue("category", label, { shouldDirty: true })
-                    }
-                  />
-                  <span
-                    className="relative inline-flex size-4 items-center justify-center rounded-full border border-gray-200 shadow-xs drop-shadow-xs transition-colors"
-                    aria-hidden
-                  >
-                    <span
-                      className={cn(
-                        "inline-block size-2 rounded-full transition-colors",
-                        checked ? "bg-primary-600" : "bg-transparent"
-                      )}
-                    />
-                  </span>
-                  <Typography
-                    font="noto"
-                    variant="body2M"
-                    className="select-none"
-                  >
-                    {label}
-                  </Typography>
-                </label>
-              );
-            }
-          )}
-        </div>
+                  *
+                </Typography>
+              </div>
+              <ButtonBase className="flex items-center gap-1">
+                <Typography font="noto" variant="body2M">
+                  프로그램
+                </Typography>
+                <ChevronDown size={16} className="text-gray-950" />
+              </ButtonBase>
+            </div>
+            <div className="flex items-center justify-between border-b border-gray-200 p-4">
+              <div className="flex items-center">
+                <Typography font="noto" variant="label1M">
+                  카테고리
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  className="text-primary-600"
+                >
+                  *
+                </Typography>
+              </div>
+              <ButtonBase
+                className="flex items-center gap-1"
+                onClick={() => setIsCategorySheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={isCategorySheetOpen}
+                aria-controls="category-bottom-sheet"
+              >
+                <Typography font="noto" variant="body2M">
+                  {selectedCategory}
+                </Typography>
+                <ChevronDown size={16} className="text-gray-950" />
+              </ButtonBase>
+            </div>
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center">
+                <Typography font="noto" variant="label1M">
+                  날짜
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  className="text-primary-600"
+                >
+                  *
+                </Typography>
+              </div>
+              <ButtonBase className="flex items-center gap-1">
+                <Typography font="noto" variant="body2M">
+                  2025년 10월 29일(목)
+                </Typography>
+                <ChevronDown size={16} className="text-gray-950" />
+              </ButtonBase>
+            </div>
+          </div>
+          {/* 인증방법 */}
+          <div className="border-primary-300 bg-primary-50 flex flex-col rounded-xl border px-5 py-4">
+            <div className="flex items-center justify-between">
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-800"
+              >
+                인증 방법
+              </Typography>
 
-        {/* 하단 완료 버튼 */}
-        <div className="mt-6">
-          <ButtonBase
-            className="bg-primary-600 w-full rounded-lg py-[10px] text-white"
-            onClick={() => setIsCategorySheetOpen(false)}
-          >
-            완료
-          </ButtonBase>
+              <ButtonBase
+                className="size-8"
+                onClick={() => setIsAuthGuideOpen((prev) => !prev)}
+                aria-expanded={isAuthGuideOpen}
+                aria-controls="auth-guide-content"
+              >
+                {isAuthGuideOpen ? (
+                  <ChevronUp size={16} className="text-gray-800" />
+                ) : (
+                  <ChevronDown size={16} className="text-gray-800" />
+                )}
+              </ButtonBase>
+            </div>
+            {isAuthGuideOpen && (
+              <p
+                id="auth-guide-content"
+                className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
+              >
+                1. 인증 글 제목 예시 : 9/17 [아침] 정은 인증 <br />
+                &nbsp;날짜 / [아침,점심,저녁] / 닉네임 <br />
+                2. 9월 한끗루틴은 아침, 점심, 저녁 총 세 번의 루틴을 인증하기
+                때문에&nbsp;
+                <Typography font="noto" variant="body3B">
+                  태그
+                </Typography>
+                를 꼭 걸어주세요!
+                <br />
+                3. 모든 루틴 인증글에는 타임스탬프(날짜, 시간 포함) 사진이
+                필수입니다. <br />
+                4. 루틴 인증 소감, 이야기도 꼭 남겨주세요!
+              </p>
+            )}
+          </div>
         </div>
-      </BottomSheet>
+        <TextEditor
+          onImageUpload={registerImage}
+          onFileUpload={addAttachFile}
+          onTitleChange={(title) =>
+            setValue("title", title, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+          onContentChange={(content) =>
+            setValue("content", content, {
+              shouldDirty: true,
+              shouldValidate: false,
+            })
+          }
+        />
 
-      {/* 하단 제출 버튼 영역 */}
-      <div className="sticky bottom-0 z-40 mt-4 border-t border-gray-200 bg-white px-5 py-3">
-        <div className="flex items-center justify-end gap-2">
-          <ButtonBase
-            type="button"
-            className="text-gray-700"
-            onClick={() => {
-              const { title, content } = getValues();
-              if (!title && !content) return;
-              if (confirm("작성 중인 내용을 모두 지울까요?")) {
-                setValue("title", "", { shouldDirty: true });
-                setValue("content", "", { shouldDirty: true });
-              }
-            }}
-          >
-            <Typography font="noto" variant="body2M">
-              초기화
-            </Typography>
-          </ButtonBase>
-          <ButtonBase
-            type="submit"
-            className="bg-primary-600 text-white disabled:opacity-50"
-            disabled={isPending || !isDirty}
-          >
-            <Typography font="noto" variant="body2B">
-              {isPending ? "등록 중..." : "등록"}
-            </Typography>
-          </ButtonBase>
-        </div>
-      </div>
-
-      {/* 실시간 HTML 데모 프리뷰 */}
-      <div className="px-5 py-6">
-        <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-4">
-          <Typography font="noto" variant="body1B">
-            실시간 HTML 미리보기
+        {/* 카테고리 선택 바텀시트 */}
+        <BottomSheet
+          isOpen={isCategorySheetOpen}
+          onClose={() => setIsCategorySheetOpen(false)}
+        >
+          <Typography font="noto" variant="body1B" className="mb-3">
+            카테고리 선택
           </Typography>
-
-          {/* Title Preview (HTML String) */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">제목 HTML</h3>
-            <div className="rounded-md border bg-gray-50 p-3">
-              <pre className="overflow-x-auto text-xs text-gray-800">
-                <code>{watch("title") || "<p>제목이 비어있습니다.</p>"}</code>
-              </pre>
-            </div>
+          <div className="flex flex-col gap-2">
+            {(["한끗 루틴", "TMI 프로젝트", "월간 소모임"] as const).map(
+              (label) => {
+                const checked = selectedCategory === label;
+                return (
+                  <label
+                    key={label}
+                    className={
+                      "flex w-full cursor-pointer items-center gap-4 rounded-lg px-4 py-3"
+                    }
+                  >
+                    <input
+                      type="radio"
+                      name="category"
+                      className="peer sr-only"
+                      checked={checked}
+                      onChange={() =>
+                        setValue("category", label, { shouldDirty: true })
+                      }
+                    />
+                    <span
+                      className="relative inline-flex size-4 items-center justify-center rounded-full border border-gray-200 shadow-xs drop-shadow-xs transition-colors"
+                      aria-hidden
+                    >
+                      <span
+                        className={cn(
+                          "inline-block size-2 rounded-full transition-colors",
+                          checked ? "bg-primary-600" : "bg-transparent"
+                        )}
+                      />
+                    </span>
+                    <Typography
+                      font="noto"
+                      variant="body2M"
+                      className="select-none"
+                    >
+                      {label}
+                    </Typography>
+                  </label>
+                );
+              }
+            )}
           </div>
 
-          {/* Content Preview (HTML String) */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">내용 HTML</h3>
-            <div className="rounded-md border bg-gray-50 p-3">
-              <pre className="overflow-x-auto text-xs text-gray-800">
-                <code>{watch("content") || "<p>내용이 비어있습니다.</p>"}</code>
-              </pre>
-            </div>
+          {/* 하단 완료 버튼 */}
+          <div className="mt-6">
+            <ButtonBase
+              className="bg-primary-600 w-full rounded-lg py-[10px] text-white"
+              onClick={() => setIsCategorySheetOpen(false)}
+            >
+              완료
+            </ButtonBase>
           </div>
+        </BottomSheet>
 
-          <hr className="border-gray-200" />
+        {/* 실시간 HTML 데모 프리뷰 */}
+        <div className="px-5 py-6">
+          <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-4">
+            <Typography font="noto" variant="body1B">
+              실시간 HTML 미리보기
+            </Typography>
 
-          {/* Rendered Result */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">렌더링 결과</h3>
-            <div className="space-y-4 rounded-md border p-4">
-              <div
-                className="text-2xl font-bold"
-                dangerouslySetInnerHTML={{
-                  __html: watch("title") || "<p>제목이 비어있습니다.</p>",
-                }}
-              />
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{
-                  __html: watch("content") || "<p>내용이 비어있습니다.</p>",
-                }}
-              />
+            {/* Title Preview (HTML String) */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-700">제목 HTML</h3>
+              <div className="rounded-md border bg-gray-50 p-3">
+                <pre className="overflow-x-auto text-xs text-gray-800">
+                  <code>{watch("title") || "<p>제목이 비어있습니다.</p>"}</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* Content Preview (HTML String) */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-700">내용 HTML</h3>
+              <div className="rounded-md border bg-gray-50 p-3">
+                <pre className="overflow-x-auto text-xs text-gray-800">
+                  <code>
+                    {watch("content") || "<p>내용이 비어있습니다.</p>"}
+                  </code>
+                </pre>
+              </div>
+            </div>
+
+            <hr className="border-gray-200" />
+
+            {/* Rendered Result */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-700">
+                렌더링 결과
+              </h3>
+              <div className="space-y-4 rounded-md border p-4">
+                <div
+                  className="text-2xl font-bold"
+                  dangerouslySetInnerHTML={{
+                    __html: watch("title") || "<p>제목이 비어있습니다.</p>",
+                  }}
+                />
+                <div
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: watch("content") || "<p>내용이 비어있습니다.</p>",
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </form>
+      </form>
+
+      {/* 나가기 확인 모달 */}
+      <Dialog
+        isOpen={isExitDialogOpen}
+        title="그만둘까요?"
+        description="작성 중인 내용이 사라져요."
+      >
+        <div className="flex gap-2 pt-6">
+          <ButtonBase
+            onClick={() => setIsExitDialogOpen(false)}
+            className="flex-1 rounded-lg border border-gray-200 py-3"
+          >
+            <Typography font="noto" variant="body2M" className="text-gray-700">
+              계속하기
+            </Typography>
+          </ButtonBase>
+          <ButtonBase
+            onClick={handleConfirmExit}
+            className="bg-primary-600 flex-1 rounded-lg py-3"
+          >
+            <Typography font="noto" variant="body2M" className="text-white">
+              그만두기
+            </Typography>
+          </ButtonBase>
+        </div>
+      </Dialog>
+
+      {/* 게시 확인 모달 */}
+      <Dialog
+        isOpen={isPublishDialogOpen}
+        title="게시하시겠어요?"
+        description="작성한 내용을 커뮤니티에 게시합니다."
+      >
+        <div className="flex gap-2 pt-6">
+          <ButtonBase
+            onClick={() => setIsPublishDialogOpen(false)}
+            className="flex-1 rounded-lg border border-gray-200 py-3"
+          >
+            <Typography font="noto" variant="body2M" className="text-gray-700">
+              취소
+            </Typography>
+          </ButtonBase>
+          <ButtonBase
+            onClick={handlePublish}
+            className="bg-primary-600 flex-1 rounded-lg py-3"
+          >
+            <Typography font="noto" variant="body2M" className="text-white">
+              게시하기
+            </Typography>
+          </ButtonBase>
+        </div>
+      </Dialog>
+    </>
   );
 };
 
