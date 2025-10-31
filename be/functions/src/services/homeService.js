@@ -167,21 +167,30 @@ class HomeService {
   }
 
   /**
-   * 페이지 블록 내용 조회
+   * 페이지 블록 내용 조회 (페이지네이션 처리)
    * @param {string} pageId - 페이지 ID
    * @returns {Promise<Array>} 포맷팅된 블록 배열 (실패 시 빈 배열)
    * @private
    */
   async getPageBlocks(pageId) {
     try {
-      const blocks = await this.notion.blocks.children.list({
-        block_id: pageId,
-      });
+      let cursor;
+      const allBlocks = [];
+      
+      // Notion API는 한 번에 최대 100개만 반환하므로 페이지네이션 처리
+      do {
+        const response = await this.notion.blocks.children.list({
+          block_id: pageId,
+          start_cursor: cursor,
+        });
+        
+        allBlocks.push(...response.results);
+        cursor = response.has_more ? response.next_cursor : undefined;
+      } while (cursor);
 
-      return formatNotionBlocks(blocks.results);
+      return formatNotionBlocks(allBlocks);
     } catch (error) {
       // 블록 조회 실패 시 빈 배열 반환 (메인 데이터는 유지)
-      // 에러는 로그만 남기고 조용히 처리
       return [];
     }
   }
