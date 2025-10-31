@@ -193,14 +193,16 @@ const options = {
             },
             suspensionType: {
               type: "string",
-              enum: ["temporary", "permanent", "active"],
+              enum: ["temporary", "permanent", "null"],
               description: "자격정지 상태",
-              example: "active",
+              example: "null",
+              nullable: true,
             },
             suspensionReason: {
               type: "string",
               description: "정지 사유",
-              example: "욕설 다수",
+              example: "",
+              nullable: true,
             },
             suspensionAppliedAt: {
               type: "string",
