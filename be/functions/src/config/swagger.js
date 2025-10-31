@@ -235,7 +235,7 @@ const options = {
             age14TermsAgreed: {
               type: "boolean",
               description: "만 14세 이상 동의",
-              example: false,
+              example: true,
             },
             pushTermsAgreed: {
               type: "boolean",

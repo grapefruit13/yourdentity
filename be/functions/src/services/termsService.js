@@ -169,6 +169,11 @@ class TermsService {
       if (privacyVersion) update.privacyTermsVersion = privacyVersion;
       update.age14TermsAgreed = !!age14Agreed;
       update.pushTermsAgreed = !!pushAgreed;
+      
+      // 만 14세 동의가 없는 경우 모니터링 로그 (카카오 정책 변경 감지)
+      if (!age14Agreed) {
+        console.warn(`⚠️ [TermsService] 만 14세 동의 없음 (uid: ${uid}) - 카카오 정책 확인 필요`);
+      }
       if (termsAgreedAt) {
         update.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
       } else {
