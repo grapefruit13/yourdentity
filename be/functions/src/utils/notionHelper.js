@@ -342,6 +342,8 @@ const formatNotionBlocks = (blocks, options = {}) => {
     if (blockTypes.includes(block.type)) {
       const blockData = block[block.type];
       formattedBlock.text = extractPlainText(blockData?.rich_text) || '';
+      // 텍스트에 포함된 링크 추출
+      formattedBlock.links = extractLinksFromRichText(blockData?.rich_text);
       if (includeRichText) {
         formattedBlock.richText = blockData?.rich_text || [];
       }
@@ -352,18 +354,21 @@ const formatNotionBlocks = (blocks, options = {}) => {
       case 'to_do':
         formattedBlock.text = extractPlainText(block.to_do?.rich_text) || '';
         formattedBlock.checked = block.to_do?.checked || false;
+        formattedBlock.links = extractLinksFromRichText(block.to_do?.rich_text);
         if (includeRichText) {
           formattedBlock.richText = block.to_do?.rich_text || [];
         }
         break;
       case 'toggle':
         formattedBlock.text = extractPlainText(block.toggle?.rich_text) || '';
+        formattedBlock.links = extractLinksFromRichText(block.toggle?.rich_text);
         if (includeRichText) {
           formattedBlock.richText = block.toggle?.rich_text || [];
         }
         break;
       case 'quote':
         formattedBlock.text = extractPlainText(block.quote?.rich_text) || '';
+        formattedBlock.links = extractLinksFromRichText(block.quote?.rich_text);
         if (includeRichText) {
           formattedBlock.richText = block.quote?.rich_text || [];
         }
@@ -371,6 +376,7 @@ const formatNotionBlocks = (blocks, options = {}) => {
       case 'callout':
         formattedBlock.text = extractPlainText(block.callout?.rich_text) || '';
         formattedBlock.icon = block.callout?.icon;
+        formattedBlock.links = extractLinksFromRichText(block.callout?.rich_text);
         if (includeRichText) {
           formattedBlock.richText = block.callout?.rich_text || [];
         }
@@ -380,18 +386,33 @@ const formatNotionBlocks = (blocks, options = {}) => {
         formattedBlock.url = block.image?.type === 'external' 
           ? block.image.external.url 
           : block.image?.file?.url;
+        // caption에 포함된 링크 추출
+        formattedBlock.links = extractLinksFromRichText(block.image?.caption);
+        if (includeRichText) {
+          formattedBlock.captionRichText = block.image?.caption || [];
+        }
         break;
       case 'video':
         formattedBlock.caption = extractPlainText(block.video?.caption) || '';
         formattedBlock.url = block.video?.type === 'external' 
           ? block.video.external.url 
           : block.video?.file?.url;
+        // caption에 포함된 링크 추출
+        formattedBlock.links = extractLinksFromRichText(block.video?.caption);
+        if (includeRichText) {
+          formattedBlock.captionRichText = block.video?.caption || [];
+        }
         break;
       case 'file':
         formattedBlock.caption = extractPlainText(block.file?.caption) || '';
         formattedBlock.url = block.file?.type === 'external' 
           ? block.file.external.url 
           : block.file?.file?.url;
+        // caption에 포함된 링크 추출
+        formattedBlock.links = extractLinksFromRichText(block.file?.caption);
+        if (includeRichText) {
+          formattedBlock.captionRichText = block.file?.caption || [];
+        }
         break;
       case 'divider':
         // 구분선은 별도 텍스트 없음
@@ -411,6 +432,17 @@ const formatNotionBlocks = (blocks, options = {}) => {
 const extractPlainText = (richText) => {
   if (!richText || !Array.isArray(richText)) return '';
   return richText.map(text => text.plain_text).join('');
+};
+
+// Rich Text에서 링크 추출 헬퍼 함수
+const extractLinksFromRichText = (richText) => {
+  if (!richText || !Array.isArray(richText)) return [];
+  return richText
+    .filter(text => text.href)
+    .map(text => ({
+      text: text.plain_text,
+      url: text.href
+    }));
 };
 
 module.exports = {
@@ -449,6 +481,7 @@ module.exports = {
   // Notion 블록 포맷팅 함수들
   formatNotionBlocks,
   extractPlainText,
+  extractLinksFromRichText,
 };
 
 
