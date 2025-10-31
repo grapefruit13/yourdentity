@@ -48,6 +48,7 @@ const typographyVariants = cva("whitespace-pre-line text-wrap leading-[1.5]", {
     size: {
       "11": "text-[11px]",
       "12": "text-xs",
+      "13": "text-[13px]",
       "14": "text-sm",
       "16": "text-base",
       "18": "text-lg",
@@ -84,6 +85,7 @@ export type TypographyProps = {
   size?:
     | "11"
     | "12"
+    | "13"
     | "14"
     | "16"
     | "18"
