@@ -191,36 +191,23 @@ const options = {
               description: "누적 신고 횟수",
               example: 0,
             },
-            suspensionType: {
-              type: "string",
-              enum: ["temporary", "permanent", "null"],
-              description: "자격정지 상태",
-              example: "null",
-              nullable: true,
-            },
             suspensionReason: {
               type: "string",
               description: "정지 사유",
               example: "",
               nullable: true,
             },
-            suspensionAppliedAt: {
-              type: "string",
-              format: "date-time",
-              nullable: true,
-              description: "자격정지 정책 적용일시",
-            },
             suspensionStartAt: {
               type: "string",
               format: "date-time",
               nullable: true,
-              description: "자격정지 시작",
+              description: "자격정지 시작 일시",
             },
             suspensionEndAt: {
               type: "string",
               format: "date-time",
               nullable: true,
-              description: "자격정지 종료",
+              description: "자격정지 종료 일시",
             },
             serviceTermsVersion: {
               type: "string",

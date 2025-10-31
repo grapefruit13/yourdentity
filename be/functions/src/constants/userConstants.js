@@ -16,13 +16,6 @@ const USER_STATUS = {
   SUSPENDED: "suspended",
 };
 
-// 자격 정지 상태
-const SUSPENSION_TYPES = {
-  TEMPORARY: "temporary",
-  PERMANENT: "permanent",
-  NULL: "null", // 제재 미적용 상태 의미
-};
-
 // 기본 업로드 쿼터 (1GB)
 const DEFAULT_UPLOAD_QUOTA_BYTES = 1073741824;
 
@@ -30,6 +23,5 @@ module.exports = {
   AUTH_TYPES,
   SNS_PROVIDERS,
   USER_STATUS,
-  SUSPENSION_TYPES,
   DEFAULT_UPLOAD_QUOTA_BYTES,
 };

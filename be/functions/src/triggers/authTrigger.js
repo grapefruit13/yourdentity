@@ -1,5 +1,5 @@
 const {admin, FieldValue} = require("../config/database");
-const {AUTH_TYPES, SNS_PROVIDERS, USER_STATUS, SUSPENSION_TYPES, DEFAULT_UPLOAD_QUOTA_BYTES} = require("../constants/userConstants");
+const {AUTH_TYPES, SNS_PROVIDERS, USER_STATUS, DEFAULT_UPLOAD_QUOTA_BYTES} = require("../constants/userConstants");
 
 // Auth Triggers은 1세대 Functions 사용 (현재 파일에서 관리)
 const functions = require("firebase-functions");
@@ -72,9 +72,7 @@ exports.createUserDocument = functions
           reportCount: 0,
 
           // 징계/정지 정보
-          suspensionType: SUSPENSION_TYPES.NULL,
           suspensionReason: "",
-          suspensionAppliedAt: null,
           suspensionStartAt: null,
           suspensionEndAt: null,
 

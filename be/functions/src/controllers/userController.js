@@ -1,6 +1,6 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
-const {USER_STATUS, SUSPENSION_TYPES} = require("../constants/userConstants");
+const {USER_STATUS} = require("../constants/userConstants");
 // const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
@@ -100,7 +100,7 @@ class UserController {
         usedStorageBytes,
         rewards, status,
         activityParticipationCount, certificationPosts, reportCount,
-        suspensionType, suspensionReason, suspensionAppliedAt,
+        suspensionReason,
         suspensionStartAt, suspensionEndAt,
       } = req.body;
 
@@ -146,14 +146,8 @@ class UserController {
       if (reportCount !== undefined) {
         updateData.reportCount = reportCount;
       }
-      if (suspensionType !== undefined) {
-        updateData.suspensionType = suspensionType;
-      }
       if (suspensionReason !== undefined) {
         updateData.suspensionReason = suspensionReason;
-      }
-      if (suspensionAppliedAt !== undefined) {
-        updateData.suspensionAppliedAt = suspensionAppliedAt;
       }
       if (suspensionStartAt !== undefined) {
         updateData.suspensionStartAt = suspensionStartAt;
