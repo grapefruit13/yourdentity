@@ -64,9 +64,10 @@ const router = express.Router();
  *         birthDate:
  *           type: string
  *           example: 1990-01-01
- *         onboardingCompleted:
- *           type: boolean
- *           example: true
+ *         status:
+ *           type: string
+ *           enum: [pending, active, suspended]
+ *           example: active
  *         serviceTermsVersion:
  *           type: string
  *           example: "v1"
@@ -157,9 +158,10 @@ const router = express.Router();
  *                 data:
  *                   type: object
  *                   properties:
- *                     onboardingCompleted:
- *                       type: boolean
- *                       example: true
+ *                     status:
+ *                       type: string
+ *                       enum: [pending, active, suspended]
+ *                       example: active
  *       400:
  *         description: 잘못된 입력 (필드 형식 오류/필수값 누락)
  *         content:
@@ -439,7 +441,7 @@ router.get("/:userId", authGuard, userController.getUserById);
  *       **수정 가능한 필드:**
  *       - email, nickname, name, birthDate, gender, phoneNumber
  *       - profileImageUrl, bio, authType, snsProvider
- *       - onboardingCompleted, 약관 관련 필드들
+ *       - status, 약관 관련 필드들
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -481,15 +483,20 @@ router.get("/:userId", authGuard, userController.getUserById);
  *               bio:
  *                 type: string
  *                 example: 안녕하세요!
+ *               rewards:
+ *                 type: number
+ *                 description: 리워드 총합
+ *                 example: 0
  *               authType:
  *                 type: string
  *                 example: sns
  *               snsProvider:
  *                 type: string
  *                 example: kakao
- *               onboardingCompleted:
- *                 type: boolean
- *                 example: true
+ *               status:
+ *                 type: string
+ *                 enum: [pending, active, suspended]
+ *                 example: active
  *               serviceTermsVersion:
  *                 type: string
  *                 example: "v1"

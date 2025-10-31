@@ -163,17 +163,30 @@ class TermsService {
 
     const update = {};
 
-    // 약관 정보 추가
+    // 약관 정보가 있으면 추가
     if (serviceVersion || privacyVersion || age14Agreed || pushAgreed) {
       if (serviceVersion) update.serviceTermsVersion = serviceVersion;
       if (privacyVersion) update.privacyTermsVersion = privacyVersion;
       update.age14TermsAgreed = !!age14Agreed;
       update.pushTermsAgreed = !!pushAgreed;
+      
+      // 만 14세 동의가 없는 경우 모니터링 로그 (카카오 정책 변경 감지)
+      if (!age14Agreed) {
+        console.warn(`⚠️ [TermsService] 만 14세 동의 없음 (uid: ${uid}) - 카카오 정책 확인 필요`);
+      }
       if (termsAgreedAt) {
         update.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
       } else {
         update.termsAgreedAt = FieldValue.serverTimestamp();
       }
+    } else {
+      // 약관 정보가 없으면 기본값으로 초기화 (최초 동기화 시)
+      console.log(`[TermsService] 약관 정보 없음, 기본값으로 초기화 (uid: ${uid})`);
+      update.serviceTermsVersion = null;
+      update.privacyTermsVersion = null;
+      update.age14TermsAgreed = false;
+      update.pushTermsAgreed = false;
+      update.termsAgreedAt = null;
     }
 
     await this.firestoreService.update(uid, update);

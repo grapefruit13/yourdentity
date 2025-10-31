@@ -993,7 +993,7 @@ const createFirestoreCollections = async () => {
       title: "첫 번째 미션",
       description: "첫 번째 미션을 완료해보세요!",
       status: "ACTIVE",
-      points: 100,
+      rewards: 100,
       createdAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now(),
     });

@@ -1,6 +1,5 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
-// const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
@@ -81,40 +80,39 @@ class UserController {
         payload: {nickname, profileImageUrl, bio},
       });
 
-      return res.success({onboardingCompleted: result.onboardingCompleted});
+      return res.success(result);
     } catch (error) {
       return next(error);
     }
   }
 
   /**
-   * 사용자 정보 수정 (일부 필드)
+   * 사용자 정보 수정 (테스트용)
    */
   async updateUser(req, res, next) {
     try {
       const {userId} = req.params;
       const {
-        name, profileImageUrl, birthDate, rewardPoints, level, badges,
-        points, mainProfileId, onboardingCompleted, uploadQuotaBytes,
+        name, profileImageUrl, birthDate, level, badges,
+        mainProfileId, uploadQuotaBytes,
         usedStorageBytes,
+        rewards,
+        activityParticipationCount, certificationPosts, reportCount,
+        suspensionReason,
+        suspensionStartAt, suspensionEndAt,
       } = req.body;
 
       const updateData = {};
 
+      // 입력 검증은 서비스 레이어에서 수행 (컨트롤러는 DTO 수집만)
       if (name !== undefined) {
         updateData.name = name;
       }
       if (profileImageUrl !== undefined) {
         updateData.profileImageUrl = profileImageUrl;
       }
-      if (points !== undefined) {
-        updateData.points = points;
-      }
       if (mainProfileId !== undefined) {
         updateData.mainProfileId = mainProfileId;
-      }
-      if (rewardPoints !== undefined) {
-        updateData.rewardPoints = rewardPoints;
       }
       if (level !== undefined) {
         updateData.level = level;
@@ -128,11 +126,29 @@ class UserController {
       if (badges !== undefined) {
         updateData.badges = badges;
       }
-      if (onboardingCompleted !== undefined) {
-        updateData.onboardingCompleted = onboardingCompleted;
-      }
       if (birthDate !== undefined) {
         updateData.birthDate = birthDate;
+      }
+      if (rewards !== undefined) {
+        updateData.rewards = rewards;
+      }
+      if (activityParticipationCount !== undefined) {
+        updateData.activityParticipationCount = activityParticipationCount;
+      }
+      if (certificationPosts !== undefined) {
+        updateData.certificationPosts = certificationPosts;
+      }
+      if (reportCount !== undefined) {
+        updateData.reportCount = reportCount;
+      }
+      if (suspensionReason !== undefined) {
+        updateData.suspensionReason = suspensionReason;
+      }
+      if (suspensionStartAt !== undefined) {
+        updateData.suspensionStartAt = suspensionStartAt;
+      }
+      if (suspensionEndAt !== undefined) {
+        updateData.suspensionEndAt = suspensionEndAt;
       }
 
       if (Object.keys(updateData).length === 0) {

@@ -1,19 +1,49 @@
 #!/usr/bin/env node
 
 /**
- * 개발용 Firebase ID 토큰 발급 스크립트 (에뮬레이터 환경)
+ * Firebase ID 토큰 발급 스크립트
+ * 
  * Usage:
- *   node be/functions/src/scripts/getDevToken.js [userId]
- *   node be/functions/src/scripts/getDevToken.js --uid=test-user-123
+ *   # 에뮬레이터 모드 (기본)
+ *   node src/scripts/getIdToken.js <userId>
+ *   
+ *   # 프로덕션 모드
+ *   PRODUCTION=true node src/scripts/getIdToken.js <userId>
+ * 
+ * Examples:
+ *   node src/scripts/getIdToken.js test-user-123
+ *   PRODUCTION=true node src/scripts/getIdToken.js real-user-456
  */
+
+// .env 파일 로드
+try {
+  require('dotenv').config();
+} catch (_) {
+  // dotenv가 없어도 계속 진행
+}
+
 const admin = require('firebase-admin');
 
-// 에뮬레이터 환경 설정
-process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
-process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+// 환경 설정
+const isProduction = process.env.PRODUCTION === 'true';
+
+if (!isProduction) {
+  // 에뮬레이터 환경 설정
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+  console.log('🔧 에뮬레이터 모드');
+} else {
+  console.log('🚀 프로덕션 모드 (실제 Firebase 사용)');
+}
 
 if (!admin.apps.length) {
-  admin.initializeApp({ projectId: 'youthvoice-2025' });
+  if (isProduction) {
+    // 프로덕션: 서비스 계정 키 필요
+    admin.initializeApp();
+  } else {
+    // 에뮬레이터: projectId만 필요
+    admin.initializeApp({ projectId: 'youthvoice-2025' });
+  }
 }
 
 function parseArgs(argv) {
@@ -29,11 +59,17 @@ function parseArgs(argv) {
   return args;
 }
 
-async function getIdTokenFromCustomToken(customToken, uid) {
-  // 에뮬레이터에서 실제 ID Token 생성
-  const AUTH_EMULATOR_BASE = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1";
+async function getIdTokenFromCustomToken(customToken, uid, isProduction) {
+  // Auth API URL 설정
+  const AUTH_BASE = isProduction 
+    ? "https://identitytoolkit.googleapis.com/v1"
+    : "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1";
   
-  const response = await fetch(`${AUTH_EMULATOR_BASE}/accounts:signInWithCustomToken?key=fake-api-key`, {
+  const API_KEY = isProduction
+    ? process.env.WEB_API_KEY || "WEB_API_KEY"
+    : "fake-api-key";
+  
+  const response = await fetch(`${AUTH_BASE}/accounts:signInWithCustomToken?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -61,7 +97,7 @@ async function main() {
   }
 
   try {
-    console.log(`🔑 개발용 토큰 발급 중... (UID: ${uid})`);
+    console.log(`🔑 ID 토큰 발급 중... (UID: ${uid})`);
     
     // 1. 사용자 생성 또는 확인
     let userRecord;
@@ -70,14 +106,21 @@ async function main() {
       console.log(`✅ 기존 사용자 발견: ${uid}`);
     } catch (error) {
       if (error.code === 'auth/user-not-found') {
-        // 사용자가 없으면 생성
+        // 사용자 자동 생성 (에뮬레이터 & 프로덕션 모두)
+        const email = isProduction 
+          ? `${uid}@test.example.com`  // 프로덕션 테스트용
+          : `${uid}@dev.example.com`;  // 에뮬레이터
+          
         userRecord = await admin.auth().createUser({
           uid: uid,
-          email: `${uid}@dev.example.com`,
-          displayName: `Dev User ${uid}`,
+          email: email,
+          displayName: isProduction ? `Test User ${uid}` : `Dev User ${uid}`,
           emailVerified: true
         });
-        console.log(`✅ 새 사용자 생성: ${uid}`);
+        console.log(`✅ 새 사용자 생성: ${uid} (${email})`);
+        if (isProduction) {
+          console.warn(`⚠️  프로덕션에 테스트 사용자가 생성되었습니다`);
+        }
       } else {
         throw error;
       }
@@ -88,7 +131,7 @@ async function main() {
     console.log(`✅ Custom Token 생성 완료`);
 
     // 3. ID Token 발급
-    const idToken = await getIdTokenFromCustomToken(customToken, uid);
+    const idToken = await getIdTokenFromCustomToken(customToken, uid, isProduction);
     console.log(`✅ ID Token 발급 완료`);
 
     // 4. 결과 출력

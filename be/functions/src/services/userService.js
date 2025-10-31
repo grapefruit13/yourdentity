@@ -21,14 +21,13 @@ class UserService {
    * 온보딩 업데이트
    * - 허용 필드만 부분 업데이트
    * - 닉네임 중복 방지(트랜잭션)
-   * - 닉네임이 유효하면 onboardingCompleted=true
    * @param {Object} params
    * @param {string} params.uid - 사용자 ID
    * @param {Object} params.payload - 업데이트할 데이터
    * @param {string} params.payload.nickname - 닉네임 (필수)
    * @param {string} [params.payload.profileImageUrl] - 프로필 이미지 URL (선택)
    * @param {string} [params.payload.bio] - 자기소개 (선택)
-   * @return {Promise<{onboardingCompleted:boolean}>}
+   * @return {Promise<{status:string}>}
    */
   async updateOnboarding({uid, payload}) {
     // 1) 현재 사용자 문서 조회
@@ -68,14 +67,13 @@ class UserService {
     // 5) 온보딩 완료 처리
     const userUpdate = {
       ...update,
-      onboardingCompleted: true,
       updatedAt: FieldValue.serverTimestamp(),
     };
 
     // 사용자 문서 업데이트
     await this.firestoreService.update(uid, userUpdate);
     
-    return {onboardingCompleted: true};
+    return {success: true};
   }
 
   /**
@@ -250,7 +248,6 @@ class UserService {
         nickname: "",
         authType: AUTH_TYPES.SNS,
         snsProvider: SNS_PROVIDERS.KAKAO,
-        onboardingCompleted: false,
         createdAt: FieldValue.serverTimestamp(),
         lastLogin: FieldValue.serverTimestamp(),
         ...update,
