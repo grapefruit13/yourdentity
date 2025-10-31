@@ -1,16 +1,16 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 
 interface CommunityButtonProps {
   onClick?: () => void;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-const CommunityButton: React.FC<CommunityButtonProps> = ({
+const CommunityButton = ({
   onClick,
   children = "커뮤니티 버튼",
-}) => {
+}: CommunityButtonProps) => {
   return (
     <button
       onClick={onClick}

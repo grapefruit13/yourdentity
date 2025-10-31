@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
 import TopBar from "@/components/shared/layouts/top-bar";
 /**
@@ -6,7 +7,7 @@ import TopBar from "@/components/shared/layouts/top-bar";
 export default function MainLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <div className="flex min-h-[100dvh] w-full flex-col items-center bg-white">

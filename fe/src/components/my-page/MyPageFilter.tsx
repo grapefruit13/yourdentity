@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Typography } from "@/components/shared/typography";
 import { cn } from "@/utils/shared/cn";
 
@@ -17,10 +16,7 @@ interface MyPageFilterProps {
  * @description 마이페이지 필터 컴포넌트
  * - 프로그램/미션 필터 버튼
  */
-const MyPageFilter: React.FC<MyPageFilterProps> = ({
-  activeFilter,
-  onFilterChange,
-}) => {
+const MyPageFilter = ({ activeFilter, onFilterChange }: MyPageFilterProps) => {
   const filters: { id: FilterType; label: string }[] = [
     { id: "program", label: "프로그램" },
     { id: "mission", label: "미션" },

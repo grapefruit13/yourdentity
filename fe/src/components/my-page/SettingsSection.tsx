@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ChevronRight } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 
@@ -10,11 +9,11 @@ interface SettingsItemProps {
   showArrow?: boolean;
 }
 
-const SettingsItem: React.FC<SettingsItemProps> = ({
+const SettingsItem = ({
   text,
   onClick,
   showArrow = false,
-}) => {
+}: SettingsItemProps) => {
   return (
     <button
       onClick={onClick}
@@ -33,7 +32,7 @@ interface SettingsSectionProps {
   items: SettingsItemProps[];
 }
 
-const SettingsSection: React.FC<SettingsSectionProps> = ({ title, items }) => {
+const SettingsSection = ({ title, items }: SettingsSectionProps) => {
   return (
     <div className="flex flex-col gap-2">
       <Typography

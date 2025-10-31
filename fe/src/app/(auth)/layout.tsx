@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import TopBar from "@/components/shared/layouts/top-bar";
 import { GuestGuard } from "@/contexts/shared/guard";
 
@@ -7,7 +8,7 @@ import { GuestGuard } from "@/contexts/shared/guard";
 export default function AuthLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <GuestGuard>

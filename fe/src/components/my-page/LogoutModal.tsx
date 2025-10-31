@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Modal from "@/components/shared/ui/modal";
 
 interface LogoutModalProps {
@@ -12,11 +11,7 @@ interface LogoutModalProps {
 /**
  * @description 로그아웃 확인 모달 컴포넌트
  */
-const LogoutModal: React.FC<LogoutModalProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-}) => {
+const LogoutModal = ({ isOpen, onClose, onConfirm }: LogoutModalProps) => {
   return (
     <Modal
       isOpen={isOpen}

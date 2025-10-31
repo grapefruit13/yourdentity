@@ -1,25 +1,25 @@
 "use client";
 
-import * as React from "react";
+import { useState, useCallback } from "react";
 import TextEditor from "@/components/shared/text-editor";
 
 const EditorDemoPage = () => {
-  const [title, setTitle] = React.useState("");
-  const [content, setContent] = React.useState("");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
 
-  const handleTitleChange = React.useCallback((value: string) => {
+  const handleTitleChange = useCallback((value: string) => {
     setTitle(value);
   }, []);
 
-  const handleContentChange = React.useCallback((value: string) => {
+  const handleContentChange = useCallback((value: string) => {
     setContent(value);
   }, []);
 
-  const handleImageUpload = React.useCallback((file: File): Promise<string> => {
+  const handleImageUpload = useCallback((file: File): Promise<string> => {
     return Promise.resolve(file.name);
   }, []);
 
-  const handleFileUpload = React.useCallback(
+  const handleFileUpload = useCallback(
     (file: File): Promise<string> | string => {
       // 파일 업로드 처리
       // 여기서 실제 업로드 로직 구현

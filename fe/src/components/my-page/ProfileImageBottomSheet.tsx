@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Camera, Image as ImageIcon } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
@@ -18,12 +17,12 @@ interface ProfileImageBottomSheetProps {
  * - 모바일: 카메라 촬영 + 앨범 선택
  * - PC: 파일 선택만
  */
-const ProfileImageBottomSheet: React.FC<ProfileImageBottomSheetProps> = ({
+const ProfileImageBottomSheet = ({
   isOpen,
   onClose,
   onSelectCamera,
   onSelectGallery,
-}) => {
+}: ProfileImageBottomSheetProps) => {
   const isMobile = useIsMobile();
 
   const handleCameraClick = () => {

@@ -1,13 +1,12 @@
 "use client";
 
-import React from "react";
 import { UserImage } from "@/types/community";
 
 interface UserImageCarouselProps {
   images: UserImage[];
 }
 
-const UserImageCarousel: React.FC<UserImageCarouselProps> = ({ images }) => {
+const UserImageCarousel = ({ images }: UserImageCarouselProps) => {
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {images.map((imageData) => (

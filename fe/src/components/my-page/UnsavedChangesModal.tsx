@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Modal from "@/components/shared/ui/modal";
 
 interface UnsavedChangesModalProps {
@@ -13,11 +12,11 @@ interface UnsavedChangesModalProps {
  * @description 변경사항 저장 확인 모달 컴포넌트
  * 프로필 편집 중 뒤로가기 시 표시
  */
-const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
+const UnsavedChangesModal = ({
   isOpen,
   onClose,
   onConfirm,
-}) => {
+}: UnsavedChangesModalProps) => {
   return (
     <Modal
       isOpen={isOpen}

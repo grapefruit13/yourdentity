@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   mainShareOptionsConfig,
   additionalShareOptions,
@@ -16,12 +16,12 @@ interface ShareModalProps {
   postUrl?: string;
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({
+const ShareModal = ({
   isOpen,
   onClose,
   postTitle = "커뮤니티 포스트",
   postUrl = "https://youthvoice.vake.io/sharing/4...",
-}) => {
+}: ShareModalProps) => {
   const [isCopied, setIsCopied] = useState(false);
 
   if (!isOpen) return null;

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React from "react";
+import { useState, useCallback } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import {
@@ -29,7 +29,7 @@ const MAX_FILES = 5;
  */
 const Page = () => {
   const { mutate, isPending } = usePostCommunitiesPostsById();
-  const [isAuthGuideOpen, setIsAuthGuideOpen] = React.useState(false);
+  const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
 
   const COMMUNITY_ID = "CP:VYTTZW33IH";
 
@@ -45,15 +45,15 @@ const Page = () => {
   });
 
   const selectedCategory = watch("category");
-  const [isCategorySheetOpen, setIsCategorySheetOpen] = React.useState(false);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
 
-  const [attachFiles, setAttachFiles] = React.useState<File[]>([]);
+  const [attachFiles, setAttachFiles] = useState<File[]>([]);
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
-  const [fileQueue, setFileQueue] = React.useState<
+  const [fileQueue, setFileQueue] = useState<
     Array<{ clientId: string; file: File }>
   >([]);
   // 제출 시 일괄 업로드할 이미지 큐 (clientId와 함께 보관)
-  const [imageQueue, setImageQueue] = React.useState<
+  const [imageQueue, setImageQueue] = useState<
     Array<{ clientId: string; file: File }>
   >([]);
 
@@ -85,7 +85,7 @@ const Page = () => {
   /**
    * 이미지 선택 시 clientId를 발급/등록하고 반환 (즉시 업로드는 하지 않음)
    */
-  const registerImage = React.useCallback(
+  const registerImage = useCallback(
     (file: File): string => {
       if (imageQueue.length >= MAX_FILES) {
         alert(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
@@ -101,7 +101,7 @@ const Page = () => {
   /**
    * 단일 일반 파일 추가 (clientId 발급 후 큐/목록에 등록)
    */
-  const addAttachFile = React.useCallback(
+  const addAttachFile = useCallback(
     (file: File): string => {
       const clientId = crypto.randomUUID();
       const merged = dedupeFiles([...attachFiles, file]);
@@ -126,7 +126,7 @@ const Page = () => {
   /**
    * 파일 큐를 한 번에 업로드하고 clientId 매핑을 반환
    */
-  const uploadQueuedFiles = React.useCallback(async () => {
+  const uploadQueuedFiles = useCallback(async () => {
     if (!fileQueue.length)
       return {
         byIdToPath: new Map<string, string>(),
@@ -185,7 +185,7 @@ const Page = () => {
   /**
    * 이미지 큐를 한 번에 업로드하고 clientId 매핑을 반환
    */
-  const uploadQueuedImages = React.useCallback(async () => {
+  const uploadQueuedImages = useCallback(async () => {
     if (!imageQueue.length)
       return {
         byIdToPath: new Map<string, string>(),
@@ -257,7 +257,7 @@ const Page = () => {
    * - 제목/내용 유효성 검사 후 첨부 파일 업로드 → 글 등록까지 수행
    * - 실패 시 업로드된 파일들 롤백 삭제
    */
-  const onSubmit = React.useCallback(
+  const onSubmit = useCallback(
     async (values: WriteFormValues) => {
       const trimmedTitle = values.title.trim();
       const hasContent = (() => {

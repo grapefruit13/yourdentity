@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CommunityPost } from "@/types/community";
 import { cn } from "@/utils/shared/cn";
@@ -11,7 +12,7 @@ interface CommunityDetailProps {
   post: CommunityPost;
 }
 
-const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
+const CommunityDetail = ({ post }: CommunityDetailProps) => {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -71,7 +72,7 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ post }) => {
   };
 
   // 댓글 제출 핸들러
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (comment.trim()) {
       debug.log("댓글 제출:", comment);
