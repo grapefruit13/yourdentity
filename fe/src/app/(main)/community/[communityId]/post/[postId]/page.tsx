@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CommunityDetail from "@/components/community/CommunityDetail";
-import { samplePosts } from "@/constants/community/sampleData";
 import { useGetCommunityPostDetail } from "@/hooks/community/useGetCommunityPostDetail";
 import { CommunityPost } from "@/types/community";
 import { GETCommunityPostDetailRes } from "@/types/community/response";
@@ -54,48 +52,13 @@ const CommunityDetailPage = () => {
   const communityId = params.communityId as string;
   const postId = params.postId as string;
 
-  const { data, isLoading, error } = useGetCommunityPostDetail({
+  const { data, isLoading, isSuccess, error } = useGetCommunityPostDetail({
     communityId,
     postId,
   });
 
-  // API 에러 시 샘플 데이터로 폴백
-  const [fallbackPost, setFallbackPost] = useState<CommunityPost | null>(null);
-
-  useEffect(() => {
-    if (error) {
-      console.log("API 에러 발생, 샘플 데이터로 폴백 시도:", {
-        error,
-        postId,
-        communityId,
-      });
-      // API 에러 시 샘플 데이터에서 해당 postId와 communityId 찾기
-      const foundPost = samplePosts.find(
-        (p) => p.id === postId && p.communityId === communityId
-      );
-      console.log("찾은 샘플 데이터:", foundPost);
-      if (foundPost) {
-        setFallbackPost(foundPost);
-      } else {
-        console.warn("해당하는 샘플 데이터를 찾을 수 없음:", {
-          postId,
-          communityId,
-        });
-        // 첫 번째 샘플 데이터라도 사용
-        if (samplePosts.length > 0) {
-          setFallbackPost(samplePosts[0]);
-        }
-      }
-    }
-  }, [error, postId, communityId]);
-
-  // API 데이터를 기존 타입으로 변환
-  const apiPost = data?.data
-    ? transformApiDataToCommunityPost(data.data, communityId)
-    : null;
-
-  // API 성공 시 API 데이터, 에러 시 폴백 데이터 사용
-  const post = apiPost || fallbackPost;
+  const post =
+    isSuccess && transformApiDataToCommunityPost(data.data, communityId);
 
   if (isLoading) {
     return (
@@ -113,12 +76,12 @@ const CommunityDetailPage = () => {
         <div className="flex flex-col items-center justify-center py-8">
           <div className="mb-4 text-gray-500">
             {error
-              ? "포스트를 불러오는 중 오류가 발생했습니다. 샘플 데이터를 표시합니다."
+              ? "포스트를 불러오는 중 오류가 발생했습니다."
               : "포스트를 찾을 수 없습니다."}
           </div>
           {error && (
             <div className="mb-4 text-sm text-gray-400">
-              API 서버 연결 실패: {error.message || "알 수 없는 오류"}
+              {error.message || "알 수 없는 오류"}
             </div>
           )}
           <button
