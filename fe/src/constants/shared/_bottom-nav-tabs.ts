@@ -17,7 +17,7 @@ export const BOTTOM_NAV_TABS = [
   // },
   {
     key: "community" as const,
-    label: "커뮤니티",
+    label: "피드",
     href: LINK_URL.COMMUNITY,
     icon: IMAGE_URL.ICON.community.url,
   },
