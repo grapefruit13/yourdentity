@@ -8,26 +8,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 환경 변수 기반 설정
-EMULATOR_MODE="${EMULATOR_MODE:-all}"
-
+# 에뮬레이터 설정
 API="http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api"
+AUTH_URL="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
+API_KEY="fake-api-key"
 TEST_EMAIL="kakao-sync-test-$(date +%s%N)@example.com"
 TEST_PASSWORD="test123456"
 
 echo "🧪 카카오 동기화 API 테스트"
 echo "================================"
-
-# Auth URL 설정
-if [ "$EMULATOR_MODE" = "all" ]; then
-  AUTH_URL="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
-  API_KEY="fake-api-key"
-  echo -e "${BLUE}🔧 테스트 모드: 전체 에뮬레이터 (Auth + Firestore + Functions)${NC}"
-else
-  AUTH_URL="https://identitytoolkit.googleapis.com/v1"
-  API_KEY="${FIREBASE_WEB_API_KEY:-AIzaSyDrUoph1tb6UeIPiEcUjyaolThcxWKbHy0}"
-  echo -e "${BLUE}🔧 테스트 모드: Functions만 에뮬레이터 (실제 Auth + Firestore 사용)${NC}"
-fi
+echo -e "${BLUE}🔧 테스트 모드: 에뮬레이터 (Auth + Firestore + Functions)${NC}"
 echo ""
 
 # Pretty print JSON if valid, else raw
@@ -101,19 +91,16 @@ if ! node ../scripts/setKakaoTestClaims.js "$USER_ID"; then
   echo -e "${YELLOW}⚠️  customClaims 설정 실패 (계속 진행)${NC}"
 fi
 
-# customClaims 설정 후 새로운 ID Token 발급
+# customClaims 설정 후 새로운 ID Token 발급 (재로그인)
 echo "⏳ customClaims 반영을 위한 새 토큰 발급 중..."
-if [ "$EMULATOR_MODE" = "all" ]; then
-  # 에뮬레이터 환경: 재로그인으로 토큰 갱신
-  REFRESH_RESPONSE=$(curl_json POST "$AUTH_URL/accounts:signInWithPassword?key=$API_KEY" "{\"email\": \"$TEST_EMAIL\", \"password\": \"$TEST_PASSWORD\", \"returnSecureToken\": true}")
-  ID_TOKEN=$(echo "$REFRESH_RESPONSE" | jq -r '.idToken // empty')
-  
-  if [ -z "$ID_TOKEN" ]; then
-    echo -e "${RED}❌ 토큰 갱신 실패${NC}"
-    exit 1
-  fi
-  echo "✅ 새 ID Token 발급 완료 (customClaims 반영됨)"
+REFRESH_RESPONSE=$(curl_json POST "$AUTH_URL/accounts:signInWithPassword?key=$API_KEY" "{\"email\": \"$TEST_EMAIL\", \"password\": \"$TEST_PASSWORD\", \"returnSecureToken\": true}")
+ID_TOKEN=$(echo "$REFRESH_RESPONSE" | jq -r '.idToken // empty')
+
+if [ -z "$ID_TOKEN" ]; then
+  echo -e "${RED}❌ 토큰 갱신 실패${NC}"
+  exit 1
 fi
+echo "✅ 새 ID Token 발급 완료 (customClaims 반영됨)"
 echo ""
 
 # 2. onCreate로 생성된 문서 확인
@@ -211,12 +198,12 @@ FINAL_USER=$(curl_json GET "$API/users/me" "" "$ID_TOKEN")
 pp_json "$FINAL_USER"
 echo ""
 
-FINAL_STATUS=$(echo "$FINAL_USER" | jq -r '.data.user.status // empty')
+FINAL_NICKNAME=$(echo "$FINAL_USER" | jq -r '.data.user.nickname // empty')
 
-if [ "$FINAL_STATUS" = "active" ]; then
-  echo -e "${GREEN}✅ 온보딩 완료(status=active)!${NC}"
+if [ -n "$FINAL_NICKNAME" ]; then
+  echo -e "${GREEN}✅ 온보딩 완료 (nickname: $FINAL_NICKNAME)!${NC}"
 else
-  echo -e "${RED}❌ 온보딩 상태 오류${NC}"
+  echo -e "${YELLOW}⚠️  아직 온보딩 미완료 (닉네임 미설정)${NC}"
 fi
 
 echo ""

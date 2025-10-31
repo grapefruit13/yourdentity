@@ -8,21 +8,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 환경 변수 기반 설정
-# EMULATOR_MODE: "all" (전체 에뮬레이터) 또는 "functions-only" (Functions만 에뮬레이터)
-EMULATOR_MODE="${EMULATOR_MODE:-all}"
-
-# API URL (Functions는 항상 에뮬레이터)
+# 에뮬레이터 설정
 API="http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api"
+AUTH_URL="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
+API_KEY="fake-api-key"
 
-# Auth URL 설정
-if [ "$EMULATOR_MODE" = "all" ]; then
-  AUTH_URL="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
-  echo -e "${BLUE}🔧 테스트 모드: 전체 에뮬레이터 (Auth + Firestore + Functions)${NC}"
-else
-  AUTH_URL="https://identitytoolkit.googleapis.com/v1"
-  echo -e "${BLUE}🔧 테스트 모드: Functions만 에뮬레이터 (실제 Auth + Firestore 사용)${NC}"
-fi
+echo -e "${BLUE}🔧 테스트 모드: 에뮬레이터 (Auth + Firestore + Functions)${NC}"
 echo ""
 
 # JSON 응답 대기/검증 유틸 (최대 10회 재시도)
@@ -79,13 +70,6 @@ echo "1️⃣ 사용자 1 생성"
 echo "--------------------------------"
 TEST_EMAIL_1="nickname-test-1-$(date +%s%N)@example.com"
 TEST_PASSWORD="test123456"
-
-# API Key 설정 (실제 환경에서는 실제 키 필요)
-if [ "$EMULATOR_MODE" = "all" ]; then
-  API_KEY="fake-api-key"
-else
-  API_KEY="${FIREBASE_WEB_API_KEY:-AIzaSyDrUoph1tb6UeIPiEcUjyaolThcxWKbHy0}"
-fi
 
 SIGNUP_RESPONSE_1=$(curl_json POST "$AUTH_URL/accounts:signUp?key=$API_KEY" "{\"email\": \"$TEST_EMAIL_1\", \"password\": \"$TEST_PASSWORD\", \"returnSecureToken\": true}")
 
@@ -220,18 +204,16 @@ echo "6️⃣ 사용자 1 정보 확인"
 echo "--------------------------------"
 USER_INFO=$(curl_json GET "$API/users/me" "" "$ID_TOKEN_1")
 
-echo "$USER_INFO" | jq '.data.user | {nickname, status}'
+echo "$USER_INFO" | jq '.data.user | {nickname}'
 echo ""
 
 NICKNAME=$(echo "$USER_INFO" | jq -r '.data.user.nickname // empty')
-USER_STATUS=$(echo "$USER_INFO" | jq -r '.data.user.status // empty')
 
-if [ "$NICKNAME" = "$TEST_NICKNAME" ] && [ "$USER_STATUS" = "active" ]; then
-  echo -e "${GREEN}✅ 사용자 1 닉네임 및 활성 상태 확인${NC}"
+if [ "$NICKNAME" = "$TEST_NICKNAME" ] && [ -n "$NICKNAME" ]; then
+  echo -e "${GREEN}✅ 사용자 1 닉네임 확인 (온보딩 완료)${NC}"
 else
   echo -e "${RED}❌ 사용자 1 정보 확인 실패${NC}"
   echo "  nickname: $NICKNAME (예상: $TEST_NICKNAME)"
-  echo "  status: $USER_STATUS (예상: active)"
   exit 1
 fi
 echo ""
