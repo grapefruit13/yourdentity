@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/utils/shared/cn";
 
 interface BottomSheetProps {
@@ -9,7 +10,7 @@ interface BottomSheetProps {
   /** 바텀시트 닫기 핸들러 */
   onClose: () => void;
   /** 바텀시트 콘텐츠 */
-  children: React.ReactNode;
+  children: ReactNode;
   /** 추가 클래스명 (선택) */
   className?: string;
 }
@@ -20,12 +21,12 @@ interface BottomSheetProps {
  * - 오버레이 클릭 시 닫힘
  * - 애니메이션 포함
  */
-const BottomSheet: React.FC<BottomSheetProps> = ({
+const BottomSheet = ({
   isOpen,
   onClose,
   children,
   className,
-}) => {
+}: BottomSheetProps) => {
   const previousOverflow = useRef<string>("");
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);

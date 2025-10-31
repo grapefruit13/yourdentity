@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { User } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
@@ -28,7 +27,7 @@ interface MyPageProfileSectionProps {
  * - 통계 정보 (인증 글, 활동 참여, 포인트)
  * - 프로필 편집 버튼
  */
-const MyPageProfileSection: React.FC<MyPageProfileSectionProps> = ({
+const MyPageProfileSection = ({
   profileImageUrl,
   nickname,
   bio,
@@ -36,7 +35,7 @@ const MyPageProfileSection: React.FC<MyPageProfileSectionProps> = ({
   activityCount,
   points,
   onEditClick,
-}) => {
+}: MyPageProfileSectionProps) => {
   return (
     <div className="flex flex-col bg-white px-4 pt-3 pb-4">
       {/* 상단: 프로필 이미지 + 통계 정보 */}

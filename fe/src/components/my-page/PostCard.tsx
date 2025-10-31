@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Heart, MessageCircle, User } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 
@@ -28,7 +27,7 @@ interface PostCardProps {
 /**
  * @description 마이페이지 게시글 카드 컴포넌트
  */
-const PostCard: React.FC<PostCardProps> = ({
+const PostCard = ({
   imageUrl,
   title,
   description,
@@ -37,7 +36,7 @@ const PostCard: React.FC<PostCardProps> = ({
   likeCount,
   commentCount,
   onClick,
-}) => {
+}: PostCardProps) => {
   return (
     <div
       onClick={onClick}

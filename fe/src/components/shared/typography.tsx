@@ -28,6 +28,9 @@ const VARIANT_MAP = {
   caption2B: { size: "11", weight: "bold" },
   caption2M: { size: "11", weight: "medium" },
   caption2R: { size: "11", weight: "regular" },
+  body3B: { size: "13", weight: "bold" },
+  body3M: { size: "13", weight: "medium" },
+  body3R: { size: "13", weight: "regular" },
   label1B: { size: "12", weight: "bold" },
   label1M: { size: "12", weight: "medium" },
   label1R: { size: "12", weight: "regular" },
@@ -45,6 +48,7 @@ const typographyVariants = cva("whitespace-pre-line text-wrap leading-[1.5]", {
     size: {
       "11": "text-[11px]",
       "12": "text-xs",
+      "13": "text-[13px]",
       "14": "text-sm",
       "16": "text-base",
       "18": "text-lg",
@@ -81,6 +85,7 @@ export type TypographyProps = {
   size?:
     | "11"
     | "12"
+    | "13"
     | "14"
     | "16"
     | "18"

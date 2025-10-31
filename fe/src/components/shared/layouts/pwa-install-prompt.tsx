@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { usePwaInstall } from "@/hooks/shared/usePwaInstall";
@@ -20,7 +20,7 @@ const PwaInstallPrompt = () => {
   const { isInstallable, isInstalled, promptInstall } = usePwaInstall();
   const { isOpen, open, close } = useToggle();
 
-  React.useEffect(() => {
+  useEffect(() => {
     // 이미 설치되었거나 설치 불가능한 경우 표시하지 않음
     if (isInstalled || !isInstallable) {
       return;

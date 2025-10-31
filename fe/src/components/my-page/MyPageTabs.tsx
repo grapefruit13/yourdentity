@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Typography } from "@/components/shared/typography";
 import { cn } from "@/utils/shared/cn";
 
@@ -17,7 +16,7 @@ interface MyPageTabsProps {
  * @description 마이페이지 탭 컴포넌트
  * - 게시글, 댓글 남긴 글, 좋아요 탭
  */
-const MyPageTabs: React.FC<MyPageTabsProps> = ({ activeTab, onTabChange }) => {
+const MyPageTabs = ({ activeTab, onTabChange }: MyPageTabsProps) => {
   const tabs: { id: TabType; label: string }[] = [
     { id: "posts", label: "게시글" },
     { id: "comments", label: "댓글 남긴 글" },

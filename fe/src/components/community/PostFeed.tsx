@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useRouter } from "next/navigation";
 import { CommunityPost } from "@/types/community";
 import { cn } from "@/utils/shared/cn";
@@ -10,7 +9,7 @@ interface PostFeedProps {
   onPostClick?: (post: CommunityPost) => void;
 }
 
-const PostFeed: React.FC<PostFeedProps> = ({ posts, onPostClick }) => {
+const PostFeed = ({ posts, onPostClick }: PostFeedProps) => {
   const router = useRouter();
 
   const getCategoryColor = (category: string) => {

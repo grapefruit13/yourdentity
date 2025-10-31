@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
+import type { ReactNode } from "react";
 import { Typography } from "@/components/shared/typography";
 
 interface ModalProps {
@@ -11,7 +12,7 @@ interface ModalProps {
   /** 모달 설명 (선택) */
   description?: string;
   /** 추가 콘텐츠 (선택, 예: input 필드) */
-  children?: React.ReactNode;
+  children?: ReactNode;
   /** 확인 버튼 텍스트 */
   confirmText: string;
   /** 취소 버튼 텍스트 */
@@ -32,7 +33,7 @@ interface ModalProps {
  * - 모달 카드: 흰색 배경, 둥근 모서리
  * - 버튼: variant에 따라 primary(핑크) 또는 danger(빨강) 스타일
  */
-const Modal: React.FC<ModalProps> = ({
+const Modal = ({
   isOpen,
   title,
   description,
@@ -43,7 +44,7 @@ const Modal: React.FC<ModalProps> = ({
   onClose,
   confirmDisabled = false,
   variant = "primary",
-}) => {
+}: ModalProps) => {
   const previousOverflow = useRef<string>("");
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 

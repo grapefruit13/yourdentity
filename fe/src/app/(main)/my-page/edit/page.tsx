@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, User } from "lucide-react";
 import ProfileImageBottomSheet from "@/components/my-page/ProfileImageBottomSheet";
@@ -69,7 +69,7 @@ const ProfileEditPage = () => {
   };
 
   // 파일 선택 처리 핸들러
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 

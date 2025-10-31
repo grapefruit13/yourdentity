@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { Typography } from "../typography";
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
   /** 다이얼로그 설명 (선택) */
   description?: string;
   /** 다이얼로그 내부에 렌더링할 버튼/콘텐츠 (확인/취소 버튼 등) */
-  children: React.ReactNode;
+  children: ReactNode;
   /** 닫기 핸들러 (children 내부 버튼에서 호출) */
   onClose?: () => void;
 }

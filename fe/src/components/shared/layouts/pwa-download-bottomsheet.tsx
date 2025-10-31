@@ -1,6 +1,7 @@
 "use client";
 
-import * as React from "react";
+import { useState, useRef, useEffect } from "react";
+import type { MouseEvent, TouchEvent } from "react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { cn } from "@/utils/shared/cn";
@@ -21,19 +22,19 @@ const PwaDownloadBottomSheet = ({
   onClose,
   onInstall,
 }: PwaDownloadBottomSheetProps) => {
-  const [mounted, setMounted] = React.useState(false);
-  const [isAnimating, setIsAnimating] = React.useState(false);
-  const sheetRef = React.useRef<HTMLDivElement>(null);
-  const dragStartY = React.useRef<number>(0);
-  const currentTranslateY = React.useRef<number>(0);
-  const isDragging = React.useRef<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number>(0);
+  const currentTranslateY = useRef<number>(0);
+  const isDragging = useRef<boolean>(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setIsAnimating(true);
       document.body.style.overflow = "hidden";
@@ -46,12 +47,12 @@ const PwaDownloadBottomSheet = ({
     }
   }, [isOpen]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = (e: TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
     isDragging.current = true;
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: TouchEvent) => {
     if (!isDragging.current || !sheetRef.current) return;
 
     const currentY = e.touches[0].clientY;
@@ -79,7 +80,7 @@ const PwaDownloadBottomSheet = ({
     currentTranslateY.current = 0;
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
+  const handleBackdropClick = (e: MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
