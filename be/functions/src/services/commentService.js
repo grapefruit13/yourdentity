@@ -409,18 +409,6 @@ class CommentService {
         throw error;
       }
 
-      // 트랜잭션 전에 남은 댓글 수 확인
-      const remainingCommentsQuery = await this.firestoreService.db
-        .collection("comments")
-        .where("postId", "==", comment.postId)
-        .where("userId", "==", userId)
-        .get();
-      
-      // 현재 삭제할 댓글을 제외한 남은 댓글 수
-      const remainingCount = remainingCommentsQuery.docs.filter(
-        doc => doc.id !== commentId
-      ).length;
-
       await this.firestoreService.runTransaction(async (transaction) => {
         const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
         const postRef = this.firestoreService.db.collection(
@@ -429,6 +417,17 @@ class CommentService {
         const commentedPostRef = this.firestoreService.db.collection(
           `users/${userId}/commentedPosts`
         ).doc(comment.postId);
+
+        const remainingSnapshot = await transaction.get(
+          this.firestoreService.db
+            .collection("comments")
+            .where("postId", "==", comment.postId)
+            .where("userId", "==", userId)
+        );
+        
+        const remainingCount = remainingSnapshot.docs.filter(
+          (doc) => doc.id !== commentId
+        ).length;
 
         // 댓글 실제 삭제
         transaction.delete(commentRef);
