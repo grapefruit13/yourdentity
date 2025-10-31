@@ -1,7 +1,5 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
-const {USER_STATUS} = require("../constants/userConstants");
-// const {AUTH_TYPES} = require("../constants/userConstants");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
@@ -82,7 +80,7 @@ class UserController {
         payload: {nickname, profileImageUrl, bio},
       });
 
-      return res.success({status: result.status});
+      return res.success(result);
     } catch (error) {
       return next(error);
     }
@@ -98,7 +96,7 @@ class UserController {
         name, profileImageUrl, birthDate, level, badges,
         mainProfileId, uploadQuotaBytes,
         usedStorageBytes,
-        rewards, status,
+        rewards,
         activityParticipationCount, certificationPosts, reportCount,
         suspensionReason,
         suspensionStartAt, suspensionEndAt,
@@ -133,9 +131,6 @@ class UserController {
       }
       if (rewards !== undefined) {
         updateData.rewards = rewards;
-      }
-      if (status !== undefined) {
-        updateData.status = status;
       }
       if (activityParticipationCount !== undefined) {
         updateData.activityParticipationCount = activityParticipationCount;

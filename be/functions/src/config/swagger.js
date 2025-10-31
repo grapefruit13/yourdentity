@@ -121,12 +121,6 @@ const options = {
               description: "사용자 권한",
               example: "user",
             },
-            status: {
-              type: "string",
-              enum: ["pending", "active", "suspended"],
-              description: "사용자 상태",
-              example: "active",
-            },
             phoneNumber: {
               type: "string",
               description: "휴대전화 번호",

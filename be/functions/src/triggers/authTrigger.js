@@ -1,5 +1,5 @@
 const {admin, FieldValue} = require("../config/database");
-const {AUTH_TYPES, SNS_PROVIDERS, USER_STATUS, DEFAULT_UPLOAD_QUOTA_BYTES} = require("../constants/userConstants");
+const {AUTH_TYPES, SNS_PROVIDERS, DEFAULT_UPLOAD_QUOTA_BYTES} = require("../constants/userConstants");
 
 // Auth Triggers은 1세대 Functions 사용 (현재 파일에서 관리)
 const functions = require("firebase-functions");
@@ -46,9 +46,6 @@ exports.createUserDocument = functions
           // 인증 정보
           authType: AUTH_TYPES.SNS,
           snsProvider: SNS_PROVIDERS.KAKAO,
-
-          // 사용자 상태
-          status: USER_STATUS.PENDING,
 
           // 리워드 시스템
           level: 1,

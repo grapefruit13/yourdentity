@@ -4,7 +4,7 @@ const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
-const {AUTH_TYPES, SNS_PROVIDERS, USER_STATUS} = require("../constants/userConstants");
+const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -67,15 +67,13 @@ class UserService {
     // 5) 온보딩 완료 처리
     const userUpdate = {
       ...update,
-      // 온보딩 완료 시 상태 전환
-      status: USER_STATUS.ACTIVE,
       updatedAt: FieldValue.serverTimestamp(),
     };
 
     // 사용자 문서 업데이트
     await this.firestoreService.update(uid, userUpdate);
     
-    return {status: USER_STATUS.ACTIVE};
+    return {success: true};
   }
 
   /**
