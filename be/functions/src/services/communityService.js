@@ -664,6 +664,18 @@ class CommunityService {
       const result = await postsService.create(newPost);
       const postId = result.id;
 
+      if (newPost.type === "ROUTINE_CERT" || newPost.type === "GATHERING_REVIEW" || newPost.type === "TMI") {
+        try {
+          const userRef = this.firestoreService.db.collection("users").doc(userId);
+          await userRef.update({
+            certificationPosts: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } catch (error) {
+          console.error("certificationPosts 카운트 증가 실패:", error);
+        }
+      }
+
       const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
       
       return {
@@ -881,6 +893,18 @@ class CommunityService {
       }
 
       await postsService.delete(postId);
+
+      if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
+        try {
+          const userRef = this.firestoreService.db.collection("users").doc(userId);
+          await userRef.update({
+            certificationPosts: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } catch (error) {
+          console.error("certificationPosts 카운트 감소 실패:", error);
+        }
+      }
     } catch (error) {
       console.error("Delete post error:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
