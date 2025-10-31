@@ -108,6 +108,39 @@ class UserService {
   }
 
   /**
+   * 마이페이지 정보 조회
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<Object>} 마이페이지 정보
+   */
+  async getMyPage(uid) {
+    try {
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        const e = new Error("사용자를 찾을 수 없습니다");
+        e.code = "NOT_FOUND";
+        throw e;
+      }
+
+      return {
+        activityParticipationCount: user.activityParticipationCount || 0,
+        certificationPosts: user.certificationPosts || 0,
+        rewardPoints: user.rewardPoints || 0,
+        name: user.name || "",
+        profileImageUrl: user.profileImageUrl || "",
+        bio: user.bio || "",
+      };
+    } catch (error) {
+      console.error("마이페이지 조회 에러:", error.message);
+      if (error.code === "NOT_FOUND") {
+        throw error;
+      }
+      const e = new Error("마이페이지 정보를 조회할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
+    }
+  }
+
+  /**
    * 사용자 정보 업데이트 (관리자용)
    * - 모든 필드 업데이트 가능
    * @param {string} uid - 사용자 ID

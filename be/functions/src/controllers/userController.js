@@ -222,6 +222,19 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 마이페이지 정보 조회 API
+   */
+  async getMyPage(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const myPageData = await userService.getMyPage(uid);
+      return res.success(myPageData);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();

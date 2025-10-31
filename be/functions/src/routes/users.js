@@ -232,6 +232,68 @@ router.get("/me", authGuard, userController.getMe);
 
 /**
  * @swagger
+ * /users/me/my-page:
+ *   get:
+ *     summary: 마이페이지 정보 조회
+ *     description: 인증된 사용자의 마이페이지 정보를 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 마이페이지 정보 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     activityParticipationCount:
+ *                       type: number
+ *                       example: 5
+ *                     certificationPosts:
+ *                       type: number
+ *                       example: 10
+ *                     rewardPoints:
+ *                       type: number
+ *                       example: 500
+ *                     name:
+ *                       type: string
+ *                       example: 홍길동
+ *                     profileImageUrl:
+ *                       type: string
+ *                       example: https://example.com/profile.jpg
+ *                     bio:
+ *                       type: string
+ *                       example: 안녕하세요!
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/me/my-page", authGuard, userController.getMyPage);
+
+/**
+ * @swagger
  * /users/nickname-availability:
  *   get:
  *     summary: 닉네임 가용성 확인
