@@ -6,7 +6,8 @@ import { CommunityPost } from "@/types/community";
  */
 export const samplePosts: CommunityPost[] = [
   {
-    id: "1",
+    id: "AMrsQRg9tBY0ZGJMbKG2",
+    communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
       name: "유어123",
@@ -24,7 +25,8 @@ export const samplePosts: CommunityPost[] = [
     thumbnail: "/imgs/mockup.jpg",
   },
   {
-    id: "2",
+    id: "jpb8WjP7poOmI07Z7tU8",
+    communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
       name: "유어123",
@@ -42,7 +44,8 @@ export const samplePosts: CommunityPost[] = [
     thumbnail: "/imgs/mockup2.jpg",
   },
   {
-    id: "3",
+    id: "45Sb6iETW1lNgyHBVS75",
+    communityId: "CP:ABC123DEF456",
     title: "오늘 하늘이 이뻤어요!",
     author: {
       name: "유어123",
