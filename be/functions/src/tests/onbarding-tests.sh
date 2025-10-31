@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # 스크립트 위치 기준으로 작업 디렉토리 이동
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || {
+  echo "❌ Error: Failed to change directory to script location" >&2
+  exit 1
+}
 
 # 환경 변수 설정
 # EMULATOR_MODE: "all" (전체 에뮬레이터) 또는 "functions-only" (Functions만 에뮬레이터)

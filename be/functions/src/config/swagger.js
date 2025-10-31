@@ -176,12 +176,6 @@ const options = {
               description: "사용 중인 스토리지 (바이트)",
               example: 52428800,
             },
-            status: {
-              type: "string",
-              enum: ["active", "inactive"],
-              description: "회원 상태",
-              example: "active",
-            },
             activityParticipationCount: {
               type: "number",
               description: "활동 참여 횟수",
