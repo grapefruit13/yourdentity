@@ -479,7 +479,6 @@ class FirestoreService {
       where = [],
     } = options;
 
-
     let query = db.collectionGroup(collectionId);
 
     // 필터 조건 적용
@@ -491,12 +490,10 @@ class FirestoreService {
       });
     }
 
-    // 정렬 적용
     const finalOrderBy = orderBy || "createdAt";
     const finalOrderDirection = orderDirection || "desc";
-    query = query.orderBy(finalOrderBy, finalOrderDirection).orderBy("id", "desc");
+    query = query.orderBy(finalOrderBy, finalOrderDirection);
 
-    // 페이지네이션 적용
     const safePage = isNaN(page) ? 0 : page;
     const safeSize = isNaN(size) ? 10 : size;
     const offset = safePage * safeSize;
@@ -507,16 +504,32 @@ class FirestoreService {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      items.push({
+      const item = {
         id: doc.id,
         ...data,
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
-      });
+      };
+
+      const pathSegments = doc.ref.path.split('/');
+      if (pathSegments.length >= 2 && pathSegments[0] === 'communities') {
+        item.communityId = pathSegments[1];
+      }
+
+      items.push(item);
     });
 
-    // 전체 개수 조회 (총 페이지 수 계산을 위해) - 임시로 간단하게 처리
-    const totalCount = items.length; // 현재 페이지의 아이템 수를 사용
+    let countQuery = db.collectionGroup(collectionId);
+    if (where && Array.isArray(where) && where.length > 0) {
+      where.forEach((condition) => {
+        if (condition && condition.field && condition.operator && condition.value !== undefined) {
+          countQuery = countQuery.where(condition.field, condition.operator, condition.value);
+        }
+      });
+    }
+    
+    const countSnapshot = await countQuery.count().get();
+    const totalCount = countSnapshot.data().count;
 
     const totalPages = Math.ceil(totalCount / safeSize);
     const hasNext = safePage < totalPages - 1;
