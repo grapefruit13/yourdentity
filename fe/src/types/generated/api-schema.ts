@@ -5,7 +5,6 @@ import type * as Schema from "./api-schema";
  * @description Swagger에서 자동 생성된 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
-
 // 기본 응답 타입
 export interface ApiResponse<T = any> {
   data: T;
@@ -24,7 +23,6 @@ export interface PaginationResponse {
   total: number;
   totalPages: number;
 }
-
 export interface User {
   uid?: string;
   name?: string;
