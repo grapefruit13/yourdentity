@@ -103,11 +103,12 @@ const Page = () => {
    */
   const addAttachFile = useCallback(
     (file: File): string => {
-      const clientId = crypto.randomUUID();
       const merged = dedupeFiles([...attachFiles, file]);
       if (merged.length > MAX_FILES) {
         alert(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        return "";
       }
+      const clientId = crypto.randomUUID();
       setAttachFiles(takeMax(merged));
       setFileQueue((prev) => [...prev, { clientId, file }]);
       return clientId;
