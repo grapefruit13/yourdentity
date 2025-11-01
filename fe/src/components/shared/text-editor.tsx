@@ -631,6 +631,10 @@ const TextEditor = ({
         const clientId = onImageUpload
           ? await Promise.resolve(onImageUpload(file))
           : undefined;
+
+        // clientId가 빈 문자열이면 이미지 추가 실패 (예: 최대 개수 초과)
+        if (clientId === "") return;
+
         const previewUrl = URL.createObjectURL(file);
         insertImageToEditor(previewUrl, clientId);
       } finally {
@@ -650,6 +654,10 @@ const TextEditor = ({
       const clientId = onFileUpload
         ? await Promise.resolve(onFileUpload(file))
         : undefined;
+
+      // clientId가 빈 문자열이면 파일 추가 실패 (예: 최대 개수 초과)
+      if (clientId === "") return;
+
       const fileUrl = URL.createObjectURL(file);
       insertFileToEditor(file.name, fileUrl, clientId);
 
