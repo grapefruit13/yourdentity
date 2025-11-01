@@ -68,8 +68,6 @@ import type * as Schema from "./api-schema";
  * @description Swagger에서 자동 생성된 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
-
-
 `;
 
   // 기본 타입들
@@ -91,7 +89,6 @@ export interface PaginationResponse {
   total: number;
   totalPages: number;
 }
-
 `;
 
   // 스키마 타입들 생성
