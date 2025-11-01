@@ -41,9 +41,6 @@ class CommunityController {
       const {
         type,
         filter,  // filter 파라미터 추가
-        channel,
-        communityId,
-        includeContent = false,
       } = req.query;
       const page = parseInt(req.query.page, 10) || 0;
       const size = parseInt(req.query.size, 10) || 10;
@@ -53,11 +50,8 @@ class CommunityController {
 
       const result = await communityService.getAllCommunityPosts({
         type: finalType,
-        channel,
-        communityId,
         page,
         size,
-        includeContent: includeContent === "true",
       });
 
       // data 객체 안에 posts 배열과 pagination 객체 분리
