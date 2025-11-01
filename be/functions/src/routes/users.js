@@ -331,9 +331,123 @@ router.get("/me/my-page", authGuard, userController.getMyPage);
  *                     posts:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/CommunityPost'
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "62u4J1Dgjs1k7soZ7ltD"
+ *                           author:
+ *                             type: string
+ *                             example: "익명"
+ *                           title:
+ *                             type: string
+ *                             example: "수정된 루틴 인증!"
+ *                           type:
+ *                             type: string
+ *                             example: "GATHERING_REVIEW"
+ *                           channel:
+ *                             type: string
+ *                             example: "독서 모임 후기"
+ *                           category:
+ *                             type: string
+ *                             example: "한끗루틴"
+ *                           scheduledDate:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-10-03T00:00:00.000Z"
+ *                           visibility:
+ *                             type: string
+ *                             example: "PUBLIC"
+ *                           isLocked:
+ *                             type: boolean
+ *                             example: false
+ *                           rewardGiven:
+ *                             type: boolean
+ *                             example: false
+ *                           likesCount:
+ *                             type: integer
+ *                             example: 0
+ *                           commentsCount:
+ *                             type: integer
+ *                             example: 0
+ *                           reportsCount:
+ *                             type: integer
+ *                             example: 0
+ *                           viewCount:
+ *                             type: integer
+ *                             example: 0
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T15:28:39.101Z"
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T15:28:39.101Z"
+ *                           community:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "CP:G7C66H69GK"
+ *                               name:
+ *                                 type: string
+ *                                 example: "독서 모임"
+ *                           timeAgo:
+ *                             type: string
+ *                             example: "1시간 전"
+ *                           communityPath:
+ *                             type: string
+ *                             example: "communities/CP:G7C66H69GK"
+ *                           preview:
+ *                             type: object
+ *                             properties:
+ *                               description:
+ *                                 type: string
+ *                                 example: "수정된 내용입니다!"
+ *                               thumbnail:
+ *                                 type: object
+ *                                 nullable: true
+ *                                 properties:
+ *                                   url:
+ *                                     type: string
+ *                                     example: "https://example.com/updated-image.jpg"
+ *                                   width:
+ *                                     type: integer
+ *                                     example: 1080
+ *                                   height:
+ *                                     type: integer
+ *                                     example: 1080
+ *                                   blurHash:
+ *                                     type: string
+ *                                     example: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                     pagination:
  *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                           example: 1
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 12
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 2
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: false
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: true
+ *                         isFirst:
+ *                           type: boolean
+ *                           example: false
+ *                         isLast:
+ *                           type: boolean
+ *                           example: true
  *       401:
  *         description: 인증 실패
  *       500:
@@ -380,9 +494,123 @@ router.get("/me/posts", authGuard, userController.getMyAuthoredPosts);
  *                     posts:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/CommunityPost'
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "62u4J1Dgjs1k7soZ7ltD"
+ *                           author:
+ *                             type: string
+ *                             example: "익명"
+ *                           title:
+ *                             type: string
+ *                             example: "수정된 루틴 인증!"
+ *                           type:
+ *                             type: string
+ *                             example: "GATHERING_REVIEW"
+ *                           channel:
+ *                             type: string
+ *                             example: "독서 모임 후기"
+ *                           category:
+ *                             type: string
+ *                             example: "한끗루틴"
+ *                           scheduledDate:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-10-03T00:00:00.000Z"
+ *                           visibility:
+ *                             type: string
+ *                             example: "PUBLIC"
+ *                           isLocked:
+ *                             type: boolean
+ *                             example: false
+ *                           rewardGiven:
+ *                             type: boolean
+ *                             example: false
+ *                           likesCount:
+ *                             type: integer
+ *                             example: 0
+ *                           commentsCount:
+ *                             type: integer
+ *                             example: 0
+ *                           reportsCount:
+ *                             type: integer
+ *                             example: 0
+ *                           viewCount:
+ *                             type: integer
+ *                             example: 0
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T15:28:39.101Z"
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T15:28:39.101Z"
+ *                           community:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "CP:G7C66H69GK"
+ *                               name:
+ *                                 type: string
+ *                                 example: "독서 모임"
+ *                           timeAgo:
+ *                             type: string
+ *                             example: "1시간 전"
+ *                           communityPath:
+ *                             type: string
+ *                             example: "communities/CP:G7C66H69GK"
+ *                           preview:
+ *                             type: object
+ *                             properties:
+ *                               description:
+ *                                 type: string
+ *                                 example: "수정된 내용입니다!"
+ *                               thumbnail:
+ *                                 type: object
+ *                                 nullable: true
+ *                                 properties:
+ *                                   url:
+ *                                     type: string
+ *                                     example: "https://example.com/updated-image.jpg"
+ *                                   width:
+ *                                     type: integer
+ *                                     example: 1080
+ *                                   height:
+ *                                     type: integer
+ *                                     example: 1080
+ *                                   blurHash:
+ *                                     type: string
+ *                                     example: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                     pagination:
  *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                           example: 1
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 12
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 2
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: false
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: true
+ *                         isFirst:
+ *                           type: boolean
+ *                           example: false
+ *                         isLast:
+ *                           type: boolean
+ *                           example: true
  *       401:
  *         description: 인증 실패
  *       500:
@@ -429,9 +657,123 @@ router.get("/me/liked-posts", authGuard, userController.getMyLikedPosts);
  *                     posts:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/CommunityPost'
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "62u4J1Dgjs1k7soZ7ltD"
+ *                           author:
+ *                             type: string
+ *                             example: "익명"
+ *                           title:
+ *                             type: string
+ *                             example: "수정된 루틴 인증!"
+ *                           type:
+ *                             type: string
+ *                             example: "GATHERING_REVIEW"
+ *                           channel:
+ *                             type: string
+ *                             example: "독서 모임 후기"
+ *                           category:
+ *                             type: string
+ *                             example: "한끗루틴"
+ *                           scheduledDate:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-10-03T00:00:00.000Z"
+ *                           visibility:
+ *                             type: string
+ *                             example: "PUBLIC"
+ *                           isLocked:
+ *                             type: boolean
+ *                             example: false
+ *                           rewardGiven:
+ *                             type: boolean
+ *                             example: false
+ *                           likesCount:
+ *                             type: integer
+ *                             example: 0
+ *                           commentsCount:
+ *                             type: integer
+ *                             example: 0
+ *                           reportsCount:
+ *                             type: integer
+ *                             example: 0
+ *                           viewCount:
+ *                             type: integer
+ *                             example: 0
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T15:28:39.101Z"
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T15:28:39.101Z"
+ *                           community:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "CP:G7C66H69GK"
+ *                               name:
+ *                                 type: string
+ *                                 example: "독서 모임"
+ *                           timeAgo:
+ *                             type: string
+ *                             example: "1시간 전"
+ *                           communityPath:
+ *                             type: string
+ *                             example: "communities/CP:G7C66H69GK"
+ *                           preview:
+ *                             type: object
+ *                             properties:
+ *                               description:
+ *                                 type: string
+ *                                 example: "수정된 내용입니다!"
+ *                               thumbnail:
+ *                                 type: object
+ *                                 nullable: true
+ *                                 properties:
+ *                                   url:
+ *                                     type: string
+ *                                     example: "https://example.com/updated-image.jpg"
+ *                                   width:
+ *                                     type: integer
+ *                                     example: 1080
+ *                                   height:
+ *                                     type: integer
+ *                                     example: 1080
+ *                                   blurHash:
+ *                                     type: string
+ *                                     example: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                     pagination:
  *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: integer
+ *                           example: 1
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         totalElements:
+ *                           type: integer
+ *                           example: 12
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 2
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: false
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: true
+ *                         isFirst:
+ *                           type: boolean
+ *                           example: false
+ *                         isLast:
+ *                           type: boolean
+ *                           example: true
  *       401:
  *         description: 인증 실패
  *       500:
