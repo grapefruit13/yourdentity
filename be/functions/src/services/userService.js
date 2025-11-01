@@ -424,7 +424,12 @@ class UserService {
       };
     } catch (error) {
       console.error(`${errorMessage} error:`, error.message);
-      throw new Error(errorMessage);
+      if (error.code) {
+        throw error;
+      }
+      const wrapped = new Error(errorMessage);
+      wrapped.code = "INTERNAL_ERROR";
+      throw wrapped;
     }
   }
 
