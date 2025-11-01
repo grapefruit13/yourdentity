@@ -292,6 +292,189 @@ class UserService {
 
     return {success: true};
   }
+
+  /**
+   * @param {Array<string>} postIds - 게시글 ID 목록
+   * @param {Object} communityIdMap - postId를 communityId로 매핑
+   * @return {Promise<Array>} 처리된 게시글 목록
+   */
+  async getPostsByIds(postIds, communityIdMap) {
+    if (!postIds || postIds.length === 0) {
+      return [];
+    }
+
+    // CommunityService 인스턴스 생성 (lazy loading으로 순환 참조 방지)
+    const CommunityService = require("./communityService");
+    const communityService = new CommunityService();
+
+    // 커뮤니티 정보 조회
+    const communities = await communityService.firestoreService.getCollection("communities");
+    const communityMap = {};
+    communities.forEach(community => {
+      communityMap[community.id] = community;
+    });
+
+    // 각 postId별로 게시글 조회
+    const postPromises = postIds.map(async (postId) => {
+      try {
+        const communityId = communityIdMap[postId];
+        if (!communityId) return null;
+        
+        const postsService = new FirestoreService(`communities/${communityId}/posts`);
+        const post = await postsService.getById(postId);
+        
+        if (!post) return null;
+        
+        return {
+          ...post,
+          communityId,
+          community: communityMap[communityId] ? {
+            id: communityId,
+            name: communityMap[communityId].name,
+          } : null,
+        };
+      } catch (error) {
+        console.error(`Error fetching post ${postId}:`, error.message);
+        return null;
+      }
+    });
+
+    const posts = await Promise.all(postPromises);
+    const allPosts = posts.filter(post => post !== null);
+
+    // processPost 헬퍼 함수 적용 (항상 preview만)
+    const processPost = (post) => {
+      const { authorId: _, ...postWithoutAuthorId } = post;
+      const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
+      const processedPost = {
+        ...postWithoutAuthorId,
+        createdAt: createdAtDate?.toISOString?.() || post.createdAt,
+        updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+        scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+        timeAgo: createdAtDate ? communityService.getTimeAgo(new Date(createdAtDate)) : "",
+        communityPath: `communities/${post.communityId}`,
+        rewardGiven: post.rewardGiven || false,
+        reportsCount: post.reportsCount || 0,
+        viewCount: post.viewCount || 0,
+      };
+
+      // 항상 preview만 생성
+      processedPost.preview = communityService.createPreview(post);
+      delete processedPost.content;
+      delete processedPost.media;
+      delete processedPost.communityId;
+
+      return processedPost;
+    };
+
+    return allPosts.map(processPost);
+  }
+
+  /**
+   * 사용자 서브컬렉션에서 게시글 조회 (공통 헬퍼)
+   * @param {string} userId - 사용자 ID
+   * @param {string} subCollectionName - 서브컬렉션 이름 (authoredPosts, likedPosts, commentedPosts)
+   * @param {string} orderBy - 정렬 필드
+   * @param {Object} options - 조회 옵션
+   * @param {string} errorMessage - 에러 메시지
+   * @return {Promise<Object>} 게시글 목록과 페이지네이션
+   */
+  async getMyPostsFromSubCollection(userId, subCollectionName, orderBy, options = {}, errorMessage) {
+    try {
+      const { page = 0, size = 10 } = options;
+
+      const postsService = new FirestoreService(`users/${userId}/${subCollectionName}`);
+      const result = await postsService.getWithPagination({
+        page: parseInt(page),
+        size: parseInt(size),
+        orderBy,
+        orderDirection: "desc",
+      });
+
+      const postIds = [];
+      const communityIdMap = {};
+      result.content.forEach(({postId, communityId}) => {
+        if (postId && communityId) {
+          postIds.push(postId);
+          communityIdMap[postId] = communityId;
+        }
+      });
+
+      if (postIds.length === 0) {
+        return {
+          content: [],
+          pagination: result.pageable || {
+            pageNumber: page,
+            pageSize: size,
+            totalElements: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+            isFirst: true,
+            isLast: true,
+          },
+        };
+      }
+
+      const posts = await this.getPostsByIds(postIds, communityIdMap);
+
+      return {
+        content: posts,
+        pagination: result.pageable || {},
+      };
+    } catch (error) {
+      console.error(`${errorMessage} error:`, error.message);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * 내가 작성한 게시글 조회
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @return {Promise<Object>} 게시글 목록과 페이지네이션
+   */
+  async getMyAuthoredPosts(userId, options = {}) {
+    return this.getMyPostsFromSubCollection(
+      userId,
+      "authoredPosts",
+      "createdAt",
+      options,
+      "내가 작성한 게시글 조회에 실패했습니다"
+    );
+  }
+
+  /**
+   * 내가 좋아요한 게시글 조회
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @return {Promise<Object>} 게시글 목록과 페이지네이션
+   */
+  async getMyLikedPosts(userId, options = {}) {
+    return this.getMyPostsFromSubCollection(
+      userId,
+      "likedPosts",
+      "lastLikedAt",
+      options,
+      "내가 좋아요한 게시글 조회에 실패했습니다"
+    );
+  }
+
+  /**
+   * 내가 댓글 단 게시글 조회
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @return {Promise<Object>} 게시글 목록과 페이지네이션
+   */
+  async getMyCommentedPosts(userId, options = {}) {
+    return this.getMyPostsFromSubCollection(
+      userId,
+      "commentedPosts",
+      "lastCommentedAt",
+      options,
+      "내가 댓글 단 게시글 조회에 실패했습니다"
+    );
+  }
 }
 
 module.exports = UserService;

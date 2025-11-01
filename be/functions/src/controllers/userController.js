@@ -235,6 +235,72 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 내가 작성한 게시글 조회 API
+   */
+  async getMyAuthoredPosts(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const { page = 0, size = 10 } = req.query;
+      
+      const result = await userService.getMyAuthoredPosts(uid, {
+        page: parseInt(page),
+        size: parseInt(size),
+      });
+      
+      return res.success({
+        posts: result.content || [],
+        pagination: result.pagination || {},
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 내가 좋아요한 게시글 조회 API
+   */
+  async getMyLikedPosts(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const { page = 0, size = 10 } = req.query;
+      
+      const result = await userService.getMyLikedPosts(uid, {
+        page: parseInt(page),
+        size: parseInt(size),
+      });
+      
+      return res.success({
+        posts: result.content || [],
+        pagination: result.pagination || {},
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 내가 댓글 단 게시글 조회 API
+   */
+  async getMyCommentedPosts(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const { page = 0, size = 10 } = req.query;
+      
+      const result = await userService.getMyCommentedPosts(uid, {
+        page: parseInt(page),
+        size: parseInt(size),
+      });
+      
+      return res.success({
+        posts: result.content || [],
+        pagination: result.pagination || {},
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();

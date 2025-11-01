@@ -294,6 +294,153 @@ router.get("/me/my-page", authGuard, userController.getMyPage);
 
 /**
  * @swagger
+ * /users/me/posts:
+ *   get:
+ *     summary: 내가 작성한 게시글 조회
+ *     description: 로그인한 사용자가 작성한 게시글 목록을 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 게시글 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     posts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CommunityPost'
+ *                     pagination:
+ *                       type: object
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/me/posts", authGuard, userController.getMyAuthoredPosts);
+
+/**
+ * @swagger
+ * /users/me/liked-posts:
+ *   get:
+ *     summary: 내가 좋아요한 게시글 조회
+ *     description: 로그인한 사용자가 좋아요한 게시글 목록을 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 게시글 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     posts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CommunityPost'
+ *                     pagination:
+ *                       type: object
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/me/liked-posts", authGuard, userController.getMyLikedPosts);
+
+/**
+ * @swagger
+ * /users/me/commented-posts:
+ *   get:
+ *     summary: 내가 댓글 단 게시글 조회
+ *     description: 로그인한 사용자가 댓글을 단 게시글 목록을 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 게시글 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     posts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CommunityPost'
+ *                     pagination:
+ *                       type: object
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts);
+
+/**
+ * @swagger
  * /users/nickname-availability:
  *   get:
  *     summary: 닉네임 가용성 확인
