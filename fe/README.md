@@ -66,6 +66,12 @@ pnpm format:check
 # API 코드 자동 생성 (fetch + generate)
 # ⭐️ 자신의 작업영역 페이지 api가 추가/변경 되었을 때 실행 시, 자동으로 api 함수/타입/쿼리/훅이 생성됨.
 pnpm api:sync
+
+# 자동생성된 api 관련 파일들에 lint 적용
+pnpm lint:fix
+
+# 자동생성된 api 관련 파일들에 prettier 적용
+pnpm format
 ```
 
 ### 생성되는 파일들
