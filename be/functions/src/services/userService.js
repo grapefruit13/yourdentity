@@ -328,11 +328,10 @@ class UserService {
 
 
     const {FieldPath} = require("firebase-admin/firestore");
-    const {db: firestoreDb} = require("../config/database");
     
     const communityPromises = Object.entries(postsByCommunity).map(async ([communityId, communityPostIds]) => {
       try {
-        const postsRef = firestoreDb.collection(`communities/${communityId}/posts`);
+        const postsService = new FirestoreService(`communities/${communityId}/posts`);
         
         // 10개씩 나누어서 처리 (Firestore in 쿼리 최대 10개 제한)
         const chunks = [];
@@ -342,12 +341,12 @@ class UserService {
 
         const allPosts = [];
         for (const chunk of chunks) {
-          const snapshot = await postsRef.where(FieldPath.documentId(), "in", chunk).get();
-          snapshot.forEach((doc) => {
-            const data = doc.data();
+          const posts = await postsService.getWhereMultiple([
+            { field: FieldPath.documentId(), operator: "in", value: chunk }
+          ]);
+          posts.forEach(post => {
             allPosts.push({
-              id: doc.id,
-              ...data,
+              ...post,
               communityId,
               community: communityMap[communityId] ? {
                 id: communityId,
