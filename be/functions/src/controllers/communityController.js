@@ -41,12 +41,6 @@ class CommunityController {
       const {
         type,
         filter,  // filter 파라미터 추가
-        channel,
-        communityId,
-        includeContent = false,
-        authorId: rawAuthorId,
-        likedBy: rawLikedBy,
-        commentedBy: rawCommentedBy,
       } = req.query;
       const page = parseInt(req.query.page, 10) || 0;
       const size = parseInt(req.query.size, 10) || 10;
@@ -54,53 +48,10 @@ class CommunityController {
       // filter 파라미터를 type으로 매핑 (하위 호환성)
       const finalType = type || filter;
 
-      let authorId = undefined;
-      if (rawAuthorId) {
-        if (rawAuthorId === "me") {
-          // authorId=me일 때는 인증이 필수
-          if (!req.user || !req.user.uid) {
-            return res.error(401, "인증이 필요합니다 (authorId=me 사용 시 로그인 필수)");
-          }
-          authorId = req.user.uid;
-        } else {
-          authorId = rawAuthorId;
-        }
-      }
-
-      let likedBy = undefined;
-      if (rawLikedBy) {
-        if (rawLikedBy === "me") {
-          if (!req.user || !req.user.uid) {
-            return res.error(401, "인증이 필요합니다 (likedBy=me 사용 시 로그인 필수)");
-          }
-          likedBy = req.user.uid;
-        } else {
-          likedBy = rawLikedBy;
-        }
-      }
-
-      let commentedBy = undefined;
-      if (rawCommentedBy) {
-        if (rawCommentedBy === "me") {
-          if (!req.user || !req.user.uid) {
-            return res.error(401, "인증이 필요합니다 (commentedBy=me 사용 시 로그인 필수)");
-          }
-          commentedBy = req.user.uid;
-        } else {
-          commentedBy = rawCommentedBy;
-        }
-      }
-
       const result = await communityService.getAllCommunityPosts({
         type: finalType,
-        channel,
-        communityId,
         page,
         size,
-        includeContent: includeContent === "true",
-        authorId,
-        likedBy,
-        commentedBy,
       });
 
       // data 객체 안에 posts 배열과 pagination 객체 분리

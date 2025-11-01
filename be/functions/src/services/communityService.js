@@ -1,7 +1,6 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
-const UserService = require("./userService");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
 
@@ -14,7 +13,14 @@ class CommunityService {
 
   constructor() {
     this.firestoreService = new FirestoreService("communities");
-    this.userService = new UserService();
+  }
+
+  getUserService() {
+    if (!this._userService) {
+      const UserService = require("./userService");
+      this._userService = new UserService();
+    }
+    return this._userService;
   }
 
   /**
@@ -173,12 +179,8 @@ class CommunityService {
         type,
         page = 0,
         size = 10,
-        includeContent = false,
         orderBy = "createdAt",
         orderDirection = "desc",
-        authorId,
-        likedBy,
-        commentedBy,
       } = options;
 
       const postTypeMapping = {
@@ -187,118 +189,6 @@ class CommunityService {
         tmi: "TMI",
       };
 
-      let likedPostIds = [];
-      let likedPostMap = {}; 
-      let commentedPostIds = [];
-      let commentedPostMap = {};
-      let likesTotalCount = 0;
-      let commentsTotalCount = 0;
-
-      if (likedBy) {
-        try {
-          const likedPostsService = new FirestoreService("users/" + likedBy + "/likedPosts");
-          const likedPostsResult = await likedPostsService.getWithPagination({
-            page,
-            size,
-            orderBy: "lastLikedAt",
-            orderDirection: "desc",
-          });
-
-          likedPostsResult.content.forEach(({postId, communityId}) => {
-            if (postId && communityId) {
-              likedPostIds.push(postId);
-              likedPostMap[postId] = communityId;
-            }
-          });
-
-          likesTotalCount = likedPostsResult.pageable?.totalElements || 0;
-
-          if (likedPostIds.length === 0) {
-            return {
-              content: [],
-              pagination: likedPostsResult.pageable || {
-                pageNumber: page,
-                pageSize: size,
-                totalElements: likesTotalCount,
-                totalPages: Math.ceil(likesTotalCount / size),
-                hasNext: false,
-                hasPrevious: false,
-                isFirst: true,
-                isLast: true,
-              },
-            };
-          }
-        } catch (error) {
-          console.error("Get liked posts error:", error.message);
-          return {
-            content: [],
-            pagination: {
-              pageNumber: page,
-              pageSize: size,
-              totalElements: 0,
-              totalPages: 0,
-              hasNext: false,
-              hasPrevious: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
-        }
-      }
-
-      if (commentedBy) {
-        try {
-          const commentedPostsService = new FirestoreService("users/" + commentedBy + "/commentedPosts");
-          const commentedPostsResult = await commentedPostsService.getWithPagination({
-            page,
-            size,
-            orderBy: "lastCommentedAt",
-            orderDirection: "desc",
-          });
-
-          commentedPostsResult.content.forEach(({postId, communityId}) => {
-            if (postId && communityId) {
-              commentedPostIds.push(postId);
-              commentedPostMap[postId] = communityId;
-            }
-          });
-
-          commentsTotalCount = commentedPostsResult.pageable?.totalElements || 0;
-
-          if (commentedPostIds.length === 0) {
-            return {
-              content: [],
-              pagination: commentedPostsResult.pageable || {
-                pageNumber: page,
-                pageSize: size,
-                totalElements: commentsTotalCount,
-                totalPages: Math.ceil(commentsTotalCount / size),
-                hasNext: false,
-                hasPrevious: false,
-                isFirst: true,
-                isLast: true,
-              },
-            };
-          }
-        } catch (error) {
-          console.error("Get commented posts error:", error.message);
-          return {
-            content: [],
-            pagination: {
-              pageNumber: page,
-              pageSize: size,
-              totalElements: 0,
-              totalPages: 0,
-              hasNext: false,
-              hasPrevious: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
-        }
-      }
-
-      const useCollectionGroup = !likedBy && !commentedBy;
       let allPosts = [];
       const communityMap = {};
 
@@ -308,77 +198,67 @@ class CommunityService {
         if (type && postTypeMapping[type]) {
           conditions.push({ field: "type", operator: "==", value: postTypeMapping[type] });
         }
-        if (authorId) {
-          conditions.push({ field: "authorId", operator: "==", value: authorId });
-        }
         return conditions;
       };
 
-      if (useCollectionGroup) {
-        try {
-          const postsService = new FirestoreService();
-          const postsResult = await postsService.getCollectionGroup("posts", {
-            page,
-            size,
-            orderBy,
-            orderDirection,
-            where: buildWhereConditions(),
-          });
+      // Collection Group 사용
+      try {
+        const postsService = new FirestoreService();
+        const postsResult = await postsService.getCollectionGroup("posts", {
+          page,
+          size,
+          orderBy,
+          orderDirection,
+          where: buildWhereConditions(),
+        });
 
-          const communities = await this.firestoreService.getCollection("communities");
-          communities.forEach(community => {
-            communityMap[community.id] = community;
-          });
+        const communities = await this.firestoreService.getCollection("communities");
+        communities.forEach(community => {
+          communityMap[community.id] = community;
+        });
 
-          allPosts = (postsResult.content || []).map(post => ({
-            ...post,
-            community: communityMap[post.communityId] ? {
-              id: post.communityId,
-              name: communityMap[post.communityId].name,
-            } : null,
-          }));
+        allPosts = (postsResult.content || []).map(post => ({
+          ...post,
+          community: communityMap[post.communityId] ? {
+            id: post.communityId,
+            name: communityMap[post.communityId].name,
+          } : null,
+        }));
 
-          const processPost = (post) => {
-            const { authorId, ...postWithoutAuthorId } = post;
-            const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
-            const processedPost = {
-              ...postWithoutAuthorId,
-              createdAt: createdAtDate?.toISOString?.() || post.createdAt,
-              updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
-              scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
-              timeAgo: createdAtDate ? this.getTimeAgo(new Date(createdAtDate)) : "",
-              communityPath: `communities/${post.communityId}`,
-              rewardGiven: post.rewardGiven || false,
-              reportsCount: post.reportsCount || 0,
-              viewCount: post.viewCount || 0,
-            };
-
-            if (includeContent) {
-              processedPost.content = post.content || [];
-            } else {
-              processedPost.preview = this.createPreview(post);
-              delete processedPost.content;
-              delete processedPost.media;
-            }
-
-            delete processedPost.communityId;
-            return processedPost;
+        const processPost = (post) => {
+          const { authorId: _, ...postWithoutAuthorId } = post;
+          const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
+          const processedPost = {
+            ...postWithoutAuthorId,
+            createdAt: createdAtDate?.toISOString?.() || post.createdAt,
+            updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+            scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+            timeAgo: createdAtDate ? this.getTimeAgo(new Date(createdAtDate)) : "",
+            communityPath: `communities/${post.communityId}`,
+            rewardGiven: post.rewardGiven || false,
+            reportsCount: post.reportsCount || 0,
+            viewCount: post.viewCount || 0,
           };
 
-          return {
-            content: allPosts.map(processPost),
-            pagination: postsResult.pageable || {},
-          };
-        } catch (collectionGroupError) {
-          if (collectionGroupError.code === 9) {
-            // fallback to existing method
-          } else {
-            throw collectionGroupError;
-          }
+          processedPost.preview = this.createPreview(post);
+          delete processedPost.content;
+          delete processedPost.media;
+
+          delete processedPost.communityId;
+          return processedPost;
+        };
+
+        return {
+          content: allPosts.map(processPost),
+          pagination: postsResult.pageable || {},
+        };
+      } catch (collectionGroupError) {
+        if (collectionGroupError.code === 9) {
+        } else {
+          throw collectionGroupError;
         }
       }
 
-      // communities 조회 (useCollectionGroup에서 이미 조회했다면 중복 방지)
       if (Object.keys(communityMap).length === 0) {
         const communities = await this.firestoreService.getCollection("communities");
         if (communities.length === 0) {
@@ -401,100 +281,37 @@ class CommunityService {
         });
       }
 
-      const targetPostIds = likedBy ? likedPostIds : 
-                            commentedBy ? commentedPostIds : null;
+      const postPromises = Object.values(communityMap).map(async (community) => {
+        try {
+          const postsService = new FirestoreService(`communities/${community.id}/posts`);
+          const whereConditions = buildWhereConditions();
+          
+          const postsResult = await postsService.getWithPagination({
+            page,
+            size,
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            where: whereConditions,
+          });
+          
+          const postsArray = postsResult.content || [];
+          
+          return postsArray.map(post => ({
+            ...post,
+            communityId: community.id,
+            community: { id: community.id, name: community.name },
+          }));
+        } catch (error) {
+          return [];
+        }
+      });
 
-      if (targetPostIds && targetPostIds.length > 0) {
-        // 각 postId를 직접 조회 (getAll()로 전체 조회하는 것보다 효율적)
-        const postPromises = targetPostIds.map(async (postId) => {
-          try {
-            const communityId = commentedPostMap[postId] || likedPostMap[postId];
-            if (!communityId) return null;
-            
-            const postsService = new FirestoreService(`communities/${communityId}/posts`);
-            const post = await postsService.getById(postId);
-            
-            if (!post) return null;
-            
-            // 추가 필터 적용
-            if (type && postTypeMapping[type] && post.type !== postTypeMapping[type]) {
-              return null;
-            }
-            if (authorId && post.authorId !== authorId) {
-              return null;
-            }
-            
-            return {
-              ...post,
-              communityId,
-              community: communityMap[communityId] ? {
-                id: communityId,
-                name: communityMap[communityId].name,
-              } : null,
-            };
-          } catch (error) {
-            console.error(`Error fetching post ${postId}:`, error.message);
-            return null;
-          }
-        });
-
-        const posts = await Promise.all(postPromises);
-        // Firestore 정렬 순서 유지
-        allPosts = posts.filter(post => post !== null);
-      } else {
-        const postPromises = Object.values(communityMap).map(async (community) => {
-          try {
-            const postsService = new FirestoreService(`communities/${community.id}/posts`);
-            const whereConditions = buildWhereConditions();
-            
-            let postsArray;
-            if (likedBy || commentedBy) {
-              const allPostsFromService = await postsService.getAll();
-              const postType = postTypeMapping[type];
-              postsArray = allPostsFromService.filter(post => 
-                (!postType || post.type === postType) && 
-                (!authorId || post.authorId === authorId)
-              );
-            } else {
-              const postsResult = await postsService.getWithPagination({
-                page,
-                size,
-                orderBy: "createdAt",
-                orderDirection: "desc",
-                where: whereConditions,
-              });
-              postsArray = postsResult.content || [];
-            }
-            
-            let communityPosts = postsArray.map(post => ({
-              ...post,
-              communityId: community.id,
-              community: { id: community.id, name: community.name },
-            }));
-
-            if (likedBy && likedPostIds.length > 0) {
-              const likedPostIdSet = new Set(likedPostIds);
-              communityPosts = communityPosts.filter(post => likedPostIdSet.has(post.id));
-            }
-            if (commentedBy && commentedPostIds.length > 0) {
-              communityPosts = communityPosts.filter(post => 
-                commentedPostMap[post.id] === community.id
-              );
-            }
-
-            return communityPosts;
-          } catch (error) {
-            return [];
-          }
-        });
-
-        const postsArrays = await Promise.all(postPromises);
-        allPosts = postsArrays.flat();
-      }
+      const postsArrays = await Promise.all(postPromises);
+      allPosts = postsArrays.flat();
 
       // post 처리 헬퍼 함수
       const processPost = (post) => {
-        const { authorId, ...postWithoutAuthorId } = post;
+        const { authorId: _, ...postWithoutAuthorId } = post;
         const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
         const processedPost = {
           ...postWithoutAuthorId,
@@ -508,22 +325,16 @@ class CommunityService {
           viewCount: post.viewCount || 0,
         };
 
-        if (includeContent) {
-          processedPost.content = post.content || [];
-        } else {
-          processedPost.preview = this.createPreview(post);
-          delete processedPost.content;
-          delete processedPost.media;
-        }
+        processedPost.preview = this.createPreview(post);
+        delete processedPost.content;
+        delete processedPost.media;
 
         delete processedPost.communityId;
         return processedPost;
       };
 
       const processedPosts = allPosts.map(processPost);
-      const totalElements = likedBy ? likesTotalCount : 
-                           commentedBy ? commentsTotalCount : 
-                           allPosts.length;
+      const totalElements = allPosts.length;
       const totalPages = Math.ceil(totalElements / size);
 
       return {
@@ -543,6 +354,83 @@ class CommunityService {
       console.error("Get all community posts error:", error.message);
       throw new Error("커뮤니티 게시글 조회에 실패했습니다");
     }
+  }
+
+  /**
+   * @param {Array<string>} postIds - 게시글 ID 목록
+   * @param {Object} communityIdMap - postId를 communityId로 매핑
+   * @return {Promise<Array>} 처리된 게시글 목록
+   */
+  async getPostsByIds(postIds, communityIdMap) {
+    if (!postIds || postIds.length === 0) {
+      return [];
+    }
+
+    // CommunityService 인스턴스 생성 (lazy loading으로 순환 참조 방지)
+    const CommunityService = require("./communityService");
+    const communityService = new CommunityService();
+
+    // 커뮤니티 정보 조회
+    const communities = await communityService.firestoreService.getCollection("communities");
+    const communityMap = {};
+    communities.forEach(community => {
+      communityMap[community.id] = community;
+    });
+
+    // 각 postId별로 게시글 조회
+    const postPromises = postIds.map(async (postId) => {
+      try {
+        const communityId = communityIdMap[postId];
+        if (!communityId) return null;
+        
+        const postsService = new FirestoreService(`communities/${communityId}/posts`);
+        const post = await postsService.getById(postId);
+        
+        if (!post) return null;
+        
+        return {
+          ...post,
+          communityId,
+          community: communityMap[communityId] ? {
+            id: communityId,
+            name: communityMap[communityId].name,
+          } : null,
+        };
+      } catch (error) {
+        console.error(`Error fetching post ${postId}:`, error.message);
+        return null;
+      }
+    });
+
+    const posts = await Promise.all(postPromises);
+    const allPosts = posts.filter(post => post !== null);
+
+    // processPost 헬퍼 함수 적용 (항상 preview만)
+    const processPost = (post) => {
+      const { authorId: _, ...postWithoutAuthorId } = post;
+      const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
+      const processedPost = {
+        ...postWithoutAuthorId,
+        createdAt: createdAtDate?.toISOString?.() || post.createdAt,
+        updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
+        scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
+        timeAgo: createdAtDate ? communityService.getTimeAgo(new Date(createdAtDate)) : "",
+        communityPath: `communities/${post.communityId}`,
+        rewardGiven: post.rewardGiven || false,
+        reportsCount: post.reportsCount || 0,
+        viewCount: post.viewCount || 0,
+      };
+
+      // 항상 preview만 생성
+      processedPost.preview = communityService.createPreview(post);
+      delete processedPost.content;
+      delete processedPost.media;
+      delete processedPost.communityId;
+
+      return processedPost;
+    };
+
+    return allPosts.map(processPost);
   }
 
 
@@ -663,6 +551,20 @@ class CommunityService {
 
       const result = await postsService.create(newPost);
       const postId = result.id;
+
+      try {
+        const authoredPostRef = this.firestoreService.db
+          .collection(`users/${userId}/authoredPosts`)
+          .doc(postId);
+        await authoredPostRef.set({
+          postId,
+          communityId,
+          createdAt: FieldValue.serverTimestamp(),
+          lastAuthoredAt: FieldValue.serverTimestamp(),
+        });
+      } catch (error) {
+        console.error("authoredPosts 추가 실패:", error);
+      }
 
       if (newPost.type === "ROUTINE_CERT" || newPost.type === "GATHERING_REVIEW" || newPost.type === "TMI") {
         try {
@@ -894,6 +796,15 @@ class CommunityService {
 
       await postsService.delete(postId);
 
+      try {
+        const authoredPostRef = this.firestoreService.db
+          .collection(`users/${userId}/authoredPosts`)
+          .doc(postId);
+        await authoredPostRef.delete();
+      } catch (error) {
+        console.error("authoredPosts 삭제 실패:", error);
+      }
+
       if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
         try {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
@@ -990,7 +901,7 @@ class CommunityService {
     
         if (isLiked && post.authorId !== userId) {
           try {
-            const liker = await this.userService.getUserById(userId);
+            const liker = await this.getUserService().getUserById(userId);
             const likerName = liker?.name || "사용자";
 
             fcmHelper.sendNotification(
