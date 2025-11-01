@@ -314,33 +314,66 @@ class UserService {
       communityMap[community.id] = community;
     });
 
-    // 각 postId별로 게시글 조회
-    const postPromises = postIds.map(async (postId) => {
-      try {
-        const communityId = communityIdMap[postId];
-        if (!communityId) return null;
-        
-        const postsService = new FirestoreService(`communities/${communityId}/posts`);
-        const post = await postsService.getById(postId);
-        
-        if (!post) return null;
-        
-        return {
-          ...post,
-          communityId,
-          community: communityMap[communityId] ? {
-            id: communityId,
-            name: communityMap[communityId].name,
-          } : null,
-        };
-      } catch (error) {
-        console.error(`Error fetching post ${postId}:`, error.message);
-        return null;
+
+    const postsByCommunity = {};
+    postIds.forEach(postId => {
+      const communityId = communityIdMap[postId];
+      if (communityId) {
+        if (!postsByCommunity[communityId]) {
+          postsByCommunity[communityId] = [];
+        }
+        postsByCommunity[communityId].push(postId);
       }
     });
 
-    const posts = await Promise.all(postPromises);
-    const allPosts = posts.filter(post => post !== null);
+
+    const {FieldPath} = require("firebase-admin/firestore");
+    const {db: firestoreDb} = require("../config/database");
+    
+    const communityPromises = Object.entries(postsByCommunity).map(async ([communityId, communityPostIds]) => {
+      try {
+        const postsRef = firestoreDb.collection(`communities/${communityId}/posts`);
+        
+        // 10개씩 나누어서 처리 (Firestore in 쿼리 최대 10개 제한)
+        const chunks = [];
+        for (let i = 0; i < communityPostIds.length; i += 10) {
+          chunks.push(communityPostIds.slice(i, i + 10));
+        }
+
+        const allPosts = [];
+        for (const chunk of chunks) {
+          const snapshot = await postsRef.where(FieldPath.documentId(), "in", chunk).get();
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            allPosts.push({
+              id: doc.id,
+              ...data,
+              communityId,
+              community: communityMap[communityId] ? {
+                id: communityId,
+                name: communityMap[communityId].name,
+              } : null,
+            });
+          });
+        }
+        return allPosts;
+      } catch (error) {
+        console.error(`Error fetching posts for community ${communityId}:`, error.message);
+        return [];
+      }
+    });
+
+    const postsArrays = await Promise.all(communityPromises);
+    const allPostsFlat = postsArrays.flat();
+    
+    const postsMap = {};
+    allPostsFlat.forEach(post => {
+      postsMap[post.id] = post;
+    });
+    
+    const allPosts = postIds
+      .map(postId => postsMap[postId])
+      .filter(post => post !== undefined);
 
     // processPost 헬퍼 함수 적용 (항상 preview만)
     const processPost = (post) => {
