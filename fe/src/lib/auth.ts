@@ -11,8 +11,11 @@ import {
   onAuthStateChanged,
   User,
   getIdToken,
+  getAdditionalUserInfo,
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
+import { FIREBASE_AUTH_ERROR_CODES } from "@/constants/auth/_firebase-error-codes";
+import { AUTH_MESSAGE } from "@/constants/auth/_message";
 import { auth, functions } from "@/lib/firebase";
 import { ErrorResponse, Result } from "@/types/shared/response";
 import { debug } from "@/utils/shared/debugger";
@@ -25,25 +28,158 @@ export const createKakaoProvider = () => {
   const provider = new OAuthProvider("oidc.kakao");
 
   // Kakao OpenID Connect 스코프 설정
-  // - openid: OIDC 기본
   // - name: 이름(카카오 동의항목에서 name 필수 설정 필요)
   // - email: 이메일
   // - phone: 전화번호(표준 클레임 phone_number)
-  provider.addScope("openid");
+  // kakao developers에서 동의항목으로 설정한 필드들 추가(이름, 이메일, 번호, 성별, 생일, 출생 연도)
   provider.addScope("name");
   provider.addScope("account_email");
   provider.addScope("phone_number");
+  provider.addScope("gender");
+  provider.addScope("birthday");
+  provider.addScope("birthyear");
 
   return provider;
 };
 
 /**
+ * @description 네트워크 관련 Firebase 에러인지 확인
+ */
+const isNetworkError = (code: string): boolean => {
+  return (
+    code === FIREBASE_AUTH_ERROR_CODES.NETWORK_REQUEST_FAILED ||
+    code === FIREBASE_AUTH_ERROR_CODES.INTERNAL_ERROR ||
+    code === FIREBASE_AUTH_ERROR_CODES.TIMEOUT
+  );
+};
+
+/**
+ * @description 사용자 취소 관련 에러인지 확인
+ */
+const isCancelledError = (code: string): boolean => {
+  return (
+    code === FIREBASE_AUTH_ERROR_CODES.POPUP_CLOSED_BY_USER ||
+    code === FIREBASE_AUTH_ERROR_CODES.CANCELLED_POPUP_REQUEST
+  );
+};
+
+/**
+ * @description Firebase 에러를 ErrorResponse로 변환 (일반 인증)
+ */
+const handleFirebaseAuthError = (error: FirebaseError): ErrorResponse => {
+  const { code } = error;
+
+  // 네트워크 관련 에러
+  if (isNetworkError(code)) {
+    return {
+      status: 503,
+      message: AUTH_MESSAGE.ERROR.NETWORK_ERROR,
+    };
+  }
+
+  // 요청 제한 에러
+  if (code === FIREBASE_AUTH_ERROR_CODES.TOO_MANY_REQUESTS) {
+    return {
+      status: 429,
+      message: AUTH_MESSAGE.ERROR.TOO_MANY_REQUESTS,
+    };
+  }
+
+  // 기타 인증 에러
+  return {
+    status: 401,
+    message: AUTH_MESSAGE.LOGIN.INVALID_CREDENTIALS,
+  };
+};
+
+/**
+ * @description 카카오 로그인 전용 Firebase 에러를 ErrorResponse로 변환
+ */
+const handleKakaoAuthError = (error: FirebaseError): ErrorResponse => {
+  const { code } = error;
+
+  // 사용자 취소 관련 에러
+  if (isCancelledError(code)) {
+    return {
+      status: 400,
+      message: AUTH_MESSAGE.KAKAO.CANCELLED,
+    };
+  }
+
+  // 팝업 차단 에러
+  if (code === FIREBASE_AUTH_ERROR_CODES.POPUP_BLOCKED) {
+    return {
+      status: 400,
+      message: AUTH_MESSAGE.KAKAO.POPUP_BLOCKED,
+    };
+  }
+
+  // 네트워크 관련 에러
+  if (isNetworkError(code)) {
+    return {
+      status: 503,
+      message: AUTH_MESSAGE.KAKAO.NETWORK_ERROR,
+    };
+  }
+
+  // 다른 인증 수단으로 이미 존재하는 계정
+  if (
+    code === FIREBASE_AUTH_ERROR_CODES.ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL
+  ) {
+    return {
+      status: 409,
+      message: AUTH_MESSAGE.KAKAO.ACCOUNT_EXISTS,
+    };
+  }
+
+  // 기타 인증 에러
+  return {
+    status: 401,
+    message: AUTH_MESSAGE.KAKAO.FAILURE,
+  };
+};
+
+/**
  * @description 카카오 로그인 - Popup 방식(test)
  */
-export const signInWithKakao = async (): Promise<UserCredential> => {
-  const provider = createKakaoProvider();
-  const result = await signInWithPopup(auth, provider);
-  return result;
+export const signInWithKakao = async (): Promise<{
+  isNewUser: boolean;
+  kakaoAccessToken?: string;
+}> => {
+  try {
+    const provider = createKakaoProvider();
+    const result = await signInWithPopup(auth, provider);
+
+    // null 체크 및 검증
+    if (!result || !result.user) {
+      const invalidResultError: ErrorResponse = {
+        status: 500,
+        message: AUTH_MESSAGE.KAKAO.FAILURE,
+      };
+      throw invalidResultError;
+    }
+
+    const additionalInfo = getAdditionalUserInfo(result);
+    const isNewUser = additionalInfo?.isNewUser ?? false;
+    const credential = OAuthProvider.credentialFromResult(result);
+    const kakaoAccessToken = credential?.accessToken;
+
+    debug.log(AUTH_MESSAGE.KAKAO.SUCCESS, result.user);
+    return { isNewUser, kakaoAccessToken };
+  } catch (error) {
+    debug.warn("카카오 로그인 실패:", error);
+
+    if (error instanceof FirebaseError) {
+      throw handleKakaoAuthError(error);
+    }
+
+    // 알 수 없는 에러
+    const unknownError: ErrorResponse = {
+      status: 500,
+      message: AUTH_MESSAGE.ERROR.UNKNOWN_ERROR,
+    };
+    throw unknownError;
+  }
 };
 
 /**
@@ -86,28 +222,11 @@ export const signInWithEmail = async (
     return { data: userCredential, status: 200 };
   } catch (error) {
     if (error instanceof FirebaseError) {
-      const { code } = error;
-      if (
-        code === "auth/network-request-failed" ||
-        code === "auth/internal-error" ||
-        code === "auth/timeout"
-      ) {
-        const networkError: ErrorResponse = {
-          status: 503,
-          message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-        };
-        throw networkError;
-      }
-      const message =
-        code === "auth/too-many-requests"
-          ? "요청이 많습니다. 잠시 후 다시 시도해주세요."
-          : "계정 아이디(이메일) 또는 비밀번호를 다시 확인해주세요.";
-      const authError: ErrorResponse = { status: 401, message };
-      throw authError;
+      throw handleFirebaseAuthError(error);
     }
     const unknownError: ErrorResponse = {
       status: 500,
-      message: "알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      message: AUTH_MESSAGE.ERROR.UNKNOWN_ERROR,
     };
     throw unknownError;
   }

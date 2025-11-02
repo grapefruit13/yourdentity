@@ -4,10 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import * as Api from "@/api/generated/users-api";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
+import { usersKeys } from "@/constants/generated/query-keys";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { usePostUsersMeSyncKakaoProfile } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao } from "@/lib/auth";
 import { debug } from "@/utils/shared/debugger";
@@ -21,26 +25,107 @@ const LoginPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { registerFCMToken } = useFCM();
 
+  const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile();
+  const { refetch: refetchUserData } = useQuery({
+    queryKey: usersKeys.getUsersMe,
+    queryFn: () => Api.getUsersMe(),
+    enabled: false, // 자동 실행 비활성화
+  });
+
   /**
    * @description 카카오 로그인
+   * 흐름:
+   * 1. 카카오 회원가입/로그인 진행
+   * 2. 신규 회원인 경우:
+   *    2-1. 카카오 프로필 동기화 API 호출
+   *    2-2. FCM 토큰 등록 (실패해도 계속 진행)
+   *    2-3. 온보딩 페이지로 이동
+   * 3. 기존 사용자인 경우:
+   *    3-1. 사용자 정보 조회
+   *    3-2. FCM 토큰 등록 (실패해도 계속 진행)
+   *    3-3. 닉네임 여부에 따라 온보딩 페이지 또는 홈으로 이동
    */
   const handleKakaoLogin = async () => {
     setIsLoading(true);
     setErrorMessage(null);
-    try {
-      await signInWithKakao();
 
-      try {
-        await registerFCMToken();
-      } catch (fcmError) {
-        // FCM 토큰 저장 실패해도 로그인은 계속 진행
+    try {
+      // 1. 카카오 로그인
+      const { kakaoAccessToken, isNewUser } = await signInWithKakao();
+
+      // 2. 신규 회원 처리
+      if (isNewUser) {
+        // 2-0. 신규 회원인데 토큰이 없는 경우 (권한 미동의, 프로바이더 오류 등)
+        if (!kakaoAccessToken) {
+          debug.error("신규 회원인데 카카오 액세스 토큰이 없습니다.");
+          setIsLoading(false);
+          setErrorMessage(
+            "카카오 로그인 권한이 필요합니다. 다시 시도해 주세요."
+          );
+          return;
+        }
+
+        try {
+          // 2-1. 카카오 프로필 동기화 (비동기 완료 대기)
+          await syncMutateAsync({
+            data: {
+              accessToken: kakaoAccessToken,
+            },
+          });
+          debug.log("카카오 프로필 동기화 성공");
+
+          // 2-2. FCM 토큰 등록 (실패해도 계속 진행)
+          try {
+            await registerFCMToken();
+          } catch (fcmError) {
+            debug.error("FCM 토큰 저장 실패:", fcmError);
+            // FCM 토큰 저장 실패해도 로그인은 계속 진행
+          }
+
+          // 2-3. 온보딩 페이지로 이동
+          setIsLoading(false);
+          router.replace(LINK_URL.MY_PAGE_EDIT);
+          return;
+        } catch (error) {
+          debug.error("카카오 프로필 동기화 실패:", error);
+          setIsLoading(false);
+          setErrorMessage("카카오 프로필 동기화에 실패했습니다.");
+          return;
+        }
       }
 
-      router.replace(LINK_URL.HOME);
+      // 3. 기존 사용자 처리
+      if (!isNewUser) {
+        try {
+          // 3-1. 사용자 정보 조회
+          const { data } = await refetchUserData();
+          const hasNickname = !!data?.data.data.nickname;
+
+          // 3-2. FCM 토큰 등록 (실패해도 계속 진행)
+          try {
+            await registerFCMToken();
+          } catch (fcmError) {
+            debug.error("FCM 토큰 저장 실패:", fcmError);
+            // FCM 토큰 저장 실패해도 로그인은 계속 진행
+          }
+
+          // 3-3. 닉네임 여부에 따라 라우팅
+          setIsLoading(false);
+          if (hasNickname) {
+            router.replace(LINK_URL.HOME);
+          } else {
+            router.replace(LINK_URL.MY_PAGE_EDIT);
+          }
+        } catch (error) {
+          debug.error("사용자 정보 조회 실패:", error);
+          setIsLoading(false);
+          setErrorMessage("사용자 정보 조회에 실패했습니다.");
+        }
+      }
     } catch (error) {
-      debug.error("카카오 로그인에 실패했어요. 다시 시도해 주세요.", error);
-      setErrorMessage("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
+      debug.error("카카오 로그인(handleKakaoLogin) 실패:", error);
       setIsLoading(false);
+      setErrorMessage("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
     }
   };
 

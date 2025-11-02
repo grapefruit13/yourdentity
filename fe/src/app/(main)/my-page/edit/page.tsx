@@ -1,139 +1,177 @@
 "use client";
 
 import { useState, useEffect, useRef, ChangeEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, User } from "lucide-react";
+import { useForm } from "react-hook-form";
+import * as FilesApi from "@/api/generated/files-api";
+import * as UsersApi from "@/api/generated/users-api";
 import ProfileImageBottomSheet from "@/components/my-page/ProfileImageBottomSheet";
 import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
+import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
 
-/**
- * @description 프로필 편집 페이지
- * - 프로필 이미지, 닉네임, 자기소개 수정
- * - 변경사항 있을 때만 완료 버튼 활성화
- * - 변경사항 있는 상태에서 뒤로가기 시 확인 모달
- */
+import {
+  MAX_PROFILE_IMAGE_SIZE_BYTES,
+  MAX_NICKNAME_LENGTH,
+  MAX_BIO_LENGTH,
+  PROFILE_EDIT_MESSAGES,
+  PROFILE_EDIT_PLACEHOLDERS,
+  PROFILE_EDIT_LABELS,
+} from "@/constants/my-page/_profile-edit-constants";
+import { LINK_URL } from "@/constants/shared/_link-url";
+import {
+  useGetUsersMe,
+  usePatchUsersMeOnboarding,
+} from "@/hooks/generated/users-hooks";
+import useToggle from "@/hooks/shared/useToggle";
+import type { FileUploadResponse } from "@/types/generated/api-schema";
+import type { ProfileEditFormValues } from "@/types/my-page/_profile-edit-types";
+import { debug } from "@/utils/shared/debugger";
+
 const ProfileEditPage = () => {
   const router = useRouter();
 
-  // Ref for file inputs
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const selectedFileRef = useRef<File | null>(null);
 
-  // FIXME: 실제로는 API에서 가져와야 함
-  const [initialData] = useState({
-    profileImageUrl: "",
-    nickname: "한꽃땅",
-    bio: "자기소개입니다",
+  const { data: userData } = useGetUsersMe();
+  const { mutateAsync: patchOnboardingAsync } = usePatchUsersMeOnboarding();
+
+  const actualUserData = userData?.data?.data;
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { isDirty, isSubmitting },
+  } = useForm<ProfileEditFormValues>({
+    defaultValues: {
+      profileImageUrl: actualUserData?.profileImageUrl ?? "",
+      nickname: actualUserData?.nickname ?? "",
+      bio: actualUserData?.bio ?? "",
+    },
+    mode: "onChange",
   });
 
-  const [profileImageUrl, setProfileImageUrl] = useState(
-    initialData.profileImageUrl
-  );
-  const [nickname, setNickname] = useState(initialData.nickname);
-  const [bio, setBio] = useState(initialData.bio);
+  const profileImageUrl = watch("profileImageUrl");
+  const nickname = watch("nickname");
 
-  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const {
+    isOpen: isBottomSheetOpen,
+    close: closeBottomSheet,
+    open: openBottomSheet,
+  } = useToggle();
   const [isUnsavedModalOpen, setIsUnsavedModalOpen] = useState(false);
 
-  // 변경사항 확인
-  const hasChanges =
-    profileImageUrl !== initialData.profileImageUrl ||
-    nickname !== initialData.nickname ||
-    bio !== initialData.bio;
+  const isNicknameValid = nickname.trim().length > 0;
+  const isCompleteEnabled = isDirty && isNicknameValid;
 
-  // 완료 버튼 활성화 여부
-  const isCompleteEnabled = hasChanges && nickname.trim() !== "";
-
-  // 뒤로가기 핸들러
-  const handleBack = () => {
-    if (hasChanges) {
-      setIsUnsavedModalOpen(true);
-    } else {
-      router.push("/my-page");
+  /**
+   * 파일 검증 (타입 및 크기 체크)
+   */
+  const validateImageFile = (file: File): boolean => {
+    if (!file.type.startsWith("image/")) {
+      alert(PROFILE_EDIT_MESSAGES.INVALID_IMAGE_FILE);
+      return false;
     }
+
+    if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
+      alert(PROFILE_EDIT_MESSAGES.IMAGE_SIZE_EXCEEDED);
+      return false;
+    }
+
+    return true;
   };
 
-  // 완료 버튼 핸들러
-  const handleComplete = () => {
-    if (!isCompleteEnabled) return;
+  /**
+   * 이미지 파일 업로드
+   */
+  const uploadImageFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-    // FIXME: 실제로는 API 호출해서 저장
-    console.log("프로필 저장:", {
-      profileImageUrl,
-      nickname,
-      bio,
+    const uploadResponse = await FilesApi.postFilesUploadMultiple(formData);
+    // community/write 페이지 패턴과 동일하게 접근: res.data.data.files
+    // AxiosResponse<Result<FileUploadResponse>> 구조:
+    // - uploadResponse.data = Result<FileUploadResponse> = { data: FileUploadResponse, status: number }
+    // - uploadResponse.data.data = FileUploadResponse = { status: number, data: { files: [...] } }
+    // 실제 백엔드 응답 구조에 따라 res.data.data.files 또는 res.data.data.data.files로 접근
+    const items =
+      (
+        uploadResponse as unknown as {
+          data?: {
+            data?: {
+              files?: FileUploadResponse["data"]["files"];
+              data?: { files?: FileUploadResponse["data"]["files"] };
+            };
+          };
+        }
+      )?.data?.data?.files ?? [];
+
+    debug.log("이미지 업로드 응답:", {
+      uploadResponse: uploadResponse.data,
+      itemsLength: items.length,
+      firstFile: items[0],
     });
 
-    router.push("/my-page");
-  };
-
-  // 파일 선택 처리 핸들러
-  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // 이미지 파일인지 확인
-    if (!file.type.startsWith("image/")) {
-      alert("이미지 파일만 선택할 수 있습니다.");
-      return;
+    const firstFile = items[0];
+    if (!firstFile?.success || !firstFile?.data?.fileUrl) {
+      debug.error("이미지 업로드 응답 파싱 실패:", {
+        items,
+        firstFile,
+        fullResponse: uploadResponse,
+        responseData: uploadResponse.data,
+      });
+      throw new Error(PROFILE_EDIT_MESSAGES.IMAGE_URL_FETCH_FAILED);
     }
 
-    // 파일 크기 체크 (예: 5MB 제한)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      alert("파일 크기는 5MB 이하여야 합니다.");
-      return;
-    }
-
-    // FileReader로 이미지 미리보기 URL 생성
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
-      setProfileImageUrl(imageUrl);
-    };
-    reader.readAsDataURL(file);
-
-    // FIXME: 실제로는 여기서 서버에 업로드하거나 FormData에 저장
-    console.log("선택된 파일:", file.name, file.size, file.type);
+    return firstFile.data.fileUrl;
   };
 
-  // 프로필 이미지 변경 핸들러
-  const handleImageClick = () => {
-    setIsBottomSheetOpen(true);
-  };
+  /**
+   * 사용자 데이터 로드 시 초기 상태 설정
+   * React Hook Form의 reset 메서드를 사용하여 초기값 설정
+   * isDirty가 false인 경우(아직 편집하지 않은 경우)에만 리셋
+   */
+  useEffect(() => {
+    if (!actualUserData || isDirty) return;
 
-  // 카메라 선택 핸들러
-  const handleCameraSelect = () => {
-    setIsBottomSheetOpen(false);
-    // 카메라 입력 트리거
-    cameraInputRef.current?.click();
-  };
+    reset({
+      profileImageUrl: actualUserData.profileImageUrl ?? "",
+      nickname: actualUserData.nickname ?? "",
+      bio: actualUserData.bio ?? "",
+    });
+  }, [actualUserData, reset, isDirty]);
 
-  // 갤러리 선택 핸들러
-  const handleGallerySelect = () => {
-    setIsBottomSheetOpen(false);
-    // 갤러리 입력 트리거
-    galleryInputRef.current?.click();
-  };
-
-  // 변경사항 저장 확인 모달 - 확인 버튼
-  const handleUnsavedConfirm = () => {
-    setIsUnsavedModalOpen(false);
-    router.push("/my-page");
-  };
-
-  // 브라우저 뒤로가기 대응
+  /**
+   * 브라우저 뒤로가기 시 변경사항 확인 모달 표시
+   * 닉네임이 비어있으면 이동을 막음
+   */
   useEffect(() => {
     const handlePopState = () => {
-      if (hasChanges) {
-        // 뒤로가기를 막기 위해 다시 앞으로 이동
+      const trimmedNickname = nickname.trim();
+      const initialNickname = actualUserData?.nickname ?? "";
+      const isNicknameEmpty = trimmedNickname.length === 0;
+      const isInitialNicknameEmpty = initialNickname.length === 0;
+
+      // 닉네임이 비어있고 초기 닉네임도 비어있는 경우 (신규 가입자/온보딩 미완료 사용자)
+      if (isNicknameEmpty && isInitialNicknameEmpty) {
+        window.history.pushState(null, "", window.location.href);
+        alert(PROFILE_EDIT_MESSAGES.NICKNAME_REQUIRED);
+        return;
+      }
+
+      if (isDirty) {
         window.history.pushState(null, "", window.location.href);
         setIsUnsavedModalOpen(true);
       }
     };
 
-    // history에 현재 상태 추가 (최초 1회만)
     if (!window.history.state?.profileEdit) {
       window.history.pushState({ profileEdit: true }, "", window.location.href);
     }
@@ -143,17 +181,140 @@ const ProfileEditPage = () => {
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [hasChanges]);
+  }, [isDirty, nickname, actualUserData?.nickname]);
+
+  /**
+   * 뒤로가기 버튼 클릭 핸들러
+   * 닉네임이 비어있으면 이동을 막고, 변경사항이 있으면 확인 모달을 표시하고, 없으면 마이페이지로 이동
+   */
+  const handleBack = () => {
+    const trimmedNickname = nickname.trim();
+    const initialNickname = actualUserData?.nickname ?? "";
+    const isNicknameEmpty = trimmedNickname.length === 0;
+    const isInitialNicknameEmpty = initialNickname.length === 0;
+
+    // 닉네임이 비어있고 초기 닉네임도 비어있는 경우 (신규 가입자/온보딩 미완료 사용자)
+    if (isNicknameEmpty && isInitialNicknameEmpty) {
+      alert(PROFILE_EDIT_MESSAGES.NICKNAME_REQUIRED);
+      return;
+    }
+
+    if (isDirty) {
+      setIsUnsavedModalOpen(true);
+    } else {
+      router.push(LINK_URL.MY_PAGE);
+    }
+  };
+
+  /**
+   * 프로필 편집 완료 핸들러
+   * 닉네임 중복 체크 → 이미지 업로드 → 프로필 업데이트 순서로 진행
+   */
+  const onSubmit = async (data: ProfileEditFormValues) => {
+    const trimmedNickname = data.nickname.trim();
+    const initialNickname = actualUserData?.nickname ?? "";
+
+    try {
+      const isNicknameChanged = trimmedNickname !== initialNickname;
+      if (isNicknameChanged) {
+        const nicknameCheckResponse =
+          await UsersApi.getUsersNicknameAvailability({
+            nickname: trimmedNickname,
+          });
+        const isAvailable =
+          nicknameCheckResponse.data?.data?.available ?? false;
+
+        if (!isAvailable) {
+          alert(PROFILE_EDIT_MESSAGES.NICKNAME_DUPLICATED);
+          return;
+        }
+      }
+
+      let finalImageUrl = data.profileImageUrl;
+      const initialImageUrl = actualUserData?.profileImageUrl ?? "";
+      const isImageChanged = data.profileImageUrl !== initialImageUrl;
+      const isNewlySelectedImage = data.profileImageUrl.startsWith("data:");
+
+      if (isImageChanged && isNewlySelectedImage && selectedFileRef.current) {
+        try {
+          finalImageUrl = await uploadImageFile(selectedFileRef.current);
+        } catch (error) {
+          debug.error("이미지 업로드 실패:", error);
+          alert(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED);
+          return;
+        }
+      }
+
+      await patchOnboardingAsync({
+        data: {
+          nickname: trimmedNickname,
+          profileImageUrl: finalImageUrl || undefined,
+          bio: data.bio.trim() || undefined,
+        },
+      });
+
+      alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_SUCCESS);
+      router.push(LINK_URL.MY_PAGE);
+    } catch (error) {
+      debug.error("프로필 업데이트 실패:", error);
+      alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_FAILED);
+    }
+  };
+
+  /**
+   * 파일 선택 핸들러
+   * 이미지 파일 검증 및 크기 체크 후 미리보기 생성
+   */
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!validateImageFile(file)) return;
+
+    selectedFileRef.current = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      setValue("profileImageUrl", imageUrl, { shouldDirty: true });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /**
+   * 카메라 선택 핸들러
+   * 바텀시트 닫고 카메라 입력 트리거
+   */
+  const handleCameraSelect = () => {
+    closeBottomSheet();
+    cameraInputRef.current?.click();
+  };
+
+  /**
+   * 갤러리 선택 핸들러
+   * 바텀시트 닫고 갤러리 입력 트리거
+   */
+  const handleGallerySelect = () => {
+    closeBottomSheet();
+    galleryInputRef.current?.click();
+  };
+
+  /**
+   * 변경사항 저장 확인 모달의 확인 버튼 핸들러
+   * 변경사항을 저장하지 않고 마이페이지로 이동
+   */
+  const handleUnsavedConfirm = () => {
+    setIsUnsavedModalOpen(false);
+    router.push(LINK_URL.MY_PAGE);
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-gray-50">
-      {/* 커스텀 Top Bar */}
       <div className="fixed top-0 z-50 mx-auto flex h-12 w-full max-w-[470px] items-center justify-between border-b border-b-gray-200 bg-white px-5 py-3">
-        {/* 뒤로가기 버튼 */}
         <button
           onClick={handleBack}
           className="hover:cursor-pointer"
-          aria-label="뒤로가기"
+          aria-label={PROFILE_EDIT_LABELS.BACK_BUTTON}
         >
           <svg
             className="h-5 w-5 text-gray-900"
@@ -170,24 +331,22 @@ const ProfileEditPage = () => {
           </svg>
         </button>
 
-        {/* 제목 */}
         <Typography font="noto" variant="body1M" className="text-gray-900">
-          프로필 편집
+          {PROFILE_EDIT_LABELS.PAGE_TITLE}
         </Typography>
 
-        {/* 완료 버튼 */}
         <button
-          onClick={handleComplete}
-          disabled={!isCompleteEnabled}
+          onClick={handleSubmit(onSubmit)}
+          disabled={!isCompleteEnabled || isSubmitting}
           className="disabled:cursor-not-allowed"
-          aria-label="완료"
+          aria-label={PROFILE_EDIT_LABELS.COMPLETE_BUTTON}
         >
           <Typography
             font="noto"
             variant="body1M"
             className={isCompleteEnabled ? "text-pink-600" : "text-gray-300"}
           >
-            완료
+            {PROFILE_EDIT_LABELS.COMPLETE_BUTTON}
           </Typography>
         </button>
       </div>
@@ -197,83 +356,85 @@ const ProfileEditPage = () => {
         {/* 프로필 이미지 */}
         <div className="mb-6 flex justify-center">
           <button
-            onClick={handleImageClick}
+            onClick={openBottomSheet}
             className="relative"
-            aria-label="프로필 이미지 변경"
+            aria-label={PROFILE_EDIT_LABELS.PROFILE_IMAGE_CHANGE}
           >
-            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-pink-100">
+            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-pink-100">
               {profileImageUrl ? (
-                <img
+                <Image
                   src={profileImageUrl}
-                  alt="프로필 이미지"
+                  alt={PROFILE_EDIT_LABELS.PROFILE_IMAGE_ALT}
                   className="h-full w-full object-cover"
+                  fill
                 />
               ) : (
                 <User className="h-12 w-12 text-pink-400" strokeWidth={1.5} />
               )}
             </div>
-            {/* 카메라 아이콘 */}
             <div className="absolute right-0 bottom-0 flex h-7 w-7 items-center justify-center rounded-full bg-gray-700">
               <Camera className="h-4 w-4 text-white" />
             </div>
           </button>
         </div>
 
-        {/* 닉네임 입력 */}
         <div className="mb-6">
-          <Typography
-            font="noto"
-            variant="body2M"
-            className="mb-2 text-gray-900"
-          >
-            닉네임
-          </Typography>
-          <input
+          <div className="flex items-center gap-1">
+            <Typography
+              font="noto"
+              variant="body2B"
+              className="mb-2 text-gray-900"
+            >
+              {PROFILE_EDIT_LABELS.NICKNAME}
+            </Typography>
+            <Typography
+              font="noto"
+              variant="body2B"
+              className="text-primary-600 mb-2"
+            >
+              *
+            </Typography>
+          </div>
+          <Input
+            {...register("nickname", {
+              maxLength: MAX_NICKNAME_LENGTH,
+            })}
             type="text"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-pink-600 focus:outline-none"
-            placeholder="닉네임을 입력하세요"
-            maxLength={20}
+            placeholder={PROFILE_EDIT_PLACEHOLDERS.NICKNAME}
           />
         </div>
 
-        {/* 자기소개 입력 */}
         <div className="mb-6">
           <Typography
             font="noto"
-            variant="body2M"
+            variant="body2B"
             className="mb-2 text-gray-900"
           >
-            자기소개
+            {PROFILE_EDIT_LABELS.BIO}
           </Typography>
           <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
+            {...register("bio", {
+              maxLength: MAX_BIO_LENGTH,
+            })}
             className="h-32 w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-pink-600 focus:outline-none"
-            placeholder="자기소개를 입력하세요"
-            maxLength={150}
+            placeholder={PROFILE_EDIT_PLACEHOLDERS.BIO}
           />
         </div>
       </main>
 
-      {/* 프로필 이미지 선택 바텀시트 */}
       <ProfileImageBottomSheet
         isOpen={isBottomSheetOpen}
-        onClose={() => setIsBottomSheetOpen(false)}
+        onClose={closeBottomSheet}
         onSelectCamera={handleCameraSelect}
         onSelectGallery={handleGallerySelect}
       />
 
-      {/* 변경사항 저장 확인 모달 */}
       <UnsavedChangesModal
         isOpen={isUnsavedModalOpen}
         onClose={() => setIsUnsavedModalOpen(false)}
         onConfirm={handleUnsavedConfirm}
       />
 
-      {/* 숨겨진 파일 입력 요소들 */}
-      {/* 카메라 촬영용 */}
       <input
         ref={cameraInputRef}
         type="file"
@@ -283,7 +444,6 @@ const ProfileEditPage = () => {
         className="hidden"
         aria-label="카메라로 사진 촬영"
       />
-      {/* 갤러리 선택용 */}
       <input
         ref={galleryInputRef}
         type="file"
