@@ -186,17 +186,28 @@ class StoreService {
   }
 
   /**
-   * 상품 페이지 블록 내용 조회
+   * 상품 페이지 블록 내용 조회 (페이지네이션 처리)
    * @param {string} productId - 상품 ID
    * @returns {Promise<Array>} 페이지 블록 내용
    */
   async getProductPageBlocks(productId) {
     try {
-      const data = await this.notion.blocks.children.list({
-        block_id: productId
-      });
+      const blocks = [];
+      let cursor;
+      let hasMore = true;
 
-      return formatNotionBlocks(data.results, {
+      // 모든 블록을 가져올 때까지 반복 (100개 제한 우회)
+      while (hasMore) {
+        const response = await this.notion.blocks.children.list({
+          block_id: productId,
+          start_cursor: cursor
+        });
+        blocks.push(...response.results);
+        cursor = response.next_cursor;
+        hasMore = response.has_more;
+      }
+
+      return formatNotionBlocks(blocks, {
         includeRichText: true,
         includeMetadata: true
       });
