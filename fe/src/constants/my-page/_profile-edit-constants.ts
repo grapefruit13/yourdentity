@@ -1,0 +1,29 @@
+/**
+ * @description 프로필 편집 페이지 관련 상수
+ */
+
+/** 파일 크기 제한 (5MB) */
+export const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+/** 닉네임 최대 길이 */
+export const MAX_NICKNAME_LENGTH = 20;
+
+/** 자기소개 최대 길이 */
+export const MAX_BIO_LENGTH = 150;
+
+/** Alert 메시지 */
+export const PROFILE_EDIT_MESSAGES = {
+  INVALID_IMAGE_FILE: "이미지 파일만 선택할 수 있습니다.",
+  IMAGE_SIZE_EXCEEDED: "파일 크기는 5MB 이하여야 합니다.",
+  NICKNAME_DUPLICATED: "이미 존재하는 닉네임입니다",
+  IMAGE_UPLOAD_FAILED: "프로필 이미지 업로드 실패",
+  IMAGE_URL_FETCH_FAILED: "이미지 URL을 가져올 수 없습니다",
+  PROFILE_UPDATE_SUCCESS: "프로필 편집 완료",
+  PROFILE_UPDATE_FAILED: "프로필 편집 실패",
+} as const;
+
+/** Placeholder 텍스트 */
+export const PROFILE_EDIT_PLACEHOLDERS = {
+  NICKNAME: "닉네임을 입력해주세요.",
+  BIO: "자기소개를 입력하세요",
+} as const;
