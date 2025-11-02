@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
 
 export interface TPATCHUsersMeOnboardingReq {
@@ -18,7 +17,7 @@ export type TPATCHUsersMeOnboardingRes = {
   onboardingCompleted?: boolean;
 };
 
-export type TGETUsersMeRes = any;
+export type TGETUsersMeRes = Schema.User;
 
 export interface TGETUsersNicknameAvailabilityReq {
   nickname: string;
@@ -38,13 +37,16 @@ export type TPOSTUsersMeSyncKakaoProfileRes = {
   success?: boolean;
 };
 
-export type TGETUsersRes = any;
+export type TGETUsersRes = {
+  users?: Schema.User[];
+  count?: number;
+};
 
 export interface TGETUsersByIdReq {
   userId: string;
 }
 
-export type TGETUsersByIdRes = any;
+export type TGETUsersByIdRes = Schema.User;
 
 export interface TPUTUsersByIdReq {
   userId: string;
@@ -67,10 +69,12 @@ export interface TPUTUsersByIdReq {
   };
 }
 
-export type TPUTUsersByIdRes = any;
+export type TPUTUsersByIdRes = Schema.User;
 
 export interface TDELETEUsersByIdReq {
   userId: string;
 }
 
-export type TDELETEUsersByIdRes = any;
+export type TDELETEUsersByIdRes = {
+  userId?: string;
+};

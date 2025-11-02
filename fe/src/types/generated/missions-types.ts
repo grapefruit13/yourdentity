@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
 
 export interface TPOSTUsersMissionsByIdReq {
@@ -14,21 +13,21 @@ export interface TPOSTUsersMissionsByIdReq {
   };
 }
 
-export type TPOSTUsersMissionsByIdRes = any;
+export type TPOSTUsersMissionsByIdRes = Schema.Mission;
 
 export interface TGETUsersMissionsByIdReq {
   userId: string;
   status?: "ONGOING" | "COMPLETED" | "EXPIRED" | "RETRY";
 }
 
-export type TGETUsersMissionsByIdRes = any;
+export type TGETUsersMissionsByIdRes = Schema.Mission[];
 
 export interface TGETUsersMissionsByTwoIdsReq {
   userId: string;
   missionId: string;
 }
 
-export type TGETUsersMissionsByTwoIdsRes = any;
+export type TGETUsersMissionsByTwoIdsRes = Schema.Mission;
 
 export interface TPUTUsersMissionsByTwoIdsReq {
   userId: string;
@@ -40,7 +39,7 @@ export interface TPUTUsersMissionsByTwoIdsReq {
   };
 }
 
-export type TPUTUsersMissionsByTwoIdsRes = any;
+export type TPUTUsersMissionsByTwoIdsRes = Schema.Mission;
 
 export interface TDELETEUsersMissionsByTwoIdsReq {
   userId: string;
