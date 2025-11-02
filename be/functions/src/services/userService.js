@@ -163,7 +163,7 @@ class UserService {
       
       userinfoJson = {
         name: customClaims.kakaoName || "테스트유저",
-        gender: customClaims.kakaoGender || "MALE",
+        gender: customClaims.kakaoGender || "male",
         birthdate: customClaims.kakaoBirthdate || "2000-01-01",
         phone_number: customClaims.kakaoPhoneNumber || "01012345678",
         picture: customClaims.kakaoPicture || "",
@@ -189,7 +189,7 @@ class UserService {
     }
 
     const name = userinfoJson.name || "";
-    const genderRaw = userinfoJson.gender || null; // MALE|FEMALE (대문자 기대)
+    const genderRaw = userinfoJson.gender || null; // "male" | "female" (소문자)
     const birthdateRaw = userinfoJson.birthdate || null; // YYYY-MM-DD 기대
     const phoneRaw = userinfoJson.phone_number || "";
     const profileImageUrl = userinfoJson.picture || "";
@@ -201,8 +201,9 @@ class UserService {
       throw e;
     }
 
-    // gender 정규화
-    const gender = genderRaw === "MALE" || genderRaw === "FEMALE" ? genderRaw : null;
+    // gender 정규화 (소문자로 변환 및 검증)
+    const genderNormalized = genderRaw?.toString().toLowerCase();
+    const gender = genderNormalized === "male" || genderNormalized === "female" ? genderNormalized : null;
     if (!gender) {
       const e = new Error("카카오에서 받은 성별 정보가 유효하지 않습니다");
       e.code = "INVALID_INPUT";

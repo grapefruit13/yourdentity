@@ -25,7 +25,7 @@ if (!userId) {
 // 카카오 테스트용 더미 데이터
 const customClaims = {
   kakaoName: '테스트유저',
-  kakaoGender: 'MALE',
+  kakaoGender: 'male',
   kakaoBirthdate: '2000-01-01',
   kakaoPhoneNumber: '01012345678',
   kakaoPicture: '',

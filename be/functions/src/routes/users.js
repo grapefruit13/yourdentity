@@ -472,8 +472,8 @@ router.get("/:userId", authGuard, userController.getUserById);
  *                 example: 1990-01-01
  *               gender:
  *                 type: string
- *                 enum: [MALE, FEMALE]
- *                 example: MALE
+ *                 enum: [male, female]
+ *                 example: male
  *               phoneNumber:
  *                 type: string
  *                 example: 01012345678
