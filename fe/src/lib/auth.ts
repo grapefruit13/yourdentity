@@ -152,7 +152,11 @@ export const signInWithKakao = async (): Promise<{
 
     // null 체크 및 검증
     if (!result || !result.user) {
-      throw new Error("로그인 결과가 올바르지 않습니다.");
+      const invalidResultError: ErrorResponse = {
+        status: 500,
+        message: AUTH_MESSAGE.KAKAO.FAILURE,
+      };
+      throw invalidResultError;
     }
 
     const additionalInfo = getAdditionalUserInfo(result);
