@@ -212,7 +212,17 @@ class ProgramController {
   async applyToProgram(req, res, next) {
     try {
       const { programId } = req.params;
-      const { applicantId, nickname } = req.body;
+      const { 
+        applicantId, 
+        activityNickname,
+        activityPhoneNumber,
+        email,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents
+      } = req.body;
 
       if (!programId) {
         const error = new Error("프로그램 ID가 필요합니다.");
@@ -222,7 +232,7 @@ class ProgramController {
       }
 
       // 필수 필드 검증
-      if (!applicantId || !nickname) {
+      if (!applicantId || !activityNickname) {
         const error = new Error("신청자 ID와 참여용 닉네임은 필수 입력 항목입니다.");
         error.code = 'BAD_REQUEST';
         error.statusCode = 400;
@@ -230,14 +240,26 @@ class ProgramController {
       }
 
       // 닉네임 길이 검증
-      if (nickname.length < 1 || nickname.length > 50) {
+      if (activityNickname.length < 1 || activityNickname.length > 50) {
         const error = new Error("닉네임은 1-50자 사이여야 합니다.");
         error.code = 'BAD_REQUEST';
         error.statusCode = 400;
         return next(error);
       }
 
-      const result = await programService.applyToProgram(programId, { applicantId, nickname });
+      const applicationData = {
+        applicantId,
+        nickname: activityNickname,
+        phoneNumber: activityPhoneNumber,
+        email,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents
+      };
+
+      const result = await programService.applyToProgram(programId, applicationData);
 
       res.success({
         message: "프로그램 신청이 완료되었습니다.",

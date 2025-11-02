@@ -654,49 +654,175 @@ class ProgramService {
 
   /**
    * Notion 프로그램신청자DB에 저장
-   * @param {string} programId - 프로그램 ID
-   * @param {Object} applicationData - 신청 데이터 { applicantId, nickname }
+   * @param {string} programId - 프로그램 ID (Notion 페이지 ID)
+   * @param {Object} applicationData - 신청 데이터
+   * @param {string} applicationData.applicantId - Firebase UID
+   * @param {string} applicationData.nickname - 참여용 닉네임
+   * @param {string} [applicationData.phoneNumber] - 참여용 전화번호
+   * @param {string} [applicationData.email] - 신청자 이메일
+   * @param {Object} [applicationData.region] - 거주 지역 { city, district }
+   * @param {string} [applicationData.currentSituation] - 현재 상황
+   * @param {string} [applicationData.applicationSource] - 신청 경로
+   * @param {string} [applicationData.applicationMotivation] - 참여 동기
+   * @param {boolean} [applicationData.canAttendEvents] - 필참 일정 확인 여부
    * @param {Object} program - 프로그램 정보
    * @returns {Promise<string>} Notion 페이지 ID
    */
   async saveToNotionApplication(programId, applicationData, program) {
     try {
-      const { applicantId, nickname } = applicationData;
+      const { 
+        applicantId, 
+        nickname, 
+        phoneNumber, 
+        email,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents
+      } = applicationData;
       
+      // 거주 지역 포맷팅
+      let regionText = '';
+      if (region) {
+        if (region.city && region.district) {
+          regionText = `${region.city} ${region.district}`;
+        } else if (region.city) {
+          regionText = region.city;
+        } else if (region.district) {
+          regionText = region.district;
+        }
+      }
+
+      // 참여 동기가 "직접 입력하기"인 경우와 선택지인 경우 구분
+      let motivationSelect = null;
+      let motivationDetail = '';
+      
+      if (applicationMotivation) {
+        // Notion select options에 있는 값들
+        const validOptions = [
+          '직접 입력하기',
+          '추천을 받아 관심이 생겨서',
+          '나만의 변화를 기록하고 싶어서',
+          '다른 참여자들과 교류하여 동기부여 하고 싶어서',
+          '일상을 좀 더 규칙적으로 관리하고 싶어서',
+          '새로운 습관을 만들고 싶어서'
+        ];
+        
+        if (validOptions.includes(applicationMotivation)) {
+          motivationSelect = applicationMotivation;
+        } else {
+          // 선택지에 없는 값이면 "직접 입력하기"로 설정하고 내용은 detail에 저장
+          motivationSelect = '직접 입력하기';
+          motivationDetail = applicationMotivation;
+        }
+      }
+
+      const properties = {
+        '이름': {
+          title: [
+            {
+              text: {
+                content: nickname || '익명'
+              }
+            }
+          ]
+        },
+        '참여용 닉네임': {
+          rich_text: [
+            {
+              text: {
+                content: nickname || ''
+              }
+            }
+          ]
+        },
+        '프로그램명': {
+          relation: [
+            {
+              id: programId
+            }
+          ]
+        },
+        '서비스 이용약관 동의여부': {
+          checkbox: true
+        },
+        '필참 일정 확인 여부': {
+          checkbox: canAttendEvents || false
+        }
+      };
+
+      // 선택적 필드 추가
+      if (phoneNumber) {
+        properties['참여용 전화번호'] = {
+          phone_number: phoneNumber
+        };
+      }
+
+      if (email) {
+        properties['신청자 이메일'] = {
+          email: email
+        };
+      }
+
+      if (regionText) {
+        properties['거주 지역'] = {
+          rich_text: [
+            {
+              text: {
+                content: regionText
+              }
+            }
+          ]
+        };
+      }
+
+      if (currentSituation) {
+        properties['현재 상황'] = {
+          select: {
+            name: currentSituation
+          }
+        };
+      }
+
+      if (applicationSource) {
+        properties['신청 경로'] = {
+          select: {
+            name: applicationSource
+          }
+        };
+      }
+
+      if (motivationSelect) {
+        properties['참여 동기'] = {
+          select: {
+            name: motivationSelect
+          }
+        };
+      }
+
+      if (motivationDetail) {
+        properties['참여 동기 (직접 입력)'] = {
+          rich_text: [
+            {
+              text: {
+                content: motivationDetail
+              }
+            }
+          ]
+        };
+      }
+
       const notionData = {
         parent: {
           data_source_id: this.applicationDataSource,
           type: "data_source_id"
         },
-        properties: {
-          '이름': {
-            title: [
-              {
-                text: {
-                  content: nickname || '익명'
-                }
-              }
-            ]
-          },
-          '참여용 닉네임': {
-            rich_text: [
-              {
-                text: {
-                  content: nickname || ''
-                }
-              }
-            ]
-          },
-          '서비스 이용약관 동의여부': {
-            checkbox: true
-          },
-          '필참 일정 확인 여부': {
-            checkbox: false
-          }
-        }
+        properties
       };
 
       const response = await this.notion.pages.create(notionData);
+      console.log('[ProgramService] Notion 신청 정보 저장 성공:', response.id);
       return response.id;
 
     } catch (error) {
