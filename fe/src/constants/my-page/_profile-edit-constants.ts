@@ -16,6 +16,7 @@ export const PROFILE_EDIT_MESSAGES = {
   INVALID_IMAGE_FILE: "이미지 파일만 선택할 수 있습니다.",
   IMAGE_SIZE_EXCEEDED: "파일 크기는 5MB 이하여야 합니다.",
   NICKNAME_DUPLICATED: "이미 존재하는 닉네임입니다",
+  NICKNAME_REQUIRED: "닉네임을 입력해주세요.",
   IMAGE_UPLOAD_FAILED: "프로필 이미지 업로드 실패",
   IMAGE_URL_FETCH_FAILED: "이미지 URL을 가져올 수 없습니다",
   PROFILE_UPDATE_SUCCESS: "프로필 편집 완료",

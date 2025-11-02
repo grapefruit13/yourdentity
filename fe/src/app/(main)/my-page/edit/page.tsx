@@ -150,9 +150,22 @@ const ProfileEditPage = () => {
 
   /**
    * 브라우저 뒤로가기 시 변경사항 확인 모달 표시
+   * 닉네임이 비어있으면 이동을 막음
    */
   useEffect(() => {
     const handlePopState = () => {
+      const trimmedNickname = nickname.trim();
+      const initialNickname = actualUserData?.nickname ?? "";
+      const isNicknameEmpty = trimmedNickname.length === 0;
+      const isInitialNicknameEmpty = initialNickname.length === 0;
+
+      // 닉네임이 비어있고 초기 닉네임도 비어있는 경우 (신규 가입자/온보딩 미완료 사용자)
+      if (isNicknameEmpty && isInitialNicknameEmpty) {
+        window.history.pushState(null, "", window.location.href);
+        alert(PROFILE_EDIT_MESSAGES.NICKNAME_REQUIRED);
+        return;
+      }
+
       if (isDirty) {
         window.history.pushState(null, "", window.location.href);
         setIsUnsavedModalOpen(true);
@@ -168,13 +181,24 @@ const ProfileEditPage = () => {
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [isDirty]);
+  }, [isDirty, nickname, actualUserData?.nickname]);
 
   /**
    * 뒤로가기 버튼 클릭 핸들러
-   * 변경사항이 있으면 확인 모달을 표시하고, 없으면 마이페이지로 이동
+   * 닉네임이 비어있으면 이동을 막고, 변경사항이 있으면 확인 모달을 표시하고, 없으면 마이페이지로 이동
    */
   const handleBack = () => {
+    const trimmedNickname = nickname.trim();
+    const initialNickname = actualUserData?.nickname ?? "";
+    const isNicknameEmpty = trimmedNickname.length === 0;
+    const isInitialNicknameEmpty = initialNickname.length === 0;
+
+    // 닉네임이 비어있고 초기 닉네임도 비어있는 경우 (신규 가입자/온보딩 미완료 사용자)
+    if (isNicknameEmpty && isInitialNicknameEmpty) {
+      alert(PROFILE_EDIT_MESSAGES.NICKNAME_REQUIRED);
+      return;
+    }
+
     if (isDirty) {
       setIsUnsavedModalOpen(true);
     } else {
