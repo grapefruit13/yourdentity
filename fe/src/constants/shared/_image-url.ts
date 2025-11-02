@@ -57,6 +57,10 @@ const ICON = {
     url: "/icons/ic-heading.svg",
     alt: "텍스트 에디터 - 가",
   },
+  penLine: {
+    url: "/icons/ic-pen-line.svg",
+    alt: "작성하기",
+  },
 };
 
 const IMG = {
