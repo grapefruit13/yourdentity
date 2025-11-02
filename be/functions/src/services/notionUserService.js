@@ -104,7 +104,7 @@ class NotionUserService {
           "성별": { 
             select: { 
               name: 
-                user.gender === 'MALE' ? "남성" : user.gender === 'FEMALE' ? "여성" : "미선택",
+                user.gender === 'male' ? "남성" : user.gender === 'female' ? "여성" : "미선택",
             } 
           },
           "Push 광고 수신 여부": {
