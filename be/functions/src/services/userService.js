@@ -374,7 +374,6 @@ class UserService {
       .map(postId => postsMap[postId])
       .filter(post => post !== undefined);
 
-    // processPost 헬퍼 함수 적용 (항상 preview만)
     const processPost = (post) => {
       const { authorId: _, ...postWithoutAuthorId } = post;
       const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
@@ -390,8 +389,7 @@ class UserService {
         viewCount: post.viewCount || 0,
       };
 
-      // 항상 preview만 생성
-      processedPost.preview = communityService.createPreview(post);
+      processedPost.preview = post.preview || communityService.createPreview(post);
       delete processedPost.content;
       delete processedPost.media;
       delete processedPost.communityId;
