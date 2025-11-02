@@ -54,7 +54,17 @@ const LoginPage = () => {
       const { kakaoAccessToken, isNewUser } = await signInWithKakao();
 
       // 2. 신규 회원 처리
-      if (isNewUser && kakaoAccessToken) {
+      if (isNewUser) {
+        // 2-0. 신규 회원인데 토큰이 없는 경우 (권한 미동의, 프로바이더 오류 등)
+        if (!kakaoAccessToken) {
+          debug.error("신규 회원인데 카카오 액세스 토큰이 없습니다.");
+          setIsLoading(false);
+          setErrorMessage(
+            "카카오 로그인 권한이 필요합니다. 다시 시도해 주세요."
+          );
+          return;
+        }
+
         try {
           // 2-1. 카카오 프로필 동기화 (비동기 완료 대기)
           await syncMutateAsync({
