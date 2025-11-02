@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, useMemo, ChangeEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Camera, User, Image as ImageIcon } from "lucide-react";
+import { Camera, User } from "lucide-react";
 import * as FilesApi from "@/api/generated/files-api";
 import * as UsersApi from "@/api/generated/users-api";
+import ProfileImageBottomSheet from "@/components/my-page/ProfileImageBottomSheet";
 import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
 import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
-import BottomSheet from "@/components/shared/ui/bottom-sheet";
+
 import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
   MAX_NICKNAME_LENGTH,
@@ -23,6 +24,7 @@ import {
   usePatchUsersMeOnboarding,
 } from "@/hooks/generated/users-hooks";
 import useIsMobile from "@/hooks/shared/useIsMobile";
+import useToggle from "@/hooks/shared/useToggle";
 import { debug } from "@/utils/shared/debugger";
 
 const ProfileEditPage = () => {
@@ -49,7 +51,11 @@ const ProfileEditPage = () => {
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [nickname, setNickname] = useState("");
   const [bio, setBio] = useState("");
-  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const {
+    isOpen: isBottomSheetOpen,
+    close: closeBottomSheet,
+    open: openBottomSheet,
+  } = useToggle();
   const [isUnsavedModalOpen, setIsUnsavedModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -217,7 +223,7 @@ const ProfileEditPage = () => {
    * 이미지 선택 바텀시트 열기
    */
   const handleImageClick = () => {
-    setIsBottomSheetOpen(true);
+    openBottomSheet();
   };
 
   /**
@@ -225,7 +231,7 @@ const ProfileEditPage = () => {
    * 바텀시트 닫고 카메라 입력 트리거
    */
   const handleCameraSelect = () => {
-    setIsBottomSheetOpen(false);
+    closeBottomSheet();
     cameraInputRef.current?.click();
   };
 
@@ -234,7 +240,7 @@ const ProfileEditPage = () => {
    * 바텀시트 닫고 갤러리 입력 트리거
    */
   const handleGallerySelect = () => {
-    setIsBottomSheetOpen(false);
+    closeBottomSheet();
     galleryInputRef.current?.click();
   };
 
@@ -361,39 +367,12 @@ const ProfileEditPage = () => {
         </div>
       </main>
 
-      <BottomSheet
+      <ProfileImageBottomSheet
         isOpen={isBottomSheetOpen}
-        onClose={() => setIsBottomSheetOpen(false)}
-      >
-        <div className="flex flex-col gap-2">
-          {isMobile && (
-            <button
-              onClick={handleCameraSelect}
-              className="flex items-center gap-4 rounded-xl p-4 transition-colors hover:bg-gray-50"
-              aria-label="직접 촬영"
-            >
-              <Camera className="h-6 w-6 text-gray-700" />
-              <Typography
-                font="noto"
-                variant="body1R"
-                className="text-gray-900"
-              >
-                직접 촬영
-              </Typography>
-            </button>
-          )}
-          <button
-            onClick={handleGallerySelect}
-            className="flex items-center gap-4 rounded-xl p-4 transition-colors hover:bg-gray-50"
-            aria-label={isMobile ? "앨범에서 사진 선택" : "사진 선택"}
-          >
-            <ImageIcon className="h-6 w-6 text-gray-700" />
-            <Typography font="noto" variant="body1R" className="text-gray-900">
-              {isMobile ? "앨범에서 사진 선택" : "사진 선택"}
-            </Typography>
-          </button>
-        </div>
-      </BottomSheet>
+        onClose={closeBottomSheet}
+        onSelectCamera={handleCameraSelect}
+        onSelectGallery={handleGallerySelect}
+      />
 
       <UnsavedChangesModal
         isOpen={isUnsavedModalOpen}
