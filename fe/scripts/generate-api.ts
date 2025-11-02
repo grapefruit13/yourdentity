@@ -575,6 +575,32 @@ import type * as Schema from "./api-schema";
           } else {
             fileContent += `any;\n\n`;
           }
+        } else if (responseSchema.allOf) {
+          // allOf를 사용하는 경우 (StandardResponse + data 필드 조합 등)
+          // data 필드의 타입을 찾아서 반환
+          let dataType: string | null = null;
+
+          responseSchema.allOf.forEach((subSchema: any) => {
+            // $ref는 StandardResponse 같은 기본 응답 구조
+            // properties.data가 있는 경우를 찾음
+            if (subSchema.properties?.data) {
+              const dataSchema = subSchema.properties.data;
+              if (dataSchema.$ref) {
+                const refName = dataSchema.$ref.split("/").pop();
+                if (refName && availableSchemaNames.has(refName)) {
+                  dataType = `Schema.${refName}`;
+                }
+              } else {
+                dataType = getTypeScriptType(dataSchema);
+              }
+            }
+          });
+
+          if (dataType) {
+            fileContent += `${dataType};\n\n`;
+          } else {
+            fileContent += `any;\n\n`;
+          }
         } else if (responseSchema.properties?.data) {
           // 응답 스키마에 data 필드가 있는 경우, data 필드의 타입만 추출
           const dataType = getTypeScriptType(responseSchema.properties.data);
