@@ -74,7 +74,10 @@ class StoreService {
   async getProducts(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
       if (!this.notion || !this.storeDataSource) {
-        throw new Error('Notion이 설정되지 않았습니다.');
+        const error = new Error('Notion이 설정되지 않았습니다.');
+        error.code = ERROR_CODES.MISSING_API_KEY;
+        error.statusCode = 500;
+        throw error;
       }
 
       const queryBody = {
@@ -112,7 +115,7 @@ class StoreService {
         products,
         hasMore: data.has_more,
         nextCursor: data.next_cursor,
-        totalCount: data.results.length
+        currentPageCount: data.results.length
       };
 
     } catch (error) {
@@ -146,7 +149,10 @@ class StoreService {
   async getProductById(productId) {
     try {
       if (!this.notion || !this.storeDataSource) {
-        throw new Error('Notion이 설정되지 않았습니다.');
+        const error = new Error('Notion이 설정되지 않았습니다.');
+        error.code = ERROR_CODES.MISSING_API_KEY;
+        error.statusCode = 500;
+        throw error;
       }
 
       // 상품 페이지 정보 조회

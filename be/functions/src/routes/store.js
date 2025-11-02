@@ -228,7 +228,7 @@ const authGuard = require("../middleware/authGuard");
  *                           nullable: true
  *                           description: 다음 페이지 커서
  *                           example: null
- *                         totalCount:
+ *                         currentPageCount:
  *                           type: integer
  *                           description: 현재 페이지 항목 수
  *                           example: 3

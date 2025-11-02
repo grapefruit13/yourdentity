@@ -46,7 +46,7 @@ class StoreController {
         pagination: {
           hasMore: result.hasMore,
           nextCursor: result.nextCursor,
-          totalCount: result.totalCount
+          currentPageCount: result.currentPageCount
         }
       });
 
