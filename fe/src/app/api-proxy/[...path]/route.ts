@@ -72,12 +72,13 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
       status: res.status,
       headers: res.headers,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[PROXY ERROR]", e);
+    const errorMessage = e instanceof Error ? e.message : "Proxy failed";
     return new Response(
       JSON.stringify({
         proxyError: true,
-        message: e?.message ?? "Proxy failed",
+        message: errorMessage,
         targetUrl: `${API_BASE_URL}/${params.path.join("/")}`,
       }),
       {
@@ -87,4 +88,3 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     );
   }
 }
-
