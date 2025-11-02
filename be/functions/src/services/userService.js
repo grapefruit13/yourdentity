@@ -163,7 +163,7 @@ class UserService {
       
       userinfoJson = {
         name: customClaims.kakaoName || "테스트유저",
-        gender: customClaims.kakaoGender || "male",
+        gender: (customClaims.kakaoGender || "male").toLowerCase(),
         birthdate: customClaims.kakaoBirthdate || "2000-01-01",
         phone_number: customClaims.kakaoPhoneNumber || "01012345678",
         picture: customClaims.kakaoPicture || "",
