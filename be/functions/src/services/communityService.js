@@ -240,7 +240,8 @@ class CommunityService {
             viewCount: post.viewCount || 0,
           };
 
-          processedPost.preview = this.createPreview(post);
+          // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
+          processedPost.preview = post.preview || this.createPreview(post);
           delete processedPost.content;
           delete processedPost.media;
 
@@ -325,7 +326,8 @@ class CommunityService {
           viewCount: post.viewCount || 0,
         };
 
-        processedPost.preview = this.createPreview(post);
+        // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
+        processedPost.preview = post.preview || this.createPreview(post);
         delete processedPost.content;
         delete processedPost.media;
 
@@ -405,7 +407,7 @@ class CommunityService {
     const posts = await Promise.all(postPromises);
     const allPosts = posts.filter(post => post !== null);
 
-    // processPost 헬퍼 함수 적용 (항상 preview만)
+    // processPost 헬퍼 함수 적용 (저장된 preview 사용)
     const processPost = (post) => {
       const { authorId: _, ...postWithoutAuthorId } = post;
       const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
@@ -421,8 +423,8 @@ class CommunityService {
         viewCount: post.viewCount || 0,
       };
 
-      // 항상 preview만 생성
-      processedPost.preview = communityService.createPreview(post);
+      // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
+      processedPost.preview = post.preview || communityService.createPreview(post);
       delete processedPost.content;
       delete processedPost.media;
       delete processedPost.communityId;
@@ -527,6 +529,12 @@ class CommunityService {
 
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       
+      // preview 필드 생성
+      const preview = this.createPreview({
+        content: sanitizedContent,
+        media: postMedia,
+      });
+      
       const newPost = {
         communityId,
         authorId: userId,
@@ -534,6 +542,7 @@ class CommunityService {
         title,
         content: sanitizedContent,
         media: postMedia,
+        preview,
         type: type || community.postType || "GENERAL",
         channel: channel || community.channel || "general",
         category: category || null,
@@ -578,7 +587,7 @@ class CommunityService {
         }
       }
 
-      const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, ...restNewPost} = newPost;
+      const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, preview: _preview, ...restNewPost} = newPost;
       
       return {
         id: postId,
@@ -730,6 +739,19 @@ class CommunityService {
         
       }
 
+      const needsPreviewUpdate = 
+        Object.prototype.hasOwnProperty.call(updateData, "content") || 
+        Object.prototype.hasOwnProperty.call(updateData, "media");
+      
+      if (needsPreviewUpdate) {
+        const finalContent = updateData.content !== undefined ? updateData.content : post.content;
+        const finalMedia = updateData.media !== undefined ? updateData.media : post.media;
+        updateData.preview = this.createPreview({
+          content: finalContent,
+          media: finalMedia,
+        });
+      }
+
       const updatedData = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
@@ -740,7 +762,7 @@ class CommunityService {
       const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
 
-      const {authorId, ...freshWithoutAuthorId} = fresh;
+      const {authorId, preview: _preview, ...freshWithoutAuthorId} = fresh;
       
       return {
         id: postId,
