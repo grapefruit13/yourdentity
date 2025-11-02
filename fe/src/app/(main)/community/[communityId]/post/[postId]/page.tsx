@@ -29,7 +29,6 @@ const transformApiDataToCommunityPost = (
       badge: "일반 사용자", // 기본값, 추후 API에서 제공될 수 있음
       avatar: undefined, // 기본값, 추후 API에서 제공될 수 있음
     },
-    date: apiData.timeAgo,
     content: fullContent || apiData.preview.description, // content가 없으면 preview.description 사용
     category: apiData.category || "일상 공유",
     tags: apiData.tags,
@@ -38,6 +37,7 @@ const transformApiDataToCommunityPost = (
       comments: apiData.commentsCount,
     },
     thumbnail: apiData.preview.thumbnail?.url,
+    createdAt: apiData.createdAt,
   };
 };
 

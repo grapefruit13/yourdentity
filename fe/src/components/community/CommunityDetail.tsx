@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CommunityPost } from "@/types/community";
 import { cn } from "@/utils/shared/cn";
+import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
 import ShareModal from "./ShareModal";
 
@@ -267,7 +268,9 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
                 {post?.author.badge}
               </span>
             </div>
-            <div className="text-xs text-gray-500">{post?.date}</div>
+            <div className="text-xs text-gray-500">
+              {post?.createdAt && getTimeAgo(post.createdAt)}
+            </div>
           </div>
         </div>
 

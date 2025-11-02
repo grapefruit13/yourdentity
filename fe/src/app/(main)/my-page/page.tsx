@@ -33,7 +33,7 @@ const Page = () => {
       {
         id: "1",
         imageUrl: "https://picsum.photos/400/400?random=1",
-        title: "한꽃루틴",
+        title: "한끗루틴",
         description: "프로그램 참여에서 좋았어요",
         authorName: "유어덴티티",
         authorProfileUrl: "",
@@ -65,7 +65,7 @@ const Page = () => {
       {
         id: "4",
         imageUrl: "https://picsum.photos/400/400?random=4",
-        title: "한꽃루틴",
+        title: "한끗루틴",
         description: "여기도 댓글을 남겼어요",
         authorName: "다른사용자2",
         authorProfileUrl: "",

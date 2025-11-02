@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { CommunityPost } from "@/types/community";
 import { cn } from "@/utils/shared/cn";
+import { getTimeAgo } from "@/utils/shared/date";
 
 interface PostFeedProps {
   posts: CommunityPost[];
@@ -14,12 +15,14 @@ const PostFeed = ({ posts, onPostClick }: PostFeedProps) => {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "일상 공유":
-        return "bg-blue-100 text-blue-600";
-      case "질문과 답변":
-        return "bg-purple-100 text-purple-600";
+      case "한끗루틴":
+        return "bg-[#FFF2F9] text-[#FF2479]";
+      case "TMI":
+        return "bg-[#E8F2FF] text-[#2B7FFF]";
+      case "내가 참여중인":
+        return "bg-[#E8F2FF] text-[#2B7FFF]";
       case "월간 소모임":
-        return "bg-green-100 text-green-600";
+        return "bg-[#FFEFF3] text-[#FF2479]";
       default:
         return "bg-gray-100 text-gray-600";
     }
@@ -70,7 +73,7 @@ const PostFeed = ({ posts, onPostClick }: PostFeedProps) => {
               <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
                 <span className="font-medium">{post.author.name}</span>
                 <span>•</span>
-                <span>{post.date}</span>
+                <span>{getTimeAgo(post.createdAt)}</span>
               </div>
 
               {/* 액션 아이콘들 */}

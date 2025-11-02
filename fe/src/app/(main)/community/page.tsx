@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import FilterButtons from "@/components/community/FilterButtons";
+import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
 import UserImageCarousel from "@/components/community/UserImageCarousel";
 import { userImages } from "@/constants/community/sampleData";
@@ -27,11 +28,46 @@ const Page = () => {
     setActiveFilter(filter);
   };
 
+  // TEMP: 월별 필터링 로직
+  const getMonthRange = (filter: string): number[] => {
+    switch (filter) {
+      case "10월~12월":
+        return [10, 11, 12];
+      case "1월~3월":
+        return [1, 2, 3];
+      case "4월~6월":
+        return [4, 5, 6];
+      case "7월~9월":
+        return [7, 8, 9];
+      default:
+        return [];
+    }
+  };
+
   // 필터링된 포스트
-  const filteredPosts =
-    activeFilter === "전체"
-      ? posts
-      : posts.filter((post) => post.category === activeFilter);
+  const filteredPosts = useMemo(() => {
+    if (activeFilter === "전체") {
+      return posts;
+    }
+    if (activeFilter === "참여중") {
+      // TODO: 실제 API 연동 시 users/{userId}/commentedPosts, likedPosts, authoredPosts 조회
+      // 현재는 임시로 빈 배열 반환
+      return [];
+    }
+
+    const monthRange = getMonthRange(activeFilter);
+    if (monthRange.length > 0) {
+      return posts.filter((post) => {
+        if (!post.createdAt) return false;
+        // ISO 문자열에서 월 추출 (1-12)
+        const createdDate = new Date(post.createdAt);
+        const month = createdDate.getMonth() + 1; // 0-based → 1-based
+        return monthRange.includes(month);
+      });
+    }
+
+    return posts;
+  }, [posts, activeFilter]);
 
   // Early Return 패턴으로 조건부 렌더링 처리
   if (loading) {
@@ -64,22 +100,20 @@ const Page = () => {
     );
   }
 
+  // 상위 3개와 나머지 포스트 분리
+  const topPosts = filteredPosts.slice(0, 3);
+  const remainingPosts = filteredPosts.slice(3);
+
   return (
-    <div className="min-h-full bg-white">
+    <div className="relative min-h-full bg-white">
       <div className="px-4 pt-4 pb-20">
         {/* 미션 프로그램 섹션 */}
-        <div className="mb-5">
+        {/* <div className="mb-5">
           <div className="mb-5 flex items-center gap-4">
             <span className="text-lg font-bold text-gray-500">미션</span>
             <span className="text-lg font-bold text-black">프로그램</span>
           </div>
-          <h2 className="text-2xl font-bold text-black">유스들의 후기</h2>
-        </div>
-
-        {/* 유저 이미지 캐러셀 */}
-        <div className="mb-2">
-          <UserImageCarousel images={userImages} />
-        </div>
+        </div> */}
 
         {/* 필터 버튼들 - 스티키 */}
         <div className="sticky top-0 z-40 mb-6 bg-white py-2">
@@ -89,17 +123,46 @@ const Page = () => {
           />
         </div>
 
-        {/* 포스트 피드 */}
-        <div className="mb-6">
-          {filteredPosts.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">
-              해당 카테고리에 포스트가 없습니다.
-            </div>
-          ) : (
-            <PostFeed posts={filteredPosts} onPostClick={handlePostClick} />
-          )}
-        </div>
+        {/* 전체 포스트가 없을 때 */}
+        {filteredPosts.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 text-4xl">📭</div>
+            <p className="mb-2 text-base font-medium text-gray-900">
+              아직 게시글이 없어요
+            </p>
+            <p className="text-sm text-gray-500">
+              첫 번째 이야기를 공유해보세요!
+            </p>
+          </div>
+        )}
+
+        {/* 상위 3개 포스트 */}
+        {topPosts.length > 0 && (
+          <div className="mb-6">
+            <PostFeed posts={topPosts} onPostClick={handlePostClick} />
+          </div>
+        )}
+
+        {/* 유저 이미지 캐러셀 - 상위 3개 이후 표시 */}
+        {topPosts.length > 0 && (
+          <div className="mb-6">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              이런 후기도 있어요! 👀
+            </h3>
+            <UserImageCarousel images={userImages} />
+          </div>
+        )}
+
+        {/* 나머지 포스트 */}
+        {remainingPosts.length > 0 && (
+          <div className="mb-6">
+            <PostFeed posts={remainingPosts} onPostClick={handlePostClick} />
+          </div>
+        )}
       </div>
+
+      {/* 플로팅 작성 버튼 */}
+      <FloatingWriteButton />
     </div>
   );
 };

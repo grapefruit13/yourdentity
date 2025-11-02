@@ -17,24 +17,25 @@ const FloatingWriteButton = () => {
   };
 
   return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        "fixed z-50 flex items-center gap-[6px] rounded-full bg-[#FF2479] px-5 py-3 shadow-lg transition-all hover:bg-[#E01F6B] active:scale-95",
-        "right-5 bottom-[92px]"
-      )}
-      aria-label="글 작성하기"
-      tabIndex={0}
-    >
-      <Image
-        src={IMAGE_URL.ICON.penLine.url}
-        alt={IMAGE_URL.ICON.penLine.alt}
-        width={16}
-        height={16}
-        className="h-4 w-4"
-      />
-      <span className="text-sm font-medium text-white">작성하기</span>
-    </button>
+    <div className="pointer-events-none fixed bottom-[92px] left-1/2 z-50 w-full max-w-[470px] -translate-x-1/2 px-5">
+      <button
+        onClick={handleClick}
+        className={cn(
+          "pointer-events-auto ml-auto flex items-center gap-[6px] rounded-full bg-[#FF2479] px-5 py-3 shadow-lg transition-all hover:bg-[#E01F6B] active:scale-95"
+        )}
+        aria-label="글 작성하기"
+        tabIndex={0}
+      >
+        <Image
+          src={IMAGE_URL.ICON.penLine.url}
+          alt={IMAGE_URL.ICON.penLine.alt}
+          width={16}
+          height={16}
+          className="h-4 w-4"
+        />
+        <span className="text-sm font-medium text-white">작성하기</span>
+      </button>
+    </div>
   );
 };
 
