@@ -41,7 +41,7 @@ const MyPageProfileSection = ({
       {/* 상단: 프로필 이미지 + 통계 정보 */}
       <div className="mb-3 flex items-center justify-between">
         {/* 프로필 이미지 */}
-        <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full bg-pink-100">
+        <div className="mr-[24px] flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full bg-pink-100">
           {profileImageUrl ? (
             <img
               src={profileImageUrl}
@@ -54,7 +54,7 @@ const MyPageProfileSection = ({
         </div>
 
         {/* 통계 정보 */}
-        <div className="flex gap-10">
+        <div className="flex gap-[48px]">
           {/* 인증 글 */}
           <div className="flex flex-col items-center gap-1">
             <Typography
@@ -103,7 +103,7 @@ const MyPageProfileSection = ({
       <Typography
         font="noto"
         variant="heading2B"
-        className="mb-1 text-left text-gray-900"
+        className="mb-[8px] text-left text-gray-900"
       >
         {nickname}
       </Typography>
@@ -112,7 +112,7 @@ const MyPageProfileSection = ({
       <Typography
         font="noto"
         variant="body2R"
-        className="mb-3 text-left text-gray-600"
+        className="mb-[13px] text-left text-gray-600"
       >
         {bio}
       </Typography>

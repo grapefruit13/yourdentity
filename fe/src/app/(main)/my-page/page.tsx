@@ -134,7 +134,7 @@ const Page = () => {
       /> */}
 
       {/* 게시글 그리드 */}
-      <div className="grid grid-cols-2 gap-4 bg-gray-50 px-4 pt-4 pb-24">
+      <div className="grid grid-cols-2 gap-[5px] bg-gray-50 px-4 pt-[16px] pb-24">
         {currentPosts.map((post) => (
           <PostCard
             key={post.id}

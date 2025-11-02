@@ -224,7 +224,7 @@ const ProfileEditPage = () => {
           <Typography
             font="noto"
             variant="body2M"
-            className="mb-2 text-gray-900"
+            className="mb-[12px] text-gray-900"
           >
             닉네임
           </Typography>
@@ -243,7 +243,7 @@ const ProfileEditPage = () => {
           <Typography
             font="noto"
             variant="body2M"
-            className="mb-2 text-gray-900"
+            className="mb-[12px] text-gray-900"
           >
             자기소개
           </Typography>
