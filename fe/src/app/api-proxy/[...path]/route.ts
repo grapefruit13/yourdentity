@@ -5,33 +5,38 @@ const API_BASE_URL =
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, params);
+  const resolvedParams = await params;
+  return proxy(req, resolvedParams);
 }
 export async function POST(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, params);
+  const resolvedParams = await params;
+  return proxy(req, resolvedParams);
 }
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, params);
+  const resolvedParams = await params;
+  return proxy(req, resolvedParams);
 }
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, params);
+  const resolvedParams = await params;
+  return proxy(req, resolvedParams);
 }
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, params);
+  const resolvedParams = await params;
+  return proxy(req, resolvedParams);
 }
 
 async function proxy(req: NextRequest, params: { path: string[] }) {
