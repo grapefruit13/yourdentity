@@ -27,3 +27,14 @@ export const PROFILE_EDIT_PLACEHOLDERS = {
   NICKNAME: "닉네임을 입력해주세요.",
   BIO: "자기소개를 입력하세요",
 } as const;
+
+/** UI 라벨 텍스트 */
+export const PROFILE_EDIT_LABELS = {
+  PAGE_TITLE: "프로필 편집",
+  COMPLETE_BUTTON: "완료",
+  NICKNAME: "닉네임",
+  BIO: "자기소개",
+  BACK_BUTTON: "뒤로가기",
+  PROFILE_IMAGE_ALT: "프로필 이미지",
+  PROFILE_IMAGE_CHANGE: "프로필 이미지 변경",
+} as const;
