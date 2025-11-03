@@ -4,14 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import * as Api from "@/api/generated/users-api";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
-import { usersKeys } from "@/constants/generated/query-keys";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { usePostUsersMeSyncKakaoProfile } from "@/hooks/generated/users-hooks";
+import {
+  useGetUsersMe,
+  usePostUsersMeSyncKakaoProfile,
+} from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao } from "@/lib/auth";
 import { debug } from "@/utils/shared/debugger";
@@ -26,10 +26,11 @@ const LoginPage = () => {
   const { registerFCMToken } = useFCM();
 
   const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile();
-  const { refetch: refetchUserData } = useQuery({
-    queryKey: usersKeys.getUsersMe,
-    queryFn: () => Api.getUsersMe(),
+  const { refetch: refetchUserData } = useGetUsersMe({
     enabled: false, // 자동 실행 비활성화
+    select: (data) => {
+      return data?.user;
+    },
   });
 
   /**
@@ -98,8 +99,8 @@ const LoginPage = () => {
       if (!isNewUser) {
         try {
           // 3-1. 사용자 정보 조회
-          const { data } = await refetchUserData();
-          const hasNickname = !!data?.data.data.nickname;
+          const { data: userData } = await refetchUserData();
+          const hasNickname = !!userData?.nickname;
 
           // 3-2. FCM 토큰 등록 (실패해도 계속 진행)
           try {
