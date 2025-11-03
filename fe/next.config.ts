@@ -53,6 +53,7 @@ const nextConfig: NextConfig = {
 
     // 환경 변수가 없으면 빈 배열 반환 (프록시 비활성화)
     if (!baseUrl) {
+      console.warn("⚠️ NEXT_PUBLIC_BASE_URL is not set. API proxy disabled.");
       return [];
     }
 
