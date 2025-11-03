@@ -53,7 +53,10 @@ const HomePage = () => {
 
     observer.observe(sentinelRef.current);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      setIsScrolled(false);
+    };
   }, [setIsScrolled]);
 
   // 배경 이미지 높이 계산 (이미지가 여러 개일 때만)

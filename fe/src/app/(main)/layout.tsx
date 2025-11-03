@@ -68,12 +68,23 @@ export default function MainLayout({
 
     // 데이터 준비되면 opacity -> 0 전환 후 DOM 제거
     if (!isHomeLoading && homeData) {
+      let animationFrameId: number | null = null;
+      let timeoutId: NodeJS.Timeout | null = null;
+
       // 한 프레임 뒤에 opacity 변경하여 CSS 트랜지션 보장
-      requestAnimationFrame(() => {
+      animationFrameId = requestAnimationFrame(() => {
         setOverlayOpaque(false);
-        const t = setTimeout(() => setShowOverlay(false), 500);
-        return () => clearTimeout(t);
+        timeoutId = setTimeout(() => setShowOverlay(false), 500);
       });
+
+      return () => {
+        if (animationFrameId !== null) {
+          cancelAnimationFrame(animationFrameId);
+        }
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+      };
     } else {
       // 로딩 중에는 다시 보여주고 불투명하게 유지
       setShowOverlay(true);
