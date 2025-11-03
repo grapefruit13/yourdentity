@@ -158,7 +158,7 @@ const LoginPage = () => {
             </Typography>
           </ButtonBase>
 
-          <Link
+          {/* <Link
             href={LINK_URL.EMAIL_LOGIN}
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-3"
           >
@@ -171,7 +171,7 @@ const LoginPage = () => {
             <Typography font="noto" variant="body2B" className="text-gray-900">
               이메일로 시작하기
             </Typography>
-          </Link>
+          </Link> */}
         </div>
         {errorMessage && (
           <div className="mt-3 text-center">
