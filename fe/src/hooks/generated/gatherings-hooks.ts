@@ -81,8 +81,10 @@ export const usePostGatheringsApplyById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTGatheringsApplyByIdReq) =>
-      Api.postGatheringsApplyById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postGatheringsApplyById(
+        variables as Types.TPOSTGatheringsApplyByIdReq
+      ),
     ...options,
   });
 };
@@ -107,8 +109,8 @@ export const usePostGatheringsLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTGatheringsLikeByIdReq) =>
-      Api.postGatheringsLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postGatheringsLikeById(variables as Types.TPOSTGatheringsLikeByIdReq),
     ...options,
   });
 };
@@ -133,8 +135,8 @@ export const usePostGatheringsQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTGatheringsQnaByIdReq) =>
-      Api.postGatheringsQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postGatheringsQnaById(variables as Types.TPOSTGatheringsQnaByIdReq),
     ...options,
   });
 };
@@ -159,8 +161,10 @@ export const usePutGatheringsQnaByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTGatheringsQnaByTwoIdsReq) =>
-      Api.putGatheringsQnaByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putGatheringsQnaByTwoIds(
+        variables as Types.TPUTGatheringsQnaByTwoIdsReq
+      ),
     ...options,
   });
 };
@@ -185,8 +189,10 @@ export const usePostGatheringsQnaLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTGatheringsQnaLikeByIdReq) =>
-      Api.postGatheringsQnaLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postGatheringsQnaLikeById(
+        variables as Types.TPOSTGatheringsQnaLikeByIdReq
+      ),
     ...options,
   });
 };
@@ -211,8 +217,10 @@ export const useDeleteGatheringsQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETEGatheringsQnaByIdReq) =>
-      Api.deleteGatheringsQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteGatheringsQnaById(
+        variables as Types.TDELETEGatheringsQnaByIdReq
+      ),
     ...options,
   });
 };

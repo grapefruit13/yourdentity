@@ -83,8 +83,10 @@ export const usePostCommunitiesPostsById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTCommunitiesPostsByIdReq) =>
-      Api.postCommunitiesPostsById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postCommunitiesPostsById(
+        variables as Types.TPOSTCommunitiesPostsByIdReq
+      ),
     ...options,
   });
 };
@@ -135,8 +137,10 @@ export const usePutCommunitiesPostsByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTCommunitiesPostsByTwoIdsReq) =>
-      Api.putCommunitiesPostsByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putCommunitiesPostsByTwoIds(
+        variables as Types.TPUTCommunitiesPostsByTwoIdsReq
+      ),
     ...options,
   });
 };
@@ -161,8 +165,10 @@ export const useDeleteCommunitiesPostsByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETECommunitiesPostsByTwoIdsReq) =>
-      Api.deleteCommunitiesPostsByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteCommunitiesPostsByTwoIds(
+        variables as Types.TDELETECommunitiesPostsByTwoIdsReq
+      ),
     ...options,
   });
 };
@@ -187,8 +193,10 @@ export const usePostCommunitiesPostsLikeByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTCommunitiesPostsLikeByTwoIdsReq) =>
-      Api.postCommunitiesPostsLikeByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postCommunitiesPostsLikeByTwoIds(
+        variables as Types.TPOSTCommunitiesPostsLikeByTwoIdsReq
+      ),
     ...options,
   });
 };

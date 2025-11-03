@@ -33,7 +33,8 @@ export const usePostFilesUploadMultiple = <
     TVariables,
     TContext
   >({
-    mutationFn: (formData: FormData) => Api.postFilesUploadMultiple(formData),
+    mutationFn: (variables: TVariables) =>
+      Api.postFilesUploadMultiple(variables as FormData),
     ...options,
   });
 };
@@ -58,8 +59,8 @@ export const useDeleteFilesById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETEFilesByIdReq) =>
-      Api.deleteFilesById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteFilesById(variables as Types.TDELETEFilesByIdReq),
     ...options,
   });
 };

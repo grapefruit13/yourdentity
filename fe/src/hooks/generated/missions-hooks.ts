@@ -33,8 +33,8 @@ export const usePostUsersMissionsById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTUsersMissionsByIdReq) =>
-      Api.postUsersMissionsById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postUsersMissionsById(variables as Types.TPOSTUsersMissionsByIdReq),
     ...options,
   });
 };
@@ -111,8 +111,10 @@ export const usePutUsersMissionsByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTUsersMissionsByTwoIdsReq) =>
-      Api.putUsersMissionsByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putUsersMissionsByTwoIds(
+        variables as Types.TPUTUsersMissionsByTwoIdsReq
+      ),
     ...options,
   });
 };
@@ -137,8 +139,10 @@ export const useDeleteUsersMissionsByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETEUsersMissionsByTwoIdsReq) =>
-      Api.deleteUsersMissionsByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteUsersMissionsByTwoIds(
+        variables as Types.TDELETEUsersMissionsByTwoIdsReq
+      ),
     ...options,
   });
 };

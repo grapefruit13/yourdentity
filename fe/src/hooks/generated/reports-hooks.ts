@@ -33,8 +33,8 @@ export const usePostReportcontent = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTReportContentReq) =>
-      Api.postReportcontent(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postReportcontent(variables as Types.TPOSTReportContentReq),
     ...options,
   });
 };
@@ -82,8 +82,8 @@ export const usePostReportcontentMy = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTReportContentMyReq) =>
-      Api.postReportcontentMy(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postReportcontentMy(variables as Types.TPOSTReportContentMyReq),
     ...options,
   });
 };

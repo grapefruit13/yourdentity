@@ -77,8 +77,8 @@ export const usePostRoutinesApplyById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTRoutinesApplyByIdReq) =>
-      Api.postRoutinesApplyById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postRoutinesApplyById(variables as Types.TPOSTRoutinesApplyByIdReq),
     ...options,
   });
 };
@@ -103,8 +103,8 @@ export const usePostRoutinesLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTRoutinesLikeByIdReq) =>
-      Api.postRoutinesLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postRoutinesLikeById(variables as Types.TPOSTRoutinesLikeByIdReq),
     ...options,
   });
 };
@@ -129,8 +129,8 @@ export const usePostRoutinesQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTRoutinesQnaByIdReq) =>
-      Api.postRoutinesQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postRoutinesQnaById(variables as Types.TPOSTRoutinesQnaByIdReq),
     ...options,
   });
 };
@@ -155,8 +155,8 @@ export const usePutRoutinesQnaByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTRoutinesQnaByTwoIdsReq) =>
-      Api.putRoutinesQnaByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putRoutinesQnaByTwoIds(variables as Types.TPUTRoutinesQnaByTwoIdsReq),
     ...options,
   });
 };
@@ -181,8 +181,10 @@ export const usePostRoutinesQnaLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTRoutinesQnaLikeByIdReq) =>
-      Api.postRoutinesQnaLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postRoutinesQnaLikeById(
+        variables as Types.TPOSTRoutinesQnaLikeByIdReq
+      ),
     ...options,
   });
 };
@@ -207,8 +209,8 @@ export const useDeleteRoutinesQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETERoutinesQnaByIdReq) =>
-      Api.deleteRoutinesQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteRoutinesQnaById(variables as Types.TDELETERoutinesQnaByIdReq),
     ...options,
   });
 };

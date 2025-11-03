@@ -59,8 +59,10 @@ export const usePostCommentsCommunitiesPostsByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTCommentsCommunitiesPostsByTwoIdsReq) =>
-      Api.postCommentsCommunitiesPostsByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postCommentsCommunitiesPostsByTwoIds(
+        variables as Types.TPOSTCommentsCommunitiesPostsByTwoIdsReq
+      ),
     ...options,
   });
 };
@@ -85,8 +87,8 @@ export const usePutCommentsById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTCommentsByIdReq) =>
-      Api.putCommentsById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putCommentsById(variables as Types.TPUTCommentsByIdReq),
     ...options,
   });
 };
@@ -111,8 +113,8 @@ export const useDeleteCommentsById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETECommentsByIdReq) =>
-      Api.deleteCommentsById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteCommentsById(variables as Types.TDELETECommentsByIdReq),
     ...options,
   });
 };
@@ -137,8 +139,8 @@ export const usePostCommentsLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTCommentsLikeByIdReq) =>
-      Api.postCommentsLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postCommentsLikeById(variables as Types.TPOSTCommentsLikeByIdReq),
     ...options,
   });
 };

@@ -30,7 +30,7 @@ export const usePostAuthLogout = <TContext = unknown, TVariables = void>(
     TVariables,
     TContext
   >({
-    mutationFn: () => Api.postAuthLogout(),
+    mutationFn: (_variables: TVariables) => Api.postAuthLogout(),
     ...options,
   });
 };

@@ -33,7 +33,8 @@ export const usePostImagesUploadImage = <
     TVariables,
     TContext
   >({
-    mutationFn: (formData: FormData) => Api.postImagesUploadImage(formData),
+    mutationFn: (variables: TVariables) =>
+      Api.postImagesUploadImage(variables as FormData),
     ...options,
   });
 };

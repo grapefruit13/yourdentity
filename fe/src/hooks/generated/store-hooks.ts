@@ -85,8 +85,8 @@ export const usePostStorePurchase = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTStorePurchaseReq) =>
-      Api.postStorePurchase(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postStorePurchase(variables as Types.TPOSTStorePurchaseReq),
     ...options,
   });
 };
@@ -111,8 +111,10 @@ export const usePostStoreProductsLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTStoreProductsLikeByIdReq) =>
-      Api.postStoreProductsLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postStoreProductsLikeById(
+        variables as Types.TPOSTStoreProductsLikeByIdReq
+      ),
     ...options,
   });
 };
@@ -137,8 +139,10 @@ export const usePostStoreProductsQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTStoreProductsQnaByIdReq) =>
-      Api.postStoreProductsQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postStoreProductsQnaById(
+        variables as Types.TPOSTStoreProductsQnaByIdReq
+      ),
     ...options,
   });
 };
@@ -163,8 +167,10 @@ export const usePutStoreProductsQnaByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTStoreProductsQnaByTwoIdsReq) =>
-      Api.putStoreProductsQnaByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putStoreProductsQnaByTwoIds(
+        variables as Types.TPUTStoreProductsQnaByTwoIdsReq
+      ),
     ...options,
   });
 };
@@ -189,8 +195,8 @@ export const usePostStoreQnaLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTStoreQnaLikeByIdReq) =>
-      Api.postStoreQnaLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postStoreQnaLikeById(variables as Types.TPOSTStoreQnaLikeByIdReq),
     ...options,
   });
 };
@@ -215,8 +221,8 @@ export const useDeleteStoreQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETEStoreQnaByIdReq) =>
-      Api.deleteStoreQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteStoreQnaById(variables as Types.TDELETEStoreQnaByIdReq),
     ...options,
   });
 };

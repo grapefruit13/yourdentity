@@ -67,8 +67,8 @@ export const usePostTmisApplyById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTTmisApplyByIdReq) =>
-      Api.postTmisApplyById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postTmisApplyById(variables as Types.TPOSTTmisApplyByIdReq),
     ...options,
   });
 };
@@ -93,8 +93,8 @@ export const usePostTmisLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTTmisLikeByIdReq) =>
-      Api.postTmisLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postTmisLikeById(variables as Types.TPOSTTmisLikeByIdReq),
     ...options,
   });
 };
@@ -119,8 +119,8 @@ export const usePostTmisQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTTmisQnaByIdReq) =>
-      Api.postTmisQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postTmisQnaById(variables as Types.TPOSTTmisQnaByIdReq),
     ...options,
   });
 };
@@ -145,8 +145,8 @@ export const usePutTmisQnaByTwoIds = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTTmisQnaByTwoIdsReq) =>
-      Api.putTmisQnaByTwoIds(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putTmisQnaByTwoIds(variables as Types.TPUTTmisQnaByTwoIdsReq),
     ...options,
   });
 };
@@ -171,8 +171,8 @@ export const usePostTmisQnaLikeById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTTmisQnaLikeByIdReq) =>
-      Api.postTmisQnaLikeById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postTmisQnaLikeById(variables as Types.TPOSTTmisQnaLikeByIdReq),
     ...options,
   });
 };
@@ -197,8 +197,8 @@ export const useDeleteTmisQnaById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETETmisQnaByIdReq) =>
-      Api.deleteTmisQnaById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteTmisQnaById(variables as Types.TDELETETmisQnaByIdReq),
     ...options,
   });
 };

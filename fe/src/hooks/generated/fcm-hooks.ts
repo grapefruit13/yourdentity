@@ -33,7 +33,8 @@ export const usePostFcmToken = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTFcmTokenReq) => Api.postFcmToken(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postFcmToken(variables as Types.TPOSTFcmTokenReq),
     ...options,
   });
 };
@@ -73,8 +74,8 @@ export const useDeleteFcmTokenById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETEFcmTokenByIdReq) =>
-      Api.deleteFcmTokenById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteFcmTokenById(variables as Types.TDELETEFcmTokenByIdReq),
     ...options,
   });
 };

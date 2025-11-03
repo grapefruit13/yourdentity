@@ -33,8 +33,8 @@ export const usePatchUsersMeOnboarding = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPATCHUsersMeOnboardingReq) =>
-      Api.patchUsersMeOnboarding(request),
+    mutationFn: (variables: TVariables) =>
+      Api.patchUsersMeOnboarding(variables as Types.TPATCHUsersMeOnboardingReq),
     ...options,
   });
 };
@@ -201,8 +201,10 @@ export const usePostUsersMeSyncKakaoProfile = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPOSTUsersMeSyncKakaoProfileReq) =>
-      Api.postUsersMeSyncKakaoProfile(request),
+    mutationFn: (variables: TVariables) =>
+      Api.postUsersMeSyncKakaoProfile(
+        variables as Types.TPOSTUsersMeSyncKakaoProfileReq
+      ),
     ...options,
   });
 };
@@ -258,7 +260,8 @@ export const usePutUsersById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TPUTUsersByIdReq) => Api.putUsersById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.putUsersById(variables as Types.TPUTUsersByIdReq),
     ...options,
   });
 };
@@ -283,8 +286,8 @@ export const useDeleteUsersById = <
     TVariables,
     TContext
   >({
-    mutationFn: (request: Types.TDELETEUsersByIdReq) =>
-      Api.deleteUsersById(request),
+    mutationFn: (variables: TVariables) =>
+      Api.deleteUsersById(variables as Types.TDELETEUsersByIdReq),
     ...options,
   });
 };
