@@ -48,8 +48,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api-proxy/:path*",
-        destination:
-          "https://asia-northeast3-youthvoice-2025.cloudfunctions.net/api/:path*",
+        destination: process.env.NEXT_PUBLIC_BASE_URL + ":path*",
       },
     ];
   },
