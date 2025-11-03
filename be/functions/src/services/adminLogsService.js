@@ -92,6 +92,8 @@ class AdminLogsService {
     const syncedCount = metadata.syncedCount || 0;
     const failedCount = metadata.failedCount || 0;
     const total = metadata.total || 1;
+    const syncedUserIds = metadata.syncedUserIds || [];
+    const failedUserIds = metadata.failedUserIds || [];
 
     let status = "SUCCESS";
     if (failedCount > 0 && syncedCount === 0) {
@@ -138,6 +140,30 @@ class AdminLogsService {
     if (timestampDate) {
       notionPage["발생일시"] = {
         date: { start: timestampDate }
+      };
+    }
+
+    // 동기화된 사용자 ID 목록 (다중선택 타입)
+    if (syncedUserIds.length > 0) {
+      notionPage["동기화된 사용자ID"] = {
+        multi_select: syncedUserIds.map(userId => ({ name: userId }))
+      };
+    } else {
+      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+      notionPage["동기화된 사용자ID"] = {
+        multi_select: []
+      };
+    }
+
+    // 동기화 실패한 사용자 ID 목록 (다중선택 타입)
+    if (failedUserIds.length > 0) {
+      notionPage["실패한 사용자ID"] = {
+        multi_select: failedUserIds.map(userId => ({ name: userId }))
+      };
+    } else {
+      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+      notionPage["실패한 사용자ID"] = {
+        multi_select: []
       };
     }
 
