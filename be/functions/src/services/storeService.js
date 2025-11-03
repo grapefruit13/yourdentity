@@ -1,145 +1,247 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
+const { Client } = require('@notionhq/client');
+const {
+  getTitleValue,
+  getTextContent,
+  getCheckboxValue,
+  getNumberValue,
+  getFileUrls,
+  formatNotionBlocks
+} = require('../utils/notionHelper');
+
+// 상수 정의
+const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+const MIN_PAGE_SIZE = 1;
+
+// page_size 검증 및 클램프 함수
+function normalizePageSize(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return DEFAULT_PAGE_SIZE;
+  return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.trunc(num)));
+}
+
+// 에러 코드 정의
+const ERROR_CODES = {
+  MISSING_API_KEY: 'MISSING_NOTION_API_KEY',
+  MISSING_DB_ID: 'MISSING_NOTION_DB_ID',
+  NOTION_API_ERROR: 'NOTION_API_ERROR',
+  PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
+  INVALID_PAGE_SIZE: 'INVALID_PAGE_SIZE'
+};
+
+// Notion 필드명 상수
+const NOTION_FIELDS = {
+  NAME: "이름",
+  DESCRIPTION: "설명",
+  THUMBNAIL: "썸네일",
+  REQUIRED_POINTS: "필요한 나다움",
+  ON_SALE: "판매 여부"
+};
 
 /**
  * Store Service (비즈니스 로직 계층)
- * 상품 관련 모든 비즈니스 로직 처리
+ * Notion 기반 상품 조회 + Firestore 기반 구매/좋아요/QnA 처리
  */
 class StoreService {
   constructor() {
     this.firestoreService = new FirestoreService("products");
-  }
-
-  /**
-   * 상품 목록 조회
-   * @param {Object} options - 조회 옵션
-   * @return {Promise<Object>} 상품 목록
-   */
-  async getProducts(options = {}) {
-    try {
-      const {page = 0, size = 10, status = "onSale"} = options;
-
-      // 인덱스 없이 작동하도록 쿼리 단순화
-      const result = await this.firestoreService.getWithPagination({
-        page: parseInt(page),
-        size: parseInt(size),
-        orderBy: "createdAt",
-        orderDirection: "desc",
-        where: [],
+    
+    // Notion 클라이언트 초기화
+    const { NOTION_API_KEY, NOTION_STORE_DB_ID } = process.env;
+    
+    if (NOTION_API_KEY && NOTION_STORE_DB_ID) {
+      this.notion = new Client({
+        auth: NOTION_API_KEY,
+        notionVersion: NOTION_VERSION,
       });
-
-      // 메모리에서 상태 필터링
-      if (result.content && status) {
-        result.content = result.content.filter(
-          (product) => product.status === status,
-        );
-      }
-
-      // 목록에서는 간소화된 정보만 반환
-      if (result.content) {
-        result.content = result.content.map((product) => ({
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          status: product.status,
-          price: product.price,
-          currency: product.currency,
-          stockCount: product.stockCount,
-          soldCount: product.soldCount,
-          viewCount: product.view_count || 0,
-          buyable: product.buyable,
-          sellerId: product.sellerId,
-          sellerName: product.sellerName,
-          createdAt: product.createdAt,
-          updatedAt: product.updatedAt,
-        }));
-      }
-
-      return {
-        content: result.content || [],
-        pagination: result.pageable || {},
-      };
-    } catch (error) {
-      console.error("Get products error:", error.message);
-      throw new Error("Failed to get products");
+      this.storeDataSource = NOTION_STORE_DB_ID;
+    } else {
+      console.warn('[StoreService] Notion 환경변수가 설정되지 않았습니다. Notion 기능이 비활성화됩니다.');
     }
   }
 
   /**
-   * 상품 상세 조회
-   * @param {string} productId - 상품 ID
+   * 상품 목록 조회 (Notion 기반)
+   * @param {Object} filters - 필터 조건
+   * @param {boolean} [filters.onSale] - 판매 여부 필터
+   * @param {number} [pageSize=20] - 페이지 크기 (1-100)
+   * @param {string} [startCursor] - 페이지네이션 커서
+   * @return {Promise<Object>} 상품 목록
+   */
+  async getProducts(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
+    try {
+      if (!this.notion || !this.storeDataSource) {
+        const error = new Error('Notion이 설정되지 않았습니다.');
+        error.code = ERROR_CODES.MISSING_API_KEY;
+        error.statusCode = 500;
+        throw error;
+      }
+
+      const queryBody = {
+        page_size: normalizePageSize(pageSize),
+        sorts: [
+          {
+            timestamp: "last_edited_time",
+            direction: "descending"
+          }
+        ]
+      };
+
+      // 판매 여부 필터 추가
+      if (filters.onSale !== undefined && filters.onSale !== null) {
+        queryBody.filter = {
+          property: NOTION_FIELDS.ON_SALE,
+          checkbox: {
+            equals: filters.onSale
+          }
+        };
+      }
+
+      if (startCursor) {
+        queryBody.start_cursor = startCursor;
+      }
+
+      const data = await this.notion.dataSources.query({
+        data_source_id: this.storeDataSource,
+        ...queryBody
+      });
+
+      const products = data.results.map(page => this.formatProductData(page));
+
+      return {
+        products,
+        hasMore: data.has_more,
+        nextCursor: data.next_cursor,
+        currentPageCount: data.results.length
+      };
+
+    } catch (error) {
+      console.error('[StoreService] 상품 목록 조회 오류:', error.message);
+      
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('스토어 데이터 소스를 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.MISSING_DB_ID;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+      
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+      
+      const serviceError = new Error(`상품 목록 조회 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 상품 상세 조회 (Notion 기반 - 페이지 내용 포함)
+   * @param {string} productId - 상품 ID (Notion 페이지 ID)
    * @return {Promise<Object>} 상품 상세 정보
    */
   async getProductById(productId) {
     try {
-      const product = await this.firestoreService.getDocument("products", productId);
-
-      if (!product) {
-        const error = new Error("Product not found");
-        error.code = "NOT_FOUND";
+      if (!this.notion || !this.storeDataSource) {
+        const error = new Error('Notion이 설정되지 않았습니다.');
+        error.code = ERROR_CODES.MISSING_API_KEY;
+        error.statusCode = 500;
         throw error;
       }
 
-      // 조회수 증가
-      const newViewCount = (product.view_count || 0) + 1;
-      this.firestoreService.updateDocument("products", productId, {
-        view_count: newViewCount,
-        updatedAt: Date.now(),
-      }).catch(error => {
-        console.error("조회수 증가 실패:", error);
+      // 상품 페이지 정보 조회
+      const page = await this.notion.pages.retrieve({
+        page_id: productId
       });
 
-      // Q&A 조회
-      const qnas = await this.firestoreService.getCollectionWhere(
-        "qnas",
-        "targetId",
-        "==",
-        productId,
-      );
-      const formattedQnas = qnas.map((qna) => ({
-        id: qna.id,
-        content: qna.content || [],
-        media: qna.media || [],
-        answerContent: qna.answerContent || null,
-        answerMedia: qna.answerMedia || [],
-        answerUserId: qna.answerUserId || null,
-        askedBy: qna.userId,
-        answeredBy: qna.answerUserId,
-        askedAt: qna.createdAt,
-        answeredAt: qna.answerCreatedAt || null,
-        likesCount: qna.likesCount || 0,
-      }));
+      const productData = this.formatProductData(page, true);
 
-      return {
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        status: product.status,
-        price: product.price,
-        currency: product.currency,
-        stockCount: product.stockCount,
-        soldCount: product.soldCount,
-        viewCount: newViewCount,
-        buyable: product.buyable,
-        sellerId: product.sellerId,
-        sellerName: product.sellerName,
-        content: product.content || [],
-        media: product.media || [],
-        options: product.options || [],
-        primaryDetails: product.primaryDetails || [],
-        variants: product.variants || [],
-        customFields: product.customFields || [],
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-        qna: formattedQnas,
-      };
+      // 상품 페이지 블록 내용 조회
+      const pageBlocks = await this.getProductPageBlocks(productId);
+      productData.pageContent = pageBlocks;
+
+      return productData;
+
     } catch (error) {
-      console.error("Get product by ID error:", error.message);
-      if (error.code === "NOT_FOUND") {
-        throw error;
+      console.error('[StoreService] 상품 상세 조회 오류:', error.message);
+      
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('해당 상품을 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.PRODUCT_NOT_FOUND;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
       }
-      throw new Error("Failed to get product");
+      
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+      
+      const serviceError = new Error(`상품 상세 조회 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      throw serviceError;
     }
+  }
+
+  /**
+   * 상품 페이지 블록 내용 조회 (페이지네이션 처리)
+   * @param {string} productId - 상품 ID
+   * @returns {Promise<Array>} 페이지 블록 내용
+   */
+  async getProductPageBlocks(productId) {
+    try {
+      const blocks = [];
+      let cursor;
+      let hasMore = true;
+
+      // 모든 블록을 가져올 때까지 반복 (100개 제한 우회)
+      while (hasMore) {
+        const response = await this.notion.blocks.children.list({
+          block_id: productId,
+          start_cursor: cursor
+        });
+        blocks.push(...response.results);
+        cursor = response.next_cursor;
+        hasMore = response.has_more;
+      }
+
+      return formatNotionBlocks(blocks, {
+        includeRichText: true,
+        includeMetadata: true
+      });
+    } catch (error) {
+      console.warn('[StoreService] 상품 페이지 블록 조회 오류:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * 상품 데이터 포맷팅 (Notion DB 구조에 맞춤)
+   * @param {Object} page - Notion 페이지 객체
+   * @param {boolean} includeDetails - 상세 정보 포함 여부
+   * @returns {Object} 포맷팅된 상품 데이터
+   */
+  formatProductData(page, includeDetails = false) {
+    const props = page.properties;
+
+    return {
+      id: page.id,
+      name: getTitleValue(props[NOTION_FIELDS.NAME]),
+      description: getTextContent(props[NOTION_FIELDS.DESCRIPTION]),
+      thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      requiredPoints: getNumberValue(props[NOTION_FIELDS.REQUIRED_POINTS]) || 0,
+      onSale: getCheckboxValue(props[NOTION_FIELDS.ON_SALE]),
+      createdAt: page.created_time,
+      updatedAt: page.last_edited_time
+    };
   }
 
   /**
