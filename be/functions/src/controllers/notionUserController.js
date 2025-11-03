@@ -18,7 +18,7 @@ class NotionUserController {
   async syncAllUserAccounts(req, res, next) {
     try {
       const result = await notionUserService.syncAllUserAccounts();
-      res.success(`회원 전체 재동기화 완료: ${result.syncedCount}명`);
+      res.success(`회원 전체 재동기화 완료: ${result.syncedCount}명 (업데이트: ${result.updatedCount}명, 생성: ${result.createdCount}명, 실패: ${result.failedCount}명, 아카이브: ${result.archivedCount}명)`);
     } catch (error) {
       console.error("[Controller Error] syncAllUserAccounts:", error);
       res.error(error);

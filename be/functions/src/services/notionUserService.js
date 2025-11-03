@@ -257,26 +257,25 @@ async archiveNotionPage(pageId) {
  */
 async syncAllUserAccounts() {
   try {
-    console.log('=== 전체 사용자 동기화 시작 ===');
+    console.log('=== 전체 사용자 동기화 시작 (Upsert 방식) ===');
     
-    //1. 기존 Notion 데이터베이스의 모든 페이지 가져오기
-    const notionPages = await this.getAllNotionPages(this.notionUserAccountDB);
-    console.log(`기존 Notion 사용자 ${notionPages.length}명 → 모두 삭제 처리 중...`);
-
-    //2. 모든 페이지 아카이브 (삭제와 동일 효과) - 배치 처리
-    await this.archivePagesInBatches(notionPages);
-
-    //3. Firebase users 컬렉션 전체 가져오기
+    // 1. Firebase users 컬렉션 전체 가져오기
     const snapshot = await db.collection("users").get();
-    const now = new Date();
-    let syncedCount = 0;
-    let failedCount = 0;
-    const syncedUserIds = []; // 동기화된 사용자 ID 목록
-    const failedUserIds = []; // 동기화 실패한 사용자 ID 목록
-
     console.log(`Firebase에서 ${snapshot.docs.length}명의 사용자 데이터를 가져왔습니다.`);
 
-    //4. 사용자 데이터를 배치로 처리
+    // 2. 노션에 있는 기존 사용자 목록 가져오기 (ID와 pageId 매핑)
+    const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
+    console.log(`노션에 기존 사용자 ${Object.keys(notionUsers).length}명이 존재합니다.`);
+
+    const now = new Date();
+    let syncedCount = 0; //동기화 성공 : update+created
+    let updatedCount = 0; //노션에 기존 페이지에 있어서 업데이트 카운트
+    let createdCount = 0; //노션에 없어서 새로 생성한 카운트
+    let failedCount = 0; //동기화 실패 카운트
+    const syncedUserIds = [];
+    const failedUserIds = [];
+
+    // 3. 사용자 데이터를 배치로 처리
     const BATCH_SIZE = 10; // 10명씩 배치 처리
     const DELAY_MS = 2000; // 2초 지연
 
@@ -289,6 +288,7 @@ async syncAllUserAccounts() {
         try {
           const user = doc.data();
           const userId = doc.id;
+          const existingNotionUser = notionUsers[userId];
 
           // 날짜 처리
           const createdAtIso = safeDateToIso(user.createdAt);
@@ -358,15 +358,24 @@ async syncAllUserAccounts() {
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
           };
 
-          // 재시도 로직과 함께 Notion 페이지 생성
-          await this.createNotionPageWithRetry(notionPage);
+          // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
+          if (existingNotionUser) {
+            // 기존 페이지 업데이트
+            await this.updateNotionPageWithRetry(existingNotionUser.pageId, notionPage);
+            updatedCount++;
+          } else {
+            // 새 페이지 생성
+            await this.createNotionPageWithRetry(notionPage);
+            createdCount++;
+          }
 
-           // 동기화 성공한 사용자 ID 저장
-           syncedUserIds.push(userId);
+          syncedCount++;
+          syncedUserIds.push(userId);
 
-          return { success: true, userId };
+          return { success: true, userId, action: existingNotionUser ? 'update' : 'create' };
         } catch (error) {
-          failedUserIds.push(userId);
+          failedCount++;
+          failedUserIds.push(doc.id);
           console.error(`사용자 ${doc.id} 처리 실패:`, error.message);
           return { success: false, userId: doc.id, error: error.message };
         }
@@ -377,9 +386,6 @@ async syncAllUserAccounts() {
       const batchSuccess = batchResults.filter(r => r.success).length;
       const batchFailed = batchResults.filter(r => !r.success).length;
 
-      syncedCount += batchSuccess;
-      failedCount += batchFailed;
-
       console.log(`배치 완료: 성공 ${batchSuccess}명, 실패 ${batchFailed}명 (총 진행률: ${syncedCount + failedCount}/${snapshot.docs.length})`);
 
       // 마지막 배치가 아니면 지연
@@ -389,37 +395,128 @@ async syncAllUserAccounts() {
       }
     }
 
-    console.log(`=== 전체 재동기화 완료 ===`);
-    console.log(`성공: ${syncedCount}명, 실패: ${failedCount}명`);
+
+    // 4. Firebase에는 없거나 사용자ID가 빈값인 노션 페이지 아카이브 처리
+    const firebaseUserIds = new Set(snapshot.docs.map(doc => doc.id));
+    
+    // 노션의 모든 페이지 가져오기 (사용자ID가 빈값인 페이지도 포함)
+    const allNotionPages = await this.getAllNotionPages(this.notionUserAccountDB);
+    
+    // 아카이브 대상 페이지 찾기
+    const pagesToArchive = [];
+    for (const page of allNotionPages) {
+      const props = page.properties;
+      const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || "";
+      
+      // 사용자ID가 빈값이거나, 사용자ID가 있지만 Firebase에 없는 경우 아카이브 대상
+      if (!userId || !firebaseUserIds.has(userId)) {
+        pagesToArchive.push({
+          pageId: page.id,
+          userId: userId || "(사용자ID 없음)",
+          reason: !userId ? "사용자ID 빈값" : "Firebase에 없음"
+        });
+      }
+    }
+    
+
+    let archivedCount = 0;
+    let archiveFailedCount = 0;
+    
+    if (pagesToArchive.length > 0) {
+      console.log(`아카이브 대상 페이지 ${pagesToArchive.length}개 발견 (사용자ID 빈값: ${pagesToArchive.filter(p => p.reason === "사용자ID 빈값").length}개, Firebase에 없음: ${pagesToArchive.filter(p => p.reason === "Firebase에 없음").length}개)`);
+      
+      // 배치 처리로 아카이브
+      const ARCHIVE_BATCH_SIZE = 10;
+      const ARCHIVE_DELAY_MS = 1000;
+      
+      for (let i = 0; i < pagesToArchive.length; i += ARCHIVE_BATCH_SIZE) {
+        const batch = pagesToArchive.slice(i, i + ARCHIVE_BATCH_SIZE);
+        console.log(`아카이브 배치 ${Math.floor(i / ARCHIVE_BATCH_SIZE) + 1}/${Math.ceil(pagesToArchive.length / ARCHIVE_BATCH_SIZE)} 처리 중...`);
+        
+        await Promise.all(batch.map(async (page) => {
+          try {
+            await this.archiveNotionPageWithRetry(page.pageId);
+            archivedCount++;
+            console.log(`[아카이브 성공] 페이지 ${page.pageId} (사용자ID: ${page.userId}, 사유: ${page.reason})`);
+          } catch (error) {
+            archiveFailedCount++;
+            console.error(`[아카이브 실패] 페이지 ${page.pageId} (사용자ID: ${page.userId}):`, error.message);
+          }
+        }));
+        
+        // 마지막 배치가 아니면 지연
+        if (i + ARCHIVE_BATCH_SIZE < pagesToArchive.length) {
+          await new Promise(resolve => setTimeout(resolve, ARCHIVE_DELAY_MS));
+        }
+      }
+    }
+
+    console.log(`=== 전체 동기화 완료 ===`);
+    console.log(`총 ${syncedCount}명 동기화 (업데이트: ${updatedCount}명, 생성: ${createdCount}명)`);
+    console.log(`실패: ${failedCount}명, 아카이브: ${archivedCount}명`);
 
     try {
       const logRef = db.collection("adminLogs").doc();
       await logRef.set({
         adminId: "Notion 관리자",
         action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
-        targetId: "", // 전체 동기화 작업이므로 빈 값
+        targetId: "",
         timestamp: new Date(),
         metadata: {
           syncedCount: syncedCount,
           failedCount: failedCount,
-          total: syncedCount + failedCount,
-          syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록 (선택사항)
-          failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록 (선택사항)
+          total: snapshot.docs.length,
+          syncedUserIds: syncedUserIds,
+          failedUserIds: failedUserIds,
         }
       });
-      console.log(`[adminLogs] 전체 재동기화 이력 저장 완료: ${syncedCount}명 성공, ${failedCount}명 실패`);
+      console.log(`[adminLogs] 전체 동기화 이력 저장 완료`);
     } catch (logError) {
       console.error("[adminLogs] 로그 저장 실패:", logError);
-      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
     }
 
-    return { syncedCount, failedCount, total: snapshot.docs.length };
+    return { 
+      syncedCount, 
+      updatedCount, 
+      createdCount, 
+      archivedCount,
+      failedCount, 
+      total: snapshot.docs.length 
+    };
 
   } catch (error) {
     console.error('syncAllUserAccounts 전체 오류:', error);
     throw error;
   }
 }
+
+
+// 재시도 로직이 포함된 Notion 페이지 업데이트
+async updateNotionPageWithRetry(pageId, notionPage, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await this.notion.pages.update({
+        page_id: pageId,
+        properties: notionPage,
+      });
+      return; // 성공하면 종료
+    } catch (error) {
+      console.warn(`Notion 페이지 업데이트 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw new Error(`Notion 페이지 업데이트 최종 실패 (pageId: ${pageId}): ${error.message}`);
+      }
+      
+      // 지수 백오프: 1초, 2초, 4초...
+      const delay = Math.pow(2, attempt) * 1000;
+      console.log(`${delay/1000}초 후 재시도...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+
+
 
 // 페이지들을 배치로 아카이브 처리
 async archivePagesInBatches(pages) {
