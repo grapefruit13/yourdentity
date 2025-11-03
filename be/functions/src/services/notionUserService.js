@@ -210,7 +210,7 @@ async syncUserAccounts() {
       metadata: {
         syncedCount: syncedCount,
         failedCount: failedCount,
-        archivedCount: archivedCount,
+        archivedCount: archivedCount,  //Firebase -> Notion으로 동기화 하는 경우 존재
         total: syncedCount + failedCount,
         syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
         failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
@@ -497,6 +497,7 @@ async syncAllUserAccounts() {
         metadata: {
           syncedCount: syncedCount,
           failedCount: failedCount,
+          archivedCount: archivedCount, //Firebase -> Notion으로 동기화 하는 경우 존재
           total: snapshot.docs.length,
           syncedUserIds: syncedUserIds,
           failedUserIds: failedUserIds,
