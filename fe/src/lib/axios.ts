@@ -42,6 +42,18 @@ instance.interceptors.request.use(
 
 instance.interceptors.response.use(
   (response) => {
+    // response.data는 Result<TData> = { status: 200, data: TData } 형태
+    // response.data.data가 실제 데이터이므로 이를 반환
+    if (
+      response.data &&
+      typeof response.data === "object" &&
+      "data" in response.data
+    ) {
+      return {
+        ...response,
+        data: response.data.data,
+      };
+    }
     return response;
   },
   (error) => {
