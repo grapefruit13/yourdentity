@@ -653,6 +653,44 @@ class ProgramService {
 
 
   /**
+   * Firebase UID로 Notion "회원 관리" DB에서 사용자 페이지 찾기
+   * @param {string} firebaseUid - Firebase UID
+   * @returns {Promise<string|null>} Notion 페이지 ID 또는 null
+   */
+  async findUserNotionPageId(firebaseUid) {
+    try {
+      const userDbId = process.env.NOTION_USER_ACCOUNT_DATASOURCE_ID;
+      if (!userDbId) {
+        console.warn('[ProgramService] NOTION_USER_ACCOUNT_DB_ID 환경변수가 설정되지 않음');
+        return null;
+      }
+
+      // Notion "회원 관리" DB에서 사용자ID로 검색
+      const response = await this.notion.dataSources.query({
+        data_source_id: userDbId,
+        filter: {
+          property: '사용자ID',
+          rich_text: {
+            equals: firebaseUid
+          }
+        },
+        page_size: 1
+      });
+
+      if (response.results && response.results.length > 0) {
+        console.log(`[ProgramService] Notion "회원 관리"에서 사용자 찾음: ${firebaseUid}`);
+        return response.results[0].id;
+      }
+
+      console.warn(`[ProgramService] Notion "회원 관리"에서 사용자를 찾을 수 없음: ${firebaseUid}`);
+      return null;
+    } catch (error) {
+      console.error('[ProgramService] Notion 사용자 검색 오류:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Notion 프로그램신청자DB에 저장
    * @param {string} programId - 프로그램 ID (Notion 페이지 ID)
    * @param {Object} applicationData - 신청 데이터
@@ -718,6 +756,9 @@ class ProgramService {
         }
       }
 
+      // "회원 관리" DB에서 사용자 찾기
+      const userNotionPageId = await this.findUserNotionPageId(applicantId);
+
       const properties = {
         '이름': {
           title: [
@@ -751,6 +792,20 @@ class ProgramService {
           checkbox: canAttendEvents || false
         }
       };
+
+      // "회원 관리" relation 추가 (사용자를 찾은 경우에만)
+      if (userNotionPageId) {
+        properties['회원 관리'] = {
+          relation: [
+            {
+              id: userNotionPageId
+            }
+          ]
+        };
+        console.log(`[ProgramService] "회원 관리" relation 연결 성공: ${userNotionPageId}`);
+      } else {
+        console.warn(`[ProgramService] "회원 관리" relation 연결 실패: 사용자를 찾을 수 없음 (Firebase UID: ${applicantId})`);
+      }
 
       // 선택적 필드 추가
       if (phoneNumber) {
