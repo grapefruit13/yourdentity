@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { loadEnvConfig } from "@next/env";
 import { LINK_URL } from "@/constants/shared/_link-url";
+
+// Next.js 공식 환경 변수 로더 사용
+loadEnvConfig(process.cwd());
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -45,10 +49,17 @@ const nextConfig: NextConfig = {
   // API 프록시 설정 - HTTPS에서 HTTP 백엔드로 안전하게 요청
   // eslint-disable-next-line require-await
   async rewrites() {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+    // 환경 변수가 없으면 빈 배열 반환 (프록시 비활성화)
+    if (!baseUrl) {
+      return [];
+    }
+
     return [
       {
         source: "/api-proxy/:path*",
-        destination: process.env.NEXT_PUBLIC_BASE_URL + ":path*",
+        destination: `${baseUrl}/:path*`,
       },
     ];
   },
