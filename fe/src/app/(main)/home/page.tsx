@@ -60,6 +60,7 @@ const HomePage = () => {
   useEffect(() => {
     if (backgroundImages.length <= 1) return;
 
+    let active = true;
     const heights: number[] = [];
     let loadedCount = 0;
 
@@ -79,19 +80,23 @@ const HomePage = () => {
         heights[index] = containerHeight;
         loadedCount++;
 
-        if (loadedCount === backgroundImages.length) {
+        if (loadedCount === backgroundImages.length && active) {
           setImageHeights(heights);
         }
       };
       img.onerror = () => {
         heights[index] = 0;
         loadedCount++;
-        if (loadedCount === backgroundImages.length) {
+        if (loadedCount === backgroundImages.length && active) {
           setImageHeights(heights);
         }
       };
       img.src = imageUrl;
     });
+
+    return () => {
+      active = false;
+    };
   }, [backgroundImages]);
 
   // 누적 높이 계산 (이전 이미지들의 높이 합계)

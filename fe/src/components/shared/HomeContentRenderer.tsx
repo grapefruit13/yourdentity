@@ -386,7 +386,7 @@ export const HomeContentRenderer = ({
                 </div>
               );
 
-            case "image":
+            case "image": {
               if (!block.url) {
                 return null;
               }
@@ -449,6 +449,7 @@ export const HomeContentRenderer = ({
                   )}
                 </figure>
               );
+            }
 
             case "video":
               if (!block.url) {

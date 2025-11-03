@@ -57,8 +57,8 @@ export default function MainLayout({
 
   // 오버레이 스플래시: 항상 레이아웃을 렌더하고 위에 얹어서 페이드아웃
   // 표시 여부와 투명도 상태를 분리하여 버벅임 최소화
-  const [showOverlay, setShowOverlay] = useState(true);
-  const [overlayOpaque, setOverlayOpaque] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(isHomePage);
+  const [overlayOpaque, setOverlayOpaque] = useState(isHomePage);
 
   useEffect(() => {
     if (!isHomePage) {
