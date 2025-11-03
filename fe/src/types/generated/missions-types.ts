@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-
 import type * as Schema from "./api-schema";
 
 export interface TPOSTUsersMissionsByIdReq {
@@ -14,7 +13,7 @@ export interface TPOSTUsersMissionsByIdReq {
   };
 }
 
-export type TPOSTUsersMissionsByIdRes = Schema.Mission;
+export type TPOSTUsersMissionsByIdRes = { user?: Schema.Mission };
 
 export interface TGETUsersMissionsByIdReq {
   userId: string;
@@ -28,7 +27,7 @@ export interface TGETUsersMissionsByTwoIdsReq {
   missionId: string;
 }
 
-export type TGETUsersMissionsByTwoIdsRes = Schema.Mission;
+export type TGETUsersMissionsByTwoIdsRes = { user?: Schema.Mission };
 
 export interface TPUTUsersMissionsByTwoIdsReq {
   userId: string;
@@ -40,7 +39,7 @@ export interface TPUTUsersMissionsByTwoIdsReq {
   };
 }
 
-export type TPUTUsersMissionsByTwoIdsRes = Schema.Mission;
+export type TPUTUsersMissionsByTwoIdsRes = { user?: Schema.Mission };
 
 export interface TDELETEUsersMissionsByTwoIdsReq {
   userId: string;

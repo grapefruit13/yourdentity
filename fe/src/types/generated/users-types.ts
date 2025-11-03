@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-
 import type * as Schema from "./api-schema";
 
 export interface TPATCHUsersMeOnboardingReq {
@@ -18,7 +17,7 @@ export type TPATCHUsersMeOnboardingRes = {
   status?: "pending" | "active" | "suspended";
 };
 
-export type TGETUsersMeRes = Schema.User;
+export type TGETUsersMeRes = { user?: Schema.User };
 
 export type TGETUsersMeMyPageRes = {
   activityParticipationCount?: number;
@@ -209,7 +208,7 @@ export interface TGETUsersByIdReq {
   userId: string;
 }
 
-export type TGETUsersByIdRes = Schema.User;
+export type TGETUsersByIdRes = { user?: Schema.User };
 
 export interface TPUTUsersByIdReq {
   userId: string;
@@ -233,7 +232,7 @@ export interface TPUTUsersByIdReq {
   };
 }
 
-export type TPUTUsersByIdRes = Schema.User;
+export type TPUTUsersByIdRes = { user?: Schema.User };
 
 export interface TDELETEUsersByIdReq {
   userId: string;

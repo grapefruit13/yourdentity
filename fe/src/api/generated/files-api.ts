@@ -1,15 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @description Files 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/files-types";
-import type { Result } from "@/types/shared/response";
 
 export const postFilesUploadMultiple = (formData: FormData) => {
-  return post<Result<Types.TPOSTFilesUploadMultipleRes>>(
+  return post<Types.TPOSTFilesUploadMultipleRes>(
     `/files/upload-multiple`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
@@ -17,5 +16,5 @@ export const postFilesUploadMultiple = (formData: FormData) => {
 };
 
 export const deleteFilesById = (request: Types.TDELETEFilesByIdReq) => {
-  return del<Result<any>>(`/files/${request.filePath}`);
+  return del<any>(`/files/${request.filePath}`);
 };

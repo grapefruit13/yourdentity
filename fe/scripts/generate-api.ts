@@ -361,16 +361,13 @@ function generateApiFunctions(endpoints: ApiEndpoint[]): string {
     const fileName = `${tag.toLowerCase()}-api.ts`;
     const filePath = path.join(API_DIR, fileName);
 
-    let fileContent = `
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
+    let fileContent = `/**
  * @description ${tag} 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
-import type { Result } from "@/types/shared/response";
 
 `;
 
@@ -423,9 +420,8 @@ import type { Result } from "@/types/shared/response";
 
       // 멀티파트: 시그니처와 호출을 별도로 처리
       if (isMultipart) {
-        const responseType = hasResponseType
-          ? `Result<Types.${resTypeName}>`
-          : "Result<any>";
+        // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
+        const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         if (pathParams.length === 0 && queryParams.length === 0) {
           fileContent += `export const ${funcName} = (formData: FormData) => {\n`;
           fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, formData, { headers: { \"Content-Type\": \"multipart/form-data\" } });\n`;
@@ -452,36 +448,49 @@ import type { Result } from "@/types/shared/response";
 
       if (queryParams.length > 0 && !hasRequestBody) {
         // GET 요청의 경우 queryParams를 params로 전달
-        const responseType = hasResponseType
-          ? `Result<Types.${resTypeName}>`
-          : "Result<any>";
+        // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
+        const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, { params: request });\n`;
       } else if (hasRequestBody && pathParams.length > 0) {
         // POST/PUT/PATCH 요청의 경우 pathParams와 data 분리
         const pathParamNames = pathParams.map((p: any) => p.name).join(", ");
-        const responseType = hasResponseType
-          ? `Result<Types.${resTypeName}>`
-          : "Result<any>";
+        // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
+        const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         fileContent += `  const { ${pathParamNames}, ...data } = request;\n`;
         // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
         fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, data.data ?? data);\n`;
       } else if (hasRequestBody) {
         // POST/PUT/PATCH 요청 (pathParams 없는 경우)
-        const responseType = hasResponseType
-          ? `Result<Types.${resTypeName}>`
-          : "Result<any>";
+        // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
+        const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
         fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, request.data ?? request);\n`;
       } else {
         // GET 요청 (pathParams만 있는 경우 또는 파라미터 없는 경우)
-        const responseType = hasResponseType
-          ? `Result<Types.${resTypeName}>`
-          : "Result<any>";
+        // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
+        const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`);\n`;
       }
 
       fileContent += `};\n\n`;
     });
+
+    // any가 실제로 사용되는지 확인하여 eslint-disable 주석 추가
+    const hasAnyUsage =
+      fileContent.includes(": any") ||
+      fileContent.includes(" as any") ||
+      fileContent.includes("any[]") ||
+      fileContent.includes("any>") ||
+      fileContent.includes("= any") ||
+      /(^|\s)any\b/.test(fileContent);
+
+    if (hasAnyUsage) {
+      // any 사용 시 파일 상단에 eslint-disable 주석 추가 (JSDoc 주석 밖에)
+      fileContent = fileContent.replace(
+        /^(\/\*\*[\s\S]*?\*\/\s*)\n(import)/,
+        `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n$2`
+      );
+    }
 
     fs.writeFileSync(filePath, fileContent);
     formatGeneratedFile(filePath);
@@ -592,7 +601,8 @@ import type * as Schema from "./api-schema";
           }
         } else if (responseSchema.allOf) {
           // allOf를 사용하는 경우 (StandardResponse + data 필드 조합 등)
-          // data 필드의 타입을 찾아서 반환
+          // 실제 응답 구조를 반영하여 타입 생성
+          // 백엔드: res.success({user}) → { status: 200, data: { user: User } }
           let dataType: string | null = null;
 
           responseSchema.allOf.forEach((subSchema: any) => {
@@ -601,10 +611,18 @@ import type * as Schema from "./api-schema";
             if (subSchema.properties?.data) {
               const dataSchema = subSchema.properties.data;
               if (dataSchema.$ref) {
+                // data: User 형태인 경우, 실제 응답은 data: { user: User }
                 const refName = dataSchema.$ref.split("/").pop();
                 if (refName && availableSchemaNames.has(refName)) {
-                  dataType = `Schema.${refName}`;
+                  // 실제 응답 구조 반영: { user: User }
+                  dataType = `{ user?: Schema.${refName} }`;
                 }
+              } else if (
+                dataSchema.type === "object" &&
+                dataSchema.properties
+              ) {
+                // 이미 객체 형태인 경우 그대로 사용
+                dataType = getTypeScriptType(dataSchema);
               } else {
                 dataType = getTypeScriptType(dataSchema);
               }
@@ -627,6 +645,23 @@ import type * as Schema from "./api-schema";
         }
       }
     });
+
+    // any가 실제로 사용되는지 확인하여 eslint-disable 주석 추가/제거
+    const hasAnyUsage =
+      fileContent.includes(": any") ||
+      fileContent.includes(" as any") ||
+      fileContent.includes("any[]") ||
+      fileContent.includes("any>") ||
+      fileContent.includes("= any") ||
+      /(^|\s)any\b/.test(fileContent);
+
+    if (!hasAnyUsage) {
+      // any 사용하지 않는 경우 eslint-disable 주석 제거
+      fileContent = fileContent.replace(
+        /^\/\* eslint-disable @typescript-eslint\/no-explicit-any \*\/\s*\n/im,
+        ""
+      );
+    }
 
     fs.writeFileSync(filePath, fileContent);
     formatGeneratedFile(filePath);

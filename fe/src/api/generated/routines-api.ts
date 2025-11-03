@@ -1,28 +1,25 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @description Routines 관련 API 함수들
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/routines-types";
-import type { Result } from "@/types/shared/response";
 
 export const getRoutines = (request: Types.TGETRoutinesReq) => {
-  return get<Result<Types.TGETRoutinesRes>>(`/routines`, { params: request });
+  return get<Types.TGETRoutinesRes>(`/routines`, { params: request });
 };
 
 export const getRoutinesById = (request: Types.TGETRoutinesByIdReq) => {
-  return get<Result<Types.TGETRoutinesByIdRes>>(
-    `/routines/${request.routineId}`
-  );
+  return get<Types.TGETRoutinesByIdRes>(`/routines/${request.routineId}`);
 };
 
 export const postRoutinesApplyById = (
   request: Types.TPOSTRoutinesApplyByIdReq
 ) => {
   const { routineId, ...data } = request;
-  return post<Result<Types.TPOSTRoutinesApplyByIdRes>>(
+  return post<Types.TPOSTRoutinesApplyByIdRes>(
     `/routines/${request.routineId}/apply`,
     data.data ?? data
   );
@@ -31,14 +28,14 @@ export const postRoutinesApplyById = (
 export const postRoutinesLikeById = (
   request: Types.TPOSTRoutinesLikeByIdReq
 ) => {
-  return post<Result<Types.TPOSTRoutinesLikeByIdRes>>(
+  return post<Types.TPOSTRoutinesLikeByIdRes>(
     `/routines/${request.routineId}/like`
   );
 };
 
 export const postRoutinesQnaById = (request: Types.TPOSTRoutinesQnaByIdReq) => {
   const { routineId, ...data } = request;
-  return post<Result<Types.TPOSTRoutinesQnaByIdRes>>(
+  return post<Types.TPOSTRoutinesQnaByIdRes>(
     `/routines/${request.routineId}/qna`,
     data.data ?? data
   );
@@ -48,7 +45,7 @@ export const putRoutinesQnaByTwoIds = (
   request: Types.TPUTRoutinesQnaByTwoIdsReq
 ) => {
   const { routineId, qnaId, ...data } = request;
-  return put<Result<Types.TPUTRoutinesQnaByTwoIdsRes>>(
+  return put<Types.TPUTRoutinesQnaByTwoIdsRes>(
     `/routines/${request.routineId}/qna/${request.qnaId}`,
     data.data ?? data
   );
@@ -57,7 +54,7 @@ export const putRoutinesQnaByTwoIds = (
 export const postRoutinesQnaLikeById = (
   request: Types.TPOSTRoutinesQnaLikeByIdReq
 ) => {
-  return post<Result<Types.TPOSTRoutinesQnaLikeByIdRes>>(
+  return post<Types.TPOSTRoutinesQnaLikeByIdRes>(
     `/routines/qna/${request.qnaId}/like`
   );
 };
@@ -65,5 +62,5 @@ export const postRoutinesQnaLikeById = (
 export const deleteRoutinesQnaById = (
   request: Types.TDELETERoutinesQnaByIdReq
 ) => {
-  return del<Result<any>>(`/routines/qna/${request.qnaId}`);
+  return del<any>(`/routines/qna/${request.qnaId}`);
 };
