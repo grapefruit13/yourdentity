@@ -32,168 +32,200 @@ class NotionUserService {
    *   + 노션에서는 전체 삭제를 지원하지 않고 페이지를 아카이브 처리해서 개별적으로 archived: true로 삭제를 진행
    * ※ firebase구조 추가 고려라고 되어 있는 부분은 우선 컬럼은 다 추가함
    * 8. SMS광고 수신 여부, Push 광고 수신 여부 통일 고려 -> 현재는 push만 사용
-   */
-  async syncUserAccounts() {
-    const snapshot = await db.collection("users").get();
+   */  
+async syncUserAccounts() {
+  const snapshot = await db.collection("users").get();
 
-    //  Firebase에 lastUpdated 필드 존재 여부 확인
-    const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdated);
+  // Firebase에 lastUpdated 필드 존재 여부 확인
+  const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdated);
 
-    const now = new Date();
+  const now = new Date();
 
-    // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
-    const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
-  
-    let syncedCount = 0;
-    let failedCount = 0;
-    const syncedUserIds = []; // 동기화된 사용자 ID 목록
-    const failedUserIds = []; // 동기화 실패한 사용자 ID 목록
-  
-    for (const doc of snapshot.docs) {
-      const user = doc.data();
-      const userId = doc.id;
-  
-      //문자열 or timestamp로 저장되어도 모두 조회
-      const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdated);
-      const firebaseLastUpdated = firebaseLastUpdatedDate
-        ? firebaseLastUpdatedDate.getTime()
-        : 0;
-      
-      //노션에서 제공하는 최종 편집 일시를 사용하지 않고 동기화 시간으로 관리하는 이유 : 노션에서 변경사항이 생겼을때 비교하는게 아니라 동기화 버튼을 클릭했을 경우의 시간과 비교하기 위함
-      const notionLastUpdated = notionUsers[userId]?.lastUpdated
-        ? new Date(notionUsers[userId].lastUpdated).getTime()
-        : 0;
+  // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
+  const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
 
+  let syncedCount = 0;
+  let failedCount = 0;
+  const syncedUserIds = []; // 동기화된 사용자 ID 목록
+  const failedUserIds = []; // 동기화 실패한 사용자 ID 목록
 
-      // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
-      if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
-          try{
-              // 기존 데이터가 있다면 삭제
-              if (notionUsers[userId]) {
-                await this.archiveNotionPage(notionUsers[userId].pageId);
-              }
+  for (const doc of snapshot.docs) {
+    const user = doc.data();
+    const userId = doc.id;
+
+    //문자열 or timestamp로 저장되어도 모두 조회
+    const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdated);
+    const firebaseLastUpdated = firebaseLastUpdatedDate
+      ? firebaseLastUpdatedDate.getTime()
+      : 0;
+    
+    //노션에서 제공하는 최종 편집 일시를 사용하지 않고 동기화 시간으로 관리하는 이유 : 노션에서 변경사항이 생겼을때 비교하는게 아니라 동기화 버튼을 클릭했을 경우의 시간과 비교하기 위함
+    const notionLastUpdated = notionUsers[userId]?.lastUpdated
+      ? new Date(notionUsers[userId].lastUpdated).getTime()
+      : 0;
+
+    // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
+    if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
+      try {
+        // 날짜 변환
+        const createdAtIso = safeDateToIso(user.createdAt);
+        const lastLoginIso = safeDateToIso(user.lastLogin);
+        const lastUpdatedIso = now;
         
-              // 날짜 변환
-              const createdAtIso = safeDateToIso(user.createdAt);
-              const lastLoginIso = safeDateToIso(user.lastLogin);
-              const lastUpdatedIso = now;
-              
-              // 노션에 새로 생성
-              const notionPage = {
-                '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
-                "프로필 사진": {
-                  files: [
-                    {
-                      name: "profile-image",
-                      type: "external",
-                      external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
-                    },
-                  ],
-                },
-                "사용자ID": { rich_text: [{ text: { content: userId } }] },
-                "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-                "상태": user.status
-                  ? { select: { name: user.status } }
-                  : { select: { name: "데이터 없음" } },
-                "역할": { select: { name: user.role || "user" } },
-                "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
-                "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
-                "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
-                "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-                "가입 방법": { select: { name: user.authType || "email" } },
-                "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-                "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-                "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
-                "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
-                "성별": { 
-                  select: { 
-                    name: 
-                      user.gender === 'male' ? "남성" : user.gender === 'female' ? "여성" : "미선택",
-                  } 
-                },
-                "Push 광고 수신 여부": {
-                              select: {
-                                name:
-                                  user.pushTermsAgreed === true
-                                    ? "동의"
-                                    : user.pushTermsAgreed === false
-                                    ? "거부"
-                                    : "미설정",
-                              },
-                            },
-                "자격정지 기간(시작)": user.suspensionStartAt ? {
-                  date: { 
-                    start: user.suspensionStartAt 
-                  }
-                } : undefined,
-                "자격정지 기간(종료)": user.suspensionEndAt ? {
-                  date: { 
-                    start: user.suspensionEndAt 
-                  }
-                } : undefined,
-                "정지 사유": user.suspensionReason ? {
-                  rich_text: [{
-                    text: { content: user.suspensionReason }
-                  }]
-                } : {
-                  rich_text: []
-                },
-                "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
-              };
-        
-              await this.notion.pages.create({
-                parent: { database_id: this.notionUserAccountDB },
-                properties: notionPage,
-              });
-
-              // Firebase lastUpdated가 없는 경우에만 초기 설정
-              if (!user.lastUpdated) {
-                await db.collection("users").doc(userId).update({
-                  lastUpdated: lastUpdatedIso,
-                });
-              }
-        
-              syncedCount++;
-              syncedUserIds.push(userId); // 동기화된 사용자 ID 저장
-
-        } catch (error) {
-          // 동기화 실패 처리
-          failedCount++;
-          failedUserIds.push(userId);
-          console.error(`[동기화 실패] 사용자 ${userId}:`, error.message || error);
+        // 노션 페이지 데이터 구성
+        const notionPage = {
+          '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
+          "프로필 사진": {
+            files: [
+              {
+                name: "profile-image",
+                type: "external",
+                external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+              },
+            ],
+          },
+          "사용자ID": { rich_text: [{ text: { content: userId } }] },
+          "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
+          "상태": user.status
+            ? { select: { name: user.status } }
+            : { select: { name: "데이터 없음" } },
+          "역할": { select: { name: user.role || "user" } },
+          "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
+          "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
+          "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
+          "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+          "가입 방법": { select: { name: user.authType || "email" } },
+          "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+          "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+          "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
+          "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
+          "성별": { 
+            select: { 
+              name: 
+                user.gender === 'male' ? "남성" : user.gender === 'female' ? "여성" : "미선택",
+            } 
+          },
+          "Push 광고 수신 여부": {
+            select: {
+              name:
+                user.pushTermsAgreed === true
+                  ? "동의"
+                  : user.pushTermsAgreed === false
+                  ? "거부"
+                  : "미설정",
+            },
+          },
+          "자격정지 기간(시작)": user.suspensionStartAt ? {
+            date: { 
+              start: user.suspensionStartAt 
+            }
+          } : undefined,
+          "자격정지 기간(종료)": user.suspensionEndAt ? {
+            date: { 
+              start: user.suspensionEndAt 
+            }
+          } : undefined,
+          "정지 사유": user.suspensionReason ? {
+            rich_text: [{
+              text: { content: user.suspensionReason }
+            }]
+          } : {
+            rich_text: []
+          },
+          "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+        };
+  
+        // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
+        if (notionUsers[userId]) {
+          // 기존 페이지 업데이트
+          await this.updateNotionPageWithRetry(notionUsers[userId].pageId, notionPage);
+        } else {
+          // 새 페이지 생성
+          await this.createNotionPageWithRetry(notionPage);
         }
 
+        // Firebase lastUpdated가 없는 경우에만 초기 설정
+        if (!user.lastUpdated) {
+          await db.collection("users").doc(userId).update({
+            lastUpdated: lastUpdatedIso,
+          });
+        }
+  
+        syncedCount++;
+        syncedUserIds.push(userId); // 동기화된 사용자 ID 저장
+
+      } catch (error) {
+        // 동기화 실패 처리
+        failedCount++;
+        failedUserIds.push(userId);
+        console.error(`[동기화 실패] 사용자 ${userId}:`, error.message || error);
       }
     }
-    
-  
-    console.log(`동기화 완료: ${syncedCount}명 갱신됨`);
-
-    try {
-      const logRef = db.collection("adminLogs").doc();
-      await logRef.set({
-        adminId: "Notion 관리자",
-        action: ADMIN_LOG_ACTIONS.USER_PART_SYNCED,
-        targetId: "", // 전체 동기화 작업이므로 빈 값
-        timestamp: new Date(),
-        metadata: {
-          syncedCount: syncedCount,
-          failedCount: failedCount,
-          total: syncedCount + failedCount,
-          syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
-          failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
-        }
-      });
-      console.log(`[adminLogs] 회원 동기화 이력 저장 완료: ${syncedCount}명`);
-    } catch (logError) {
-      console.error("[adminLogs] 로그 저장 실패:", logError);
-      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
-    }
-
-
-
-    return { syncedCount };
   }
+  
+  // Firebase에는 없지만 노션에만 있는 사용자 아카이브 처리
+  const firebaseUserIds = new Set(snapshot.docs.map(doc => doc.id));
+  
+  // 노션의 모든 페이지 가져오기 (사용자ID가 빈값인 페이지도 포함)
+  const allNotionPages = await this.getAllNotionPages(this.notionUserAccountDB);
+  
+  // 아카이브 대상 페이지 찾기
+  const pagesToArchive = [];
+  for (const page of allNotionPages) {
+    const props = page.properties;
+    const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || "";
+    
+    // 사용자ID가 빈값이거나, 사용자ID가 있지만 Firebase에 없는 경우 아카이브 대상
+    if (!userId || !firebaseUserIds.has(userId)) {
+      pagesToArchive.push({
+        pageId: page.id,
+        userId: userId || "(사용자ID 없음)",
+      });
+    }
+  }
+  
+  let archivedCount = 0;
+  if (pagesToArchive.length > 0) {
+    console.log(`Firebase에 없거나 사용자ID가 빈값인 노션 페이지 ${pagesToArchive.length}개 아카이브 처리 중...`);
+    
+    for (const page of pagesToArchive) {
+      try {
+        await this.archiveNotionPageWithRetry(page.pageId);
+        archivedCount++;
+      } catch (error) {
+        console.error(`[아카이브 실패] 페이지 ${page.pageId} (사용자ID: ${page.userId}):`, error.message);
+      }
+    }
+  }
+  
+  console.log(`동기화 완료: ${syncedCount}명 갱신됨, ${archivedCount}개 페이지 아카이브됨`);
+
+  try {
+    const logRef = db.collection("adminLogs").doc();
+    await logRef.set({
+      adminId: "Notion 관리자",
+      action: ADMIN_LOG_ACTIONS.USER_PART_SYNCED,
+      targetId: "", // 전체 동기화 작업이므로 빈 값
+      timestamp: new Date(),
+      metadata: {
+        syncedCount: syncedCount,
+        failedCount: failedCount,
+        archivedCount: archivedCount,
+        total: syncedCount + failedCount,
+        syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+        failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+      }
+    });
+    console.log(`[adminLogs] 회원 동기화 이력 저장 완료: ${syncedCount}명`);
+  } catch (logError) {
+    console.error("[adminLogs] 로그 저장 실패:", logError);
+    // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+  }
+
+  return { syncedCount, failedCount, archivedCount };
+}
+
+
 
 
 // Notion DB에서 모든 사용자 정보 조회
