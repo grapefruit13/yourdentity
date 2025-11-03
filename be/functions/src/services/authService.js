@@ -1,20 +1,15 @@
 const {admin} = require("../config/database");
-const FirestoreService = require("./firestoreService");
-const {isValidEmail} = require("../utils/helpers");
-
-// FirestoreService 인스턴스 생성
-const usersService = new FirestoreService("users");
 
 /**
  * 로그아웃 - Refresh Token 무효화
- * 
+ *
  * @description
  * 사용자의 모든 Refresh Token을 무효화하여 기존 토큰 사용 불가능하게 함
  * - revokeRefreshTokens()로 모든 디바이스의 토큰 무효화
  * - authGuard에서 tokensValidAfterTime 체크로 로그아웃된 토큰 거부
- * 
+ *
  * @param {string} uid - 사용자 UID
- * @returns {{ success: boolean, revokedAt: string }}
+ * @return {{ success: boolean, revokedAt: string }}
  */
 const logout = async (uid) => {
   try {
@@ -44,7 +39,79 @@ const logout = async (uid) => {
   }
 };
 
+/**
+ * 회원 탈퇴 - 개인정보 가명처리 + 카카오 연결 해제
+ *
+ * @description
+ * 1. 카카오 로그인 사용자인 경우 카카오 연결 해제
+ * 2. Firebase Auth 사용자 삭제 (가명처리는 onDelete 트리거에서 수행)
+ *
+ * **개인정보 처리:**
+ * - 제거: 이름, 이메일, 전화번호, 주소, 프로필 이미지
+ * - 가명처리: 생년월일 (YYYY-**-** 형태로 마스킹)
+ * - 유지: 통계용 데이터 (레벨, 리워드, 게시글 수 등)
+ *
+ * @param {string} uid - 사용자 UID
+ * @param {string} kakaoAccessToken - 카카오 액세스 토큰 (카카오 로그인 사용자인 경우 필수)
+ * @return {{ success: boolean }}
+ */
+const deleteAccount = async (uid, kakaoAccessToken) => {
+  try {
+    if (!uid) {
+      const error = new Error("UID가 필요합니다");
+      error.code = "BAD_REQUEST";
+      throw error;
+    }
+
+    // 1. Firebase Auth 사용자 정보 조회
+    const user = await admin.auth().getUser(uid);
+    const isKakaoUser = user.providerData.some(
+        (provider) => provider.providerId === "oidc.kakao",
+    );
+
+    // 2. 카카오 로그인 사용자인 경우, 카카오 연결 해제
+    if (isKakaoUser) {
+      if (!kakaoAccessToken) {
+        const error = new Error("카카오 액세스 토큰이 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      try {
+        const response = await fetch("https://kapi.kakao.com/v1/user/unlink", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${kakaoAccessToken}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: "",
+        });
+
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          console.error("❌ AuthService: 카카오 연결 해제 실패:", response.status, text);
+        } else {
+          console.log("✅ AuthService: 카카오 연결 해제 완료", {uid});
+        }
+      } catch (kakaoError) {
+        console.error("❌ AuthService: 카카오 연결 해제 예외:", kakaoError);
+        // 카카오 연결 해제 실패해도 계속 진행 (토큰 만료 등의 경우)
+      }
+    }
+
+    // 3. Firebase Auth 사용자 삭제 (가명처리는 onDelete 트리거에서 처리)
+    await admin.auth().deleteUser(uid);
+    console.log("✅ AuthService: Firebase Auth 사용자 삭제 완료", {uid});
+
+    return {success: true};
+  } catch (error) {
+    console.error("❌ AuthService: 회원 탈퇴 실패:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   logout,
+  deleteAccount,
 };
 

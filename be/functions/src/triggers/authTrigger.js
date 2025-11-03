@@ -18,9 +18,9 @@ exports.createUserDocument = functions
 
         console.log("🔥 Auth Trigger: 사용자 생성 감지", {uid, email});
 
-    // Provider 확인
-    const providerId = user.providerData?.[0]?.providerId || "";
-    console.log("Provider ID:", providerId);
+        // Provider 확인
+        const providerId = user.providerData?.[0]?.providerId || "";
+        console.log("Provider ID:", providerId);
 
         // 🆕 Firestore 사용자 문서 생성
         // 참고: gender, birthday, phoneNumber, terms는 동기화 API에서 채움
@@ -29,16 +29,16 @@ exports.createUserDocument = functions
           name: user.displayName || null,
           email: email || null,
           phoneNumber: null,
-          
+
           // 프로필
           nickname: "",
           profileImageUrl: user.photoURL || "",
           bio: "",
-          
+
           // 개인정보
           birthDate: "",
           gender: null,
-          
+
           // 주소 정보
           address: "",
           addressDetail: "",
@@ -94,6 +94,12 @@ exports.createUserDocument = functions
 
 /**
  * Firebase Auth 사용자 삭제 시 자동 실행되는 트리거
+ *
+ * ⚠️ 주의: authService.deleteAccount()에서 이미 가명처리를 완료했을 수 있으므로
+ * deletedAt 존재 시 추가 작업을 하지 않습니다.
+ *
+ * 만약 콘솔 등에서 직접 삭제해 가명처리가 되지 않은 경우,
+ * 여기서 개인정보 가명처리를 수행합니다.
  */
 exports.deleteUserDocument = functions
     .region("asia-northeast3")
@@ -104,15 +110,45 @@ exports.deleteUserDocument = functions
 
         console.log("🔥 Auth Trigger: 사용자 삭제 감지", {uid});
 
-        // Firestore 사용자 문서 삭제
+        // Firestore 문서 확인
         const userRef = admin.firestore().collection("users").doc(uid);
-        await userRef.delete();
+        const userDoc = await userRef.get();
 
-        console.log("✅ Auth Trigger: 사용자 문서 삭제 완료", {uid});
+        if (userDoc.exists) {
+          const data = userDoc.data() || {};
 
-        return {success: true, uid};
+          if (data.deletedAt) {
+            return {success: true, uid, action: "skipped"};
+          }
+
+          let maskedBirthDate = null;
+          if (data.birthDate && typeof data.birthDate === "string" && data.birthDate.length >= 4) {
+            const birthYear = data.birthDate.substring(0, 4);
+            maskedBirthDate = `${birthYear}-**-**`;
+          }
+
+          const anonymized = {
+            name: null,
+            email: null,
+            phoneNumber: null,
+            address: null,
+            addressDetail: null,
+            profileImageUrl: null,
+            bio: null,
+            birthDate: maskedBirthDate,
+            deletedAt: FieldValue.serverTimestamp(),
+            lastUpdated: FieldValue.serverTimestamp(),
+          };
+
+          await userRef.update(anonymized);
+          console.log("✅ Auth Trigger: 사용자 문서 가명처리 완료", {uid});
+          return {success: true, uid, action: "anonymized"};
+        }
+
+        console.log("ℹ️ Auth Trigger: Firestore 문서 없음", {uid});
+        return {success: true, uid, action: "not_found"};
       } catch (error) {
-        console.error("❌ Auth Trigger: 사용자 문서 삭제 실패", error);
+        console.error("❌ Auth Trigger: 사용자 문서 처리 실패", error);
         throw error;
       }
     });

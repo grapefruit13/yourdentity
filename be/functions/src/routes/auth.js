@@ -135,5 +135,95 @@ router.post("/logout", authGuard, authController.logout);
  */
 router.get("/verify", authGuard, authController.verifyToken);
 
+/**
+ * @swagger
+ * /auth/delete-account:
+ *   delete:
+ *     summary: 회원 탈퇴
+ *     description: |
+ *       사용자 계정을 탈퇴하고 개인정보를 가명처리
+ *       
+ *       **작동 방식:**
+ *       1. 카카오 로그인 사용자인 경우 카카오 연결 해제
+ *       2. Firestore 개인정보 가명처리 (생년월일 월/일 마스킹, 이메일/전화번호 등 제거)
+ *       3. Firebase Auth 사용자 삭제
+ *       
+ *       **개인정보 처리:**
+ *       - 제거: 이름, 이메일, 전화번호, 주소, 프로필 이미지
+ *       - 가명처리: 생년월일 (YYYY-**-** 형태)
+ *       - 유지: 통계용 데이터 (레벨, 리워드, 게시글 수)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               kakaoAccessToken:
+ *                 type: string
+ *                 description: 카카오 액세스 토큰 (카카오 로그인 사용자만 필수)
+ *                 example: "abc123xyz..."
+ *     responses:
+ *       200:
+ *         description: 회원 탈퇴 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: 회원 탈퇴가 완료되었습니다
+ *       400:
+ *         description: 잘못된 요청 (카카오 액세스 토큰 누락 등)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: 카카오 액세스 토큰이 필요합니다
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: 토큰이 만료되었습니다
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: 서버 내부 오류가 발생했습니다
+ */
+router.delete("/delete-account", authGuard, authController.deleteAccount);
+
 module.exports = router;
 

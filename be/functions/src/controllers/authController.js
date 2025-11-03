@@ -57,6 +57,37 @@ class AuthController {
       return next(error);
     }
   }
+
+  /**
+   * 회원 탈퇴 API
+   * 개인정보 가명처리 후 Firebase Auth 사용자 삭제
+   *
+   * @description
+   * - 카카오 로그인 사용자: 카카오 연결 해제 필수
+   * - Firestore: 개인정보 제거 + 생년월일 가명처리
+   * - Firebase Auth: 사용자 삭제
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} req.body.kakaoAccessToken - 카카오 액세스 토큰 (카카오 로그인 사용자만)
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async deleteAccount(req, res, next) {
+    try {
+      const uid = req.user.uid; // authGuard에서 설정된 사용자 정보
+      const {kakaoAccessToken} = req.body || {};
+
+      // authService를 통한 회원 탈퇴 처리
+      await authService.deleteAccount(uid, kakaoAccessToken);
+
+      return res.success({
+        message: "회원 탈퇴가 완료되었습니다",
+      });
+    } catch (error) {
+      console.error("회원 탈퇴 에러:", error);
+      return next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();
