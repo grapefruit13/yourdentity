@@ -7,38 +7,14 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { config } from "dotenv";
+import { loadEnvConfig } from "@next/env";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// dotenv로 환경 변수 로드 (.env.local 우선, 없으면 .env)
-const envDir = path.join(__dirname, "..");
-const envLocalPath = path.join(envDir, ".env.local");
-const envPath = path.join(envDir, ".env");
-
-// .env.local이 있으면 우선 로드
-let loaded = false;
-if (fs.existsSync(envLocalPath)) {
-  const result = config({ path: envLocalPath });
-  if (!result.error) {
-    console.log("✅ .env.local 파일 로드 완료");
-    loaded = true;
-  }
-}
-
-// .env.local이 없으면 .env 로드
-if (!loaded && fs.existsSync(envPath)) {
-  const result = config({ path: envPath });
-  if (!result.error) {
-    console.log("✅ .env 파일 로드 완료");
-    loaded = true;
-  }
-}
-
-if (!loaded) {
-  console.log("⚠️  .env.local 또는 .env 파일을 찾을 수 없습니다.");
-}
+// Next.js 공식 환경 변수 로더 사용
+const projectDir = path.join(__dirname, "..");
+loadEnvConfig(projectDir);
 
 // 환경변수 디버깅
 console.log("\n🔍 환경 변수 확인:");

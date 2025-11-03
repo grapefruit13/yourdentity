@@ -1,29 +1,10 @@
-import { existsSync } from "fs";
-import { resolve } from "path";
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
-import { config } from "dotenv";
+import { loadEnvConfig } from "@next/env";
 import { LINK_URL } from "@/constants/shared/_link-url";
 
-// 환경 변수 파일 로드 (우선순위: .env.local > .env.production/.env.development > .env)
-const loadEnvFiles = () => {
-  const envFiles = [
-    ".env.local",
-    process.env.NODE_ENV === "production"
-      ? ".env.production"
-      : ".env.development",
-    ".env",
-  ];
-
-  envFiles.forEach((file) => {
-    const filePath = resolve(process.cwd(), file);
-    if (existsSync(filePath)) {
-      config({ path: filePath, override: false }); // 이미 설정된 변수는 덮어쓰지 않음
-    }
-  });
-};
-
-loadEnvFiles();
+// Next.js 공식 환경 변수 로더 사용
+loadEnvConfig(process.cwd());
 
 const withPWA = withPWAInit({
   dest: "public",
