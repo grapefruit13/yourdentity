@@ -37,10 +37,14 @@ const ProfileEditPage = () => {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const selectedFileRef = useRef<File | null>(null);
 
-  const { data: userData } = useGetUsersMe();
+  const { data: userData } = useGetUsersMe({
+    select: (data) => {
+      return data?.user;
+    },
+  });
   const { mutateAsync: patchOnboardingAsync } = usePatchUsersMeOnboarding();
 
-  const actualUserData = userData?.data?.data;
+  const actualUserData = userData;
 
   const {
     register,
@@ -221,8 +225,7 @@ const ProfileEditPage = () => {
           await UsersApi.getUsersNicknameAvailability({
             nickname: trimmedNickname,
           });
-        const isAvailable =
-          nicknameCheckResponse.data?.data?.available ?? false;
+        const isAvailable = nicknameCheckResponse.data?.available ?? false;
 
         if (!isAvailable) {
           alert(PROFILE_EDIT_MESSAGES.NICKNAME_DUPLICATED);
