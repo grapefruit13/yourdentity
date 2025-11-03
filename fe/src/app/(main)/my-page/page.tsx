@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import MyPageProfileSection from "@/components/my-page/MyPageProfileSection";
 import MyPageTabs, { TabType } from "@/components/my-page/MyPageTabs";
 // import MyPageFilter, { FilterType } from "@/components/my-page/MyPageFilter"; // MVP 범위에서 제외
 import PostCard from "@/components/my-page/PostCard";
+import { Typography } from "@/components/shared/typography";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LINK_URL } from "@/constants/shared/_link-url";
+import {
+  useGetUsersMe,
+  useGetUsersMePosts,
+  useGetUsersMeLikedPosts,
+  useGetUsersMeCommentedPosts,
+} from "@/hooks/generated/users-hooks";
+import type * as Types from "@/types/generated/users-types";
 
 /**
  * @description 마이 페이지
@@ -17,92 +27,91 @@ const Page = () => {
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   // const [activeFilter, setActiveFilter] = useState<FilterType>("program"); // MVP 범위에서 제외
 
-  // FIXME: 실제로는 API에서 가져와야 함
-  const mockUserData = {
-    profileImageUrl: "",
-    nickname: "유어덴티티",
-    bio: "자기소개 및 글자까지 쓸 수 있어요",
-    postCount: 12,
-    activityCount: 15,
-    points: 5000,
+  const {
+    data: userData,
+    isLoading,
+    error,
+  } = useGetUsersMe({
+    select: (data) => {
+      return data?.user;
+    },
+  });
+
+  // 최초 진입 시 posts 탭 데이터만 페칭
+  const { data: postsData, isLoading: isLoadingPosts } = useGetUsersMePosts({
+    request: { page: 0, size: 20 },
+  });
+
+  // posts 로드 완료 여부를 React Query 응답값으로 확인
+  const isPostsLoaded = Boolean(!isLoadingPosts && postsData);
+
+  // 탭 전환 시점에 다른 탭 데이터 페칭 (탭 클릭 또는 posts 로드 완료 후)
+  const shouldFetchLiked = activeTab === "liked" || isPostsLoaded;
+  const shouldFetchCommented = activeTab === "comments" || isPostsLoaded;
+
+  const { data: likedPostsData, isLoading: isLoadingLiked } =
+    useGetUsersMeLikedPosts({
+      request: { page: 0, size: 20 },
+      enabled: shouldFetchLiked,
+    });
+
+  const { data: commentedPostsData, isLoading: isLoadingCommented } =
+    useGetUsersMeCommentedPosts({
+      request: { page: 0, size: 20 },
+      enabled: shouldFetchCommented,
+    });
+
+  // API 응답을 PostCard props로 변환하는 헬퍼 함수
+  const transformPostToCardProps = (
+    post:
+      | NonNullable<Types.TGETUsersMePostsRes["posts"]>[number]
+      | NonNullable<Types.TGETUsersMeLikedPostsRes["posts"]>[number]
+      | NonNullable<Types.TGETUsersMeCommentedPostsRes["posts"]>[number]
+  ) => {
+    if (!post) return null;
+
+    return {
+      id: post.id || "",
+      imageUrl: post.preview?.thumbnail?.url || "",
+      title: post.category || post.channel || "-",
+      description: post.preview?.description || "-",
+      authorName: post.author || "익명",
+      authorProfileUrl: "",
+      likeCount: post.likesCount || 0,
+      commentCount: post.commentsCount || 0,
+    };
   };
 
-  // FIXME: 실제로는 API에서 가져와야 함
-  const mockPostsData = {
-    posts: [
-      {
-        id: "1",
-        imageUrl: "https://picsum.photos/400/400?random=1",
-        title: "한끗루틴",
-        description: "프로그램 참여에서 좋았어요",
-        authorName: "유어덴티티",
-        authorProfileUrl: "",
-        likeCount: 3,
-        commentCount: 2,
-      },
-      {
-        id: "2",
-        imageUrl: "https://picsum.photos/400/400?random=2",
-        title: "월간소모임",
-        description: "프로그램 참여에서 좋았어요",
-        authorName: "유어덴티티",
-        authorProfileUrl: "",
-        likeCount: 3,
-        commentCount: 2,
-      },
-    ],
-    comments: [
-      {
-        id: "3",
-        imageUrl: "https://picsum.photos/400/400?random=3",
-        title: "월간소모임",
-        description: "댓글을 남긴 게시글입니다",
-        authorName: "다른사용자",
-        authorProfileUrl: "",
-        likeCount: 5,
-        commentCount: 8,
-      },
-      {
-        id: "4",
-        imageUrl: "https://picsum.photos/400/400?random=4",
-        title: "한끗루틴",
-        description: "여기도 댓글을 남겼어요",
-        authorName: "다른사용자2",
-        authorProfileUrl: "",
-        likeCount: 2,
-        commentCount: 4,
-      },
-    ],
-    liked: [
-      {
-        id: "5",
-        imageUrl: "https://picsum.photos/400/400?random=5",
-        title: "TMI프로젝트",
-        description: "좋아요를 누른 게시글입니다",
-        authorName: "작성자A",
-        authorProfileUrl: "",
-        likeCount: 10,
-        commentCount: 3,
-      },
-      {
-        id: "6",
-        imageUrl: "https://picsum.photos/400/400?random=6",
-        title: "월간소모임",
-        description: "이것도 좋아요 눌렀어요",
-        authorName: "작성자B",
-        authorProfileUrl: "",
-        likeCount: 7,
-        commentCount: 1,
-      },
-    ],
-  };
+  // 탭별 데이터 매핑
+  const currentPostsData = useMemo(() => {
+    switch (activeTab) {
+      case "posts":
+        return postsData?.posts || [];
+      case "liked":
+        return likedPostsData?.posts || [];
+      case "comments":
+        return commentedPostsData?.posts || [];
+      default:
+        return [];
+    }
+  }, [activeTab, postsData, likedPostsData, commentedPostsData]);
 
-  // 현재 탭에 따른 데이터 선택
-  const currentPosts = mockPostsData[activeTab];
+  // 로딩 상태 확인
+  const isLoadingCurrentTab =
+    (activeTab === "posts" && isLoadingPosts) ||
+    (activeTab === "liked" && isLoadingLiked) ||
+    (activeTab === "comments" && isLoadingCommented);
+
+  // PostCard props로 변환된 데이터
+  const currentPosts = useMemo(() => {
+    return currentPostsData
+      .map(transformPostToCardProps)
+      .filter((post): post is NonNullable<typeof post> => post !== null);
+  }, [currentPostsData]);
 
   // 프로필 편집 버튼 핸들러
   const handleEditProfile = () => {
-    router.push("/my-page/edit");
+    router.push(LINK_URL.MY_PAGE_EDIT);
   };
 
   // 게시글 클릭 핸들러
@@ -114,15 +123,44 @@ const Page = () => {
   return (
     <div className="flex min-h-full w-full flex-col bg-gray-50">
       {/* 프로필 섹션 */}
-      <MyPageProfileSection
-        profileImageUrl={mockUserData.profileImageUrl}
-        nickname={mockUserData.nickname}
-        bio={mockUserData.bio}
-        postCount={mockUserData.postCount}
-        activityCount={mockUserData.activityCount}
-        points={mockUserData.points}
-        onEditClick={handleEditProfile}
-      />
+      {isLoading || !userData ? (
+        <div className="flex flex-col bg-white px-4 pt-3 pb-4">
+          {/* 상단: 프로필 이미지 + 통계 정보 */}
+          <div className="mb-3 flex items-center justify-between">
+            {/* 프로필 이미지 스켈레톤 */}
+            <Skeleton className="h-[72px] w-[72px] rounded-full" />
+
+            {/* 통계 정보 스켈레톤 */}
+            <div className="flex gap-10">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="flex flex-col items-center gap-1">
+                  <Skeleton className="h-6 w-8" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 닉네임 스켈레톤 */}
+          <Skeleton className="mb-1 h-6 w-24" />
+
+          {/* 자기소개 스켈레톤 */}
+          <Skeleton className="mb-3 h-4 w-full" />
+
+          {/* 프로필 편집 버튼 스켈레톤 */}
+          <Skeleton className="h-12 w-full rounded-lg" />
+        </div>
+      ) : (
+        <MyPageProfileSection
+          profileImageUrl={userData.profileImageUrl || ""}
+          nickname={userData.nickname || "-"}
+          bio={userData.bio || ""}
+          postCount={userData.certificationPosts || 0}
+          activityCount={userData.activityParticipationCount || 0}
+          points={userData.rewards || 0}
+          onEditClick={handleEditProfile}
+        />
+      )}
 
       {/* 탭 */}
       <MyPageTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -135,20 +173,51 @@ const Page = () => {
 
       {/* 게시글 그리드 */}
       <div className="grid grid-cols-2 gap-4 bg-gray-50 px-4 pt-4 pb-24">
-        {currentPosts.map((post) => (
-          <PostCard
-            key={post.id}
-            id={post.id}
-            imageUrl={post.imageUrl}
-            title={post.title}
-            description={post.description}
-            authorName={post.authorName}
-            authorProfileUrl={post.authorProfileUrl}
-            likeCount={post.likeCount}
-            commentCount={post.commentCount}
-            onClick={() => handlePostClick(post.id)}
-          />
-        ))}
+        {isLoadingCurrentTab ? (
+          // 로딩 중일 때 스켈레톤 표시
+          Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm"
+            >
+              <Skeleton className="aspect-square w-full" />
+              <div className="flex flex-col gap-2 p-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <div className="mt-2 flex items-center justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <div className="flex gap-3">
+                    <Skeleton className="h-3 w-8" />
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : currentPosts.length === 0 ? (
+          // 데이터가 없을 때 빈 상태 표시
+          <div className="col-span-2 flex items-center justify-center py-12">
+            <Typography font="noto" variant="body2R" className="text-gray-500">
+              게시글이 없습니다.
+            </Typography>
+          </div>
+        ) : (
+          currentPosts.map((post) => (
+            <PostCard
+              key={post.id}
+              id={post.id}
+              imageUrl={post.imageUrl}
+              title={post.title}
+              description={post.description}
+              authorName={post.authorName}
+              authorProfileUrl={post.authorProfileUrl}
+              likeCount={post.likeCount}
+              commentCount={post.commentCount}
+              onClick={() => handlePostClick(post.id)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

@@ -52,11 +52,15 @@ const PostCard = ({
     >
       {/* 게시글 이미지 */}
       <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
-        <img
-          src={imageUrl}
-          alt={title}
-          className="h-full w-full object-cover"
-        />
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full" />
+        )}
       </div>
 
       {/* 게시글 정보 */}
