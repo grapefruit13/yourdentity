@@ -1,0 +1,136 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { Typography } from "@/components/shared/typography";
+
+interface DeleteAccountModalProps {
+  /** 모달 열림/닫힘 상태 */
+  isOpen: boolean;
+  /** 로딩 상태 (탈퇴 진행 중) */
+  isLoading: boolean;
+  /** 확인 버튼 클릭 핸들러 */
+  onConfirm: () => void;
+  /** 닫기 핸들러 (취소/오버레이/ESC) */
+  onClose: () => void;
+}
+
+/**
+ * @description 회원 탈퇴 확인 모달 컴포넌트
+ * - 붉은색 강조 스타일 적용
+ * - 로딩 중에는 모달을 닫을 수 없음 (외부 클릭/ESC 방지)
+ * - 취소 버튼 없음
+ */
+const DeleteAccountModal = ({
+  isOpen,
+  isLoading,
+  onConfirm,
+  onClose,
+}: DeleteAccountModalProps) => {
+  const previousOverflow = useRef<string>("");
+
+  // Body 스크롤 방지 (모달 열릴 때)
+  useEffect(() => {
+    if (isOpen) {
+      previousOverflow.current = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        document.body.style.overflow = previousOverflow.current;
+      };
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow.current;
+    };
+  }, [isOpen]);
+
+  // ESC 로 닫기 (로딩 중에는 동작하지 않음)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isLoading) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeydown);
+    return () => document.removeEventListener("keydown", handleKeydown);
+  }, [isOpen, isLoading, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      onClick={() => {
+        if (isLoading) return; // 로딩 중에는 닫기 금지
+        onClose();
+      }}
+    >
+      {/* 오버레이: #000 60% 투명도 */}
+      <div className="absolute inset-0 bg-black/60" aria-hidden="true" />
+
+      {/* 모달 컨텐츠 */}
+      <div
+        className="relative mx-8 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 제목 */}
+        <Typography
+          as="h2"
+          id="modal-title"
+          font="noto"
+          variant="heading2B"
+          className="mb-4 text-left text-black"
+        >
+          정말 탈퇴하시겠습니까?
+        </Typography>
+
+        {/* 경고 문구 */}
+        <div className="mb-6 rounded-lg bg-red-50 p-4">
+          <Typography
+            as="p"
+            font="noto"
+            variant="body2M"
+            className="text-center text-red-600"
+          >
+            탈퇴 후에는 개인정보가 모두 삭제되어
+            <br />
+            복구가 불가능합니다.
+          </Typography>
+        </div>
+
+        {/* 버튼 영역: 취소 / 확인 */}
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <button
+            onClick={() => {
+              if (isLoading) return;
+              onClose();
+            }}
+            disabled={isLoading}
+            className="rounded-xl bg-white px-4 py-3 shadow-md transition-colors hover:bg-gray-50 focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+            aria-label="취소"
+          >
+            <Typography font="noto" variant="body2M" className="text-black">
+              취소
+            </Typography>
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="rounded-xl bg-red-600 px-4 py-3 transition-colors hover:bg-red-700 focus:outline-none focus-visible:outline-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            aria-label={isLoading ? "탈퇴 진행 중..." : "탈퇴하기"}
+          >
+            <Typography font="noto" variant="body2M" className="text-white">
+              {isLoading ? "탈퇴 진행 중..." : "탈퇴하기"}
+            </Typography>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DeleteAccountModal;

@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import DeleteAccountModal from "@/components/my-page/DeleteAccountModal";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
 import { useLogout } from "@/hooks/auth/useLogout";
 import { debug } from "@/utils/shared/debugger";
 
@@ -13,13 +16,19 @@ import { debug } from "@/utils/shared/debugger";
  */
 const SettingsPage = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
+    useState(false);
+
+  const { mutate: logoutMutate } = useLogout();
+  const { mutate: deleteAccountMutate, isPending: isDeleting } =
+    useDeleteAccount();
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true);
   };
 
-  const { mutate: logoutMutate } = useLogout();
   /**
    * @description 로그아웃 모달 '확인' 클릭 시
    */
@@ -43,7 +52,65 @@ const SettingsPage = () => {
   };
 
   const handleDeleteAccount = () => {
-    router.push(LINK_URL.MYPAGE_SETTING_LEAVE);
+    setIsDeleteAccountModalOpen(true);
+  };
+
+  /**
+   * @description 회원 탈퇴 확인 버튼 클릭 시
+   */
+  const handleDeleteAccountConfirm = () => {
+    deleteAccountMutate(undefined, {
+      onSuccess: () => {
+        debug.log("회원 탈퇴 성공");
+
+        // 1. React Query 캐시 모두 제거
+        queryClient.clear();
+
+        // 2. LocalStorage 정리 (Firebase 관련)
+        const allKeys = Object.keys(localStorage);
+        allKeys.forEach((key) => {
+          if (
+            key.startsWith("firebase:authUser:") ||
+            key.startsWith("firebase:refreshToken:") ||
+            key.startsWith("firebase:host:") ||
+            key.startsWith("firebase:heartbeat:")
+          ) {
+            localStorage.removeItem(key);
+          }
+        });
+
+        // 3. 쿠키 정리
+        const clearCookie = (name: string) => {
+          const paths = ["/", window.location.pathname];
+          const domains = [
+            window.location.hostname,
+            "." + window.location.hostname,
+          ];
+
+          paths.forEach((path) => {
+            domains.forEach((domain) => {
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
+            });
+          });
+        };
+
+        document.cookie.split(";").forEach((c) => {
+          const name = c.split("=")[0].trim();
+          clearCookie(name);
+        });
+
+        // 4. 모달 닫기
+        setIsDeleteAccountModalOpen(false);
+
+        // 5. 홈 페이지로 리다이렉트 (히스토리 정리)
+        router.replace(LINK_URL.HOME);
+      },
+      onError: (error) => {
+        debug.error("회원 탈퇴 오류:", error);
+        // 에러 발생 시 모달은 열어두어 재시도 가능하도록 함
+      },
+    });
   };
 
   const loginSectionItems = [
@@ -93,6 +160,17 @@ const SettingsPage = () => {
         isOpen={isLogoutModalOpen}
         onClose={handleLogoutCancel}
         onConfirm={handleLogoutConfirm}
+      />
+
+      {/* 회원 탈퇴 모달 */}
+      <DeleteAccountModal
+        isOpen={isDeleteAccountModalOpen}
+        isLoading={isDeleting}
+        onConfirm={handleDeleteAccountConfirm}
+        onClose={() => {
+          if (isDeleting) return;
+          setIsDeleteAccountModalOpen(false);
+        }}
       />
     </div>
   );

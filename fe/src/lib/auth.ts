@@ -12,6 +12,7 @@ import {
   User,
   getIdToken,
   getAdditionalUserInfo,
+  reauthenticateWithPopup,
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { FIREBASE_AUTH_ERROR_CODES } from "@/constants/auth/_firebase-error-codes";
@@ -19,7 +20,7 @@ import { AUTH_MESSAGE } from "@/constants/auth/_message";
 import { auth, functions } from "@/lib/firebase";
 import { ErrorResponse, Result } from "@/types/shared/response";
 import { debug } from "@/utils/shared/debugger";
-import { post } from "./axios";
+import { post, del } from "./axios";
 
 /**
  * @description 카카오 OAuth 제공업체 생성
@@ -303,6 +304,76 @@ export const checkEmailAvailability = async (
     return result.data;
   } catch (error) {
     debug.warn("이메일 중복 체크 실패");
+    throw error;
+  }
+};
+
+/**
+ * @description 회원 탈퇴
+ * 1. 카카오 재인증으로 새로운 액세스 토큰 발급
+ * 2. 백엔드 API 호출 (카카오 연결 해제 + Firestore 가명처리)
+ * 3. Firebase Auth 사용자 삭제
+ */
+export const deleteUserAccount = async (): Promise<void> => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      const notLoggedInError: ErrorResponse = {
+        status: 401,
+        message: "로그인된 사용자가 없습니다",
+      };
+      throw notLoggedInError;
+    }
+
+    // 카카오 로그인 사용자인지 확인
+    const isKakaoUser = user.providerData.some(
+      (provider) => provider.providerId === "oidc.kakao"
+    );
+
+    let kakaoAccessToken: string | undefined;
+
+    // 카카오 사용자인 경우 재인증으로 새로운 액세스 토큰 발급
+    if (isKakaoUser) {
+      try {
+        const provider = createKakaoProvider();
+        const result = await reauthenticateWithPopup(user, provider);
+        const credential = OAuthProvider.credentialFromResult(result);
+        kakaoAccessToken = credential?.accessToken;
+
+        if (!kakaoAccessToken) {
+          const tokenError: ErrorResponse = {
+            status: 500,
+            message: "카카오 액세스 토큰을 가져올 수 없습니다",
+          };
+          throw tokenError;
+        }
+
+        debug.log("카카오 재인증 성공, 액세스 토큰 발급 완료");
+      } catch (reauthError) {
+        debug.warn("카카오 재인증 실패:", reauthError);
+
+        if (reauthError instanceof FirebaseError) {
+          throw handleKakaoAuthError(reauthError);
+        }
+
+        throw reauthError;
+      }
+    }
+
+    // 백엔드 API 호출 (카카오 연결 해제 + Firestore 가명처리 + Auth 사용자 삭제)
+    await del("auth/delete-account", {
+      data: kakaoAccessToken ? { kakaoAccessToken } : undefined,
+    });
+
+    debug.log("백엔드 탈퇴 처리 완료");
+
+    // 주의: 백엔드에서 이미 Firebase Auth 사용자를 삭제함
+    // 프론트에서는 로컬 세션만 정리
+    await auth.signOut();
+
+    debug.log("회원 탈퇴 완료 (로컬 세션 정리)");
+  } catch (error) {
+    debug.warn("회원 탈퇴 실패:", error);
     throw error;
   }
 };

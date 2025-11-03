@@ -28,7 +28,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
   }, [pathname, router]);
 
   if (isChecking) {
-    return <div>Loading...</div>;
+    return null;
   }
   return <>{children}</>;
 };
@@ -52,7 +52,7 @@ export const GuestGuard = ({ children }: { children: ReactNode }) => {
   }, [pathname, router]);
 
   if (isChecking) {
-    return <div>Loading...</div>;
+    return null;
   }
   return <>{children}</>;
 };
