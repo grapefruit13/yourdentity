@@ -14,10 +14,172 @@ export interface TPATCHUsersMeOnboardingReq {
 }
 
 export type TPATCHUsersMeOnboardingRes = {
-  onboardingCompleted?: boolean;
+  status?: "pending" | "active" | "suspended";
 };
 
 export type TGETUsersMeRes = Schema.User;
+
+export type TGETUsersMeMyPageRes = {
+  activityParticipationCount?: number;
+  certificationPosts?: number;
+  rewardPoints?: number;
+  name?: string;
+  profileImageUrl?: string;
+  bio?: string;
+};
+
+export interface TGETUsersMePostsReq {
+  page?: number;
+  size?: number;
+}
+
+export type TGETUsersMePostsRes = {
+  posts?: {
+    id?: string;
+    author?: string;
+    title?: string;
+    type?: string;
+    channel?: string;
+    category?: string;
+    scheduledDate?: string;
+    visibility?: string;
+    isLocked?: boolean;
+    rewardGiven?: boolean;
+    likesCount?: number;
+    commentsCount?: number;
+    reportsCount?: number;
+    viewCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    community?: {
+      id?: string;
+      name?: string;
+    };
+    timeAgo?: string;
+    communityPath?: string;
+    preview?: {
+      description?: string;
+      thumbnail?: {
+        url?: string;
+        width?: number;
+        height?: number;
+        blurHash?: string;
+      };
+    };
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
+  };
+};
+
+export interface TGETUsersMeLikedPostsReq {
+  page?: number;
+  size?: number;
+}
+
+export type TGETUsersMeLikedPostsRes = {
+  posts?: {
+    id?: string;
+    author?: string;
+    title?: string;
+    type?: string;
+    channel?: string;
+    category?: string;
+    scheduledDate?: string;
+    visibility?: string;
+    isLocked?: boolean;
+    rewardGiven?: boolean;
+    likesCount?: number;
+    commentsCount?: number;
+    reportsCount?: number;
+    viewCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    community?: {
+      id?: string;
+      name?: string;
+    };
+    timeAgo?: string;
+    communityPath?: string;
+    preview?: {
+      description?: string;
+      thumbnail?: {
+        url?: string;
+        width?: number;
+        height?: number;
+        blurHash?: string;
+      };
+    };
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
+  };
+};
+
+export interface TGETUsersMeCommentedPostsReq {
+  page?: number;
+  size?: number;
+}
+
+export type TGETUsersMeCommentedPostsRes = {
+  posts?: {
+    id?: string;
+    author?: string;
+    title?: string;
+    type?: string;
+    channel?: string;
+    category?: string;
+    scheduledDate?: string;
+    visibility?: string;
+    isLocked?: boolean;
+    rewardGiven?: boolean;
+    likesCount?: number;
+    commentsCount?: number;
+    reportsCount?: number;
+    viewCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    community?: {
+      id?: string;
+      name?: string;
+    };
+    timeAgo?: string;
+    communityPath?: string;
+    preview?: {
+      description?: string;
+      thumbnail?: {
+        url?: string;
+        width?: number;
+        height?: number;
+        blurHash?: string;
+      };
+    };
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
+  };
+};
 
 export interface TGETUsersNicknameAvailabilityReq {
   nickname: string;
@@ -55,13 +217,14 @@ export interface TPUTUsersByIdReq {
     nickname?: string;
     name?: string;
     birthDate?: string;
-    gender?: "MALE" | "FEMALE";
+    gender?: "male" | "female";
     phoneNumber?: string;
     profileImageUrl?: string;
     bio?: string;
+    rewards?: number;
     authType?: string;
     snsProvider?: string;
-    onboardingCompleted?: boolean;
+    status?: "pending" | "active" | "suspended";
     serviceTermsVersion?: string;
     privacyTermsVersion?: string;
     age14TermsAgreed?: boolean;

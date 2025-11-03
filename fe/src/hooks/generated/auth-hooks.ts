@@ -3,20 +3,53 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  type UseQueryOptions,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import * as Api from "@/api/generated/auth-api";
 import { authKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/auth-types";
 
-export const usePostAuthLogout = () => {
-  return useMutation({
+export const usePostAuthLogout = <TContext = unknown, TVariables = void>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postAuthLogout>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postAuthLogout>>,
+    Error,
+    TVariables,
+    TContext
+  >({
     mutationFn: () => Api.postAuthLogout(),
+    ...options,
   });
 };
 
-export const useGetAuthVerify = () => {
-  return useQuery({
+export const useGetAuthVerify = <
+  TData = Awaited<ReturnType<typeof Api.getAuthVerify>>,
+>(
+  options?: Omit<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof Api.getAuthVerify>>,
+      Error,
+      TData
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Awaited<ReturnType<typeof Api.getAuthVerify>>, Error, TData>({
     queryKey: authKeys.getAuthVerify,
     queryFn: () => Api.getAuthVerify(),
+    ...options,
   });
 };

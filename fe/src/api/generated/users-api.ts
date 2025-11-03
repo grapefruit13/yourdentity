@@ -20,6 +20,33 @@ export const getUsersMe = () => {
   return get<Result<Types.TGETUsersMeRes>>(`/users/me`);
 };
 
+export const getUsersMeMyPage = () => {
+  return get<Result<Types.TGETUsersMeMyPageRes>>(`/users/me/my-page`);
+};
+
+export const getUsersMePosts = (request: Types.TGETUsersMePostsReq) => {
+  return get<Result<Types.TGETUsersMePostsRes>>(`/users/me/posts`, {
+    params: request,
+  });
+};
+
+export const getUsersMeLikedPosts = (
+  request: Types.TGETUsersMeLikedPostsReq
+) => {
+  return get<Result<Types.TGETUsersMeLikedPostsRes>>(`/users/me/liked-posts`, {
+    params: request,
+  });
+};
+
+export const getUsersMeCommentedPosts = (
+  request: Types.TGETUsersMeCommentedPostsReq
+) => {
+  return get<Result<Types.TGETUsersMeCommentedPostsRes>>(
+    `/users/me/commented-posts`,
+    { params: request }
+  );
+};
+
 export const getUsersNicknameAvailability = (
   request: Types.TGETUsersNicknameAvailabilityReq
 ) => {

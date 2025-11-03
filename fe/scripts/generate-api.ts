@@ -8,6 +8,7 @@
  * - React Query Hooks
  */
 
+import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 // import { debug as debugUtil } from "@/utils/shared/debugger";
@@ -30,6 +31,19 @@ const CONSTANTS_DIR = path.join(OUTPUT_DIR, "constants/generated");
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+// 생성된 파일을 Prettier로 포맷팅하여 일관된 코드 스타일 유지
+function formatGeneratedFile(filePath: string) {
+  try {
+    execSync(`pnpm prettier --write "${filePath}"`, {
+      stdio: "ignore",
+      cwd: path.join(__dirname, "../"),
+    });
+  } catch (error) {
+    // Prettier 실패해도 계속 진행 (경고만 표시)
+    debug.log(`⚠️  ${path.basename(filePath)} Prettier 포맷팅 실패 (무시)`);
   }
 }
 
@@ -470,6 +484,7 @@ import type { Result } from "@/types/shared/response";
     });
 
     fs.writeFileSync(filePath, fileContent);
+    formatGeneratedFile(filePath);
     debug.log(`✅ ${fileName} 생성 완료`);
   });
 
@@ -614,6 +629,7 @@ import type * as Schema from "./api-schema";
     });
 
     fs.writeFileSync(filePath, fileContent);
+    formatGeneratedFile(filePath);
     debug.log(`✅ ${fileName} 생성 완료`);
   });
 }
@@ -738,7 +754,7 @@ function generateHooks(endpoints: ApiEndpoint[]): string {
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import * as Api from "@/api/generated/${tag.toLowerCase()}-api";
 import { ${tag.toLowerCase()}Keys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
@@ -772,17 +788,26 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         // Query Hook
         if (hasRequestParams) {
           const reqTypeName = generateTypeName(method, path, "Req");
-          fileContent += `export const ${hookName} = (request: Types.${reqTypeName}) => {\n`;
-          fileContent += `  return useQuery({\n`;
+          fileContent += `export const ${hookName} = <TData = Awaited<ReturnType<typeof Api.${funcName}>>>(\n`;
+          fileContent += `  options: {\n`;
+          fileContent += `    request: Types.${reqTypeName};\n`;
+          fileContent += `  } & Omit<UseQueryOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TData>, "queryKey" | "queryFn">\n`;
+          fileContent += `) => {\n`;
+          fileContent += `  const { request, ...queryOptions } = options;\n`;
+          fileContent += `  return useQuery<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TData>({\n`;
           fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName}(request),\n`;
           fileContent += `    queryFn: () => Api.${funcName}(request),\n`;
+          fileContent += `    ...queryOptions,\n`;
           fileContent += `  });\n`;
           fileContent += `};\n\n`;
         } else {
-          fileContent += `export const ${hookName} = () => {\n`;
-          fileContent += `  return useQuery({\n`;
+          fileContent += `export const ${hookName} = <TData = Awaited<ReturnType<typeof Api.${funcName}>>>(\n`;
+          fileContent += `  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TData>, "queryKey" | "queryFn">\n`;
+          fileContent += `) => {\n`;
+          fileContent += `  return useQuery<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TData>({\n`;
           fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName},\n`;
           fileContent += `    queryFn: () => Api.${funcName}(),\n`;
+          fileContent += `    ...options,\n`;
           fileContent += `  });\n`;
           fileContent += `};\n\n`;
         }
@@ -790,38 +815,67 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         // Mutation Hook
         if (isMultipart) {
           if (pathParams.length === 0 && queryParams.length === 0) {
-            fileContent += `export const ${hookName} = () => {\n`;
-            fileContent += `  return useMutation({\n`;
+            fileContent += `export const ${hookName} = <\n`;
+            fileContent += `  TContext = unknown,\n`;
+            fileContent += `  TVariables = FormData\n`;
+            fileContent += `>(\n`;
+            fileContent += `  options?: Omit<UseMutationOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>, "mutationFn">\n`;
+            fileContent += `) => {\n`;
+            fileContent += `  return useMutation<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>({\n`;
             fileContent += `    mutationFn: (formData: FormData) => Api.${funcName}(formData),\n`;
+            fileContent += `    ...options,\n`;
             fileContent += `  });\n`;
             fileContent += `};\n\n`;
           } else if (pathParams.length > 0 && queryParams.length === 0) {
             const reqTypeName = generateTypeName(method, path, "Req");
-            fileContent += `export const ${hookName} = () => {\n`;
-            fileContent += `  return useMutation({\n`;
+            fileContent += `export const ${hookName} = <\n`;
+            fileContent += `  TContext = unknown,\n`;
+            fileContent += `  TVariables = { request: Types.${reqTypeName}; formData: FormData }\n`;
+            fileContent += `>(\n`;
+            fileContent += `  options?: Omit<UseMutationOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>, "mutationFn">\n`;
+            fileContent += `) => {\n`;
+            fileContent += `  return useMutation<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>({\n`;
             fileContent += `    mutationFn: ({ request, formData }: { request: Types.${reqTypeName}; formData: FormData }) => Api.${funcName}(request, formData),\n`;
+            fileContent += `    ...options,\n`;
             fileContent += `  });\n`;
             fileContent += `};\n\n`;
           } else {
-            // 보수적으로 request 타입만 허용하는 기본 형태
             const reqTypeName = generateTypeName(method, path, "Req");
-            fileContent += `export const ${hookName} = () => {\n`;
-            fileContent += `  return useMutation({\n`;
+            fileContent += `export const ${hookName} = <\n`;
+            fileContent += `  TContext = unknown,\n`;
+            fileContent += `  TVariables = Types.${reqTypeName}\n`;
+            fileContent += `>(\n`;
+            fileContent += `  options?: Omit<UseMutationOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>, "mutationFn">\n`;
+            fileContent += `) => {\n`;
+            fileContent += `  return useMutation<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>({\n`;
             fileContent += `    mutationFn: (request: Types.${reqTypeName}) => Api.${funcName}(request as any),\n`;
+            fileContent += `    ...options,\n`;
             fileContent += `  });\n`;
             fileContent += `};\n\n`;
           }
         } else if (hasRequestParams) {
           const reqTypeName = generateTypeName(method, path, "Req");
-          fileContent += `export const ${hookName} = () => {\n`;
-          fileContent += `  return useMutation({\n`;
+          fileContent += `export const ${hookName} = <\n`;
+          fileContent += `  TContext = unknown,\n`;
+          fileContent += `  TVariables = Types.${reqTypeName}\n`;
+          fileContent += `>(\n`;
+          fileContent += `  options?: Omit<UseMutationOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>, "mutationFn">\n`;
+          fileContent += `) => {\n`;
+          fileContent += `  return useMutation<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>({\n`;
           fileContent += `    mutationFn: (request: Types.${reqTypeName}) => Api.${funcName}(request),\n`;
+          fileContent += `    ...options,\n`;
           fileContent += `  });\n`;
           fileContent += `};\n\n`;
         } else {
-          fileContent += `export const ${hookName} = () => {\n`;
-          fileContent += `  return useMutation({\n`;
+          fileContent += `export const ${hookName} = <\n`;
+          fileContent += `  TContext = unknown,\n`;
+          fileContent += `  TVariables = void\n`;
+          fileContent += `>(\n`;
+          fileContent += `  options?: Omit<UseMutationOptions<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>, "mutationFn">\n`;
+          fileContent += `) => {\n`;
+          fileContent += `  return useMutation<Awaited<ReturnType<typeof Api.${funcName}>>, Error, TVariables, TContext>({\n`;
           fileContent += `    mutationFn: () => Api.${funcName}(),\n`;
+          fileContent += `    ...options,\n`;
           fileContent += `  });\n`;
           fileContent += `};\n\n`;
         }
@@ -829,6 +883,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
     });
 
     fs.writeFileSync(filePath, fileContent);
+    formatGeneratedFile(filePath);
     debug.log(`✅ ${fileName} 생성 완료`);
   });
 
@@ -884,7 +939,9 @@ function generateApiCode() {
     // 1. 타입 정의 생성
     debug.log("📝 타입 정의 생성 중...");
     const typesContent = generateTypes(swaggerSpec);
-    fs.writeFileSync(path.join(TYPES_DIR, "api-schema.ts"), typesContent);
+    const apiSchemaPath = path.join(TYPES_DIR, "api-schema.ts");
+    fs.writeFileSync(apiSchemaPath, typesContent);
+    formatGeneratedFile(apiSchemaPath);
     debug.log("✅ api-schema.ts 생성 완료");
 
     // 2. 개별 타입 파일들 생성
@@ -898,10 +955,9 @@ function generateApiCode() {
     // 3. Query Keys 생성
     debug.log("🔑 Query Keys 생성 중...");
     const queryKeysContent = generateQueryKeys(endpoints);
-    fs.writeFileSync(
-      path.join(CONSTANTS_DIR, "query-keys.ts"),
-      queryKeysContent
-    );
+    const queryKeysPath = path.join(CONSTANTS_DIR, "query-keys.ts");
+    fs.writeFileSync(queryKeysPath, queryKeysContent);
+    formatGeneratedFile(queryKeysPath);
     debug.log("✅ query-keys.ts 생성 완료");
 
     // 4. React Query Hooks 생성

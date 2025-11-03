@@ -13,6 +13,7 @@ import type * as faqsTypes from "@/types/generated/faqs-types";
 import type * as fcmTypes from "@/types/generated/fcm-types";
 import type * as filesTypes from "@/types/generated/files-types";
 import type * as gatheringsTypes from "@/types/generated/gatherings-types";
+import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
@@ -152,6 +153,11 @@ export const gatheringsKeys = {
     }),
 } as const;
 
+// Home Query Keys
+export const homeKeys = {
+  getHome: __buildKey("home", "getHome"),
+} as const;
+
 // Images Query Keys
 export const imagesKeys = {} as const;
 
@@ -269,6 +275,24 @@ export const tmiKeys = {
 // Users Query Keys
 export const usersKeys = {
   getUsersMe: __buildKey("users", "getUsersMe"),
+  getUsersMeMyPage: __buildKey("users", "getUsersMeMyPage"),
+  getUsersMePosts: (request: usersTypes.TGETUsersMePostsReq) =>
+    __buildKey("users", "getUsersMePosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeLikedPosts: (request: usersTypes.TGETUsersMeLikedPostsReq) =>
+    __buildKey("users", "getUsersMeLikedPosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeCommentedPosts: (
+    request: usersTypes.TGETUsersMeCommentedPostsReq
+  ) =>
+    __buildKey("users", "getUsersMeCommentedPosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
   getUsersNicknameAvailability: (
     request: usersTypes.TGETUsersNicknameAvailabilityReq
   ) =>

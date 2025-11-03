@@ -3,46 +3,142 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  type UseQueryOptions,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import * as Api from "@/api/generated/missions-api";
 import { missionsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/missions-types";
 
-export const usePostUsersMissionsById = () => {
-  return useMutation({
+export const usePostUsersMissionsById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTUsersMissionsByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postUsersMissionsById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postUsersMissionsById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
     mutationFn: (request: Types.TPOSTUsersMissionsByIdReq) =>
       Api.postUsersMissionsById(request),
+    ...options,
   });
 };
 
-export const useGetUsersMissionsById = (
-  request: Types.TGETUsersMissionsByIdReq
+export const useGetUsersMissionsById = <
+  TData = Awaited<ReturnType<typeof Api.getUsersMissionsById>>,
+>(
+  options: {
+    request: Types.TGETUsersMissionsByIdReq;
+  } & Omit<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof Api.getUsersMissionsById>>,
+      Error,
+      TData
+    >,
+    "queryKey" | "queryFn"
+  >
 ) => {
-  return useQuery({
+  const { request, ...queryOptions } = options;
+  return useQuery<
+    Awaited<ReturnType<typeof Api.getUsersMissionsById>>,
+    Error,
+    TData
+  >({
     queryKey: missionsKeys.getUsersMissionsById(request),
     queryFn: () => Api.getUsersMissionsById(request),
+    ...queryOptions,
   });
 };
 
-export const useGetUsersMissionsByTwoIds = (
-  request: Types.TGETUsersMissionsByTwoIdsReq
+export const useGetUsersMissionsByTwoIds = <
+  TData = Awaited<ReturnType<typeof Api.getUsersMissionsByTwoIds>>,
+>(
+  options: {
+    request: Types.TGETUsersMissionsByTwoIdsReq;
+  } & Omit<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof Api.getUsersMissionsByTwoIds>>,
+      Error,
+      TData
+    >,
+    "queryKey" | "queryFn"
+  >
 ) => {
-  return useQuery({
+  const { request, ...queryOptions } = options;
+  return useQuery<
+    Awaited<ReturnType<typeof Api.getUsersMissionsByTwoIds>>,
+    Error,
+    TData
+  >({
     queryKey: missionsKeys.getUsersMissionsByTwoIds(request),
     queryFn: () => Api.getUsersMissionsByTwoIds(request),
+    ...queryOptions,
   });
 };
 
-export const usePutUsersMissionsByTwoIds = () => {
-  return useMutation({
+export const usePutUsersMissionsByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TPUTUsersMissionsByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.putUsersMissionsByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.putUsersMissionsByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
     mutationFn: (request: Types.TPUTUsersMissionsByTwoIdsReq) =>
       Api.putUsersMissionsByTwoIds(request),
+    ...options,
   });
 };
 
-export const useDeleteUsersMissionsByTwoIds = () => {
-  return useMutation({
+export const useDeleteUsersMissionsByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TDELETEUsersMissionsByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.deleteUsersMissionsByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.deleteUsersMissionsByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
     mutationFn: (request: Types.TDELETEUsersMissionsByTwoIdsReq) =>
       Api.deleteUsersMissionsByTwoIds(request),
+    ...options,
   });
 };
