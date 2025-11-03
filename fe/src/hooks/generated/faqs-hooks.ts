@@ -13,44 +13,40 @@ import * as Api from "@/api/generated/faqs-api";
 import { faqsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/faqs-types";
 
-export const useGetFaqs = <TData = Awaited<ReturnType<typeof Api.getFaqs>>>(
+export const useGetFaqs = <TData = Types.TGETFaqsRes>(
   options: {
     request: Types.TGETFaqsReq;
   } & Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getFaqs>>, Error, TData>,
+    UseQueryOptions<Types.TGETFaqsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getFaqs>>, Error, TData>({
+  return useQuery<Types.TGETFaqsRes, Error, TData>({
     queryKey: faqsKeys.getFaqs(request),
-    queryFn: () => Api.getFaqs(request),
+    queryFn: async () => {
+      const response = await Api.getFaqs(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetFaqsBlocksById = <
-  TData = Awaited<ReturnType<typeof Api.getFaqsBlocksById>>,
->(
+export const useGetFaqsBlocksById = <TData = Types.TGETFaqsBlocksByIdRes>(
   options: {
     request: Types.TGETFaqsBlocksByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getFaqsBlocksById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETFaqsBlocksByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getFaqsBlocksById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETFaqsBlocksByIdRes, Error, TData>({
     queryKey: faqsKeys.getFaqsBlocksById(request),
-    queryFn: () => Api.getFaqsBlocksById(request),
+    queryFn: async () => {
+      const response = await Api.getFaqsBlocksById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

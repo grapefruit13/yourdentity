@@ -14,70 +14,55 @@ import { notionusersKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/notionusers-types";
 
 export const useGetNotionusersSyncActive = <
-  TData = Awaited<ReturnType<typeof Api.getNotionusersSyncActive>>,
+  TData = Types.TGETNotionUsersSyncActiveRes,
 >(
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionusersSyncActive>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionUsersSyncActiveRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionusersSyncActive>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionUsersSyncActiveRes, Error, TData>({
     queryKey: notionusersKeys.getNotionusersSyncActive,
-    queryFn: () => Api.getNotionusersSyncActive(),
+    queryFn: async () => {
+      const response = await Api.getNotionusersSyncActive();
+      return response.data;
+    },
     ...options,
   });
 };
 
 export const useGetNotionusersSyncFull = <
-  TData = Awaited<ReturnType<typeof Api.getNotionusersSyncFull>>,
+  TData = Types.TGETNotionUsersSyncFullRes,
 >(
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionusersSyncFull>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionUsersSyncFullRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionusersSyncFull>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionUsersSyncFullRes, Error, TData>({
     queryKey: notionusersKeys.getNotionusersSyncFull,
-    queryFn: () => Api.getNotionusersSyncFull(),
+    queryFn: async () => {
+      const response = await Api.getNotionusersSyncFull();
+      return response.data;
+    },
     ...options,
   });
 };
 
 export const useGetNotionusersSyncPenalty = <
-  TData = Awaited<ReturnType<typeof Api.getNotionusersSyncPenalty>>,
+  TData = Types.TGETNotionUsersSyncPenaltyRes,
 >(
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionusersSyncPenalty>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionUsersSyncPenaltyRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionusersSyncPenalty>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionUsersSyncPenaltyRes, Error, TData>({
     queryKey: notionusersKeys.getNotionusersSyncPenalty,
-    queryFn: () => Api.getNotionusersSyncPenalty(),
+    queryFn: async () => {
+      const response = await Api.getNotionusersSyncPenalty();
+      return response.data;
+    },
     ...options,
   });
 };

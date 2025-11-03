@@ -14,105 +14,85 @@ import { announcementsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/announcements-types";
 
 export const useGetNotionAnnouncements = <
-  TData = Awaited<ReturnType<typeof Api.getNotionAnnouncements>>,
+  TData = Types.TGETNotionAnnouncementsRes,
 >(
   options: {
     request: Types.TGETNotionAnnouncementsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionAnnouncements>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionAnnouncementsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionAnnouncements>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionAnnouncementsRes, Error, TData>({
     queryKey: announcementsKeys.getNotionAnnouncements(request),
-    queryFn: () => Api.getNotionAnnouncements(request),
+    queryFn: async () => {
+      const response = await Api.getNotionAnnouncements(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
 export const useGetNotionAnnouncementsSyncById = <
-  TData = Awaited<ReturnType<typeof Api.getNotionAnnouncementsSyncById>>,
+  TData = Types.TGETNotionAnnouncementsSyncByIdRes,
 >(
   options: {
     request: Types.TGETNotionAnnouncementsSyncByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionAnnouncementsSyncById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionAnnouncementsSyncByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionAnnouncementsSyncById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionAnnouncementsSyncByIdRes, Error, TData>({
     queryKey: announcementsKeys.getNotionAnnouncementsSyncById(request),
-    queryFn: () => Api.getNotionAnnouncementsSyncById(request),
+    queryFn: async () => {
+      const response = await Api.getNotionAnnouncementsSyncById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
 export const useGetNotionAnnouncementsDeleteById = <
-  TData = Awaited<ReturnType<typeof Api.getNotionAnnouncementsDeleteById>>,
+  TData = Types.TGETNotionAnnouncementsDeleteByIdRes,
 >(
   options: {
     request: Types.TGETNotionAnnouncementsDeleteByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionAnnouncementsDeleteById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionAnnouncementsDeleteByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionAnnouncementsDeleteById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionAnnouncementsDeleteByIdRes, Error, TData>({
     queryKey: announcementsKeys.getNotionAnnouncementsDeleteById(request),
-    queryFn: () => Api.getNotionAnnouncementsDeleteById(request),
+    queryFn: async () => {
+      const response = await Api.getNotionAnnouncementsDeleteById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
 export const useGetNotionAnnouncementsById = <
-  TData = Awaited<ReturnType<typeof Api.getNotionAnnouncementsById>>,
+  TData = Types.TGETNotionAnnouncementsByIdRes,
 >(
   options: {
     request: Types.TGETNotionAnnouncementsByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getNotionAnnouncementsById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETNotionAnnouncementsByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getNotionAnnouncementsById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETNotionAnnouncementsByIdRes, Error, TData>({
     queryKey: announcementsKeys.getNotionAnnouncementsById(request),
-    queryFn: () => Api.getNotionAnnouncementsById(request),
+    queryFn: async () => {
+      const response = await Api.getNotionAnnouncementsById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

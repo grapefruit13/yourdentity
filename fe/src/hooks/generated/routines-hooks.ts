@@ -13,46 +13,40 @@ import * as Api from "@/api/generated/routines-api";
 import { routinesKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/routines-types";
 
-export const useGetRoutines = <
-  TData = Awaited<ReturnType<typeof Api.getRoutines>>,
->(
+export const useGetRoutines = <TData = Types.TGETRoutinesRes>(
   options: {
     request: Types.TGETRoutinesReq;
   } & Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getRoutines>>, Error, TData>,
+    UseQueryOptions<Types.TGETRoutinesRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getRoutines>>, Error, TData>({
+  return useQuery<Types.TGETRoutinesRes, Error, TData>({
     queryKey: routinesKeys.getRoutines(request),
-    queryFn: () => Api.getRoutines(request),
+    queryFn: async () => {
+      const response = await Api.getRoutines(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetRoutinesById = <
-  TData = Awaited<ReturnType<typeof Api.getRoutinesById>>,
->(
+export const useGetRoutinesById = <TData = Types.TGETRoutinesByIdRes>(
   options: {
     request: Types.TGETRoutinesByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getRoutinesById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETRoutinesByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getRoutinesById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETRoutinesByIdRes, Error, TData>({
     queryKey: routinesKeys.getRoutinesById(request),
-    queryFn: () => Api.getRoutinesById(request),
+    queryFn: async () => {
+      const response = await Api.getRoutinesById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

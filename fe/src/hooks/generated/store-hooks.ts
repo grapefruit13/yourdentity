@@ -13,54 +13,40 @@ import * as Api from "@/api/generated/store-api";
 import { storeKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/store-types";
 
-export const useGetStoreProducts = <
-  TData = Awaited<ReturnType<typeof Api.getStoreProducts>>,
->(
+export const useGetStoreProducts = <TData = Types.TGETStoreProductsRes>(
   options: {
     request: Types.TGETStoreProductsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getStoreProducts>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETStoreProductsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getStoreProducts>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETStoreProductsRes, Error, TData>({
     queryKey: storeKeys.getStoreProducts(request),
-    queryFn: () => Api.getStoreProducts(request),
+    queryFn: async () => {
+      const response = await Api.getStoreProducts(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetStoreProductsById = <
-  TData = Awaited<ReturnType<typeof Api.getStoreProductsById>>,
->(
+export const useGetStoreProductsById = <TData = Types.TGETStoreProductsByIdRes>(
   options: {
     request: Types.TGETStoreProductsByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getStoreProductsById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETStoreProductsByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getStoreProductsById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETStoreProductsByIdRes, Error, TData>({
     queryKey: storeKeys.getStoreProductsById(request),
-    queryFn: () => Api.getStoreProductsById(request),
+    queryFn: async () => {
+      const response = await Api.getStoreProductsById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

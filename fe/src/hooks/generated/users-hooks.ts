@@ -39,144 +39,114 @@ export const usePatchUsersMeOnboarding = <
   });
 };
 
-export const useGetUsersMe = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMe>>,
->(
+export const useGetUsersMe = <TData = Types.TGETUsersMeRes>(
   options?: Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getUsersMe>>, Error, TData>,
+    UseQueryOptions<Types.TGETUsersMeRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<Awaited<ReturnType<typeof Api.getUsersMe>>, Error, TData>({
+  return useQuery<Types.TGETUsersMeRes, Error, TData>({
     queryKey: usersKeys.getUsersMe,
-    queryFn: () => Api.getUsersMe(),
+    queryFn: async () => {
+      const response = await Api.getUsersMe();
+      return response.data;
+    },
     ...options,
   });
 };
 
-export const useGetUsersMeMyPage = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMeMyPage>>,
->(
+export const useGetUsersMeMyPage = <TData = Types.TGETUsersMeMyPageRes>(
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersMeMyPage>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersMeMyPageRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersMeMyPage>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersMeMyPageRes, Error, TData>({
     queryKey: usersKeys.getUsersMeMyPage,
-    queryFn: () => Api.getUsersMeMyPage(),
+    queryFn: async () => {
+      const response = await Api.getUsersMeMyPage();
+      return response.data;
+    },
     ...options,
   });
 };
 
-export const useGetUsersMePosts = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMePosts>>,
->(
+export const useGetUsersMePosts = <TData = Types.TGETUsersMePostsRes>(
   options: {
     request: Types.TGETUsersMePostsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersMePosts>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersMePostsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersMePosts>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersMePostsRes, Error, TData>({
     queryKey: usersKeys.getUsersMePosts(request),
-    queryFn: () => Api.getUsersMePosts(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMePosts(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetUsersMeLikedPosts = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMeLikedPosts>>,
->(
+export const useGetUsersMeLikedPosts = <TData = Types.TGETUsersMeLikedPostsRes>(
   options: {
     request: Types.TGETUsersMeLikedPostsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersMeLikedPosts>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersMeLikedPostsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersMeLikedPosts>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersMeLikedPostsRes, Error, TData>({
     queryKey: usersKeys.getUsersMeLikedPosts(request),
-    queryFn: () => Api.getUsersMeLikedPosts(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMeLikedPosts(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
 export const useGetUsersMeCommentedPosts = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMeCommentedPosts>>,
+  TData = Types.TGETUsersMeCommentedPostsRes,
 >(
   options: {
     request: Types.TGETUsersMeCommentedPostsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersMeCommentedPosts>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersMeCommentedPostsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersMeCommentedPosts>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersMeCommentedPostsRes, Error, TData>({
     queryKey: usersKeys.getUsersMeCommentedPosts(request),
-    queryFn: () => Api.getUsersMeCommentedPosts(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMeCommentedPosts(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
 export const useGetUsersNicknameAvailability = <
-  TData = Awaited<ReturnType<typeof Api.getUsersNicknameAvailability>>,
+  TData = Types.TGETUsersNicknameAvailabilityRes,
 >(
   options: {
     request: Types.TGETUsersNicknameAvailabilityReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersNicknameAvailability>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersNicknameAvailabilityRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersNicknameAvailability>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersNicknameAvailabilityRes, Error, TData>({
     queryKey: usersKeys.getUsersNicknameAvailability(request),
-    queryFn: () => Api.getUsersNicknameAvailability(request),
+    queryFn: async () => {
+      const response = await Api.getUsersNicknameAvailability(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
@@ -209,33 +179,37 @@ export const usePostUsersMeSyncKakaoProfile = <
   });
 };
 
-export const useGetUsers = <TData = Awaited<ReturnType<typeof Api.getUsers>>>(
+export const useGetUsers = <TData = Types.TGETUsersRes>(
   options?: Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getUsers>>, Error, TData>,
+    UseQueryOptions<Types.TGETUsersRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<Awaited<ReturnType<typeof Api.getUsers>>, Error, TData>({
+  return useQuery<Types.TGETUsersRes, Error, TData>({
     queryKey: usersKeys.getUsers,
-    queryFn: () => Api.getUsers(),
+    queryFn: async () => {
+      const response = await Api.getUsers();
+      return response.data;
+    },
     ...options,
   });
 };
 
-export const useGetUsersById = <
-  TData = Awaited<ReturnType<typeof Api.getUsersById>>,
->(
+export const useGetUsersById = <TData = Types.TGETUsersByIdRes>(
   options: {
     request: Types.TGETUsersByIdReq;
   } & Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getUsersById>>, Error, TData>,
+    UseQueryOptions<Types.TGETUsersByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getUsersById>>, Error, TData>({
+  return useQuery<Types.TGETUsersByIdRes, Error, TData>({
     queryKey: usersKeys.getUsersById(request),
-    queryFn: () => Api.getUsersById(request),
+    queryFn: async () => {
+      const response = await Api.getUsersById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

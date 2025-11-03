@@ -13,15 +13,18 @@ import * as Api from "@/api/generated/home-api";
 import { homeKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/home-types";
 
-export const useGetHome = <TData = Awaited<ReturnType<typeof Api.getHome>>>(
+export const useGetHome = <TData = Types.TGETHomeRes>(
   options?: Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getHome>>, Error, TData>,
+    UseQueryOptions<Types.TGETHomeRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<Awaited<ReturnType<typeof Api.getHome>>, Error, TData>({
+  return useQuery<Types.TGETHomeRes, Error, TData>({
     queryKey: homeKeys.getHome,
-    queryFn: () => Api.getHome(),
+    queryFn: async () => {
+      const response = await Api.getHome();
+      return response.data;
+    },
     ...options,
   });
 };

@@ -35,21 +35,18 @@ export const usePostAuthLogout = <TContext = unknown, TVariables = void>(
   });
 };
 
-export const useGetAuthVerify = <
-  TData = Awaited<ReturnType<typeof Api.getAuthVerify>>,
->(
+export const useGetAuthVerify = <TData = Types.TGETAuthVerifyRes>(
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getAuthVerify>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETAuthVerifyRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<Awaited<ReturnType<typeof Api.getAuthVerify>>, Error, TData>({
+  return useQuery<Types.TGETAuthVerifyRes, Error, TData>({
     queryKey: authKeys.getAuthVerify,
-    queryFn: () => Api.getAuthVerify(),
+    queryFn: async () => {
+      const response = await Api.getAuthVerify();
+      return response.data;
+    },
     ...options,
   });
 };

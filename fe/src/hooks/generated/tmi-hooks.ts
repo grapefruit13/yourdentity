@@ -13,36 +13,40 @@ import * as Api from "@/api/generated/tmi-api";
 import { tmiKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/tmi-types";
 
-export const useGetTmis = <TData = Awaited<ReturnType<typeof Api.getTmis>>>(
+export const useGetTmis = <TData = Types.TGETTmisRes>(
   options: {
     request: Types.TGETTmisReq;
   } & Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getTmis>>, Error, TData>,
+    UseQueryOptions<Types.TGETTmisRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getTmis>>, Error, TData>({
+  return useQuery<Types.TGETTmisRes, Error, TData>({
     queryKey: tmiKeys.getTmis(request),
-    queryFn: () => Api.getTmis(request),
+    queryFn: async () => {
+      const response = await Api.getTmis(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetTmisById = <
-  TData = Awaited<ReturnType<typeof Api.getTmisById>>,
->(
+export const useGetTmisById = <TData = Types.TGETTmisByIdRes>(
   options: {
     request: Types.TGETTmisByIdReq;
   } & Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getTmisById>>, Error, TData>,
+    UseQueryOptions<Types.TGETTmisByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getTmisById>>, Error, TData>({
+  return useQuery<Types.TGETTmisByIdRes, Error, TData>({
     queryKey: tmiKeys.getTmisById(request),
-    queryFn: () => Api.getTmisById(request),
+    queryFn: async () => {
+      const response = await Api.getTmisById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

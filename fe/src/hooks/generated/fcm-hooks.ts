@@ -39,17 +39,18 @@ export const usePostFcmToken = <
   });
 };
 
-export const useGetFcmTokens = <
-  TData = Awaited<ReturnType<typeof Api.getFcmTokens>>,
->(
+export const useGetFcmTokens = <TData = Types.TGETFcmTokensRes>(
   options?: Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof Api.getFcmTokens>>, Error, TData>,
+    UseQueryOptions<Types.TGETFcmTokensRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<Awaited<ReturnType<typeof Api.getFcmTokens>>, Error, TData>({
+  return useQuery<Types.TGETFcmTokensRes, Error, TData>({
     queryKey: fcmKeys.getFcmTokens,
-    queryFn: () => Api.getFcmTokens(),
+    queryFn: async () => {
+      const response = await Api.getFcmTokens();
+      return response.data;
+    },
     ...options,
   });
 };

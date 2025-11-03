@@ -14,13 +14,13 @@ import { commentsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/comments-types";
 
 export const useGetCommentsCommunitiesPostsByTwoIds = <
-  TData = Awaited<ReturnType<typeof Api.getCommentsCommunitiesPostsByTwoIds>>,
+  TData = Types.TGETCommentsCommunitiesPostsByTwoIdsRes,
 >(
   options: {
     request: Types.TGETCommentsCommunitiesPostsByTwoIdsReq;
   } & Omit<
     UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getCommentsCommunitiesPostsByTwoIds>>,
+      Types.TGETCommentsCommunitiesPostsByTwoIdsRes,
       Error,
       TData
     >,
@@ -28,13 +28,12 @@ export const useGetCommentsCommunitiesPostsByTwoIds = <
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getCommentsCommunitiesPostsByTwoIds>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETCommentsCommunitiesPostsByTwoIdsRes, Error, TData>({
     queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds(request),
-    queryFn: () => Api.getCommentsCommunitiesPostsByTwoIds(request),
+    queryFn: async () => {
+      const response = await Api.getCommentsCommunitiesPostsByTwoIds(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

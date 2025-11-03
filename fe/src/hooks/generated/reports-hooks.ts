@@ -40,24 +40,19 @@ export const usePostReportcontent = <
 };
 
 export const useGetReportcontentSyncNotionReports = <
-  TData = Awaited<ReturnType<typeof Api.getReportcontentSyncNotionReports>>,
+  TData = Types.TGETReportContentSyncNotionReportsRes,
 >(
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getReportcontentSyncNotionReports>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETReportContentSyncNotionReportsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getReportcontentSyncNotionReports>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETReportContentSyncNotionReportsRes, Error, TData>({
     queryKey: reportsKeys.getReportcontentSyncNotionReports,
-    queryFn: () => Api.getReportcontentSyncNotionReports(),
+    queryFn: async () => {
+      const response = await Api.getReportcontentSyncNotionReports();
+      return response.data;
+    },
     ...options,
   });
 };

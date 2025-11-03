@@ -13,52 +13,40 @@ import * as Api from "@/api/generated/communities-api";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/communities-types";
 
-export const useGetCommunities = <
-  TData = Awaited<ReturnType<typeof Api.getCommunities>>,
->(
+export const useGetCommunities = <TData = Types.TGETCommunitiesRes>(
   options: {
     request: Types.TGETCommunitiesReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getCommunities>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETCommunitiesRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getCommunities>>, Error, TData>(
-    {
-      queryKey: communitiesKeys.getCommunities(request),
-      queryFn: () => Api.getCommunities(request),
-      ...queryOptions,
-    }
-  );
+  return useQuery<Types.TGETCommunitiesRes, Error, TData>({
+    queryKey: communitiesKeys.getCommunities(request),
+    queryFn: async () => {
+      const response = await Api.getCommunities(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
 };
 
-export const useGetCommunitiesPosts = <
-  TData = Awaited<ReturnType<typeof Api.getCommunitiesPosts>>,
->(
+export const useGetCommunitiesPosts = <TData = Types.TGETCommunitiesPostsRes>(
   options: {
     request: Types.TGETCommunitiesPostsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getCommunitiesPosts>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETCommunitiesPostsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getCommunitiesPosts>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETCommunitiesPostsRes, Error, TData>({
     queryKey: communitiesKeys.getCommunitiesPosts(request),
-    queryFn: () => Api.getCommunitiesPosts(request),
+    queryFn: async () => {
+      const response = await Api.getCommunitiesPosts(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
@@ -92,27 +80,22 @@ export const usePostCommunitiesPostsById = <
 };
 
 export const useGetCommunitiesPostsByTwoIds = <
-  TData = Awaited<ReturnType<typeof Api.getCommunitiesPostsByTwoIds>>,
+  TData = Types.TGETCommunitiesPostsByTwoIdsRes,
 >(
   options: {
     request: Types.TGETCommunitiesPostsByTwoIdsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getCommunitiesPostsByTwoIds>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETCommunitiesPostsByTwoIdsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getCommunitiesPostsByTwoIds>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETCommunitiesPostsByTwoIdsRes, Error, TData>({
     queryKey: communitiesKeys.getCommunitiesPostsByTwoIds(request),
-    queryFn: () => Api.getCommunitiesPostsByTwoIds(request),
+    queryFn: async () => {
+      const response = await Api.getCommunitiesPostsByTwoIds(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

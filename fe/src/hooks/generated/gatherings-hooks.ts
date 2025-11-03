@@ -13,50 +13,40 @@ import * as Api from "@/api/generated/gatherings-api";
 import { gatheringsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/gatherings-types";
 
-export const useGetGatherings = <
-  TData = Awaited<ReturnType<typeof Api.getGatherings>>,
->(
+export const useGetGatherings = <TData = Types.TGETGatheringsRes>(
   options: {
     request: Types.TGETGatheringsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getGatherings>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETGatheringsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getGatherings>>, Error, TData>({
+  return useQuery<Types.TGETGatheringsRes, Error, TData>({
     queryKey: gatheringsKeys.getGatherings(request),
-    queryFn: () => Api.getGatherings(request),
+    queryFn: async () => {
+      const response = await Api.getGatherings(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetGatheringsById = <
-  TData = Awaited<ReturnType<typeof Api.getGatheringsById>>,
->(
+export const useGetGatheringsById = <TData = Types.TGETGatheringsByIdRes>(
   options: {
     request: Types.TGETGatheringsByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getGatheringsById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETGatheringsByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getGatheringsById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETGatheringsByIdRes, Error, TData>({
     queryKey: gatheringsKeys.getGatheringsById(request),
-    queryFn: () => Api.getGatheringsById(request),
+    queryFn: async () => {
+      const response = await Api.getGatheringsById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

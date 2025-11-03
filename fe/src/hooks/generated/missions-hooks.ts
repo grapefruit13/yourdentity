@@ -39,54 +39,42 @@ export const usePostUsersMissionsById = <
   });
 };
 
-export const useGetUsersMissionsById = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMissionsById>>,
->(
+export const useGetUsersMissionsById = <TData = Types.TGETUsersMissionsByIdRes>(
   options: {
     request: Types.TGETUsersMissionsByIdReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersMissionsById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersMissionsByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersMissionsById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersMissionsByIdRes, Error, TData>({
     queryKey: missionsKeys.getUsersMissionsById(request),
-    queryFn: () => Api.getUsersMissionsById(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMissionsById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
 export const useGetUsersMissionsByTwoIds = <
-  TData = Awaited<ReturnType<typeof Api.getUsersMissionsByTwoIds>>,
+  TData = Types.TGETUsersMissionsByTwoIdsRes,
 >(
   options: {
     request: Types.TGETUsersMissionsByTwoIdsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getUsersMissionsByTwoIds>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETUsersMissionsByTwoIdsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getUsersMissionsByTwoIds>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETUsersMissionsByTwoIdsRes, Error, TData>({
     queryKey: missionsKeys.getUsersMissionsByTwoIds(request),
-    queryFn: () => Api.getUsersMissionsByTwoIds(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMissionsByTwoIds(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };

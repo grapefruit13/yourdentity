@@ -13,78 +13,59 @@ import * as Api from "@/api/generated/programs-api";
 import { programsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/programs-types";
 
-export const useGetApiPrograms = <
-  TData = Awaited<ReturnType<typeof Api.getApiPrograms>>,
->(
+export const useGetApiPrograms = <TData = Types.TGETApiProgramsRes>(
   options: {
     request: Types.TGETApiProgramsReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getApiPrograms>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETApiProgramsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Awaited<ReturnType<typeof Api.getApiPrograms>>, Error, TData>(
-    {
-      queryKey: programsKeys.getApiPrograms(request),
-      queryFn: () => Api.getApiPrograms(request),
-      ...queryOptions,
-    }
-  );
-};
-
-export const useGetApiProgramsSearch = <
-  TData = Awaited<ReturnType<typeof Api.getApiProgramsSearch>>,
->(
-  options: {
-    request: Types.TGETApiProgramsSearchReq;
-  } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getApiProgramsSearch>>,
-      Error,
-      TData
-    >,
-    "queryKey" | "queryFn"
-  >
-) => {
-  const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getApiProgramsSearch>>,
-    Error,
-    TData
-  >({
-    queryKey: programsKeys.getApiProgramsSearch(request),
-    queryFn: () => Api.getApiProgramsSearch(request),
+  return useQuery<Types.TGETApiProgramsRes, Error, TData>({
+    queryKey: programsKeys.getApiPrograms(request),
+    queryFn: async () => {
+      const response = await Api.getApiPrograms(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
 
-export const useGetApiProgramsById = <
-  TData = Awaited<ReturnType<typeof Api.getApiProgramsById>>,
->(
+export const useGetApiProgramsSearch = <TData = Types.TGETApiProgramsSearchRes>(
   options: {
-    request: Types.TGETApiProgramsByIdReq;
+    request: Types.TGETApiProgramsSearchReq;
   } & Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof Api.getApiProgramsById>>,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETApiProgramsSearchRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Awaited<ReturnType<typeof Api.getApiProgramsById>>,
-    Error,
-    TData
-  >({
+  return useQuery<Types.TGETApiProgramsSearchRes, Error, TData>({
+    queryKey: programsKeys.getApiProgramsSearch(request),
+    queryFn: async () => {
+      const response = await Api.getApiProgramsSearch(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetApiProgramsById = <TData = Types.TGETApiProgramsByIdRes>(
+  options: {
+    request: Types.TGETApiProgramsByIdReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETApiProgramsByIdRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETApiProgramsByIdRes, Error, TData>({
     queryKey: programsKeys.getApiProgramsById(request),
-    queryFn: () => Api.getApiProgramsById(request),
+    queryFn: async () => {
+      const response = await Api.getApiProgramsById(request);
+      return response.data;
+    },
     ...queryOptions,
   });
 };
