@@ -3,11 +3,7 @@ import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
 import { auth } from "./firebase";
 
 const getBaseURL = () => {
-  if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000/api-proxy"; // ✅ HTTPS → HTTP 강제
-  } else {
-    return process.env.NEXT_PUBLIC_BASE_URL;
-  }
+  return "/api-proxy";
 };
 
 /**
