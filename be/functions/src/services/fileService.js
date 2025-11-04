@@ -40,11 +40,11 @@ class FileService {
       const isAllowedExt = ALLOWED_EXTENSIONS.includes(extension);
       const isAllowedMime = ALLOWED_MIME_TYPES.includes(normalizedMimeType);
 
-      // OR 조건: 확장자나 MIME 타입 중 하나라도 유효하면 통과
-      if (!isAllowedExt && !isAllowedMime) {
+      // AND 조건: 확장자와 MIME 타입 모두 유효해야 통과
+      if (!isAllowedExt || !isAllowedMime) {
         return {
           isValid: false,
-          error: `허용되지 않은 파일 형식: ${extension} (${normalizedMimeType})`
+          error: `허용되지 않은 파일 형식입니다. 확장자: ${extension}, MIME 타입: ${normalizedMimeType}`
         };
       }
 
