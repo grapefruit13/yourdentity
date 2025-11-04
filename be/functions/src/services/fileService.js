@@ -468,6 +468,17 @@ class FileService {
         throw error;
       }
 
+      // 4. 이미 다른 게시글에 연결된 파일 검증
+      const alreadyAttachedFiles = fileResults
+        .filter((result) => result.file.isUsed || result.file.attachedTo)
+        .map((result) => result.filePath);
+
+      if (alreadyAttachedFiles.length > 0) {
+        const error = new Error(`이미 다른 게시글에 연결된 파일입니다: ${alreadyAttachedFiles.join(", ")}`);
+        error.code = "CONFLICT";
+        throw error;
+      }
+      
       const storageCheckPromises = fileResults.map(async (result) => {
         try {
           const exists = await this.fileExists(result.file.filePath);
