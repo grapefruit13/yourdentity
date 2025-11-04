@@ -117,10 +117,9 @@ const HomePage = () => {
       <div className="fixed top-0 right-0 left-0 z-0 mx-auto h-screen w-full max-w-[470px]">
         {singleBackgroundImage ? (
           <div
-            className="h-full w-full bg-contain bg-top bg-no-repeat"
+            className="h-full w-full bg-cover bg-top bg-no-repeat"
             style={{
               backgroundImage: `url(${singleBackgroundImage})`,
-              backgroundSize: "contain",
               pointerEvents: "none",
             }}
           />
