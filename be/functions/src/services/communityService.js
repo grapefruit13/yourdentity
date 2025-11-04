@@ -842,9 +842,13 @@ class CommunityService {
       }
 
       if (post.media && post.media.length > 0) {
-        const deletePromises = post.media.map(filePath => 
-          fileService.deleteFile(filePath, userId)
-        );
+        const deletePromises = post.media.map(async (filePath) => {
+          try {
+            await fileService.deleteFile(filePath, userId);
+          } catch (error) {
+            console.warn(`파일 삭제 실패 (${filePath}):`, error.message);
+          }
+        });
         await Promise.all(deletePromises);
       }
 
