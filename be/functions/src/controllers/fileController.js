@@ -11,12 +11,6 @@ const FILE_UPLOAD_MAX_FIELDS = 10; // 파일 외 필드 최대 개수 (여유롭
 const BUSBOY_PARAM_CHARSET = "utf8"; // 업로드 파라미터 문자셋 (일반적으로 utf8)
 const BUSBOY_HIGH_WATER_MARK = 64 * 1024; // 스트림 버퍼 크기 (안전한 기본값)
 const FILE_UPLOAD_TIMEOUT_MS = 120000; // 업로드 타임아웃 (2분, 너무 오래 걸리면 중단)
-const ALLOWED_EXTENSIONS = [
-  "jpg", "jpeg", "png", "gif", "webp", "svg", "pdf"   //파일 확장자 제한 하이트리스트
-]; 
-const ALLOWED_MIME_TYPES = [
-  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "application/pdf"
-]; // 허용 MIME 타입 화이트리스트
 
 class FileController {
   /**
@@ -131,27 +125,18 @@ class FileController {
           return;
         }
 
-        try {
-          const rawName = info?.filename || "";
-          const rawExt = (rawName.split(".").pop() || "").toLowerCase();
-          const mime = (info?.mimeType || "").toLowerCase();
+        const validation = fileService.validateFileType(
+          info?.filename || "",
+          info?.mimeType || ""
+        );
 
-          const isAllowedExt = ALLOWED_EXTENSIONS.includes(rawExt);
-          const isAllowedMime = ALLOWED_MIME_TYPES.includes(mime);
-
-          if (!isAllowedExt || !isAllowedMime) {
-            fileReceived = true;
-            files.push({
-              success: false,
-              message: `허용되지 않은 파일 형식: ${rawExt} (${mime})`,
-            });
-            try { file.resume(); } catch (_) {}
-            return; 
-          }
-        } catch (_) {
+        if (!validation.isValid) {
           fileReceived = true;
-          files.push({ success: false, message: "파일 형식 확인 중 오류가 발생했습니다" });
-          try { file.resume(); } catch (_) {}
+          files.push({
+            success: false,
+            message: validation.error,
+          });
+          file.resume();
           return;
         }
 

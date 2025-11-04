@@ -1,9 +1,58 @@
 const {admin} = require("../config/database");
 const {nanoid} = require("../utils/helpers");
 
+// 파일 형식 검증 관련 상수
+const ALLOWED_EXTENSIONS = [
+  "jpg", "jpeg", "png", "gif", "webp", "svg", "pdf"
+];
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "application/pdf"
+];
+
 class FileService {
   constructor() {
     this.bucket = admin.storage().bucket();
+  }
+
+  /**
+   * 파일 확장자와 MIME 타입이 허용되는지 검증합니다.
+   * @param {string} filename - 파일명
+   * @param {string} mimeType - MIME 타입
+   * @returns {Object} { isValid: boolean, error?: string }
+   */
+  validateFileType(filename, mimeType) {
+    try {
+      if (!filename) {
+        return { isValid: false, error: "파일명이 없습니다" };
+      }
+
+      const normalizedFilename = filename.toLowerCase();
+      const lastDotIndex = normalizedFilename.lastIndexOf(".");
+
+      // 확장자가 없거나 숨김 파일인 경우
+      if (lastDotIndex === -1 || lastDotIndex === 0) {
+        return { isValid: false, error: "파일 확장자가 없습니다" };
+      }
+
+      const extension = normalizedFilename.substring(lastDotIndex + 1);
+      const normalizedMimeType = (mimeType || "").toLowerCase();
+
+      const isAllowedExt = ALLOWED_EXTENSIONS.includes(extension);
+      const isAllowedMime = ALLOWED_MIME_TYPES.includes(normalizedMimeType);
+
+      // OR 조건으로 변경: 둘 중 하나라도 유효하면 통과하되, 둘 다 있어야 함
+      if (!isAllowedExt && !isAllowedMime) {
+        return {
+          isValid: false,
+          error: `허용되지 않은 파일 형식: ${extension} (${normalizedMimeType})`
+        };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      console.error("파일 형식 검증 중 오류:", error);
+      return { isValid: false, error: "파일 형식 확인 중 오류가 발생했습니다" };
+    }
   }
 
   /**
