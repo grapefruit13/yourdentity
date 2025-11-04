@@ -433,8 +433,7 @@ class FileService {
       // 1. 파일 조회 (병렬)
       const filePromises = filePaths.map(async (filePath) => {
         try {
-          const files = await this.firestoreService.getCollectionWhere(
-            "files",
+          const files = await this.firestoreService.getWhere(
             "filePath",
             "==",
             filePath
@@ -593,8 +592,7 @@ class FileService {
 
       // Firestore files 컬렉션 문서도 삭제
       try {
-        const files = await this.firestoreService.getCollectionWhere(
-          "files",
+        const files = await this.firestoreService.getWhere(
           "filePath",
           "==",
           fileName
