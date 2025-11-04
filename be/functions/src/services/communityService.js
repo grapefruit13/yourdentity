@@ -485,18 +485,15 @@ class CommunityService {
         throw error;
       }
 
+      // 파일 검증 (게시글 생성 전)
+      let validatedFiles = [];
       if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
-        const filesCheck = await fileService.filesExist(postMedia, userId);
-        if (!filesCheck.allOwned) {
-          const missingFiles = Object.entries(filesCheck.results)
-            .filter(([_, owned]) => !owned)
-            .map(([fileName]) => fileName);
-          
-          const error = new Error(
-            `유효하지 않은 파일 또는 권한이 없습니다: ${missingFiles.join(", ")}`
-          );
-          error.code = "BAD_REQUEST";
-          throw error;
+        try {
+          validatedFiles = await fileService.validateFilesForPost(postMedia, userId);
+        } catch (fileError) {
+          console.error("파일 검증 실패:", fileError);
+          // 파일 검증 실패 시 게시글 생성 안 함
+          throw fileError;
         }
       }
 
@@ -558,34 +555,37 @@ class CommunityService {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      const result = await postsService.create(newPost);
-      const postId = result.id;
+      const result = await this.firestoreService.runTransaction(async (transaction) => {
 
-      try {
+        const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc();
+        transaction.set(postRef, newPost);
+        
+        if (validatedFiles.length > 0) {
+          fileService.attachFilesToPostInTransaction(validatedFiles, postRef.id, transaction);
+        }
+        
         const authoredPostRef = this.firestoreService.db
           .collection(`users/${userId}/authoredPosts`)
-          .doc(postId);
-        await authoredPostRef.set({
-          postId,
+          .doc(postRef.id);
+        transaction.set(authoredPostRef, {
+          postId: postRef.id,
           communityId,
           createdAt: FieldValue.serverTimestamp(),
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
-      } catch (error) {
-        console.error("authoredPosts 추가 실패:", error);
-      }
 
-      if (newPost.type === "ROUTINE_CERT" || newPost.type === "GATHERING_REVIEW" || newPost.type === "TMI") {
-        try {
+        // certificationPosts 카운트 증가 (해당 타입인 경우만)
+        if (newPost.type === "ROUTINE_CERT" || newPost.type === "GATHERING_REVIEW" || newPost.type === "TMI") {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
-          await userRef.update({
+          transaction.update(userRef, {
             certificationPosts: FieldValue.increment(1),
             updatedAt: FieldValue.serverTimestamp(),
           });
-        } catch (error) {
-          console.error("certificationPosts 카운트 증가 실패:", error);
         }
-      }
+        
+        return { postId: postRef.id };
+      });
+      const postId = result.postId;
 
       const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, preview: _preview, ...restNewPost} = newPost;
       
