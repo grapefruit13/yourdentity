@@ -717,18 +717,34 @@ class CommunityService {
         const currentMedia = post.media || [];
         const requestedMedia = updateData.media || [];
         
-        if (requestedMedia.length > 0) {
-          const check = await fileService.filesExist(requestedMedia, userId);
-          if (!check.allOwned) {
+        // 새로 추가된 파일 식별
+        const newFiles = requestedMedia.filter(file => !currentMedia.includes(file));
+        
+        // 새로 추가된 파일 검증 및 연결
+        let validatedNewFiles = [];
+        if (newFiles.length > 0) {
+          try {
+            validatedNewFiles = await fileService.validateFilesForPost(newFiles, userId);
+          } catch (fileError) {
+            console.error("새 파일 검증 실패:", fileError);
+            throw fileError;
+          }
+        }
+        
+        const existingFiles = requestedMedia.filter(file => currentMedia.includes(file));
+        if (existingFiles.length > 0) {
+          const check = await fileService.filesExist(existingFiles, userId);
+          if (!check.allExist) {
             const missing = Object.entries(check.results)
-              .filter(([, owned]) => !owned)
+              .filter(([, exists]) => !exists)
               .map(([filePath]) => filePath);
-            const error = new Error(`유효하지 않은 파일 또는 권한이 없습니다: ${missing.join(", ")}`);
-            error.code = "BAD_REQUEST";
+            const error = new Error(`파일을 찾을 수 없습니다: ${missing.join(", ")}`);
+            error.code = "NOT_FOUND";
             throw error;
           }
         }
         
+        // 제거된 파일 삭제
         const filesToDelete = currentMedia.filter(file => !requestedMedia.includes(file));
         if (filesToDelete.length > 0) {
           const deletePromises = filesToDelete.map(filePath => 
@@ -737,6 +753,7 @@ class CommunityService {
           await Promise.all(deletePromises);
         }
         
+        updateData._newFilesToAttach = validatedNewFiles;
       }
 
       const needsPreviewUpdate = 
@@ -752,12 +769,27 @@ class CommunityService {
         });
       }
 
+      // 새로 추가된 파일 추출 (트랜잭션에서 사용)
+      const newFilesToAttach = updateData._newFilesToAttach || [];
+      delete updateData._newFilesToAttach; // Firestore에 저장하지 않도록 제거
+
       const updatedData = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      await postsService.update(postId, updatedData);
+      // 트랜잭션으로 게시글 업데이트 + 새 파일 연결
+      await this.firestoreService.runTransaction(async (transaction) => {
+        const postRef = this.firestoreService.db
+          .collection(`communities/${communityId}/posts`)
+          .doc(postId);
+        transaction.update(postRef, updatedData);
+        
+        // 새로 추가된 파일 연결
+        if (newFilesToAttach.length > 0) {
+          fileService.attachFilesToPostInTransaction(newFilesToAttach, postId, transaction);
+        }
+      });
       
       const fresh = await postsService.getById(postId);
       const community = await this.firestoreService.getDocument("communities", communityId);
