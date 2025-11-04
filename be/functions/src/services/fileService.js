@@ -511,7 +511,7 @@ class FileService {
       return storageResults.map((result) => result.file);
     } catch (error) {
       console.error("파일 검증 오류:", error);
-      if (error.code === "UNAUTHORIZED" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
+      if (error.code === "UNAUTHORIZED" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN" || error.code === "CONFLICT") {
         throw error;
       }
       const internalError = new Error("파일 검증 중 오류가 발생했습니다");
