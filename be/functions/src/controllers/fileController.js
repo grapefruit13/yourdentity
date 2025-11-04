@@ -125,6 +125,21 @@ class FileController {
           return;
         }
 
+        const validation = fileService.validateFileType(
+          info?.filename || "",
+          info?.mimeType || ""
+        );
+
+        if (!validation.isValid) {
+          fileReceived = true;
+          files.push({
+            success: false,
+            message: validation.error,
+          });
+          file.resume();
+          return;
+        }
+
         fileReceived = true;
         pendingUploads++;
 
