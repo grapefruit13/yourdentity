@@ -40,7 +40,7 @@ class FileService {
       const isAllowedExt = ALLOWED_EXTENSIONS.includes(extension);
       const isAllowedMime = ALLOWED_MIME_TYPES.includes(normalizedMimeType);
 
-      // OR 조건으로 변경: 둘 중 하나라도 유효하면 통과하되, 둘 다 있어야 함
+      // OR 조건: 확장자나 MIME 타입 중 하나라도 유효하면 통과
       if (!isAllowedExt && !isAllowedMime) {
         return {
           isValid: false,
