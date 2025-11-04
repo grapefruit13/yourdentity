@@ -189,7 +189,7 @@ class FileController {
         } catch (error) {
           files.push({
             success: false,
-            message: error.message,
+            message: error.message || error.error || "파일 업로드 중 오류가 발생했습니다",
           });
         } finally {
           pendingUploads--;

@@ -204,6 +204,14 @@ class FileService {
               );
             } catch (docError) {
               console.error("파일 문서 생성 실패 (Storage 업로드는 성공):", docError);
+              try {
+                await file.delete();
+              } catch (deleteError) {
+                console.error("Storage 파일 롤백 실패:", deleteError);
+              }
+              const error = new Error(`파일 메타데이터 저장 중 오류가 발생했습니다: ${docError.message}`);
+              reject(error);
+              return;
             }
 
             resolve({
@@ -600,13 +608,15 @@ class FileService {
         }
       } catch (firestoreError) {
         console.error("Firestore 파일 문서 삭제 실패 (Storage 파일은 삭제됨):", firestoreError);
-        // Firestore 문서 삭제 실패해도 Storage 파일은 삭제되었으므로 에러는 throw하지 않음
+        const error = new Error("파일은 삭제되었으나 메타데이터 정리에 실패했습니다");
+        error.code = "PARTIAL_SUCCESS";
+        throw error;
       }
 
       return { success: true };
     } catch (error) {
       // 이미 에러 객체에 code가 있으면 그대로 재throw
-      if (error.code === "NOT_FOUND" || error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN") {
+      if (error.code === "NOT_FOUND" || error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN" || error.code === "PARTIAL_SUCCESS") {
         throw error;
       }
 
