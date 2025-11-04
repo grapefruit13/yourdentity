@@ -134,4 +134,79 @@ router.get("/sync/penalty", notionUserController.syncPenaltyUsers);
 router.get("/sync/selected", notionUserController.syncSelectedUsers);
 
 
+/**
+ * @swagger
+ * /users/test/create:
+ *   post:
+ *     summary: 테스트 사용자 대량 생성
+ *     description: |
+ *       지정한 수만큼 테스트 사용자를 생성합니다.
+ *       각 사용자는 `dev-user-{uuid}` 형식의 UID를 가집니다.
+ *       Firebase Auth와 Firestore에 자동으로 생성되며, authTrigger가 자동으로 Firestore 문서를 생성합니다.
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               count:
+ *                 type: number
+ *                 description: 생성할 사용자 수 (1~100)
+ *                 example: 10
+ *             required: [count]
+ *     responses:
+ *       200:
+ *         description: 테스트 사용자 생성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: 10명의 테스트 사용자가 생성되었습니다
+ *                     created:
+ *                       type: number
+ *                       example: 10
+ *                     failed:
+ *                       type: number
+ *                       example: 0
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           uid:
+ *                             type: string
+ *                             example: dev-user-550e8400-e29b-41d4-a716-446655440000
+ *                           email:
+ *                             type: string
+ *                             example: dev-user-550e8400-e29b-41d4-a716-446655440000@dev.example.com
+ *                           displayName:
+ *                             type: string
+ *                             example: Dev User 550e8400-e29b-41d4-a716-446655440000
+ *       400:
+ *         description: 잘못된 요청 (count가 1~100 범위 밖)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post("/test/create", notionUserController.createTestUsers);
+
+
 module.exports = router;

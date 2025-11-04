@@ -1,7 +1,21 @@
 const { Client } = require('@notionhq/client');
 const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
-
+const {admin} = require("../config/database");
+/*
+- 1초, 10배치 : 100명에서 끊어짐
+- 1.5초, 20배치 : 200명 문제X
+- 1.5초, 50배치 : 200명 문제X
+- 1.5초, 100배치 : 200명 문제X
+- 1.5초, 150배치 : 300명 문제X
+- 1.5초, 300배치 : 300명 문제X
+- 1.5초, 500배치 : 500명 문제X
+- 1초, 500배치 : 500명 문제X
+※ 문서상 초당 평균 3번의 요청, 실제로는 15분 동안 2700번 api 호출
+-> 유스보이스 사용자가 최대 3,000명 이라고 가정하면 1초에 1000배치로 처리 가능 (3000명을 넘어갈까...?)
+ */
+const DELAY_MS = 1000; // 지연시간
+const BATCH_SIZE = 500; // 배치 사이즈
 
 class NotionUserService {
 
@@ -308,9 +322,6 @@ async syncAllUserAccounts() {
     const failedUserIds = [];
 
     // 3. 사용자 데이터를 배치로 처리
-    const BATCH_SIZE = 10; // 10명씩 배치 처리
-    const DELAY_MS = 2000; // 2초 지연
-
     for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
       const batch = snapshot.docs.slice(i, i + BATCH_SIZE);
       console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(snapshot.docs.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, snapshot.docs.length)}번째)`);
@@ -458,12 +469,9 @@ async syncAllUserAccounts() {
       console.log(`아카이브 대상 페이지 ${pagesToArchive.length}개 발견 (사용자ID 빈값: ${pagesToArchive.filter(p => p.reason === "사용자ID 빈값").length}개, Firebase에 없음: ${pagesToArchive.filter(p => p.reason === "Firebase에 없음").length}개)`);
       
       // 배치 처리로 아카이브
-      const ARCHIVE_BATCH_SIZE = 10;
-      const ARCHIVE_DELAY_MS = 1000;
-      
-      for (let i = 0; i < pagesToArchive.length; i += ARCHIVE_BATCH_SIZE) {
-        const batch = pagesToArchive.slice(i, i + ARCHIVE_BATCH_SIZE);
-        console.log(`아카이브 배치 ${Math.floor(i / ARCHIVE_BATCH_SIZE) + 1}/${Math.ceil(pagesToArchive.length / ARCHIVE_BATCH_SIZE)} 처리 중...`);
+      for (let i = 0; i < pagesToArchive.length; i += BATCH_SIZE) {
+        const batch = pagesToArchive.slice(i, i + BATCH_SIZE);
+        console.log(`아카이브 배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(pagesToArchive.length / BATCH_SIZE)} 처리 중...`);
         
         await Promise.all(batch.map(async (page) => {
           try {
@@ -477,8 +485,8 @@ async syncAllUserAccounts() {
         }));
         
         // 마지막 배치가 아니면 지연
-        if (i + ARCHIVE_BATCH_SIZE < pagesToArchive.length) {
-          await new Promise(resolve => setTimeout(resolve, ARCHIVE_DELAY_MS));
+        if (i + BATCH_SIZE < pagesToArchive.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
         }
       }
     }
@@ -553,9 +561,6 @@ async updateNotionPageWithRetry(pageId, notionPage, maxRetries = 3) {
 
 // 페이지들을 배치로 아카이브 처리
 async archivePagesInBatches(pages) {
-  const BATCH_SIZE = 10;
-  const DELAY_MS = 1000;
-
   for (let i = 0; i < pages.length; i += BATCH_SIZE) {
     const batch = pages.slice(i, i + BATCH_SIZE);
     console.log(`아카이브 배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(pages.length / BATCH_SIZE)} 처리 중...`);
@@ -1034,6 +1039,61 @@ async syncSelectedUsers() {
   return { syncedCount, skippedCount, validateErrorCount };
 }
 
+
+/**
+   * 테스트 사용자 대량 생성
+   * @param {number} count - 생성할 사용자 수
+   * @return {Promise<{created: number, failed: number, users: Array, errors?: Array}>}
+   */
+async createTestUsers(count) {
+  if (!count || count < 1 || count > 100) {
+    const e = new Error("생성할 사용자 수는 1~100 사이여야 합니다");
+    e.code = "BAD_REQUEST";
+    throw e;
+  }
+
+  const createdUsers = [];
+  const errors = [];
+
+  for (let i = 0; i < count; i++) {
+    try {
+      // UUID v4 생성
+      const uuid = crypto.randomUUID();
+      const uid = `dev-user-${uuid}`;
+      const email = `${uid}@dev.example.com`;
+
+      // Firebase Auth 사용자 생성
+      const userRecord = await admin.auth().createUser({
+        uid: uid,
+        email: email,
+        displayName: `Dev User ${uuid}`,
+        emailVerified: true
+      });
+
+      createdUsers.push({
+        uid: uid,
+        email: email,
+        displayName: userRecord.displayName
+      });
+
+      // Auth Trigger가 Firestore 문서를 생성할 시간을 주기 위해 약간의 지연
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      errors.push({
+        index: i,
+        error: error.message
+      });
+      console.error(`사용자 ${i + 1}번 생성 실패:`, error.message);
+    }
+  }
+
+  return {
+    created: createdUsers.length,
+    failed: errors.length,
+    users: createdUsers,
+    ...(errors.length > 0 && { errors })
+  };
+}
 
 
 

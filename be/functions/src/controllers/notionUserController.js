@@ -47,6 +47,39 @@ class NotionUserController {
     }
   }
 
+    /**
+   * 테스트 사용자 대량 생성
+   * @param {Object} req.body - { count: number }
+   */
+    async createTestUsers(req, res, next) {
+      try {
+        const { count } = req.body || {};
+        
+        if (!count || typeof count !== 'number' || count < 1) {
+          const err = new Error("생성할 사용자 수(count)를 1 이상의 숫자로 입력해주세요");
+          err.code = "BAD_REQUEST";
+          throw err;
+        }
+  
+        if (count > 100) {
+          const err = new Error("한 번에 최대 100명까지만 생성할 수 있습니다");
+          err.code = "BAD_REQUEST";
+          throw err;
+        }
+  
+        const result = await notionUserService.createTestUsers(count);
+        
+        return res.success({
+          message: `${result.created}명의 테스트 사용자가 생성되었습니다`,
+          ...result
+        });
+      } catch (error) {
+        return next(error);
+      }
+    }
+
+
+  
 
 
 }
