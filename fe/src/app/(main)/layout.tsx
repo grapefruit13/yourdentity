@@ -6,8 +6,10 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import BottomNavigation from "@/components/shared/layouts/bottom-navigation";
 import TopBar from "@/components/shared/layouts/top-bar";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
+import type { TGETHomeRes } from "@/types/generated/home-types";
 
 const HOME_DATA_STALE_TIME = 60 * 1000; // 1분
 
@@ -29,14 +31,50 @@ export default function MainLayout({
     }
   }, [pathname]);
 
+  // LocalStorage 캐시 (브라우저 전용)
+  const [cachedHome, setCachedHome] = useState<TGETHomeRes | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("notion-home-data");
+      if (!raw) return null;
+      return JSON.parse(raw) as TGETHomeRes;
+    } catch {
+      return null;
+    }
+  });
+
   // 홈 페이지일 때만 홈 데이터 로드 여부 확인 (스플래시 표시용)
-  // staleTime: 1분(60000ms) 동안 캐시된 데이터 사용, 네트워크 요청 없음
-  // refetchOnMount: staleTime 내에는 캐시된 데이터 사용, refetch 하지 않음
+  // initialData로 캐시를 주입하여 첫 렌더에서 로딩 스플래시를 최소화
   const { data: homeData, isLoading: isHomeLoading } = useGetHome({
     enabled: isHomePage,
+    initialData: cachedHome ?? undefined,
     staleTime: HOME_DATA_STALE_TIME,
-    refetchOnMount: false, // staleTime 내에는 캐시된 데이터 사용, refetch 하지 않음
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
+
+  // updatedAt 기준으로 변경된 경우에만 캐시 갱신
+  // localStorage를 다시 읽지 않고 cachedHome 상태를 직접 사용
+  useEffect(() => {
+    if (typeof window === "undefined" || !homeData) return;
+
+    const currentUpdatedAt = homeData.updatedAt;
+    const prevUpdatedAt = cachedHome?.updatedAt;
+
+    // updatedAt이 없거나 변경된 경우에만 캐시 갱신
+    if (
+      !cachedHome ||
+      !currentUpdatedAt ||
+      prevUpdatedAt !== currentUpdatedAt
+    ) {
+      try {
+        localStorage.setItem("notion-home-data", JSON.stringify(homeData));
+        setCachedHome(homeData);
+      } catch {
+        // 캐시 실패는 무시
+      }
+    }
+  }, [homeData, cachedHome]);
 
   // 스플래시 페이드아웃: 데이터가 준비되면 짧게 opacity 전환 후 제거
   const [isFading, setIsFading] = useState(false);
@@ -85,10 +123,13 @@ export default function MainLayout({
           clearTimeout(timeoutId);
         }
       };
-    } else {
-      // 로딩 중에는 다시 보여주고 불투명하게 유지
+    } else if (!homeData && isHomeLoading) {
+      // '데이터가 전혀 없고' 로딩 중일 때만 스플래시 표시
       setShowOverlay(true);
       setOverlayOpaque(true);
+    } else {
+      // 캐시가 있어 화면을 그릴 수 있으면 스플래시 숨김 유지
+      setShowOverlay(false);
     }
   }, [isHomePage, isHomeLoading, homeData]);
 
@@ -114,15 +155,15 @@ export default function MainLayout({
         <TopBar
           leftSlot={
             isHomePage ? (
-              <Image
-                src="/icons/logo/lg-youth-voice.svg"
-                alt="Youth Voice 로고"
-                width={60}
-                height={20}
-                className="object-contain"
-                priority
-                loading="eager"
-              />
+              <div className="relative h-[30px] w-[60px]">
+                <Image
+                  src={IMAGE_URL.ICON.logo.youthVoice.url}
+                  alt="Youth Voice 로고"
+                  fill
+                  priority
+                  loading="eager"
+                />
+              </div>
             ) : undefined
           }
         />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import Image from "next/image";
 import { HomeContentRenderer } from "@/components/shared/HomeContentRenderer";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -75,7 +76,7 @@ const HomePage = () => {
         return;
       }
 
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const screenWidth = window.innerWidth;
         const imageAspectRatio = img.height / img.width;
@@ -117,12 +118,18 @@ const HomePage = () => {
       <div className="fixed top-0 right-0 left-0 z-0 mx-auto h-screen w-full max-w-[470px]">
         {singleBackgroundImage ? (
           <div
-            className="h-full w-full bg-cover bg-top bg-no-repeat"
-            style={{
-              backgroundImage: `url(${singleBackgroundImage})`,
-              pointerEvents: "none",
-            }}
-          />
+            className="relative h-full w-full bg-cover bg-top bg-no-repeat"
+            style={{ pointerEvents: "none" }}
+          >
+            <Image
+              src={singleBackgroundImage}
+              alt=""
+              fill
+              className="object-cover object-top"
+              priority
+              unoptimized={!singleBackgroundImage.startsWith("/")}
+            />
+          </div>
         ) : (
           backgroundImages.length > 0 && (
             <div className="relative h-full w-full">
@@ -133,19 +140,28 @@ const HomePage = () => {
                 const imageHeight = imageHeights[index] || window.innerHeight;
                 const cumulativeTop = getCumulativeHeight(index);
 
+                // 첫 번째 배경 이미지만 priority
                 return (
                   <div
                     key={index}
                     className="absolute right-0 left-0 bg-contain bg-center bg-no-repeat"
                     style={{
-                      backgroundImage: `url(${imageUrl})`,
                       backgroundSize: "contain",
                       top: `${cumulativeTop}px`,
                       height: `${imageHeight}px`,
                       width: "100%",
                       pointerEvents: "none",
                     }}
-                  />
+                  >
+                    <Image
+                      src={imageUrl}
+                      alt=""
+                      fill
+                      className="object-contain"
+                      priority={index === 0}
+                      unoptimized={!imageUrl.startsWith("/")}
+                    />
+                  </div>
                 );
               })}
             </div>

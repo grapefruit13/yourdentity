@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { TGETHomeRes } from "@/types/generated/home-types";
 
@@ -7,6 +8,8 @@ interface HomeContentRendererProps {
   content: TGETHomeRes["content"];
   className?: string;
 }
+
+const PRIORITY_INDEX_LIMIT = 10;
 
 /**
  * URL 정규식 - http://, https://, www. 등으로 시작하는 URL 패턴
@@ -426,7 +429,7 @@ export const HomeContentRenderer = ({
               };
 
               return (
-                <figure key={block.id}>
+                <figure key={block.id} className="relative w-full">
                   {captionUrl ? (
                     <button
                       onClick={handleImageClick}
@@ -434,17 +437,25 @@ export const HomeContentRenderer = ({
                       type="button"
                       aria-label={block.caption || "이미지 링크"}
                     >
-                      <img
+                      <Image
                         src={block.url}
                         alt={block.caption || ""}
-                        className="w-full rounded-md transition-opacity hover:opacity-90"
+                        width={800}
+                        height={600}
+                        sizes="100vw"
+                        className="h-auto w-full rounded-md transition-opacity hover:opacity-90"
+                        priority={index < PRIORITY_INDEX_LIMIT}
                       />
                     </button>
                   ) : (
-                    <img
+                    <Image
                       src={block.url}
                       alt={block.caption || ""}
-                      className="w-full rounded-md"
+                      width={800}
+                      height={600}
+                      sizes="100vw"
+                      className="h-auto w-full rounded-md"
+                      priority={index < PRIORITY_INDEX_LIMIT}
                     />
                   )}
                 </figure>

@@ -8,8 +8,7 @@ loadEnvConfig(process.cwd());
 
 const withPWA = withPWAInit({
   dest: "public",
-  // disable: false, // 프로덕션에서도 PWA 활성화
-  disable: true, // 프로덕션에서도 PWA 활성화
+  disable: true,
   register: true,
   cacheOnFrontEndNav: true, // 페이지 네비게이션 시 캐싱 활성화
   cacheStartUrl: true, // start_url 캐싱
@@ -35,6 +34,16 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   images: {
     formats: ["image/webp", "image/avif"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.notion.so",
+      },
+      {
+        protocol: "https",
+        hostname: "**.s3.**.amazonaws.com",
+      },
+    ],
   },
   // eslint-disable-next-line require-await
   async redirects() {
