@@ -1,5 +1,10 @@
-import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosError,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { auth } from "./firebase";
 
 const getBaseURL = () => {
@@ -52,7 +57,21 @@ instance.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  (error: AxiosError) => {
+    // 401 에러 발생 시 로그인 화면으로 리다이렉트
+    if (error.response?.status === 401) {
+      // 로그아웃된 상태에서 API 요청이 실패한 경우
+      // Firebase Auth 상태 확인 후 로그인 화면으로 리다이렉트
+      // 단, 로그인 페이지에서는 리다이렉트하지 않아 무한 루프 방지
+      const user = auth.currentUser;
+      if (!user && typeof window !== "undefined") {
+        const currentPath = window.location.pathname;
+        // 로그인 페이지가 아니고, 이미 리다이렉트 중이 아닌 경우에만 리다이렉트
+        if (currentPath !== LINK_URL.LOGIN) {
+          window.location.replace(LINK_URL.LOGIN);
+        }
+      }
+    }
     return Promise.reject(error);
   }
 );
