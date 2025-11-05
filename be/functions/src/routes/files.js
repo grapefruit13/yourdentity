@@ -45,6 +45,22 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               invalidContentType:
+ *                 summary: 잘못된 Content-Type
+ *                 value:
+ *                   status: 400
+ *                   message: "Content-Type은 multipart/form-data여야 합니다"
+ *               noFiles:
+ *                 summary: 업로드된 파일 없음
+ *                 value:
+ *                   status: 400
+ *                   message: "업로드된 파일이 없습니다"
+ *               invalidFileType:
+ *                 summary: 허용되지 않은 파일 형식
+ *                 value:
+ *                   status: 400
+ *                   message: "허용되지 않은 파일 형식입니다"
  *       401:
  *         description: 인증 필요
  *         content:
@@ -69,6 +85,9 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 500
+ *               message: "서버 내부 오류가 발생했습니다"
  */
 router.post(
     "/upload-multiple",
@@ -102,6 +121,12 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missingFilePath:
+ *                 summary: 파일 경로 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "파일 경로가 필요합니다"
  *       401:
  *         description: 인증 필요
  *         content:
@@ -126,6 +151,9 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 500
+ *               message: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/:filePath(*)", authGuard, fileController.deleteFile);
 
