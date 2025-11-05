@@ -209,4 +209,35 @@ router.get("/sync/selected", notionUserController.syncSelectedUsers);
 router.post("/test/create", notionUserController.createTestUsers);
 
 
+/**
+ * @swagger
+ * /notionUsers/sync/selected-from-backup:
+ *   get:
+ *     summary: 백업 DB에서 전체 회원 복원
+ *     description: |
+ *       백업 노션 DB(notionUserAccountBackupDB)의 모든 데이터를 조회하여 
+ *       Firebase users 컬렉션에 데이터를 복원(업데이트)합니다.
+ *       백업 시점의 전체 데이터로 Firebase를 복원하는 용도로 사용됩니다.
+ *       - 백업 DB의 모든 페이지를 조회하여 Firebase에 업데이트
+ *       - Firebase에 존재하지 않는 사용자는 건너뜀
+ *     tags: [NotionUsers]
+ *     responses:
+ *       200:
+ *         description: 복원 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: string
+ *                   example: "백업 DB에서 전체 회원 복원 완료: 150명 업데이트, Firebase에 존재하지 않는 회원 건너뜀: 5명, 잘못된 값: 0명"
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/sync/selectedFromBackup", notionUserController.syncSelectedUsersFromBackup);
+
 module.exports = router;

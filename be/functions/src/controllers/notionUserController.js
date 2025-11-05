@@ -79,6 +79,15 @@ class NotionUserController {
     }
 
 
+    async syncSelectedUsersFromBackup(req, res, next) {
+      try {
+        const result = await notionUserService.syncSelectedUsersFromBackup();
+        res.success(`백업 DB에서 전체 회원 복원 완료: ${result.syncedCount}명, Firebase에 존재하지 않는 회원 건너뜀: ${result.skippedCount}명, 잘못된 값: ${result.validateErrorCount}명`);
+      } catch (error) {
+        console.error("[Controller Error] syncSelectedUsersFromBackup:", error);
+        next(error);
+      }
+    }
   
 
 
