@@ -261,93 +261,86 @@ class FileService {
    * @returns {Promise<Object>} 업로드 결과
    */
   async uploadFileStream(fileStream, fileName, mimeType, folder = "files", userId = null) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // 스트림을 버퍼로 완전히 읽어서 파일 타입 검증
-        const collectStream = async () => {
-          return new Promise((resolveStream, rejectStream) => {
-            const chunks = [];
-            let totalSize = 0;
+    try {
+      // 스트림을 버퍼로 완전히 읽어서 파일 타입 검증
+      const collectStream = () => {
+        return new Promise((resolveStream, rejectStream) => {
+          const chunks = [];
+          let totalSize = 0;
 
-            fileStream.on("data", (chunk) => {
-              chunks.push(chunk);
-              totalSize += chunk.length;
-            });
-
-            fileStream.on("end", () => {
-              resolveStream(Buffer.concat(chunks, totalSize));
-            });
-
-            fileStream.on("error", rejectStream);
-          });
-        };
-
-        try {
-          const fullBuffer = await collectStream();
-          
-          const bufferValidation = await this.validateFileTypeFromBuffer(
-            fullBuffer,
-            fileName,
-            mimeType
-          );
-
-          if (!bufferValidation.isValid) {
-            const error = new Error(bufferValidation.error);
-            error.code = "INVALID_FILE_TYPE";
-            return reject({
-              success: false,
-              error: error.message,
-            });
-          }
-
-          const validatedMimeType = bufferValidation.detectedMimeType || mimeType;
-
-          const { Readable } = require("stream");
-          const validatedStream = new Readable();
-          validatedStream.push(fullBuffer);
-          validatedStream.push(null);
-
-          const safeFileName = fileName
-              .replace(/[^a-zA-Z0-9.-]/g, "_")
-              .replace(/\s+/g, "_");
-
-          const uniqueId = nanoid(12);
-          const fileExtension = safeFileName.split(".").pop();
-          const baseName = safeFileName.replace(/\.[^/.]+$/, "");
-          
-          const randomFolder = nanoid(12);
-          const uniqueFileName = `${folder}/${randomFolder}/${baseName}_${uniqueId}.${fileExtension}`;
-
-          const file = this.bucket.file(uniqueFileName);
-
-          const writeStream = file.createWriteStream({
-            metadata: {
-              contentType: validatedMimeType,
-              metadata: {
-                originalFileName: fileName,
-                uploadedAt: new Date().toISOString(),
-                uploadedBy: userId || "anonymous",
-              },
-            },
-            resumable: true,
-            validation: false,
-            public: true,
+          fileStream.on("data", (chunk) => {
+            chunks.push(chunk);
+            totalSize += chunk.length;
           });
 
-          let uploadedSize = 0;
-
-          validatedStream.on("data", (chunk) => {
-            uploadedSize += chunk.length;
+          fileStream.on("end", () => {
+            resolveStream(Buffer.concat(chunks, totalSize));
           });
 
-          validatedStream.pipe(writeStream);
+          fileStream.on("error", rejectStream);
+        });
+      };
 
+      const fullBuffer = await collectStream();
+      
+      const bufferValidation = await this.validateFileTypeFromBuffer(
+        fullBuffer,
+        fileName,
+        mimeType
+      );
+
+      if (!bufferValidation.isValid) {
+        const error = new Error(bufferValidation.error);
+        error.code = "INVALID_FILE_TYPE";
+        throw error;
+      }
+
+      const validatedMimeType = bufferValidation.detectedMimeType || mimeType;
+
+      const { Readable } = require("stream");
+      const validatedStream = new Readable();
+      validatedStream.push(fullBuffer);
+      validatedStream.push(null);
+
+      const safeFileName = fileName
+          .replace(/[^a-zA-Z0-9.-]/g, "_")
+          .replace(/\s+/g, "_");
+
+      const uniqueId = nanoid(12);
+      const fileExtension = safeFileName.split(".").pop();
+      const baseName = safeFileName.replace(/\.[^/.]+$/, "");
+      
+      const randomFolder = nanoid(12);
+      const uniqueFileName = `${folder}/${randomFolder}/${baseName}_${uniqueId}.${fileExtension}`;
+
+      const file = this.bucket.file(uniqueFileName);
+
+      const writeStream = file.createWriteStream({
+        metadata: {
+          contentType: validatedMimeType,
+          metadata: {
+            originalFileName: fileName,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: userId || "anonymous",
+          },
+        },
+        resumable: true,
+        validation: false,
+        public: true,
+      });
+
+      let uploadedSize = 0;
+
+      validatedStream.on("data", (chunk) => {
+        uploadedSize += chunk.length;
+      });
+
+      validatedStream.pipe(writeStream);
+
+      const uploadPromise = new Promise((resolve, reject) => {
         writeStream.on("error", (error) => {
           console.error("File upload stream error:", error);
-          reject({
-            success: false,
-            error: `파일 업로드 중 오류가 발생했습니다: ${error.message}`,
-          });
+          reject(new Error(`파일 업로드 중 오류가 발생했습니다: ${error.message}`));
         });
 
         writeStream.on("finish", async () => {
@@ -385,51 +378,41 @@ class FileService {
               } catch (deleteError) {
                 console.error("Storage 파일 롤백 실패:", deleteError);
               }
-              const error = new Error(`파일 메타데이터 저장 중 오류가 발생했습니다: ${docError.message}`);
-              reject(error);
+              reject(new Error(`파일 메타데이터 저장 중 오류가 발생했습니다: ${docError.message}`));
               return;
             }
 
-            resolve({
-              success: true,
-              data: uploadResult,
-            });
+            resolve(uploadResult);
           } catch (error) {
-            reject({
-              success: false,
-              error: `파일 업로드 완료 처리 중 오류가 발생했습니다: ${error.message}`,
-            });
+            reject(error);
           }
         });
 
-          validatedStream.on("error", (error) => {
-            writeStream.destroy();
-            reject({
-              success: false,
-              error: `파일 스트림 처리 중 오류가 발생했습니다: ${error.message}`,
-            });
-          });
-        } catch (error) {
-          console.error("File upload stream setup error:", error);
-          if (error.code === "INVALID_FILE_TYPE") {
-            return reject({
-              success: false,
-              error: error.message,
-            });
-          }
-          reject({
-            success: false,
-            error: `파일 업로드 설정 중 오류가 발생했습니다: ${error.message}`,
-          });
-        }
-      } catch (error) {
-        console.error("File upload stream error:", error);
-        reject({
-          success: false,
-          error: `파일 업로드 중 오류가 발생했습니다: ${error.message}`,
+        validatedStream.on("error", (error) => {
+          writeStream.destroy();
+          reject(new Error(`파일 스트림 처리 중 오류가 발생했습니다: ${error.message}`));
         });
+      });
+
+      const uploadResult = await uploadPromise;
+
+      return {
+        success: true,
+        data: uploadResult,
+      };
+    } catch (error) {
+      console.error("File upload stream error:", error);
+      if (error.code === "INVALID_FILE_TYPE") {
+        return {
+          success: false,
+          error: error.message,
+        };
       }
-    });
+      return {
+        success: false,
+        error: error.message || "파일 업로드 중 오류가 발생했습니다",
+      };
+    }
   }
 
   /**
