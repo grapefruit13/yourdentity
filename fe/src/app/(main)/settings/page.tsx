@@ -29,17 +29,23 @@ const SettingsPage = () => {
     setIsLogoutModalOpen(true);
   };
 
+  const cleanupAndRedirectToHome = () => {
+    if (typeof window === "undefined") return;
+    queryClient.clear();
+    window.location.replace(LINK_URL.HOME);
+  };
+
   /**
    * @description 로그아웃 모달 '확인' 클릭 시
    */
   const handleLogoutConfirm = () => {
     logoutMutate(undefined, {
       onSuccess: () => {
-        router.push(LINK_URL.LOGIN);
+        cleanupAndRedirectToHome();
       },
       onError: (error) => {
-        // TODO: 로그아웃 오류 발생 시 어떻게 처리?. 오류 시에도 login 페이지로 이동?
         debug.error("로그아웃 오류 발생:", error);
+        cleanupAndRedirectToHome();
       },
       onSettled: () => {
         setIsLogoutModalOpen(false);

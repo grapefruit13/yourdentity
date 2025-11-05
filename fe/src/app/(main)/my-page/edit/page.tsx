@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Camera, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as FilesApi from "@/api/generated/files-api";
@@ -12,6 +13,7 @@ import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
 import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
 
+import { usersKeys } from "@/constants/generated/query-keys";
 import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
   MAX_NICKNAME_LENGTH,
@@ -32,6 +34,7 @@ import { debug } from "@/utils/shared/debugger";
 
 const ProfileEditPage = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -253,6 +256,26 @@ const ProfileEditPage = () => {
           nickname: trimmedNickname,
           profileImageUrl: finalImageUrl || undefined,
           bio: data.bio.trim() || undefined,
+        },
+      });
+
+      // 사용자 정보 관련 쿼리 캐시 무효화
+      queryClient.invalidateQueries({
+        queryKey: usersKeys.getUsersMe,
+      });
+      queryClient.invalidateQueries({
+        queryKey: usersKeys.getUsersMeMyPage,
+      });
+      // 사용자 게시글 관련 쿼리도 무효화 (프로필이 변경되면 게시글 목록도 업데이트될 수 있음)
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          return (
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === "users" &&
+            (query.queryKey[1] === "getUsersMePosts" ||
+              query.queryKey[1] === "getUsersMeLikedPosts" ||
+              query.queryKey[1] === "getUsersMeCommentedPosts")
+          );
         },
       });
 
