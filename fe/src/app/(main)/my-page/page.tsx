@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import MyPageProfileSection from "@/components/my-page/MyPageProfileSection";
 import MyPageTabs, { TabType } from "@/components/my-page/MyPageTabs";
@@ -15,6 +15,7 @@ import {
   useGetUsersMeLikedPosts,
   useGetUsersMeCommentedPosts,
 } from "@/hooks/generated/users-hooks";
+import { getCurrentUser } from "@/lib/auth";
 import type * as Types from "@/types/generated/users-types";
 
 /**
@@ -23,15 +24,19 @@ import type * as Types from "@/types/generated/users-types";
 const Page = () => {
   const router = useRouter();
 
+  // 로그인 여부 확인 및 리다이렉트
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user) {
+      router.replace(LINK_URL.LOGIN);
+    }
+  }, [router]);
+
   // 상태 관리
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   // const [activeFilter, setActiveFilter] = useState<FilterType>("program"); // MVP 범위에서 제외
 
-  const {
-    data: userData,
-    isLoading,
-    error,
-  } = useGetUsersMe({
+  const { data: userData, isLoading } = useGetUsersMe({
     select: (data) => {
       return data?.user;
     },
@@ -121,7 +126,7 @@ const Page = () => {
   };
 
   return (
-    <div className="flex min-h-full w-full flex-col bg-gray-50">
+    <div className="flex min-h-full w-full flex-col px-5">
       {/* 프로필 섹션 */}
       {isLoading || !userData ? (
         <div className="flex flex-col bg-white px-4 pt-3 pb-4">
@@ -172,7 +177,7 @@ const Page = () => {
       /> */}
 
       {/* 게시글 그리드 */}
-      <div className="grid grid-cols-2 gap-4 bg-gray-50 px-4 pt-4 pb-24">
+      <div className="grid grid-cols-2 gap-4 px-4 pt-4 pb-24">
         {isLoadingCurrentTab ? (
           // 로딩 중일 때 스켈레톤 표시
           Array.from({ length: 4 }).map((_, index) => (
