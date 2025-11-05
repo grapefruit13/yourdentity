@@ -359,7 +359,7 @@ const Page = () => {
   );
 
   return (
-    <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col pt-12" onSubmit={handleSubmit(onSubmit)}>
       <div className="flex flex-col gap-4 bg-gray-100 px-5 py-3">
         {/* 카테고리 선택 */}
         <div className="flex border-collapse flex-col rounded-lg border border-gray-200 bg-white">
