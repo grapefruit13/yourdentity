@@ -24,6 +24,10 @@ export default function MainLayout({
   const pathname = usePathname();
   const isHomePage = pathname === LINK_URL.HOME;
 
+  const isCommunityPage = pathname === LINK_URL.COMMUNITY;
+  const isMyPage = pathname === LINK_URL.MY_PAGE;
+  const hideTopBar = isCommunityPage || isMyPage;
+
   // 라우트 변경 시 항상 스크롤 최상단으로 이동 (Next.js 15 스크롤 복원 이슈 대응)
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -152,21 +156,23 @@ export default function MainLayout({
         </div>
       )}
       <div className="flex min-h-[100dvh] w-full min-w-[320px] flex-col">
-        <TopBar
-          leftSlot={
-            isHomePage ? (
-              <div className="relative h-[30px] w-[60px]">
-                <Image
-                  src={IMAGE_URL.ICON.logo.youthVoice.url}
-                  alt="Youth Voice 로고"
-                  fill
-                  priority
-                  loading="eager"
-                />
-              </div>
-            ) : undefined
-          }
-        />
+        {hideTopBar ? null : (
+          <TopBar
+            leftSlot={
+              isHomePage ? (
+                <div className="relative h-[30px] w-[60px]">
+                  <Image
+                    src={IMAGE_URL.ICON.logo.youthVoice.url}
+                    alt="Youth Voice 로고"
+                    fill
+                    priority
+                    loading="eager"
+                  />
+                </div>
+              ) : undefined
+            }
+          />
+        )}
         <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
           {children}
         </main>
