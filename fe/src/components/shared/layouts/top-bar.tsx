@@ -3,7 +3,6 @@
 import { useMemo, type ReactNode } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings } from "lucide-react";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { TOPBAR_TITLE_MAP } from "@/constants/shared/_topbar-title-map";
@@ -37,15 +36,11 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
     // router.push("/notifications");
   };
 
-  const handleSettingsClick = () => {
-    router.push("/settings");
-  };
-
   // 홈 페이지 체크
   const isHomePage = pathname === LINK_URL.HOME;
 
   const isCommunityPage = pathname === LINK_URL.COMMUNITY;
-  const isMyPage = pathname?.startsWith(LINK_URL.MY_PAGE);
+  const isMyPage = pathname === LINK_URL.MY_PAGE;
   const showBackButton = !isCommunityPage && !isMyPage && !isHomePage;
   const showAlarmButton = isHomePage || isCommunityPage;
 
@@ -112,17 +107,6 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
 
       {/* Right Slot */}
       {rightSlotEl}
-
-      {/* 마이페이지 설정 버튼 */}
-      {isMyPage && (
-        <button
-          onClick={handleSettingsClick}
-          className="absolute right-4 rounded-full p-2 transition-colors hover:bg-gray-100"
-          aria-label="설정"
-        >
-          <Settings className="h-6 w-6 text-black" />
-        </button>
-      )}
     </div>
   );
 };
