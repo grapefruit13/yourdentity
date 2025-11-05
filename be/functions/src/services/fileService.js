@@ -1,5 +1,6 @@
-const {admin} = require("../config/database");
+const {admin, db, FieldValue} = require("../config/database");
 const {nanoid} = require("../utils/helpers");
+const FirestoreService = require("./firestoreService");
 
 // 파일 형식 검증 관련 상수
 const ALLOWED_EXTENSIONS = [
@@ -12,6 +13,7 @@ const ALLOWED_MIME_TYPES = [
 class FileService {
   constructor() {
     this.bucket = admin.storage().bucket();
+    this.firestoreService = new FirestoreService("files");
   }
 
   /**
@@ -179,17 +181,42 @@ class FileService {
 
             const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${uniqueFileName}`;
 
+            const uploadResult = {
+              fileUrl: publicUrl,
+              fileName: uniqueFileName,
+              originalFileName: fileName,
+              mimeType: mimeType,
+              size: actualSize,
+              bucket: this.bucket.name,
+              path: uniqueFileName,
+            };
+
+            try {
+              await this.createFileDocument(
+                {
+                  filePath: uniqueFileName,
+                  fileUrl: publicUrl,
+                  originalFileName: fileName,
+                  mimeType: mimeType,
+                  size: actualSize,
+                },
+                userId
+              );
+            } catch (docError) {
+              console.error("파일 문서 생성 실패 (Storage 업로드는 성공):", docError);
+              try {
+                await file.delete();
+              } catch (deleteError) {
+                console.error("Storage 파일 롤백 실패:", deleteError);
+              }
+              const error = new Error(`파일 메타데이터 저장 중 오류가 발생했습니다: ${docError.message}`);
+              reject(error);
+              return;
+            }
+
             resolve({
               success: true,
-              data: {
-                fileUrl: publicUrl,
-                fileName: uniqueFileName,
-                originalFileName: fileName,
-                mimeType: mimeType,
-                size: actualSize,
-                bucket: this.bucket.name,
-                path: uniqueFileName,
-              },
+              data: uploadResult,
             });
           } catch (error) {
             reject({
@@ -334,6 +361,194 @@ class FileService {
   }
 
   /**
+   * Firestore files 컬렉션에 파일 문서 생성
+   * @param {Object} fileData - 파일 데이터
+   * @param {string} fileData.filePath - 파일 경로 (Storage 경로)
+   * @param {string} fileData.fileUrl - 파일 URL
+   * @param {string} fileData.originalFileName - 원본 파일명
+   * @param {string} fileData.mimeType - MIME 타입
+   * @param {number} fileData.size - 파일 크기 (bytes)
+   * @param {string} userId - 업로드한 사용자 ID
+   * @returns {Promise<Object>} 생성된 문서 데이터
+   */
+  async createFileDocument(fileData, userId) {
+    try {
+      const {filePath, fileUrl, originalFileName, mimeType, size} = fileData;
+
+      if (!filePath) {
+        const error = new Error("파일 경로가 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!userId) {
+        const error = new Error("사용자 ID가 필요합니다");
+        error.code = "UNAUTHORIZED";
+        throw error;
+      }
+
+      const fileDoc = {
+        filePath,
+        fileUrl,
+        originalFileName: originalFileName || filePath,
+        mimeType: mimeType || "application/octet-stream",
+        size: size || 0,
+        uploadedBy: userId,
+        attachedTo: null,
+        isUsed: false,
+        createdAt: FieldValue.serverTimestamp(),
+      };
+
+      const result = await this.firestoreService.create(fileDoc);
+      return result;
+    } catch (error) {
+      console.error("파일 문서 생성 오류:", error);
+      if (error.code === "BAD_REQUEST" || error.code === "UNAUTHORIZED") {
+        throw error;
+      }
+      const internalError = new Error("파일 문서 생성 중 오류가 발생했습니다");
+      internalError.code = "INTERNAL";
+      throw internalError;
+    }
+  }
+
+  /**
+   * 파일들을 게시글에 연결하기 전 검증 (게시글 생성 전 호출)
+   * @param {Array<string>} filePaths - 파일 경로 배열
+   * @param {string} userId - 요청한 사용자 ID (소유권 검증용)
+   * @returns {Promise<Array<Object>>} 검증 통과한 파일 문서 배열
+   */
+  async validateFilesForPost(filePaths, userId) {
+    try {
+      if (!Array.isArray(filePaths) || filePaths.length === 0) {
+        return []; // 파일이 없으면 빈 배열 반환
+      }
+
+      if (!userId) {
+        const error = new Error("사용자 ID가 필요합니다");
+        error.code = "UNAUTHORIZED";
+        throw error;
+      }
+
+      // 1. 파일 조회 (병렬)
+      const filePromises = filePaths.map(async (filePath) => {
+        try {
+          const files = await this.firestoreService.getWhere(
+            "filePath",
+            "==",
+            filePath
+          );
+          
+          if (!files || files.length === 0) {
+            return {filePath, file: null, exists: false};
+          }
+
+          return {filePath, file: files[0], exists: true};
+        } catch (error) {
+          console.error(`파일 조회 오류 (${filePath}):`, error);
+          return {filePath, file: null, exists: false};
+        }
+      });
+
+      const fileResults = await Promise.all(filePromises);
+
+      // 2. 파일 존재 여부 검증
+      const missingFiles = fileResults
+        .filter((result) => !result.exists)
+        .map((result) => result.filePath);
+
+      if (missingFiles.length > 0) {
+        const error = new Error(`파일을 찾을 수 없습니다: ${missingFiles.join(", ")}`);
+        error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 3. 소유권 검증
+      const unauthorizedFiles = fileResults
+        .filter((result) => result.file.uploadedBy !== userId)
+        .map((result) => result.filePath);
+
+      if (unauthorizedFiles.length > 0) {
+        const error = new Error(`이 파일에 대한 권한이 없습니다: ${unauthorizedFiles.join(", ")}`);
+        error.code = "FORBIDDEN";
+        error.statusCode = 403;
+        throw error;
+      }
+
+      // 4. 이미 다른 게시글에 연결된 파일 검증
+      const alreadyAttachedFiles = fileResults
+        .filter((result) => result.file.isUsed || result.file.attachedTo)
+        .map((result) => result.filePath);
+
+      if (alreadyAttachedFiles.length > 0) {
+        const error = new Error(`이미 다른 게시글에 연결된 파일입니다: ${alreadyAttachedFiles.join(", ")}`);
+        error.code = "CONFLICT";
+        throw error;
+      }
+      
+      const storageCheckPromises = fileResults.map(async (result) => {
+        try {
+          const exists = await this.fileExists(result.file.filePath);
+          return {filePath: result.filePath, file: result.file, storageExists: exists};
+        } catch (error) {
+          console.error(`Storage 파일 존재 확인 오류 (${result.filePath}):`, error);
+          return {filePath: result.filePath, file: result.file, storageExists: false};
+        }
+      });
+
+      const storageResults = await Promise.all(storageCheckPromises);
+      const missingStorageFiles = storageResults
+        .filter((result) => !result.storageExists)
+        .map((result) => result.filePath);
+
+      if (missingStorageFiles.length > 0) {
+        const error = new Error(`Storage 파일이 존재하지 않습니다: ${missingStorageFiles.join(", ")}`);
+        error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      // 검증 통과한 파일 문서들 반환
+      return storageResults.map((result) => result.file);
+    } catch (error) {
+      console.error("파일 검증 오류:", error);
+      if (error.code === "UNAUTHORIZED" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN" || error.code === "CONFLICT") {
+        throw error;
+      }
+      const internalError = new Error("파일 검증 중 오류가 발생했습니다");
+      internalError.code = "INTERNAL";
+      throw internalError;
+    }
+  }
+
+  /**
+   * 파일들을 게시글에 연결 (트랜잭션 내에서 사용)
+   * @param {Array<Object>} validatedFiles - 검증된 파일 문서 배열 (validateFilesForPost 결과)
+   * @param {string} postId - 게시글 ID
+   * @param {Function} transaction - Firestore transaction 객체
+   * @returns {void}
+   */
+  attachFilesToPostInTransaction(validatedFiles, postId, transaction) {
+    if (!validatedFiles || validatedFiles.length === 0) {
+      return; // 파일이 없으면 아무것도 하지 않음
+    }
+
+    if (!postId) {
+      const error = new Error("게시글 ID가 필요합니다");
+      error.code = "BAD_REQUEST";
+      throw error;
+    }
+
+    validatedFiles.forEach((file) => {
+      const fileRef = db.collection("files").doc(file.id);
+      transaction.update(fileRef, {
+        attachedTo: postId,
+        isUsed: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  /**
    * 파일 삭제
    * @param {string} fileName - Cloud Storage 내 파일명 (경로 포함)
    * @param {string} userId - 요청한 사용자 ID (소유자 확인용)
@@ -375,10 +590,31 @@ class FileService {
 
       await file.delete();
 
+      // Firestore files 컬렉션 문서도 삭제
+      try {
+        const files = await this.firestoreService.getWhere(
+          "filePath",
+          "==",
+          fileName
+        );
+        
+        if (files && files.length > 0) {
+          // filePath로 찾은 문서들 삭제 (일반적으로 1개지만 안전을 위해)
+          for (const fileDoc of files) {
+            await this.firestoreService.delete(fileDoc.id);
+          }
+        }
+      } catch (firestoreError) {
+        console.error("Firestore 파일 문서 삭제 실패 (Storage 파일은 삭제됨):", firestoreError);
+        const error = new Error("파일은 삭제되었으나 메타데이터 정리에 실패했습니다");
+        error.code = "PARTIAL_SUCCESS";
+        throw error;
+      }
+
       return { success: true };
     } catch (error) {
       // 이미 에러 객체에 code가 있으면 그대로 재throw
-      if (error.code === "NOT_FOUND" || error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN") {
+      if (error.code === "NOT_FOUND" || error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN" || error.code === "PARTIAL_SUCCESS") {
         throw error;
       }
 
