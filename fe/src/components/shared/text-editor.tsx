@@ -88,6 +88,13 @@ const TextEditor = ({
   });
   const [showTitlePlaceholder, setShowTitlePlaceholder] = useState(true);
   const [showContentPlaceholder, setShowContentPlaceholder] = useState(true);
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkPopoverPosition, setLinkPopoverPosition] =
+    useState<ColorPickerPosition>({ top: 0, left: 0 });
+  const [linkUrlInput, setLinkUrlInput] = useState("");
+  const [linkTextInput, setLinkTextInput] = useState("");
+  const [linkError, setLinkError] = useState<string>("");
+  const linkPopoverRef = useRef<HTMLDivElement>(null);
 
   /**
    * 현재 선택 영역을 저장
@@ -390,6 +397,214 @@ const TextEditor = ({
   );
 
   /**
+   * URL 정규화: 프로토콜이 없으면 https://를 붙임
+   */
+  const normalizeUrl = useCallback((raw: string): string => {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    try {
+      // 이미 유효한 절대 URL이면 그대로
+      // new URL은 절대 URL만 허용
+      // http/https 외는 차단
+      const u = new URL(trimmed);
+      if (u.protocol === "http:" || u.protocol === "https:")
+        return u.toString();
+      return "";
+    } catch {
+      // 프로토콜이 없으면 https 붙여 재시도
+      try {
+        const u2 = new URL(`https://${trimmed}`);
+        if (u2.protocol === "http:" || u2.protocol === "https:")
+          return u2.toString();
+        return "";
+      } catch {
+        return "";
+      }
+    }
+  }, []);
+
+  /**
+   * 현재 선택 또는 커서가 포함된 앵커 요소 탐색
+   */
+  const findAnchorFromSelection = useCallback((): HTMLAnchorElement | null => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    const container = range.commonAncestorContainer as Node;
+    let el: HTMLElement | null =
+      container.nodeType === Node.TEXT_NODE
+        ? (container.parentElement as HTMLElement | null)
+        : (container as HTMLElement | null);
+    const root = contentRef.current || undefined;
+    while (el && el !== document.body && el !== root) {
+      if (el.tagName === "A") return el as HTMLAnchorElement;
+      el = el.parentElement;
+    }
+    return null;
+  }, []);
+
+  /**
+   * 선택 영역 위치 기준 팝오버 좌표 계산
+   */
+  const updateLinkPopoverPosition = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    const top = (rect.bottom || rect.top) + window.scrollY + 8;
+    const left = (rect.left || rect.right) + window.scrollX;
+    setLinkPopoverPosition({ top, left });
+  }, []);
+
+  /**
+   * 링크 팝오버 열기 (선택 기준)
+   */
+  const openLinkPopover = useCallback(() => {
+    if (activeEditor === "title") return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    // 선택이 없고 앵커 위라면 편집 모드 허용
+    const anchor = findAnchorFromSelection();
+    if (!sel.isCollapsed || anchor) {
+      const selectedText = sel.toString();
+      setLinkTextInput(selectedText || anchor?.textContent || "");
+      setLinkUrlInput(anchor?.getAttribute("href") || "");
+      setLinkError("");
+      updateLinkPopoverPosition();
+      setShowLinkPopover(true);
+    }
+  }, [activeEditor, findAnchorFromSelection, updateLinkPopoverPosition]);
+
+  /**
+   * 링크 제거 (선택된 앵커 언랩)
+   */
+  const removeLinkAtSelection = useCallback(() => {
+    // 편집기 포커스 복원 및 선택 복원
+    const editorRef = getActiveEditorRef();
+    editorRef.current?.focus();
+    restoreSelection();
+
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    // 1차: 브라우저 unlink 명령 시도
+    const unlinked = document.execCommand("unlink");
+    if (!unlinked) {
+      // 2차: 수동 언랩 폴백
+      if (!range.collapsed) {
+        const extracted = range.extractContents();
+        const container = document.createElement("div");
+        container.appendChild(extracted);
+        const anchors = Array.from(container.querySelectorAll("a"));
+        anchors.forEach((a) => {
+          const parent = a.parentNode;
+          if (!parent) return;
+          while (a.firstChild) parent.insertBefore(a.firstChild, a);
+          parent.removeChild(a);
+        });
+        const newFrag = document.createDocumentFragment();
+        while (container.firstChild) newFrag.appendChild(container.firstChild);
+        range.insertNode(newFrag);
+
+        const after = document.createRange();
+        after.setStart(range.endContainer, range.endOffset);
+        after.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(after);
+      } else {
+        const anchor = findAnchorFromSelection();
+        if (anchor) {
+          const parent = anchor.parentNode;
+          if (parent) {
+            while (anchor.firstChild)
+              parent.insertBefore(anchor.firstChild, anchor);
+            parent.removeChild(anchor);
+          }
+        }
+      }
+    }
+
+    setShowLinkPopover(false);
+    handleContentInput();
+  }, [
+    getActiveEditorRef,
+    restoreSelection,
+    findAnchorFromSelection,
+    handleContentInput,
+  ]);
+
+  /**
+   * 링크 삽입/수정 (Selection API + DOM 조작)
+   */
+  const applyLinkAtSelection = useCallback(() => {
+    const normalized = normalizeUrl(linkUrlInput);
+    if (!normalized) {
+      setLinkError("유효한 URL을 입력하세요 (http/https)");
+      return;
+    }
+
+    const editorRef = getActiveEditorRef();
+    editorRef.current?.focus();
+    restoreSelection();
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+
+    // 기존 앵커 편집
+    const existingAnchor = findAnchorFromSelection();
+    if (existingAnchor) {
+      existingAnchor.setAttribute("href", normalized);
+      existingAnchor.setAttribute("target", "_blank");
+      existingAnchor.setAttribute("rel", "noopener noreferrer");
+      // 텍스트 변경 옵션
+      if (linkTextInput && linkTextInput !== existingAnchor.textContent) {
+        existingAnchor.textContent = linkTextInput;
+      }
+      setShowLinkPopover(false);
+      handleContentInput();
+      return;
+    }
+
+    // 선택 영역이 접혀있으면 아무 것도 하지 않음 (명시적으로 텍스트 선택 필요)
+    if (range.collapsed) {
+      setLinkError("링크로 만들 텍스트를 먼저 선택하세요");
+      return;
+    }
+
+    // 선택된 내용 추출 후 <a>로 래핑하여 삽입
+    const fragment = range.extractContents();
+    const anchor = document.createElement("a");
+    anchor.href = normalized;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    if (linkTextInput) {
+      anchor.textContent = linkTextInput;
+    } else {
+      anchor.appendChild(fragment);
+    }
+    range.insertNode(anchor);
+
+    // 커서를 앵커 뒤로 이동
+    const after = document.createRange();
+    after.setStartAfter(anchor);
+    after.setEndAfter(anchor);
+    selection.removeAllRanges();
+    selection.addRange(after);
+
+    setShowLinkPopover(false);
+    handleContentInput();
+  }, [
+    getActiveEditorRef,
+    restoreSelection,
+    normalizeUrl,
+    linkUrlInput,
+    linkTextInput,
+    findAnchorFromSelection,
+    handleContentInput,
+  ]);
+
+  /**
    * 텍스트 서식 적용
    * @param format - 적용할 서식 (bold, italic, underline)
    */
@@ -542,7 +757,7 @@ const TextEditor = ({
       saveSelection();
     }
     imageInputRef.current?.click();
-  }, []);
+  }, [saveSelection]);
 
   /**
    * 파일 업로드 버튼 클릭 처리
@@ -554,7 +769,7 @@ const TextEditor = ({
       saveSelection();
     }
     fileInputRef.current?.click();
-  }, []);
+  }, [saveSelection]);
 
   /**
    * 에디터에 이미지 삽입
@@ -961,16 +1176,22 @@ const TextEditor = ({
       ) {
         setShowHeadingMenu(false);
       }
+      if (
+        linkPopoverRef.current &&
+        !linkPopoverRef.current.contains(event.target as Node)
+      ) {
+        setShowLinkPopover(false);
+      }
     };
 
-    if (showColorPicker || showHeadingMenu) {
+    if (showColorPicker || showHeadingMenu || showLinkPopover) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showColorPicker, showHeadingMenu]);
+  }, [showColorPicker, showHeadingMenu, showLinkPopover]);
 
   // 툴바 버튼 컴포넌트
   const ToolbarButton = useCallback(
@@ -1214,9 +1435,109 @@ const TextEditor = ({
         </ToolbarButton>
 
         {/* Link button */}
-        <ToolbarButton ariaLabel="링크" disabled>
-          <Link className={cn("size-5", "text-gray-300")} />
-        </ToolbarButton>
+        <div className="relative flex items-center justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "size-8",
+              activeEditor === "title" && "cursor-not-allowed"
+            )}
+            onMouseDown={(e) => {
+              if (activeEditor !== "title") saveSelection();
+              e.preventDefault();
+            }}
+            onClick={() => {
+              if (activeEditor === "title") return;
+              openLinkPopover();
+            }}
+            aria-label="링크"
+            tabIndex={-1}
+            disabled={activeEditor === "title"}
+          >
+            <Link
+              className={cn(
+                "size-5",
+                activeEditor === "title" ? "text-gray-300" : "text-gray-400"
+              )}
+            />
+          </Button>
+
+          {showLinkPopover &&
+            createPortal(
+              <div
+                ref={linkPopoverRef}
+                className="fixed z-[9999] w-[280px] max-w-[90vw] rounded border border-gray-300 bg-white p-3 shadow-sm"
+                style={{
+                  top: `${linkPopoverPosition.top}px`,
+                  left: `${linkPopoverPosition.left}px`,
+                }}
+              >
+                <div className="mb-2">
+                  <input
+                    type="url"
+                    inputMode="url"
+                    placeholder="https://example.com"
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none"
+                    value={linkUrlInput}
+                    onChange={(e) => {
+                      setLinkUrlInput(e.target.value);
+                      if (linkError) setLinkError("");
+                    }}
+                    aria-label="링크 URL"
+                    autoFocus
+                  />
+                </div>
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    placeholder="표시할 텍스트 (선택)"
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none"
+                    value={linkTextInput}
+                    onChange={(e) => setLinkTextInput(e.target.value)}
+                    aria-label="링크 텍스트"
+                  />
+                </div>
+                {linkError && (
+                  <div className="mb-2 text-xs text-red-500">{linkError}</div>
+                )}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="bg-primary-600 min-w-[84px] rounded px-3 py-2.5 text-sm text-white active:opacity-90"
+                    onClick={() => {
+                      if (
+                        window.confirm("선택한 텍스트의 링크를 제거할까요?")
+                      ) {
+                        removeLinkAtSelection();
+                      }
+                    }}
+                    aria-label="링크 제거"
+                  >
+                    링크 제거
+                  </button>
+                  <button
+                    type="button"
+                    className="min-w-[72px] rounded border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 active:bg-gray-100"
+                    onClick={() => setShowLinkPopover(false)}
+                    aria-label="취소"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="min-w-[72px] rounded bg-black px-3 py-2.5 text-sm text-white"
+                    onClick={applyLinkAtSelection}
+                    aria-label="적용"
+                  >
+                    적용
+                  </button>
+                </div>
+              </div>,
+              document.body
+            )}
+        </div>
 
         {/* Image upload button */}
         <ToolbarButton
