@@ -3,12 +3,50 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import { onAuthStateChanged } from "firebase/auth";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { auth } from "./firebase";
 
 const getBaseURL = () => {
   return "/api-proxy";
+};
+
+/**
+ * @description Firebase Auth 초기화 대기 함수
+ * 새로고침 시 Firebase Auth가 완전히 초기화되기 전에 API 요청이 나가는 것을 방지
+ */
+let authInitialized = false;
+let authInitPromise: Promise<void> | null = null;
+
+const waitForAuthInit = (): Promise<void> => {
+  // 이미 초기화되었으면 즉시 반환
+  if (authInitialized) {
+    return Promise.resolve();
+  }
+
+  // auth.currentUser가 이미 있으면 즉시 초기화 완료로 처리
+  if (auth.currentUser !== null) {
+    authInitialized = true;
+    return Promise.resolve();
+  }
+
+  // 이미 초기화 대기 중이면 같은 Promise 반환
+  if (authInitPromise) {
+    return authInitPromise;
+  }
+
+  // Auth 초기화 대기 Promise 생성
+  // onAuthStateChanged는 Firebase SDK가 이미 초기화된 경우 즉시 현재 상태를 반환
+  authInitPromise = new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, () => {
+      authInitialized = true;
+      unsubscribe();
+      resolve();
+    });
+  });
+
+  return authInitPromise;
 };
 
 /**
@@ -28,6 +66,9 @@ const instance = axios.create({
 // api 요청 시 accessToken 있는지 확인해서, authorization header에 첨부
 instance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Firebase Auth 초기화 대기 (새로고침 시 Auth 초기화 전에 요청이 나가는 것을 방지)
+    await waitForAuthInit();
+
     const user = auth.currentUser;
     if (user) {
       // getIdToken()이 자동으로 만료 체크 + 갱신
@@ -60,17 +101,18 @@ instance.interceptors.response.use(
   (error: AxiosError) => {
     // 401 에러 발생 시 로그인 화면으로 리다이렉트
     if (error.response?.status === 401) {
-      // 로그아웃된 상태에서 API 요청이 실패한 경우
-      // Firebase Auth 상태 확인 후 로그인 화면으로 리다이렉트
-      // 단, 로그인 페이지에서는 리다이렉트하지 않아 무한 루프 방지
-      const user = auth.currentUser;
-      if (!user && typeof window !== "undefined") {
-        const currentPath = window.location.pathname;
-        // 로그인 페이지가 아니고, 이미 리다이렉트 중이 아닌 경우에만 리다이렉트
-        if (currentPath !== LINK_URL.LOGIN) {
-          window.location.replace(LINK_URL.LOGIN);
+      // Firebase Auth 초기화 대기 후 다시 확인
+      // (새로고침 시 Auth가 아직 초기화되지 않아 일시적으로 currentUser가 null일 수 있음)
+      waitForAuthInit().then(() => {
+        const user = auth.currentUser;
+        if (!user && typeof window !== "undefined") {
+          const currentPath = window.location.pathname;
+          // 로그인 페이지가 아니고, 이미 리다이렉트 중이 아닌 경우에만 리다이렉트
+          if (currentPath !== LINK_URL.LOGIN) {
+            window.location.replace(LINK_URL.LOGIN);
+          }
         }
-      }
+      });
     }
     return Promise.reject(error);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import MyPageProfileSection from "@/components/my-page/MyPageProfileSection";
 import MyPageTabs, { TabType } from "@/components/my-page/MyPageTabs";
@@ -23,14 +23,6 @@ import type * as Types from "@/types/generated/users-types";
  */
 const Page = () => {
   const router = useRouter();
-
-  // 로그인 여부 확인 및 리다이렉트
-  useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) {
-      router.replace(LINK_URL.LOGIN);
-    }
-  }, [router]);
 
   // 상태 관리
   const [activeTab, setActiveTab] = useState<TabType>("posts");
