@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import {
@@ -12,6 +13,7 @@ import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
+import Modal from "@/components/shared/ui/modal";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
 import type * as CommunityTypes from "@/types/generated/communities-types";
 import { cn } from "@/utils/shared/cn";
@@ -28,6 +30,7 @@ const MAX_FILES = 5;
  * @description 커뮤니티 글 작성 페이지
  */
 const Page = () => {
+  const router = useRouter();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
 
@@ -46,6 +49,8 @@ const Page = () => {
 
   const selectedCategory = watch("category");
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
+  const allowLeaveCountRef = useRef(0);
 
   const [attachFiles, setAttachFiles] = useState<File[]>([]);
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
@@ -313,7 +318,7 @@ const Page = () => {
         uploadedFilePaths = uploadedFilePathsSet;
 
         // 글 작성
-        await new Promise<void>((resolve, reject) => {
+        const newPostId = await new Promise<string>((resolve, reject) => {
           const requestParam = {
             communityId: COMMUNITY_ID,
             data: {
@@ -328,7 +333,7 @@ const Page = () => {
           } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
 
           mutate(requestParam, {
-            onSuccess: () => resolve(),
+            onSuccess: (res) => resolve((res as any)?.data?.id as string),
             onError: (err) => reject(err),
           });
         });
@@ -340,6 +345,11 @@ const Page = () => {
         setFileQueue([]);
         setValue("title", "");
         setValue("content", "");
+
+        // 상세 페이지로 이동
+        if (newPostId) {
+          router.replace(`/community/${COMMUNITY_ID}/post/${newPostId}`);
+        }
       } catch {
         await deleteFilesByPath([
           ...uploadedImagePathsLocal,
@@ -355,8 +365,36 @@ const Page = () => {
       setValue,
       uploadQueuedImages,
       uploadQueuedFiles,
+      router,
     ]
   );
+
+  // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
+  useEffect(() => {
+    const pushBlockState = () => {
+      try {
+        history.pushState(null, "", window.location.href);
+      } catch {}
+    };
+
+    const handlePopState = () => {
+      if (allowLeaveCountRef.current > 0) {
+        // 허용해야 하는 pop이 남아있으면 소모하고 그대로 진행
+        allowLeaveCountRef.current -= 1;
+        return;
+      }
+      setIsLeaveConfirmOpen(true);
+      // 네비게이션 취소를 위해 현재 히스토리로 다시 푸시
+      pushBlockState();
+    };
+
+    // 최초 진입 시 한 단계 쌓아 두어 back을 가로챔
+    pushBlockState();
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   return (
     <form className="flex flex-col pt-12" onSubmit={handleSubmit(onSubmit)}>
@@ -553,7 +591,7 @@ const Page = () => {
         <div className="flex items-center justify-end gap-2">
           <ButtonBase
             type="button"
-            className="text-gray-700"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-[10px] text-gray-800 active:bg-gray-100"
             onClick={() => {
               const { title, content } = getValues();
               if (!title && !content) return;
@@ -569,7 +607,7 @@ const Page = () => {
           </ButtonBase>
           <ButtonBase
             type="submit"
-            className="bg-main-600 text-white disabled:opacity-50"
+            className="bg-primary-600 rounded-lg px-4 py-[10px] text-white active:opacity-90 disabled:opacity-50"
             disabled={isPending || !isDirty}
           >
             <Typography font="noto" variant="body2B">
@@ -579,55 +617,21 @@ const Page = () => {
         </div>
       </div>
 
-      {/* 실시간 HTML 데모 프리뷰 */}
-      <div className="px-5 py-6">
-        <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-4">
-          <Typography font="noto" variant="body1B">
-            실시간 HTML 미리보기
-          </Typography>
-
-          {/* Title Preview (HTML String) */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">제목 HTML</h3>
-            <div className="rounded-md border bg-gray-50 p-3">
-              <pre className="overflow-x-auto text-xs text-gray-800">
-                <code>{watch("title") || "<p>제목이 비어있습니다.</p>"}</code>
-              </pre>
-            </div>
-          </div>
-
-          {/* Content Preview (HTML String) */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">내용 HTML</h3>
-            <div className="rounded-md border bg-gray-50 p-3">
-              <pre className="overflow-x-auto text-xs text-gray-800">
-                <code>{watch("content") || "<p>내용이 비어있습니다.</p>"}</code>
-              </pre>
-            </div>
-          </div>
-
-          <hr className="border-gray-200" />
-
-          {/* Rendered Result */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">렌더링 결과</h3>
-            <div className="space-y-4 rounded-md border p-4">
-              <div
-                className="text-2xl font-bold"
-                dangerouslySetInnerHTML={{
-                  __html: watch("title") || "<p>제목이 비어있습니다.</p>",
-                }}
-              />
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{
-                  __html: watch("content") || "<p>내용이 비어있습니다.</p>",
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* 뒤로가기 컨펌 모달 */}
+      <Modal
+        isOpen={isLeaveConfirmOpen}
+        title="그만둘까요?"
+        description="작성 중인 내용이 사라져요."
+        cancelText="계속하기"
+        confirmText="그만두기"
+        onClose={() => setIsLeaveConfirmOpen(false)}
+        onConfirm={() => {
+          setIsLeaveConfirmOpen(false);
+          // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
+          router.replace(`/community`);
+        }}
+        variant="primary"
+      />
     </form>
   );
 };
