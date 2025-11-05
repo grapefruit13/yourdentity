@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
+import { getCurrentUser } from "@/lib/auth";
 import { cn } from "@/utils/shared/cn";
 
 /**
@@ -13,6 +15,11 @@ const FloatingWriteButton = () => {
   const router = useRouter();
 
   const handleClick = () => {
+    const user = getCurrentUser();
+    if (!user) {
+      router.push(LINK_URL.LOGIN);
+      return;
+    }
     router.push("/community/write");
   };
 
