@@ -120,44 +120,16 @@ const Page = () => {
   return (
     <div className="flex min-h-full w-full flex-col px-5">
       {/* 프로필 섹션 */}
-      {isLoading || !userData ? (
-        <div className="flex flex-col bg-white px-4 pt-3 pb-4">
-          {/* 상단: 프로필 이미지 + 통계 정보 */}
-          <div className="mb-3 flex items-center justify-between">
-            {/* 프로필 이미지 스켈레톤 */}
-            <Skeleton className="h-[72px] w-[72px] rounded-full" />
-
-            {/* 통계 정보 스켈레톤 */}
-            <div className="flex gap-10">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="flex flex-col items-center gap-1">
-                  <Skeleton className="h-6 w-8" />
-                  <Skeleton className="h-4 w-12" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 닉네임 스켈레톤 */}
-          <Skeleton className="mb-1 h-6 w-24" />
-
-          {/* 자기소개 스켈레톤 */}
-          <Skeleton className="mb-3 h-4 w-full" />
-
-          {/* 프로필 편집 버튼 스켈레톤 */}
-          <Skeleton className="h-12 w-full rounded-lg" />
-        </div>
-      ) : (
-        <MyPageProfileSection
-          profileImageUrl={userData.profileImageUrl || ""}
-          nickname={userData.nickname || "-"}
-          bio={userData.bio || ""}
-          postCount={userData.certificationPosts || 0}
-          activityCount={userData.activityParticipationCount || 0}
-          points={userData.rewards || 0}
-          onEditClick={handleEditProfile}
-        />
-      )}
+      <MyPageProfileSection
+        profileImageUrl={userData?.profileImageUrl}
+        nickname={userData?.nickname}
+        bio={userData?.bio}
+        postCount={userData?.certificationPosts}
+        activityCount={userData?.activityParticipationCount}
+        points={userData?.rewards}
+        onEditClick={handleEditProfile}
+        isLoading={isLoading}
+      />
 
       {/* 탭 */}
       <MyPageTabs activeTab={activeTab} onTabChange={setActiveTab} />
