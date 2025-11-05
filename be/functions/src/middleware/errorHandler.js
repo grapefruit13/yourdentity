@@ -20,6 +20,7 @@ const errorHandler = (err, req, res, next) => {
     case "VALIDATION_ERROR":
     case "INVALID_INPUT":
     case "MISSING_REQUIRED_FIELD":
+    case "INVALID_FILE_TYPE":
       httpStatus = 400;
       if (!err.message) errorMessage = "잘못된 요청입니다";
       break;
@@ -52,6 +53,7 @@ const errorHandler = (err, req, res, next) => {
       break;
 
     case "RESOURCE_ALREADY_EXISTS":
+    case "CONFLICT":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;
@@ -64,6 +66,11 @@ const errorHandler = (err, req, res, next) => {
     case "NICKNAME_TAKEN":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 사용 중인 닉네임입니다";
+      break;
+
+    case "PARTIAL_SUCCESS":
+      httpStatus = 500;
+      if (!err.message) errorMessage = "일부 작업이 완료되지 않았습니다";
       break;
 
     case "REQUIRE_FIELDS_MISSING":
