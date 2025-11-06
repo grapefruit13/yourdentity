@@ -8,18 +8,18 @@
   /* Gill Sans는 시스템(맥) 기준 + 대체 스택 */
   --font-gill: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
 
-  /* primary */
-  --color-primary-50: #ffeff2;
-  --color-primary-100: #ffe0e9;
-  --color-primary-200: #ffc6da;
-  --color-primary-300: #ff97ba;
-  --color-primary-400: #ff5d97;
-  --color-primary-500: #ff2479;
+  /* main */
+  --color-main-50: #ffeff2;
+  --color-main-100: #ffe0e9;
+  --color-main-200: #ffc6da;
+  --color-main-300: #ff97ba;
+  --color-main-400: #ff5d97;
+  --color-main-500: #ff2479;
   /* key color 600 */
-  --color-primary-600: #ff006c;
-  --color-primary-700: #d7005b;
-  --color-primary-800: #b40055;
-  --color-primary-900: #99024f;
+  --color-main-600: #ff006c;
+  --color-main-700: #d7005b;
+  --color-main-800: #b40055;
+  --color-main-900: #99024f;
 
   /* gray */
   /* tailwind의 slate300 사용 */
@@ -52,4 +52,14 @@
 /* 마우스로 포커스된 요소의 기본 링 숨기기 (키보드 접근성 유지) */
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+/* 스크롤바 숨김 유틸리티 */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }

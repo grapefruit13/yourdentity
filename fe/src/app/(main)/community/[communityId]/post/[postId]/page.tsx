@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import CommunityDetail from "@/components/community/CommunityDetail";
-import { useGetCommunityPostDetail } from "@/hooks/community/useGetCommunityPostDetail";
+// import { useGetCommunityPostDetail } from "@/hooks/community/useGetCommunityPostDetail";
 import { CommunityPost } from "@/types/community";
 import { GETCommunityPostDetailRes } from "@/types/community/response";
 
@@ -45,6 +45,7 @@ const transformApiDataToCommunityPost = (
  * @description 커뮤니티 상세 페이지
  */
 const CommunityDetailPage = () => {
+  return null;
   const params = useParams();
   const router = useRouter();
 

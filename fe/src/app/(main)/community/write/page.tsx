@@ -431,7 +431,7 @@ const Page = () => {
           </div>
         </div>
         {/* 인증방법 */}
-        <div className="border-primary-300 bg-primary-50 flex flex-col rounded-xl border px-5 py-4">
+        <div className="border-primary-300 bg-main-50 flex flex-col rounded-xl border px-5 py-4">
           <div className="flex items-center justify-between">
             <Typography font="noto" variant="label1M" className="text-gray-800">
               인증 방법

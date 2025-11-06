@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { CommunityPost } from "@/types/community";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
 import ShareModal from "./ShareModal";
+import { CommunityPost } from "@/types/community";
 
 interface CommunityDetailProps {
   post: CommunityPost;
@@ -377,7 +377,7 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
                   isLiked ? "text-red-500" : "text-gray-600"
                 )}
               >
-                {(post?.stats.likes || 0) + (isLiked ? 1 : 0)}
+                {(post?.likesCount || 0) + (isLiked ? 1 : 0)}
               </span>
             </button>
             <div className="flex items-center gap-2">
