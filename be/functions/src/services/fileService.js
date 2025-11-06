@@ -58,17 +58,24 @@ class FileService {
         : null;
 
       if (!fileType) {
-        const textStart = fileBuffer.toString("utf8", 0, Math.min(200, fileBuffer.length)).trim();
-        if (
-          textStart.startsWith("<svg") ||
-          textStart.includes("<svg") ||
-          fileExtension === "svg" ||
-          clientMimeType === "image/svg+xml"
-        ) {
-          return {
-            isValid: true,
-            detectedMimeType: "image/svg+xml",
-          };
+        if (fileExtension === "svg" || clientMimeType === "image/svg+xml") {
+          try {
+            const textStart = fileBuffer.toString("utf8", 0, Math.min(1024, fileBuffer.length));
+            
+            const svgPattern = /<svg[\s>]/i;
+            const xmlPattern = /^\s*<\?xml/;
+            
+            if (svgPattern.test(textStart) || (xmlPattern.test(textStart) && svgPattern.test(textStart))) {
+              if (textStart.includes("http://www.w3.org/2000/svg") || svgPattern.test(textStart)) {
+                return {
+                  isValid: true,
+                  detectedMimeType: "image/svg+xml",
+                };
+              }
+            }
+          } catch (encodingError) {
+            console.error("SVG 내용 파싱 중 인코딩 오류:", encodingError);
+          }
         }
 
         return {
