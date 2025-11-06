@@ -51,7 +51,26 @@ class FileService {
         };
       }
 
+      const normalizedFilename = (filename || "").toLowerCase();
+      const lastDotIndex = normalizedFilename.lastIndexOf(".");
+      const fileExtension = lastDotIndex > 0 
+        ? normalizedFilename.substring(lastDotIndex + 1)
+        : null;
+
       if (!fileType) {
+        const textStart = fileBuffer.toString("utf8", 0, Math.min(200, fileBuffer.length)).trim();
+        if (
+          textStart.startsWith("<svg") ||
+          textStart.includes("<svg") ||
+          fileExtension === "svg" ||
+          clientMimeType === "image/svg+xml"
+        ) {
+          return {
+            isValid: true,
+            detectedMimeType: "image/svg+xml",
+          };
+        }
+
         return {
           isValid: false,
           error: "파일 타입을 확인할 수 없습니다. 지원되지 않는 파일 형식이거나 파일이 손상되었을 수 있습니다.",
@@ -60,12 +79,6 @@ class FileService {
 
       let detectedMimeType = fileType.mime;
       const detectedExtension = fileType.ext;
-
-      const normalizedFilename = (filename || "").toLowerCase();
-      const lastDotIndex = normalizedFilename.lastIndexOf(".");
-      const fileExtension = lastDotIndex > 0 
-        ? normalizedFilename.substring(lastDotIndex + 1)
-        : null;
 
       if (fileExtension === "svg" && (detectedMimeType === "application/xml" || detectedMimeType === "text/xml")) {
         detectedMimeType = "image/svg+xml";
