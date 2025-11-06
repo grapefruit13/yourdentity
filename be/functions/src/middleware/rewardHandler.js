@@ -33,7 +33,7 @@ const rewardHandler = (req, res, next) => {
 
     try {
       // RewardService를 통해 리워드 부여
-      await rewardService.grantReward(userId, actionKey, metadata);
+      await rewardService.grantActionReward(userId, actionKey, metadata);
     } catch (error) {
       // 리워드 부여 실패해도 메인 비즈니스 로직은 정상 진행
       // (에러를 throw하지 않음)
