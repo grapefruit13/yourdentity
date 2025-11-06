@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CommunityPost,
@@ -13,7 +12,7 @@ import { getTimeAgo } from "@/utils/shared/date";
 
 interface PostFeedProps {
   posts: CommunityPostListItem[];
-  onPostClick?: (post: CommunityPostListItem) => void;
+  onPostClick: (post: CommunityPostListItem) => void;
   isLoading?: boolean;
   skeletonCount?: number;
 }
@@ -24,8 +23,6 @@ const PostFeed = ({
   isLoading = false,
   skeletonCount = 3,
 }: PostFeedProps) => {
-  const router = useRouter();
-
   // 썸네일 이미지 컴포넌트 (로드 실패 시 아예 렌더링하지 않음)
   const PostThumbnail = ({ src, alt }: { src: string; alt: string }) => {
     const [hasError, setHasError] = useState(false);
@@ -33,7 +30,7 @@ const PostFeed = ({
     if (hasError) return null;
 
     return (
-      <div className="mt-2 flex-shrink-0">
+      <div className="flex-shrink-0">
         <div className="relative h-20 w-20 overflow-hidden rounded-lg bg-gray-100">
           <Image
             src={src}
@@ -67,33 +64,7 @@ const PostFeed = ({
   };
 
   const handlePostClick = (post: CommunityPostListItem) => {
-    if (onPostClick) {
-      onPostClick(post);
-    } else {
-      // CommunityPostListItem을 Schema.CommunityPost로 확장하여 communityId 추출
-      const postWithCommunity = post as CommunityPostListItem & {
-        communityId?: string;
-        communityPath?: string;
-        community?: { id?: string };
-      };
-
-      // communityId 추출: communityId > community?.id > communityPath에서 추출
-      const communityId =
-        postWithCommunity.communityId ||
-        postWithCommunity.community?.id ||
-        (postWithCommunity.communityPath
-          ? postWithCommunity.communityPath.replace("communities/", "")
-          : "");
-
-      const postId = post.id;
-      if (postId && communityId) {
-        // communityId를 쿼리 파라미터로 전달
-        router.push(`/community/post/${postId}?communityId=${communityId}`);
-      } else if (postId) {
-        // communityId가 없으면 postId만으로 라우팅
-        router.push(`/community/post/${postId}`);
-      }
-    }
+    onPostClick(post);
   };
 
   // 로딩 중일 때 스켈레톤 표시
@@ -194,9 +165,8 @@ const PostFeed = ({
                 </p>
               )}
 
-              {/* 유저 정보 및 액션 아이콘들 - 좌우 배치 */}
-              <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
-                {/* 작성자/시간 (왼쪽) */}
+              {/* 작성자/시간 */}
+              <div className="mb-3 text-xs text-gray-500">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">
                     {post.author || "(알 수 없는 사용자)"}
@@ -204,56 +174,60 @@ const PostFeed = ({
                   <span>•</span>
                   {post.createdAt && <span>{getTimeAgo(post.createdAt)}</span>}
                 </div>
-
-                {/* 액션 아이콘들 (오른쪽) */}
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    <svg
-                      className="h-4 w-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                    <span className="text-xs text-gray-400">
-                      {post.likesCount}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <svg
-                      className="h-4 w-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                    <span className="text-xs text-gray-400">
-                      {post.commentsCount}
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* 썸네일 이미지 */}
-            {post.preview?.thumbnail?.url && (
-              <PostThumbnail
-                src={post.preview.thumbnail.url}
-                alt={post.title || ""}
-              />
-            )}
+            {/* 우측 영역 - 썸네일 및 좋아요/코멘트 */}
+            <div className="mb-3 flex flex-col items-end justify-between">
+              {/* 썸네일 이미지 - 우상단 */}
+              <div className="flex justify-end">
+                {post.preview?.thumbnail?.url && (
+                  <PostThumbnail
+                    src={post.preview.thumbnail.url}
+                    alt={post.title || ""}
+                  />
+                )}
+              </div>
+              {/* 액션 아이콘들 - 우하단 고정 */}
+              <div className="flex gap-4">
+                <div className="flex items-center gap-1">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                  <span className="text-xs text-gray-400">
+                    {post.likesCount}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <span className="text-xs text-gray-400">
+                    {post.commentsCount}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ))}
