@@ -10,12 +10,12 @@ const {admin} = require("../config/database");
 - 1.5초, 150배치 : 300명 문제X
 - 1.5초, 300배치 : 300명 문제X
 - 1.5초, 500배치 : 500명 문제X
-- 1초, 500배치 : 500명 문제X
+- 1초, 500배치 : 500명 문제X (한번에 500명을 진행하는 경우 속도가 느려지는 느낌이 있음)
 ※ 문서상 초당 평균 3번의 요청, 실제로는 15분 동안 2700번 api 호출
 -> 유스보이스 사용자가 최대 3,000명 이라고 가정하면 1초에 1000배치로 처리 가능 (3000명을 넘어갈까...?)
  */
 const DELAY_MS = 1200; // 지연시간
-const BATCH_SIZE = 500; // 배치 사이즈
+const BATCH_SIZE = 350; // 배치 사이즈
 
 class NotionUserService {
 
@@ -104,7 +104,7 @@ async syncUserAccounts() {
           "상태": user.status
             ? { select: { name: user.status } }
             : { select: { name: "데이터 없음" } },
-          "역할": { select: { name: user.role || "user" } },
+          //"역할": { select: { name: user.role || "user" } },
           "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
           "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
           "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
@@ -356,7 +356,7 @@ async syncAllUserAccounts() {
             "상태": user.status
                ? { select: { name: user.status } }
                : { select: { name: "데이터 없음" } },
-            "역할": { select: { name: user.role || "user" } },
+            //"역할": { select: { name: user.role || "user" } }, 
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
@@ -1157,6 +1157,7 @@ async syncSelectedUsers() {
               createdCount++;
             }
 
+
             backedUpCount++;
             return { success: true, userId: userId || "unknown" };
           } catch (error) {
@@ -1168,6 +1169,8 @@ async syncSelectedUsers() {
               error: error.message
             });
             console.error(`[백업 실패] 페이지 ${sourcePage.id} (사용자ID: ${userId}):`, error.message);
+            
+            
             return { success: false, userId, error: error.message };
           }
         });
@@ -1203,274 +1206,6 @@ async syncSelectedUsers() {
    * notionUserAccountBackupDB의 모든 데이터를 조회하여 Firebase에 업데이트
    * @return {Promise<{syncedCount: number, skippedCount: number, validateErrorCount: number}>}
    */
-  async syncSelectedUsersFromBackup() {
-    let hasMore = true;
-    let startCursor = undefined;
-    let syncedCount = 0;
-    let skippedCount = 0;
-    let failedCount = 0;
-    const syncedUserIds = [];
-    const failedUserIds = [];
-    let validateErrorCount = 0;
-
-    console.log('=== 백업 DB에서 전체 회원 복원 시작 ===');
-
-    // 백업 DB에서 모든 데이터 조회 (필터 없음)
-    while (hasMore) {
-      const notionResponse = await fetch(`https://api.notion.com/v1/databases/${this.notionUserAccountBackupDB}/query`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          page_size: 100,
-          start_cursor: startCursor,
-        }),
-      });
-
-      const data = await notionResponse.json();
-      const pages = data.results || [];
-
-      // 각 페이지(회원)에 대해 Firebase 업데이트
-      for (const page of pages) {
-        const pageId = page.id;
-        const props = page.properties;
-
-        const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text;
-        
-        if (!userId) {
-          console.warn(`[WARN] 사용자ID가 없는 노션 페이지: ${pageId}`);
-          skippedCount++;
-          failedUserIds.push("unknown");
-          continue;
-        }
-
-        // Firebase users 컬렉션에서 해당 사용자 찾기
-        const userRef = db.collection("users").doc(userId);
-        const userDoc = await userRef.get();
-
-        if (!userDoc.exists) {
-          console.warn(`[WARN] Firebase에 ${userId} 사용자가 존재하지 않음`);
-          skippedCount++;
-          failedUserIds.push(userId);
-          continue;
-        }
-
-        // 노션 필드에서 데이터 추출 (syncSelectedUsers와 동일한 로직)
-        const nickname = props["기본 닉네임"]?.title?.[0]?.plain_text || "";
-        const name = props["사용자 실명"]?.rich_text?.[0]?.plain_text || "";
-        
-        // 프로필 사진 URL 추출 (files 타입)
-        let profileImageUrl = "";
-        if (props["프로필 사진"]?.files && props["프로필 사진"].files.length > 0) {
-          const file = props["프로필 사진"].files[0];
-          profileImageUrl = file.external?.url || file.file?.url || "";
-        }
-
-        // 상태 매핑
-        const statusSelect = props["상태"]?.select?.name;
-        let status = undefined;
-        if (statusSelect) {
-          if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
-            status = statusSelect;
-          } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
-            status = statusSelect === "대기" ? "pending" : 
-                     statusSelect === "활동" ? "active" : "suspended";
-          }
-        }
-
-        const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
-        const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
-                          (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
-        const email = props["이메일"]?.rich_text?.[0]?.plain_text || "";
-
-        // 날짜 필드 추출
-        const createdAtDate = props["가입완료 일시"]?.date?.start || null;
-        const lastLoginDate = props["최근 앱 활동 일시"]?.date?.start || 
-                             props["앱 첫 로그인"]?.date?.start || null;
-
-        // 가입 방법 매핑
-        const authTypeSelect = props["가입 방법"]?.select?.name || "";
-
-        // Push 광고 수신 여부
-        const pushAgreeSelect = props["Push 광고 수신 여부"]?.select?.name || "";
-        let pushTermsAgreed = undefined;
-        if (pushAgreeSelect === "동의" || pushAgreeSelect === "true") {
-          pushTermsAgreed = true;
-        } else if (pushAgreeSelect === "거부" || pushAgreeSelect === "false") {
-          pushTermsAgreed = false;
-        }
-
-        // 성별 매핑
-        const genderSelect = props["성별"]?.select?.name || "";
-        let gender = undefined;
-        if (genderSelect === "남성" || genderSelect === "male") {
-          gender = "male";
-        } else if (genderSelect === "여성" || genderSelect === "female") {
-          gender = "female";
-        }
-
-        // 자격정지 관련 필드
-        const suspensionStartAt = props["자격정지 기간(시작)"]?.date?.start || null;
-        const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
-        const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
-
-        // 업데이트할 데이터 객체 생성
-        const updateData = {};
-        
-        if (nickname) updateData.nickname = nickname;
-        if (name) updateData.name = name;
-        if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-        if (status) updateData.status = status;
-        if (phoneNumber) updateData.phoneNumber = phoneNumber;
-        if (birthDate) updateData.birthDate = birthDate;
-        if (email) updateData.email = email;
-        if (pushTermsAgreed !== undefined) updateData.pushTermsAgreed = pushTermsAgreed;
-        if (gender) updateData.gender = gender;
-        
-        // 날짜 필드 처리
-        if (createdAtDate) {
-          updateData.createdAt = createdAtDate;
-        }
-        if (lastLoginDate) {
-          updateData.lastLogin = lastLoginDate;
-        }
-
-        // 자격정지 필드 처리
-        if (suspensionReason) updateData.suspensionReason = suspensionReason;
-        if (suspensionStartAt) {
-          updateData.suspensionStartAt = suspensionStartAt;
-        }
-        if (suspensionEndAt) {
-          updateData.suspensionEndAt = suspensionEndAt;
-        }
-
-        // lastUpdated 업데이트
-        const now = new Date();
-        updateData.lastUpdated = now;
-
-        // 자격정지 기간 검증
-        if (!suspensionStartAt && suspensionEndAt) {
-          const endDate = new Date(suspensionEndAt);
-          const isPermanentSuspension = endDate.getFullYear() === 9999 && 
-                                       endDate.getMonth() === 11 &&
-                                       endDate.getDate() === 31;
-                                       
-          if (!isPermanentSuspension) {
-            console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
-            validateErrorCount++;
-            failedUserIds.push(userId);
-            continue;
-          }
-        }
-
-        // Firebase 업데이트 실행
-        await userRef.update(updateData);
-
-        console.log(`[SUCCESS] ${userId} (${name || nickname}) 백업 DB에서 복원 완료`);
-
-        syncedCount++;
-        syncedUserIds.push(userId);
-      }
-
-      // 다음 페이지가 있으면 cursor 갱신
-      hasMore = data.has_more;
-      startCursor = data.next_cursor;
-    }
-
-    console.log(`백업 DB에서 전체 회원 복원 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
-
-    try {
-      const logRef = db.collection("adminLogs").doc();
-      await logRef.set({
-        adminId: "Notion 관리자",
-        action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
-        targetId: "",
-        timestamp: new Date(),
-        metadata: {
-          syncedCount: syncedCount,
-          failedCount: skippedCount + validateErrorCount,
-          total: syncedCount + skippedCount + validateErrorCount,
-          syncedUserIds: syncedUserIds,
-          failedUserIds: failedUserIds,
-          source: "backup" // 백업 DB에서 복원했음을 표시
-        }
-      });
-      console.log(`[adminLogs] 백업 DB 복원 이력 저장 완료: ${syncedCount}명 성공, ${skippedCount + validateErrorCount}명 실패`);
-    } catch (logError) {
-      console.error("[adminLogs] 로그 저장 실패:", logError);
-    }
-
-    return { syncedCount, skippedCount, validateErrorCount };
-  }
-
-
-
-
-/**
-   * 테스트 사용자 대량 생성
-   * @param {number} count - 생성할 사용자 수
-   * @return {Promise<{created: number, failed: number, users: Array, errors?: Array}>}
-   */
-async createTestUsers(count) {
-  if (!count || count < 1 || count > 100) {
-    const e = new Error("생성할 사용자 수는 1~100 사이여야 합니다");
-    e.code = "BAD_REQUEST";
-    throw e;
-  }
-
-  const createdUsers = [];
-  const errors = [];
-
-  for (let i = 0; i < count; i++) {
-    try {
-      // UUID v4 생성
-      const uuid = crypto.randomUUID();
-      const uid = `dev-user-${uuid}`;
-      const email = `${uid}@dev.example.com`;
-
-      // Firebase Auth 사용자 생성
-      const userRecord = await admin.auth().createUser({
-        uid: uid,
-        email: email,
-        displayName: `Dev User ${uuid}`,
-        emailVerified: true
-      });
-
-      createdUsers.push({
-        uid: uid,
-        email: email,
-        displayName: userRecord.displayName
-      });
-
-      // Auth Trigger가 Firestore 문서를 생성할 시간을 주기 위해 약간의 지연
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (error) {
-      errors.push({
-        index: i,
-        error: error.message
-      });
-      console.error(`사용자 ${i + 1}번 생성 실패:`, error.message);
-    }
-  }
-
-  return {
-    created: createdUsers.length,
-    failed: errors.length,
-    users: createdUsers,
-    ...(errors.length > 0 && { errors })
-  };
-}
-
-
-
-  /**
-   * 백업 DB에서 선택된 데이터를 기반으로 Firebase 업데이트
-   * notionUserAccountBackupDB에서 "선택" 필드가 체크된 데이터를 조회하여 Firebase에 업데이트
-   * @return {Promise<{syncedCount: number, skippedCount: number, validateErrorCount: number}>}
-   */
   // async syncSelectedUsersFromBackup() {
   //   let hasMore = true;
   //   let startCursor = undefined;
@@ -1481,9 +1216,9 @@ async createTestUsers(count) {
   //   const failedUserIds = [];
   //   let validateErrorCount = 0;
 
-  //   console.log('=== 백업 DB에서 선택된 회원 동기화 시작 ===');
+  //   console.log('=== 백업 DB에서 전체 회원 복원 시작 ===');
 
-  //   // 백업 DB에서 "선택" 필드가 체크된 데이터만 조회
+  //   // 백업 DB에서 모든 데이터 조회 (필터 없음)
   //   while (hasMore) {
   //     const notionResponse = await fetch(`https://api.notion.com/v1/databases/${this.notionUserAccountBackupDB}/query`, {
   //       method: "POST",
@@ -1493,10 +1228,6 @@ async createTestUsers(count) {
   //         "Content-Type": "application/json",
   //       },
   //       body: JSON.stringify({
-  //         filter: {
-  //           property: "선택",
-  //           checkbox: { equals: true },
-  //         },
   //         page_size: 100,
   //         start_cursor: startCursor,
   //       }),
@@ -1643,23 +1374,6 @@ async createTestUsers(count) {
 
   //       console.log(`[SUCCESS] ${userId} (${name || nickname}) 백업 DB에서 복원 완료`);
 
-  //       // 백업 DB의 "선택" 체크박스 해제 (동기화 후 선택 상태 해제)
-  //       try {
-  //         await this.notion.pages.update({
-  //           page_id: pageId,
-  //           properties: {
-  //             "선택": {
-  //               checkbox: false
-  //             },
-  //             "백업 시간": {
-  //               date: { start: props["백업 시간"]?.date?.start || now.toISOString() }
-  //             }
-  //           },
-  //         });
-  //       } catch (notionUpdateError) {
-  //         console.warn(`[WARN] 백업 DB 페이지 ${pageId} 업데이트 실패:`, notionUpdateError.message);
-  //       }
-
   //       syncedCount++;
   //       syncedUserIds.push(userId);
   //     }
@@ -1669,7 +1383,7 @@ async createTestUsers(count) {
   //     startCursor = data.next_cursor;
   //   }
 
-  //   console.log(`백업 DB에서 선택된 회원 동기화 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
+  //   console.log(`백업 DB에서 전체 회원 복원 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
 
   //   try {
   //     const logRef = db.collection("adminLogs").doc();
@@ -1694,6 +1408,351 @@ async createTestUsers(count) {
 
   //   return { syncedCount, skippedCount, validateErrorCount };
   // }
+  /**
+   * 백업 DB에서 전체 데이터를 기반으로 Firebase 업데이트
+   * notionUserAccountBackupDB의 모든 데이터를 조회하여 Firebase에 업데이트
+   * @return {Promise<{syncedCount: number, skippedCount: number, validateErrorCount: number}>}
+   */
+  async syncSelectedUsersFromBackup() {
+    let hasMore = true;
+    let startCursor = undefined;
+    let syncedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+    const syncedUserIds = [];
+    const failedUserIds = [];
+    let validateErrorCount = 0;
+
+    console.log('=== 백업 DB에서 전체 회원 복원 시작 ===');
+
+    // 1. 먼저 모든 페이지를 수집
+    const allPages = [];
+    while (hasMore) {
+      const notionResponse = await fetch(`https://api.notion.com/v1/databases/${this.notionUserAccountBackupDB}/query`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          page_size: 100,
+          start_cursor: startCursor,
+        }),
+      });
+
+      const data = await notionResponse.json();
+      const pages = data.results || [];
+      allPages.push(...pages);
+
+      hasMore = data.has_more;
+      startCursor = data.next_cursor;
+    }
+
+    console.log(`백업 DB에서 총 ${allPages.length}개의 페이지를 가져왔습니다.`);
+
+    // 2. 배치로 나누어 처리
+    for (let i = 0; i < allPages.length; i += BATCH_SIZE) {
+      const batch = allPages.slice(i, i + BATCH_SIZE);
+      console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allPages.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, allPages.length)}번째)`);
+
+      // 배치 내에서 병렬 처리
+      const batchPromises = batch.map(async (page) => {
+        try {
+          const pageId = page.id;
+          const props = page.properties;
+
+          const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text;
+          
+          if (!userId) {
+            console.warn(`[WARN] 사용자ID가 없는 노션 페이지: ${pageId}`);
+            skippedCount++;
+            failedUserIds.push("unknown");
+            return { success: false, userId: "unknown", reason: "no_user_id" };
+          }
+
+          // Firebase users 컬렉션에서 해당 사용자 찾기
+          const userRef = db.collection("users").doc(userId);
+          const userDoc = await userRef.get();
+
+          if (!userDoc.exists) {
+
+            if (pageId) {
+              try {
+                await this.notion.pages.update({
+                  page_id: pageId,
+                  properties: {
+                    "백업 결과": {
+                      select: { name: "실패" }
+                    }
+                  }
+                });
+              } catch (updateError) {
+                console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
+              }
+            }
+
+
+            console.warn(`[WARN] Firebase에 ${userId} 사용자가 존재하지 않음`);
+            skippedCount++;
+            failedUserIds.push(userId);
+            return { success: false, userId, reason: "not_found_in_firebase" };
+          }
+
+          // 노션 필드에서 데이터 추출 (syncSelectedUsers와 동일한 로직)
+          const nickname = props["기본 닉네임"]?.title?.[0]?.plain_text || "";
+          const name = props["사용자 실명"]?.rich_text?.[0]?.plain_text || "";
+          
+          // 프로필 사진 URL 추출 (files 타입)
+          let profileImageUrl = "";
+          if (props["프로필 사진"]?.files && props["프로필 사진"].files.length > 0) {
+            const file = props["프로필 사진"].files[0];
+            profileImageUrl = file.external?.url || file.file?.url || "";
+          }
+
+          // 상태 매핑
+          const statusSelect = props["상태"]?.select?.name;
+          let status = undefined;
+          if (statusSelect) {
+            if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
+              status = statusSelect;
+            } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
+              status = statusSelect === "대기" ? "pending" : 
+                       statusSelect === "활동" ? "active" : "suspended";
+            }
+          }
+
+          const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
+          const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
+                            (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
+          const email = props["이메일"]?.rich_text?.[0]?.plain_text || "";
+
+          // 날짜 필드 추출
+          const createdAtDate = props["가입완료 일시"]?.date?.start || null;
+          const lastLoginDate = props["최근 앱 활동 일시"]?.date?.start || 
+                               props["앱 첫 로그인"]?.date?.start || null;
+
+          // 가입 방법 매핑
+          const authTypeSelect = props["가입 방법"]?.select?.name || "";
+
+          // Push 광고 수신 여부
+          const pushAgreeSelect = props["Push 광고 수신 여부"]?.select?.name || "";
+          let pushTermsAgreed = undefined;
+          if (pushAgreeSelect === "동의" || pushAgreeSelect === "true") {
+            pushTermsAgreed = true;
+          } else if (pushAgreeSelect === "거부" || pushAgreeSelect === "false") {
+            pushTermsAgreed = false;
+          }
+
+          // 성별 매핑
+          const genderSelect = props["성별"]?.select?.name || "";
+          let gender = undefined;
+          if (genderSelect === "남성" || genderSelect === "male") {
+            gender = "male";
+          } else if (genderSelect === "여성" || genderSelect === "female") {
+            gender = "female";
+          }
+
+          // 자격정지 관련 필드
+          const suspensionStartAt = props["자격정지 기간(시작)"]?.date?.start || null;
+          const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
+          const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
+
+          // 업데이트할 데이터 객체 생성
+          const updateData = {};
+          
+          if (nickname) updateData.nickname = nickname;
+          if (name) updateData.name = name;
+          if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
+          if (status) updateData.status = status;
+          if (phoneNumber) updateData.phoneNumber = phoneNumber;
+          if (birthDate) updateData.birthDate = birthDate;
+          if (email) updateData.email = email;
+          if (pushTermsAgreed !== undefined) updateData.pushTermsAgreed = pushTermsAgreed;
+          if (gender) updateData.gender = gender;
+          
+          // 날짜 필드 처리
+          if (createdAtDate) {
+            updateData.createdAt = createdAtDate;
+          }
+          if (lastLoginDate) {
+            updateData.lastLogin = lastLoginDate;
+          }
+
+          // 자격정지 필드 처리
+          if (suspensionReason) updateData.suspensionReason = suspensionReason;
+          if (suspensionStartAt) {
+            updateData.suspensionStartAt = suspensionStartAt;
+          }
+          if (suspensionEndAt) {
+            updateData.suspensionEndAt = suspensionEndAt;
+          }
+
+          // lastUpdated 업데이트
+          const now = new Date();
+          updateData.lastUpdated = now;
+
+          // 자격정지 기간 검증
+          if (!suspensionStartAt && suspensionEndAt) {
+            const endDate = new Date(suspensionEndAt);
+            const isPermanentSuspension = endDate.getFullYear() === 9999 && 
+                                         endDate.getMonth() === 11 &&
+                                         endDate.getDate() === 31;
+                                                  
+            if (!isPermanentSuspension) {
+              console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
+              validateErrorCount++;
+              failedUserIds.push(userId);
+
+
+              if (pageId) {
+                try {
+                  await this.notion.pages.update({
+                    page_id: pageId,
+                    properties: {
+                      "백업 결과": {
+                        select: { name: "실패" }
+                      }
+                    }
+                  });
+                } catch (updateError) {
+                  console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
+                }
+              }
+
+              return { success: false, userId, reason: "validation_error" };
+            }
+          }
+
+          // Firebase 업데이트 실행
+          await userRef.update(updateData);
+
+
+          if (pageId) {
+            try {
+              await this.notion.pages.update({
+                page_id: pageId,
+                properties: {
+                  "백업 결과": {
+                    select: { name: "성공" }
+                  }
+                }
+              });
+            } catch (updateError) {
+              console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
+            }
+          }
+
+          syncedCount++;
+          syncedUserIds.push(userId);
+
+          return { success: true, userId };
+        } catch (error) {
+          failedCount++;
+          const userId = page.properties["사용자ID"]?.rich_text?.[0]?.plain_text || "unknown";
+          failedUserIds.push(userId);
+          console.error(`사용자 ${userId} 처리 실패:`, error.message);
+          return { success: false, userId, error: error.message };
+        }
+      });
+
+      // 배치 결과 처리
+      const batchResults = await Promise.all(batchPromises);
+      const batchSuccess = batchResults.filter(r => r.success).length;
+      const batchFailed = batchResults.filter(r => !r.success).length;
+
+      console.log(`배치 완료: 성공 ${batchSuccess}명, 실패 ${batchFailed}명 (총 진행률: ${syncedCount + skippedCount + validateErrorCount + failedCount}/${allPages.length})`);
+
+      // 마지막 배치가 아니면 지연
+      if (i + BATCH_SIZE < allPages.length) {
+        console.log(`${DELAY_MS/1000}초 대기 중...`);
+        await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+      }
+    }
+
+    console.log(`백업 DB에서 전체 회원 복원 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
+
+    try {
+      const logRef = db.collection("adminLogs").doc();
+      await logRef.set({
+        adminId: "Notion 관리자",
+        action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
+        targetId: "",
+        timestamp: new Date(),
+        metadata: {
+          syncedCount: syncedCount,
+          failedCount: skippedCount + validateErrorCount,
+          total: syncedCount + skippedCount + validateErrorCount,
+          syncedUserIds: syncedUserIds,
+          failedUserIds: failedUserIds,
+        }
+      });
+      console.log(`[adminLogs] 백업 DB 복원 이력 저장 완료: ${syncedCount}명 성공, ${skippedCount + validateErrorCount}명 실패`);
+    } catch (logError) {
+      console.error("[adminLogs] 로그 저장 실패:", logError);
+    }
+
+    return { syncedCount, skippedCount, validateErrorCount };
+  }
+
+
+
+/**
+   * 테스트 사용자 대량 생성
+   * @param {number} count - 생성할 사용자 수
+   * @return {Promise<{created: number, failed: number, users: Array, errors?: Array}>}
+   */
+async createTestUsers(count) {
+  if (!count || count < 1 || count > 100) {
+    const e = new Error("생성할 사용자 수는 1~100 사이여야 합니다");
+    e.code = "BAD_REQUEST";
+    throw e;
+  }
+
+  const createdUsers = [];
+  const errors = [];
+
+  for (let i = 0; i < count; i++) {
+    try {
+      // UUID v4 생성
+      const uuid = crypto.randomUUID();
+      const uid = `dev-user-${uuid}`;
+      const email = `${uid}@dev.example.com`;
+
+      // Firebase Auth 사용자 생성
+      const userRecord = await admin.auth().createUser({
+        uid: uid,
+        email: email,
+        displayName: `Dev User ${uuid}`,
+        emailVerified: true
+      });
+
+      createdUsers.push({
+        uid: uid,
+        email: email,
+        displayName: userRecord.displayName
+      });
+
+      // Auth Trigger가 Firestore 문서를 생성할 시간을 주기 위해 약간의 지연
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      errors.push({
+        index: i,
+        error: error.message
+      });
+      console.error(`사용자 ${i + 1}번 생성 실패:`, error.message);
+    }
+  }
+
+  return {
+    created: createdUsers.length,
+    failed: errors.length,
+    users: createdUsers,
+    ...(errors.length > 0 && { errors })
+  };
+}
+
+
 
 
 
