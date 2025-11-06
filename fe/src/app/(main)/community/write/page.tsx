@@ -10,7 +10,7 @@ import {
   postFilesUploadMultiple,
 } from "@/api/generated/files-api";
 import ButtonBase from "@/components/shared/base/button-base";
-import TextEditor from "@/components/shared/text-editor";
+import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import Modal from "@/components/shared/ui/modal";
@@ -25,6 +25,59 @@ type WriteFormValues = {
 };
 
 const MAX_FILES = 5;
+
+/**
+ * content HTML의 a[data-file-id]를 응답 fileUrl로 교체하고 data 속성을 제거
+ */
+const replaceEditorFileHrefWithUploadedUrls = (
+  html: string,
+  byIdToUrl: Map<string, string>
+) => {
+  if (!html) return html;
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  container
+    .querySelectorAll<HTMLAnchorElement>("a[data-file-id]")
+    .forEach((a) => {
+      const clientId = a.getAttribute("data-file-id") || "";
+      const url = byIdToUrl.get(clientId);
+      if (url) {
+        a.setAttribute("href", url);
+        a.removeAttribute("data-file-id");
+      }
+    });
+  return container.innerHTML;
+};
+
+/**
+ * content HTML의 img[data-client-id]를 응답 fileUrl로 교체하고 data 속성을 제거
+ */
+const replaceEditorImageSrcWithUploadedUrls = (
+  html: string,
+  byIdToUrl: Map<string, string>
+) => {
+  if (!html) return html;
+  if (byIdToUrl.size === 0) return html; // 매핑이 없으면 그대로 반환
+
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const images = container.querySelectorAll<HTMLImageElement>(
+    "img[data-client-id]"
+  );
+
+  images.forEach((img) => {
+    const clientId = img.getAttribute("data-client-id");
+    if (!clientId) return;
+
+    const url = byIdToUrl.get(clientId);
+    if (url) {
+      img.setAttribute("src", url);
+      img.removeAttribute("data-client-id");
+    }
+  });
+
+  return container.innerHTML;
+};
 
 /**
  * @description 커뮤니티 글 작성 페이지
@@ -52,7 +105,6 @@ const Page = () => {
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
   const allowLeaveCountRef = useRef(0);
 
-  const [attachFiles, setAttachFiles] = useState<File[]>([]);
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
   const [fileQueue, setFileQueue] = useState<
     Array<{ clientId: string; file: File }>
@@ -77,49 +129,39 @@ const Page = () => {
     return Array.from(map.values());
   };
 
-  /**
-   * 상한선만큼 잘라 반환
-   * @param files 파일 배열
-   * @param max 최대 개수(기본 5)
-   * @returns 앞에서부터 최대 max개만 포함한 새 배열
-   */
-  const takeMax = (files: File[], max = MAX_FILES) => files.slice(0, max);
-
   // 이미지 파일은 TextEditor에서 업로드 콜백을 통해 즉시 처리합니다.
 
   /**
    * 이미지 선택 시 clientId를 발급/등록하고 반환 (즉시 업로드는 하지 않음)
    */
-  const registerImage = useCallback(
-    (file: File): string => {
-      if (imageQueue.length >= MAX_FILES) {
+  const registerImage = useCallback((file: File): string => {
+    const clientId = crypto.randomUUID();
+    setImageQueue((prev) => {
+      if (prev.length >= MAX_FILES) {
         alert(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
-        return "";
+        return prev;
       }
-      const clientId = crypto.randomUUID();
-      setImageQueue((prev) => [...prev, { clientId, file }]);
-      return clientId;
-    },
-    [imageQueue.length]
-  );
+      return [...prev, { clientId, file }];
+    });
+    return clientId;
+  }, []);
 
   /**
-   * 단일 일반 파일 추가 (clientId 발급 후 큐/목록에 등록)
+   * 단일 일반 파일 추가 (clientId 발급 후 큐에 등록)
    */
-  const addAttachFile = useCallback(
-    (file: File): string => {
-      const merged = dedupeFiles([...attachFiles, file]);
+  const addAttachFile = useCallback((file: File): string => {
+    const clientId = crypto.randomUUID();
+    setFileQueue((prev) => {
+      // 중복 체크
+      const merged = dedupeFiles([...prev.map((item) => item.file), file]);
       if (merged.length > MAX_FILES) {
         alert(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
-        return "";
+        return prev;
       }
-      const clientId = crypto.randomUUID();
-      setAttachFiles(takeMax(merged));
-      setFileQueue((prev) => [...prev, { clientId, file }]);
-      return clientId;
-    },
-    [attachFiles]
-  );
+      return [...prev, { clientId, file }];
+    });
+    return clientId;
+  }, []);
 
   /**
    * 파일 다건 업로드
@@ -149,7 +191,8 @@ const Page = () => {
 
     const res = await postFilesUploadMultiple(formData);
 
-    const items = (res as any)?.data?.data?.files ?? [];
+    // API 응답 구조: res.data.files (res.data.data.files가 아님!)
+    const items = (res as any)?.data?.files ?? [];
     const byIdToPath = new Map<string, string>();
     const byIdToUrl = new Map<string, string>();
     for (const item of items) {
@@ -159,43 +202,24 @@ const Page = () => {
       const clientId = String(original).split("__")[0] || "";
       if (clientId) {
         byIdToPath.set(clientId, data.path);
-        if (data.fileUrl) byIdToUrl.set(clientId, data.fileUrl);
+        // fileUrl이 없으면 path를 URL로 사용
+        const url = data.fileUrl || data.path;
+        if (url) byIdToUrl.set(clientId, url);
       }
     }
     return { byIdToPath, byIdToUrl };
   }, [fileQueue]);
 
   /**
-   * content HTML의 a[data-file-id]를 응답 fileUrl로 교체하고 data 속성을 제거
-   */
-  const replaceEditorFileHrefWithUploadedUrls = (
-    html: string,
-    byIdToUrl: Map<string, string>
-  ) => {
-    if (!html) return html;
-    const container = document.createElement("div");
-    container.innerHTML = html;
-    container
-      .querySelectorAll<HTMLAnchorElement>("a[data-file-id]")
-      .forEach((a) => {
-        const clientId = a.getAttribute("data-file-id") || "";
-        const url = byIdToUrl.get(clientId);
-        if (url) {
-          a.setAttribute("href", url);
-          a.removeAttribute("data-file-id");
-        }
-      });
-    return container.innerHTML;
-  };
-
-  /**
    * 이미지 큐를 한 번에 업로드하고 clientId 매핑을 반환
+   * @returns { byIdToPath, byIdToUrl, failedCount } - 실패한 이미지 개수 포함
    */
   const uploadQueuedImages = useCallback(async () => {
     if (!imageQueue.length)
       return {
         byIdToPath: new Map<string, string>(),
         byIdToUrl: new Map<string, string>(),
+        failedCount: 0,
       };
 
     const formData = new FormData();
@@ -208,44 +232,50 @@ const Page = () => {
 
     const res = await postFilesUploadMultiple(formData);
 
-    const items = (res as any)?.data?.data?.files ?? [];
+    // API 응답 구조: res.data.files
+    const items = (res as any)?.data?.files ?? [];
     const byIdToPath = new Map<string, string>();
     const byIdToUrl = new Map<string, string>();
+    let failedCount = 0;
+
+    // 업로드한 이미지 개수
+    const uploadedCount = imageQueue.slice(0, MAX_FILES).length;
+
+    // 응답 개수가 업로드한 개수보다 적으면 일부가 실패한 것
+    if (items.length < uploadedCount) {
+      failedCount = uploadedCount - items.length;
+    }
+
+    // 각 응답 아이템 검사
     for (const item of items) {
+      // 실제 업로드 실패만 카운트 (item.success === false)
+      if (!item?.success) {
+        failedCount += 1;
+        continue;
+      }
+
       const data = item?.data;
-      if (!item?.success || !data?.path) continue;
+      // path가 없으면 업로드 실패로 간주
+      if (!data?.path) {
+        failedCount += 1;
+        continue;
+      }
+
       const original = data.originalFileName ?? data.fileName ?? "";
+      // clientId는 파일명 앞부분에 __로 구분되어 있음
       const clientId = String(original).split("__")[0] || "";
+
+      // clientId 파싱 실패는 경고이지만 업로드 자체는 성공
       if (clientId) {
         byIdToPath.set(clientId, data.path);
-        if (data.fileUrl) byIdToUrl.set(clientId, data.fileUrl);
+        // fileUrl이 없으면 path를 URL로 사용
+        const url = data.fileUrl || data.path;
+        byIdToUrl.set(clientId, url);
       }
     }
-    return { byIdToPath, byIdToUrl };
-  }, [imageQueue]);
 
-  /**
-   * content HTML의 img[data-client-id]를 응답 fileUrl로 교체하고 data 속성을 제거
-   */
-  const replaceEditorImageSrcWithUploadedUrls = (
-    html: string,
-    byIdToUrl: Map<string, string>
-  ) => {
-    if (!html) return html;
-    const container = document.createElement("div");
-    container.innerHTML = html;
-    container
-      .querySelectorAll<HTMLImageElement>("img[data-client-id]")
-      .forEach((img) => {
-        const clientId = img.getAttribute("data-client-id") || "";
-        const url = byIdToUrl.get(clientId);
-        if (url) {
-          img.setAttribute("src", url);
-          img.removeAttribute("data-client-id");
-        }
-      });
-    return container.innerHTML;
-  };
+    return { byIdToPath, byIdToUrl, failedCount };
+  }, [imageQueue]);
 
   /**
    * 파일 경로 배열로 다건 삭제 요청
@@ -263,111 +293,150 @@ const Page = () => {
    * - 제목/내용 유효성 검사 후 첨부 파일 업로드 → 글 등록까지 수행
    * - 실패 시 업로드된 파일들 롤백 삭제
    */
-  const onSubmit = useCallback(
-    async (values: WriteFormValues) => {
-      const trimmedTitle = values.title.trim();
-      const hasContent = (() => {
-        const html = values.content || "";
-        const text = html
-          .replace(/<[^>]*>/g, "") // 태그 제거
-          .replace(/&nbsp;/g, " ") // nbsp 치환
-          .trim();
-        return text.length > 0;
-      })();
+  const onSubmit = async (values: WriteFormValues) => {
+    const trimmedTitle = values.title.trim();
+    const hasContent = (() => {
+      const html = values.content || "";
+      const text = html
+        .replace(/<[^>]*>/g, "") // 태그 제거
+        .replace(/&nbsp;/g, " ") // nbsp 치환
+        .trim();
+      return text.length > 0;
+    })();
 
-      if (!trimmedTitle) {
-        alert("제목을 입력해주세요.");
-        return;
-      }
-      if (!hasContent) {
-        alert("내용을 입력해주세요.");
-        return;
-      }
+    if (!trimmedTitle) {
+      alert("제목을 입력해주세요.");
+      return;
+    }
+    if (!hasContent) {
+      alert("내용을 입력해주세요.");
+      return;
+    }
 
-      if (imageQueue.length > MAX_FILES || attachFiles.length > MAX_FILES) {
-        alert(`이미지/파일은 각각 최대 ${MAX_FILES}개까지만 첨부할 수 있어요.`);
-        return;
-      }
+    let uploadedImagePathsLocal: string[] = [];
+    let uploadedFilePaths: string[] = [];
 
-      let uploadedImagePathsLocal: string[] = [];
-      let uploadedFilePaths: string[] = [];
+    try {
+      // 이미지 일괄 업로드 및 콘텐츠 내 src 교체
+      const {
+        byIdToPath: imgIdToPath,
+        byIdToUrl: imgIdToUrl,
+        failedCount: imageFailedCount,
+      } = await uploadQueuedImages();
 
-      try {
-        // 이미지 일괄 업로드 및 콘텐츠 내 src 교체
-        const { byIdToPath: imgIdToPath, byIdToUrl: imgIdToUrl } =
-          await uploadQueuedImages();
-        uploadedImagePathsLocal = Array.from(imgIdToPath.values());
-        let contentWithUrls = replaceEditorImageSrcWithUploadedUrls(
-          values.content,
-          imgIdToUrl
+      // 이미지 업로드 실패 확인
+      if (imageQueue.length > 0 && imageFailedCount > 0) {
+        alert(
+          `에 실패했습니다. (${imageFailedCount}개 실패) 잠시 후 다시 시도해주세요.`
         );
-        // 파일 큐 업로드 및 a[href] 교체
-        const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
-          await uploadQueuedFiles();
-        // 파일 업로드 경로는 큐 결과만 사용 (중복 업로드 방지)
-        const uploadedFilePathsSet = Array.from(fileIdToPath.values());
-        contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
-          contentWithUrls,
-          fileIdToUrl
+        return;
+      }
+
+      // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
+      if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
+        alert("이미지 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      uploadedImagePathsLocal = Array.from(imgIdToPath.values());
+      // getValues()를 사용하여 최신 content 값을 가져옴
+      const currentContent = getValues("content");
+      let contentWithUrls = replaceEditorImageSrcWithUploadedUrls(
+        currentContent,
+        imgIdToUrl
+      );
+
+      // 이미지가 있는데 src가 교체되지 않은 경우 확인
+      if (imageQueue.length > 0) {
+        const tempContainer = document.createElement("div");
+        tempContainer.innerHTML = contentWithUrls;
+        const imagesWithClientId = tempContainer.querySelectorAll(
+          "img[data-client-id]"
         );
-        setValue("content", contentWithUrls, {
-          shouldDirty: true,
-          shouldValidate: false,
-        });
-        // 첨부 리스트 업로드는 제거하고(중복 방지), 큐 업로드 결과만 사용
-        uploadedFilePaths = uploadedFilePathsSet;
-
-        // 글 작성
-        const newPostId = await new Promise<string>((resolve, reject) => {
-          const requestParam = {
-            communityId: COMMUNITY_ID,
-            data: {
-              title: trimmedTitle,
-              content: contentWithUrls,
-              category: values.category,
-              media: [
-                ...uploadedImagePathsLocal,
-                ...uploadedFilePaths,
-              ] as string[],
-            },
-          } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
-
-          mutate(requestParam, {
-            onSuccess: (res) => resolve((res as any)?.data?.id as string),
-            onError: (err) => reject(err),
-          });
-        });
-
-        alert("게시물이 등록되었습니다.");
-        // 상태 초기화
-        setAttachFiles([]);
-        setImageQueue([]);
-        setFileQueue([]);
-        setValue("title", "");
-        setValue("content", "");
-
-        // 상세 페이지로 이동
-        if (newPostId) {
-          router.replace(`/community/${COMMUNITY_ID}/post/${newPostId}`);
+        if (imagesWithClientId.length > 0) {
+          alert("이미지 URL 교체에 실패했습니다. 잠시 후 다시 시도해주세요.");
+          return;
         }
-      } catch {
-        await deleteFilesByPath([
-          ...uploadedImagePathsLocal,
-          ...uploadedFilePaths,
-        ]);
-        alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
-    },
-    [
-      mutate,
-      imageQueue,
-      attachFiles,
-      setValue,
-      uploadQueuedImages,
-      uploadQueuedFiles,
-      router,
-    ]
-  );
+
+      // 파일 큐 업로드 및 a[href] 교체
+      const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
+        await uploadQueuedFiles();
+      // 파일 업로드 경로는 큐 결과만 사용 (중복 업로드 방지)
+      const uploadedFilePathsSet = Array.from(fileIdToPath.values());
+      contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
+        contentWithUrls,
+        fileIdToUrl
+      );
+      setValue("content", contentWithUrls, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      // 첨부 리스트 업로드는 제거하고(중복 방지), 큐 업로드 결과만 사용
+      uploadedFilePaths = uploadedFilePathsSet;
+
+      // 글 작성
+      const postResponse = await new Promise<{
+        postId: string;
+        communityId: string;
+      }>((resolve, reject) => {
+        const requestParam = {
+          communityId: COMMUNITY_ID,
+          data: {
+            title: trimmedTitle,
+            content: contentWithUrls,
+            category: values.category,
+            media: [
+              ...uploadedImagePathsLocal,
+              ...uploadedFilePaths,
+            ] as string[],
+          },
+        } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
+
+        mutate(requestParam, {
+          onSuccess: (res) => {
+            const responseData = (res as any)?.data as
+              | CommunityTypes.TPOSTCommunitiesPostsByIdRes
+              | undefined;
+            const postId = responseData?.id;
+            const communityId = responseData?.communityId;
+
+            if (!postId || !communityId) {
+              reject(
+                new Error(
+                  "응답에서 postId 또는 communityId를 찾을 수 없습니다."
+                )
+              );
+              return;
+            }
+
+            resolve({ postId, communityId });
+          },
+          onError: (err) => reject(err),
+        });
+      });
+
+      alert("게시물이 등록되었습니다.");
+      // 상태 초기화
+      setImageQueue([]);
+      setFileQueue([]);
+      setValue("title", "");
+      setValue("content", "");
+
+      // 상세 페이지로 이동
+      if (postResponse.postId && postResponse.communityId) {
+        router.replace(
+          `/community/post/${postResponse.postId}?communityId=${postResponse.communityId}`
+        );
+      }
+    } catch {
+      await deleteFilesByPath([
+        ...uploadedImagePathsLocal,
+        ...uploadedFilePaths,
+      ]);
+      alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  };
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {
@@ -607,7 +676,7 @@ const Page = () => {
           </ButtonBase>
           <ButtonBase
             type="submit"
-            className="bg-primary-600 rounded-lg px-4 py-[10px] text-white active:opacity-90 disabled:opacity-50"
+            className="bg-main-600 rounded-lg px-4 py-[10px] text-white active:opacity-90 disabled:opacity-50"
             disabled={isPending || !isDirty}
           >
             <Typography font="noto" variant="body2B">
