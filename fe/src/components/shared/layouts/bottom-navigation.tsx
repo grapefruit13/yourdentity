@@ -27,14 +27,14 @@ const BottomNavigation = () => {
               src={tab.icon}
               width={28}
               height={28}
-              className={cn(isActive ? "text-primary-600" : "text-gray-400")}
+              className={cn(isActive ? "text-main-600" : "text-gray-400")}
               aria-label={tab.label}
               role="img"
             />
             <span
               className={cn(
                 "text-xs leading-none font-semibold text-gray-400",
-                isActive && "text-primary-600"
+                isActive && "text-main-600"
               )}
             >
               {tab.label}

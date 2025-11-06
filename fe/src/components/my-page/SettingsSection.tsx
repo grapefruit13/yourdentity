@@ -49,7 +49,7 @@ const SettingsItem = ({
             }}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              toggle.checked ? "bg-primary-600" : "bg-gray-300"
+              toggle.checked ? "bg-main-600" : "bg-gray-300"
             )}
             role="switch"
             aria-checked={toggle.checked}

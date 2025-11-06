@@ -164,7 +164,7 @@ const EmailLoginPage = () => {
         type="submit"
         disabled={!isLoginEnabled}
         className={cn(
-          "bg-primary-600 mt-auto w-full rounded-lg py-2 hover:cursor-pointer",
+          "bg-main-600 mt-auto w-full rounded-lg py-2 hover:cursor-pointer",
           !isLoginEnabled && "opacity-50"
         )}
       >
@@ -183,7 +183,7 @@ const EmailLoginPage = () => {
           <div className="flex gap-3 pt-2">
             <ButtonBase
               type="button"
-              className="bg-primary-600 flex-1 rounded-lg px-4 py-2 active:opacity-70"
+              className="bg-main-600 flex-1 rounded-lg px-4 py-2 active:opacity-70"
               onClick={toggleAlertDialog}
             >
               <Typography

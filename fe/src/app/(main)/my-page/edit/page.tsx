@@ -416,7 +416,7 @@ const ProfileEditPage = () => {
             <Typography
               font="noto"
               variant="body2B"
-              className="text-primary-600 mb-2"
+              className="text-main-600 mb-2"
             >
               *
             </Typography>

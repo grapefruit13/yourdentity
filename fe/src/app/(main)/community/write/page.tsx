@@ -371,7 +371,7 @@ const Page = () => {
               <Typography
                 font="noto"
                 variant="label1M"
-                className="text-primary-600"
+                className="text-main-600"
               >
                 *
               </Typography>
@@ -391,7 +391,7 @@ const Page = () => {
               <Typography
                 font="noto"
                 variant="label1M"
-                className="text-primary-600"
+                className="text-main-600"
               >
                 *
               </Typography>
@@ -417,7 +417,7 @@ const Page = () => {
               <Typography
                 font="noto"
                 variant="label1M"
-                className="text-primary-600"
+                className="text-main-600"
               >
                 *
               </Typography>
@@ -431,7 +431,7 @@ const Page = () => {
           </div>
         </div>
         {/* 인증방법 */}
-        <div className="border-primary-300 bg-main-50 flex flex-col rounded-xl border px-5 py-4">
+        <div className="border-main-300 bg-main-50 flex flex-col rounded-xl border px-5 py-4">
           <div className="flex items-center justify-between">
             <Typography font="noto" variant="label1M" className="text-gray-800">
               인증 방법
@@ -520,7 +520,7 @@ const Page = () => {
                     <span
                       className={cn(
                         "inline-block size-2 rounded-full transition-colors",
-                        checked ? "bg-primary-600" : "bg-transparent"
+                        checked ? "bg-main-600" : "bg-transparent"
                       )}
                     />
                   </span>
@@ -540,7 +540,7 @@ const Page = () => {
         {/* 하단 완료 버튼 */}
         <div className="mt-6">
           <ButtonBase
-            className="bg-primary-600 w-full rounded-lg py-[10px] text-white"
+            className="bg-main-600 w-full rounded-lg py-[10px] text-white"
             onClick={() => setIsCategorySheetOpen(false)}
           >
             완료
@@ -569,7 +569,7 @@ const Page = () => {
           </ButtonBase>
           <ButtonBase
             type="submit"
-            className="bg-primary-600 text-white disabled:opacity-50"
+            className="bg-main-600 text-white disabled:opacity-50"
             disabled={isPending || !isDirty}
           >
             <Typography font="noto" variant="body2B">
