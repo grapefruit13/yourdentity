@@ -1,10 +1,8 @@
 const { Client } = require('@notionhq/client');
 const { 
-  buildNotionHeadersFromEnv,
   getTextContent,
   getTitleValue,
   getSelectValue,
-  getMultiSelectNames,
   getDateValue,
   getCheckboxValue,
   getUrlValue,
@@ -15,6 +13,9 @@ const {
   formatNotionBlocks
 } = require('../utils/notionHelper');
 const faqService = require('./faqService');
+const FirestoreService = require('./firestoreService');
+const CommunityService = require('./communityService');
+const { db, FieldValue } = require('../config/database');
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -70,6 +71,7 @@ class ProgramService {
     const {
       NOTION_API_KEY,
       NOTION_PROGRAM_DB_ID,
+      NOTION_PROGRAM_APPLICATION_DB_ID,
     } = process.env;
 
     // 환경 변수 검증
@@ -83,6 +85,11 @@ class ProgramService {
       error.code = ERROR_CODES.MISSING_DB_ID;
       throw error;
     }
+    if (!NOTION_PROGRAM_APPLICATION_DB_ID) {
+      const error = new Error("NOTION_PROGRAM_APPLICATION_DB_ID가 필요합니다");
+      error.code = ERROR_CODES.MISSING_DB_ID;
+      throw error;
+    }
 
     // Notion 클라이언트 초기화
     this.notion = new Client({
@@ -91,6 +98,9 @@ class ProgramService {
     });
 
     this.programDataSource = NOTION_PROGRAM_DB_ID;
+    this.applicationDataSource = NOTION_PROGRAM_APPLICATION_DB_ID;
+    this.firestoreService = new FirestoreService('communities');
+    this.communityService = new CommunityService();
   }
 
   /**
@@ -210,25 +220,12 @@ class ProgramService {
       });
       const programData = this.formatProgramData(page, true);
 
-      // 프로그램 페이지 블록 내용 조회 (병렬 처리)
-      const [pageBlocks, faqList] = await Promise.allSettled([
-        this.getProgramPageBlocks(programId),
-        this.getFaqListForProgram(programData.faqRelation)
-      ]);
+      // 프로그램 페이지 블록 내용 조회
+      const pageBlocks = await this.getProgramPageBlocks(programId);
+      programData.pageContent = pageBlocks;
 
-      // 페이지 블록 내용 추가
-      if (pageBlocks.status === 'fulfilled') {
-        programData.pageContent = pageBlocks.value;
-      } else {
-        programData.pageContent = [];
-      }
-
-      // FAQ 목록 추가
-      if (faqList.status === 'fulfilled') {
-        programData.faqList = faqList.value;
-      } else {
-        programData.faqList = [];
-      }
+      // FAQ ID 목록만 추가 (상세 내용은 별도 API로 조회)
+      programData.faqList = this.getFaqListForProgram(programData.faqRelation);
 
       return programData;
 
@@ -278,9 +275,9 @@ class ProgramService {
   }
 
   /**
-   * FAQ 관계를 통한 FAQ 목록 조회
+   * FAQ 관계를 통한 FAQ 목록 조회 (ID만)
    * @param {Object} faqRelation - FAQ 관계 객체
-   * @returns {Promise<Array>} FAQ 목록
+   * @returns {Promise<Array>} FAQ ID 목록
    */
   async getFaqListForProgram(faqRelation) {
     if (!faqRelation || !faqRelation.relations || faqRelation.relations.length === 0) {
@@ -288,8 +285,10 @@ class ProgramService {
     }
 
     try {
-      const faqIds = faqRelation.relations.map(relation => relation.id);
-      return await this.getFaqListByIds(faqIds);
+      // FAQ ID 목록만 반환 (상세 내용은 별도 API로 조회)
+      return faqRelation.relations.map(relation => ({
+        id: relation.id
+      }));
     } catch (error) {
       console.warn('[ProgramService] FAQ 목록 조회 오류:', error.message);
       return [];
@@ -556,6 +555,500 @@ class ProgramService {
     
     return participants;
   }
+
+  /**
+   * 프로그램 신청 처리
+   * @param {string} programId - 프로그램 ID
+   * @param {Object} applicationData - 신청 데이터 { applicantId, nickname }
+   * @returns {Promise<Object>} 신청 결과
+   * @throws {Error} NICKNAME_DUPLICATE - 닉네임 중복
+   * @throws {Error} PROGRAM_NOT_FOUND - 프로그램을 찾을 수 없음
+   * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
+   */
+  async applyToProgram(programId, applicationData) {
+    try {
+      const { applicantId, nickname } = applicationData;
+      
+      // 1. 프로그램 존재 확인 (간단하게)
+      let program;
+      try {
+        const page = await this.notion.pages.retrieve({
+          page_id: programId
+        });
+        program = this.formatProgramData(page);
+      } catch (error) {
+        if (error.code === 'object_not_found') {
+          const notFoundError = new Error('해당 프로그램을 찾을 수 없습니다.');
+          notFoundError.code = ERROR_CODES.PROGRAM_NOT_FOUND;
+          notFoundError.statusCode = 404;
+          throw notFoundError;
+        }
+        throw error;
+      }
+
+      // 2. Community 존재 확인 및 생성
+      let community = await this.communityService.getCommunityMapping(programId);
+      if (!community) {
+        // Community가 없으면 프로그램 정보로 생성
+        community = await this.createCommunityFromProgram(programId, program);
+      }
+
+      // 3. 닉네임 중복 체크 (CommunityService 활용)
+      const isNicknameAvailable = await this.communityService.checkNicknameAvailability(programId, nickname);
+      if (!isNicknameAvailable) {
+        const error = new Error("이미 사용 중인 닉네임입니다");
+        error.code = "NICKNAME_DUPLICATE";
+        error.statusCode = 409;
+        throw error;
+      }
+
+      // 4. CommunityService를 통해 멤버 추가 (Firestore에 저장)
+      let memberResult;
+      try {
+        memberResult = await this.communityService.addMemberToCommunity(programId, applicantId, nickname);
+      } catch (memberError) {
+        if (memberError.code === 'CONFLICT') {
+          const duplicateError = new Error('이미 신청한 프로그램입니다.');
+          duplicateError.code = 'DUPLICATE_APPLICATION';
+          duplicateError.statusCode = 409;
+          throw duplicateError;
+        }
+        throw memberError;
+      }
+
+      // 5. Notion 프로그램신청자DB에 저장
+      let notionPageId = null;
+      try {
+        notionPageId = await this.saveToNotionApplication(programId, applicationData, program);
+        
+        // 6. Notion 저장 성공 시, Firestore member에 notionPageId 업데이트
+        if (notionPageId) {
+          await this.firestoreService.updateDocument(
+            `communities/${programId}/members`,
+            applicantId,
+            { notionPageId }
+          );
+        }
+      } catch (notionError) {
+        console.warn('[ProgramService] Notion 저장 실패, Firestore만 유지:', notionError.message);
+      }
+
+      return {
+        applicationId: memberResult.id,
+        programId,
+        applicantId,
+        nickname,
+        appliedAt: new Date().toISOString(),
+        notionPageId
+      };
+
+    } catch (error) {
+      console.error('[ProgramService] 프로그램 신청 오류:', error.message);
+      
+      // 이미 정의된 에러는 그대로 전달
+      if (error.code === 'NICKNAME_DUPLICATE' || 
+          error.code === ERROR_CODES.PROGRAM_NOT_FOUND) {
+        throw error;
+      }
+      
+      const serviceError = new Error(`프로그램 신청 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+
+
+  /**
+   * Firebase UID로 Notion "회원 관리" DB에서 사용자 페이지 찾기
+   * @param {string} firebaseUid - Firebase UID
+   * @returns {Promise<string|null>} Notion 페이지 ID 또는 null
+   */
+  async findUserNotionPageId(firebaseUid) {
+    try {
+      const userDbId = process.env.NOTION_USER_ACCOUNT_DATASOURCE_ID;
+      if (!userDbId) {
+        console.warn('[ProgramService] NOTION_USER_ACCOUNT_DB_ID 환경변수가 설정되지 않음');
+        return null;
+      }
+
+      // Notion "회원 관리" DB에서 사용자ID로 검색
+      const response = await this.notion.dataSources.query({
+        data_source_id: userDbId,
+        filter: {
+          property: '사용자ID',
+          rich_text: {
+            equals: firebaseUid
+          }
+        },
+        page_size: 1
+      });
+
+      if (response.results && response.results.length > 0) {
+        return response.results[0].id;
+      }
+
+      console.warn(`[ProgramService] Notion "회원 관리"에서 사용자를 찾을 수 없음: ${firebaseUid}`);
+      return null;
+    } catch (error) {
+      console.error('[ProgramService] Notion 사용자 검색 오류:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Notion 프로그램신청자DB에 저장
+   * @param {string} programId - 프로그램 ID (Notion 페이지 ID)
+   * @param {Object} applicationData - 신청 데이터
+   * @param {string} applicationData.applicantId - Firebase UID
+   * @param {string} applicationData.nickname - 참여용 닉네임
+   * @param {string} [applicationData.phoneNumber] - 참여용 전화번호
+   * @param {string} [applicationData.email] - 신청자 이메일
+   * @param {Object} [applicationData.region] - 거주 지역 { city, district }
+   * @param {string} [applicationData.currentSituation] - 현재 상황
+   * @param {string} [applicationData.applicationSource] - 신청 경로
+   * @param {string} [applicationData.applicationMotivation] - 참여 동기
+   * @param {boolean} [applicationData.canAttendEvents] - 필참 일정 확인 여부
+   * @param {Object} program - 프로그램 정보
+   * @returns {Promise<string>} Notion 페이지 ID
+   */
+  async saveToNotionApplication(programId, applicationData, program) {
+    try {
+      const { 
+        applicantId, 
+        nickname, 
+        phoneNumber, 
+        email,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents
+      } = applicationData;
+      
+      // 거주 지역 포맷팅
+      let regionText = '';
+      if (region) {
+        if (region.city && region.district) {
+          regionText = `${region.city} ${region.district}`;
+        } else if (region.city) {
+          regionText = region.city;
+        } else if (region.district) {
+          regionText = region.district;
+        }
+      }
+
+      // 참여 동기가 "직접 입력하기"인 경우와 선택지인 경우 구분
+      let motivationSelect = null;
+      let motivationDetail = '';
+      
+      if (applicationMotivation) {
+        // Notion select options에 있는 값들
+        const validOptions = [
+          '직접 입력하기',
+          '추천을 받아 관심이 생겨서',
+          '나만의 변화를 기록하고 싶어서',
+          '다른 참여자들과 교류하여 동기부여 하고 싶어서',
+          '일상을 좀 더 규칙적으로 관리하고 싶어서',
+          '새로운 습관을 만들고 싶어서'
+        ];
+        
+        if (validOptions.includes(applicationMotivation)) {
+          motivationSelect = applicationMotivation;
+        } else {
+          // 선택지에 없는 값이면 "직접 입력하기"로 설정하고 내용은 detail에 저장
+          motivationSelect = '직접 입력하기';
+          motivationDetail = applicationMotivation;
+        }
+      }
+
+      // "회원 관리" DB에서 사용자 찾기
+      const userNotionPageId = await this.findUserNotionPageId(applicantId);
+
+      const properties = {
+        '이름': {
+          title: [
+            {
+              text: {
+                content: nickname || '익명'
+              }
+            }
+          ]
+        },
+        '참여용 닉네임': {
+          rich_text: [
+            {
+              text: {
+                content: nickname || ''
+              }
+            }
+          ]
+        },
+        '프로그램명': {
+          relation: [
+            {
+              id: programId
+            }
+          ]
+        },
+        '서비스 이용약관 동의여부': {
+          checkbox: true
+        },
+        '필참 일정 확인 여부': {
+          checkbox: canAttendEvents || false
+        }
+      };
+
+      // "회원 관리" relation 추가 (사용자를 찾은 경우에만)
+      if (userNotionPageId) {
+        properties['회원 관리'] = {
+          relation: [
+            {
+              id: userNotionPageId
+            }
+          ]
+        };
+      } else {
+        console.warn(`[ProgramService] "회원 관리" relation 연결 실패: 사용자를 찾을 수 없음 (UID: ${applicantId})`);
+      }
+
+      // 선택적 필드 추가
+      if (phoneNumber) {
+        properties['참여용 전화번호'] = {
+          phone_number: phoneNumber
+        };
+      }
+
+      if (email) {
+        properties['신청자 이메일'] = {
+          email: email
+        };
+      }
+
+      if (regionText) {
+        properties['거주 지역'] = {
+          rich_text: [
+            {
+              text: {
+                content: regionText
+              }
+            }
+          ]
+        };
+      }
+
+      if (currentSituation) {
+        properties['현재 상황'] = {
+          select: {
+            name: currentSituation
+          }
+        };
+      }
+
+      if (applicationSource) {
+        properties['신청 경로'] = {
+          select: {
+            name: applicationSource
+          }
+        };
+      }
+
+      if (motivationSelect) {
+        properties['참여 동기'] = {
+          select: {
+            name: motivationSelect
+          }
+        };
+      }
+
+      if (motivationDetail) {
+        properties['참여 동기 (직접 입력)'] = {
+          rich_text: [
+            {
+              text: {
+                content: motivationDetail
+              }
+            }
+          ]
+        };
+      }
+
+      const notionData = {
+        parent: {
+          data_source_id: this.applicationDataSource,
+          type: "data_source_id"
+        },
+        properties
+      };
+
+      const response = await this.notion.pages.create(notionData);
+      return response.id;
+
+    } catch (error) {
+      console.error('[ProgramService] Notion 저장 오류:', error.message);
+      throw new Error(`Notion 신청 정보 저장에 실패했습니다: ${error.message}`);
+    }
+  }
+
+  /**
+   * 프로그램 신청 승인
+   * @param {string} programId - 프로그램 ID
+   * @param {string} applicationId - 신청 ID (Firestore member ID)
+   * @returns {Promise<Object>} 승인 결과
+   */
+  async approveApplication(programId, applicationId) {
+    try {
+      // 1. Firestore member 데이터 조회
+      const member = await this.firestoreService.getDocument(
+        `communities/${programId}/members`,
+        applicationId
+      );
+
+      if (!member) {
+        const error = new Error('신청 정보를 찾을 수 없습니다.');
+        error.code = 'NOT_FOUND';
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // 2. Firestore member의 status를 'approved'로 업데이트
+      await this.firestoreService.updateDocument(
+        `communities/${programId}/members`,
+        applicationId,
+        {
+          status: 'approved',
+          approvedAt: new Date()
+        }
+      );
+
+      // 3. Notion 페이지의 승인여부 체크박스 업데이트
+      if (member.notionPageId) {
+        try {
+          await this.notion.pages.update({
+            page_id: member.notionPageId,
+            properties: {
+              '승인여부': {
+                checkbox: true
+              }
+            }
+          });
+        } catch (notionError) {
+          console.warn('[ProgramService] Notion 업데이트 실패:', notionError.message);
+        }
+      }
+
+      return {
+        applicationId,
+        status: 'approved',
+        approvedAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[ProgramService] 신청 승인 오류:', error.message);
+      
+      // 이미 정의된 에러는 그대로 전달
+      if (error.code === 'NOT_FOUND') {
+        throw error;
+      }
+      
+      const serviceError = new Error(`신청 승인 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 프로그램 신청 승인 취소
+   * @param {string} programId - 프로그램 ID
+   * @param {string} applicationId - 신청 ID (Firestore member ID)
+   * @returns {Promise<Object>} 승인 취소 결과
+   */
+  async rejectApplication(programId, applicationId) {
+    try {
+      // 1. Firestore member 데이터 조회
+      const member = await this.firestoreService.getDocument(
+        `communities/${programId}/members`,
+        applicationId
+      );
+
+      if (!member) {
+        const error = new Error('신청 정보를 찾을 수 없습니다.');
+        error.code = 'NOT_FOUND';
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // 2. Firestore member의 status를 'rejected'로 업데이트
+      await this.firestoreService.updateDocument(
+        `communities/${programId}/members`,
+        applicationId,
+        {
+          status: 'rejected',
+          rejectedAt: new Date()
+        }
+      );
+
+      // 3. Notion 페이지의 승인여부 체크박스 업데이트
+      if (member.notionPageId) {
+        try {
+          await this.notion.pages.update({
+            page_id: member.notionPageId,
+            properties: {
+              '승인여부': {
+                checkbox: false
+              }
+            }
+          });
+        } catch (notionError) {
+          console.warn('[ProgramService] Notion 업데이트 실패:', notionError.message);
+        }
+      }
+
+      return {
+        applicationId,
+        status: 'rejected',
+        rejectedAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[ProgramService] 신청 승인 취소 오류:', error.message);
+      
+      // 이미 정의된 에러는 그대로 전달
+      if (error.code === 'NOT_FOUND') {
+        throw error;
+      }
+      
+      const serviceError = new Error(`신청 승인 취소 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 프로그램 정보로 Community 생성
+   * @param {string} programId - 프로그램 ID (Community ID)
+   * @param {Object} program - 프로그램 정보
+   * @returns {Promise<Object>} 생성된 Community 정보
+   */
+  async createCommunityFromProgram(programId, program) {
+    try {
+      const communityData = {
+        id: programId
+      };
+
+      // Community 생성
+      await this.firestoreService.setDocument('communities', programId, communityData);
+      return communityData;
+
+    } catch (error) {
+      console.error('[ProgramService] Community 생성 오류:', error.message);
+      throw new Error('Community 생성에 실패했습니다.');
+    }
+  }
+
 
 
 }

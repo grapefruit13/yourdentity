@@ -203,6 +203,155 @@ class ProgramController {
     }
   }
 
+  /**
+   * 프로그램 신청
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async applyToProgram(req, res, next) {
+    try {
+      const { programId } = req.params;
+      const { 
+        applicantId, 
+        activityNickname,
+        activityPhoneNumber,
+        email,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents
+      } = req.body;
+
+      if (!programId) {
+        const error = new Error("프로그램 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      // 필수 필드 검증
+      if (!applicantId || !activityNickname) {
+        const error = new Error("신청자 ID와 참여용 닉네임은 필수 입력 항목입니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      // 닉네임 길이 검증
+      if (activityNickname.length < 1 || activityNickname.length > 50) {
+        const error = new Error("닉네임은 1-50자 사이여야 합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const applicationData = {
+        applicantId,
+        nickname: activityNickname,
+        phoneNumber: activityPhoneNumber,
+        email,
+        region,
+        currentSituation,
+        applicationSource,
+        applicationMotivation,
+        canAttendEvents
+      };
+
+      const result = await programService.applyToProgram(programId, applicationData);
+
+      res.success({
+        message: "프로그램 신청이 완료되었습니다.",
+        data: result
+      }, 201);
+
+    } catch (error) {
+      console.error("[ProgramController] 프로그램 신청 오류:", error.message);
+      
+      // 특정 에러 코드에 대한 상태 코드 설정
+      if (error.code === 'NICKNAME_DUPLICATE') {
+        error.statusCode = 409;
+      } else if (error.code === 'DUPLICATE_APPLICATION') {
+        error.statusCode = 409;
+      } else if (error.code === 'PROGRAM_NOT_FOUND') {
+        error.statusCode = 404;
+      }
+      
+      return next(error);
+    }
+  }
+
+  /**
+   * 프로그램 신청 승인
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async approveApplication(req, res, next) {
+    try {
+      const { programId, applicationId } = req.params;
+
+      if (!programId || !applicationId) {
+        const error = new Error("프로그램 ID와 신청 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await programService.approveApplication(programId, applicationId);
+
+      res.success({
+        message: "프로그램 신청이 승인되었습니다.",
+        data: result
+      });
+
+    } catch (error) {
+      console.error("[ProgramController] 신청 승인 오류:", error.message);
+      
+      if (error.code === 'NOT_FOUND') {
+        error.statusCode = 404;
+      }
+      
+      return next(error);
+    }
+  }
+
+  /**
+   * 프로그램 신청 거부
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async rejectApplication(req, res, next) {
+    try {
+      const { programId, applicationId } = req.params;
+
+      if (!programId || !applicationId) {
+        const error = new Error("프로그램 ID와 신청 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await programService.rejectApplication(programId, applicationId);
+
+      res.success({
+        message: "프로그램 신청이 거부되었습니다.",
+        data: result
+      });
+
+    } catch (error) {
+      console.error("[ProgramController] 신청 거부 오류:", error.message);
+      
+      if (error.code === 'NOT_FOUND') {
+        error.statusCode = 404;
+      }
+      
+      return next(error);
+    }
+  }
+
 }
 
 module.exports = new ProgramController();
