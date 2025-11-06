@@ -58,7 +58,7 @@ class FileService {
         };
       }
 
-      const detectedMimeType = fileType.mime;
+      let detectedMimeType = fileType.mime;
       const detectedExtension = fileType.ext;
 
       const normalizedFilename = (filename || "").toLowerCase();
@@ -66,6 +66,10 @@ class FileService {
       const fileExtension = lastDotIndex > 0 
         ? normalizedFilename.substring(lastDotIndex + 1)
         : null;
+
+      if (fileExtension === "svg" && (detectedMimeType === "application/xml" || detectedMimeType === "text/xml")) {
+        detectedMimeType = "image/svg+xml";
+      }
 
       const normalizedDetectedMime = detectedMimeType.toLowerCase();
       const isAllowedMime = ALLOWED_MIME_TYPES.some(
