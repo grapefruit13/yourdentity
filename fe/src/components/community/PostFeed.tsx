@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  CommunityPost,
+  CommunityPostListItem,
+} from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
-import { CommunityPost } from "@/types/community";
 
 interface PostFeedProps {
-  posts: CommunityPost[];
-  onPostClick?: (post: CommunityPost) => void;
+  posts: CommunityPostListItem[];
+  onPostClick?: (post: CommunityPostListItem) => void;
   isLoading?: boolean;
   skeletonCount?: number;
 }
@@ -21,7 +26,30 @@ const PostFeed = ({
 }: PostFeedProps) => {
   const router = useRouter();
 
-  const getCategoryColor = (category: string) => {
+  // 썸네일 이미지 컴포넌트 (로드 실패 시 아예 렌더링하지 않음)
+  const PostThumbnail = ({ src, alt }: { src: string; alt: string }) => {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError) return null;
+
+    return (
+      <div className="mt-2 flex-shrink-0">
+        <div className="relative h-20 w-20 overflow-hidden rounded-lg bg-gray-100">
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            className="object-cover"
+            sizes="80px"
+            onError={() => setHasError(true)}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const getCategoryColor = (category?: string) => {
+    if (!category) return "bg-gray-100 text-gray-600";
     switch (category) {
       // CHECK: 카테고리 구분을 코드 구분으로 안하고 있어 띄어쓰기 주의가 필요... (한끗루틴, 한끗 루틴)
       case "한끗 루틴":
@@ -119,26 +147,30 @@ const PostFeed = ({
             {/* 텍스트 컨텐츠 */}
             <div className="min-w-0 flex-1">
               {/* 카테고리 태그 */}
-              <div className="mb-2">
-                <span
-                  className={cn(
-                    "inline-block rounded px-2 py-1 text-xs font-medium",
-                    getCategoryColor(post.category)
-                  )}
-                >
-                  {post.category}
-                </span>
-              </div>
+              {post.category && (
+                <div className="mb-2">
+                  <span
+                    className={cn(
+                      "inline-block rounded px-2 py-1 text-xs font-medium",
+                      getCategoryColor(post.category)
+                    )}
+                  >
+                    {post.category}
+                  </span>
+                </div>
+              )}
 
               {/* 제목 */}
               <h3 className="mb-2 line-clamp-1 text-lg font-semibold text-gray-900">
-                {post.title}
+                {post.title || ""}
               </h3>
 
               {/* 설명 (2줄 미리보기) */}
-              <p className="mb-3 line-clamp-2 text-sm text-gray-600">
-                {post.content}
-              </p>
+              {post.preview?.description && (
+                <p className="mb-3 line-clamp-2 text-sm text-gray-600">
+                  {post.preview.description}
+                </p>
+              )}
 
               {/* 유저 정보 및 액션 아이콘들 - 좌우 배치 */}
               <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
@@ -148,7 +180,7 @@ const PostFeed = ({
                     {post.author || "(알 수 없는 사용자)"}
                   </span>
                   <span>•</span>
-                  <span>{getTimeAgo(post.createdAt)}</span>
+                  {post.createdAt && <span>{getTimeAgo(post.createdAt)}</span>}
                 </div>
 
                 {/* 액션 아이콘들 (오른쪽) */}
@@ -194,16 +226,11 @@ const PostFeed = ({
             </div>
 
             {/* 썸네일 이미지 */}
-            {post.thumbnail && (
-              <div className="mt-2 flex-shrink-0">
-                <div className="h-20 w-20 overflow-hidden rounded-lg bg-gray-100">
-                  <img
-                    src={post.thumbnail}
-                    alt={post.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
+            {post.preview?.thumbnail?.url && (
+              <PostThumbnail
+                src={post.preview.thumbnail.url}
+                alt={post.title || ""}
+              />
             )}
           </div>
         </div>
