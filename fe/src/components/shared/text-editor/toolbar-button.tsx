@@ -32,7 +32,6 @@ export function ToolbarButton({
       onMouseDown={onMouseDown}
       onClick={disabled ? undefined : onClick}
       aria-label={ariaLabel}
-      tabIndex={-1}
     >
       {children}
     </Button>
