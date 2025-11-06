@@ -301,6 +301,19 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 내가 참여 중인 커뮤니티 조회 API
+   */
+  async getMyParticipatingCommunities(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const result = await userService.getMyParticipatingCommunities(uid);
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();

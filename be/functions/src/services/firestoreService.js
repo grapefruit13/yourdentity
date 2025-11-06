@@ -529,7 +529,7 @@ class FirestoreService {
     }
     
     const countSnapshot = await countQuery.count().get();
-    const totalCount = countSnapshot.data().count;
+    const totalCount = countSnapshot.data().count; 
 
     const totalPages = Math.ceil(totalCount / safeSize);
     const hasNext = safePage < totalPages - 1;
@@ -546,6 +546,77 @@ class FirestoreService {
         hasPrevious: hasPrevious,
         isFirst: safePage === 0,
         isLast: safePage === totalPages - 1,
+      },
+    };
+  }
+
+  /**
+   * Collection Group 쿼리 (count 쿼리 없이, 인덱스 문제 회피용)
+   * @param {string} collectionId - 컬렉션 ID (예: "posts")
+   * @param {Object} options - 쿼리 옵션
+   * @return {Promise<Object>} 페이지네이션 결과 (count 없음)
+   */
+  async getCollectionGroupWithoutCount(collectionId, options = {}) {
+    const {
+      size = 10,
+      orderBy = "createdAt",
+      orderDirection = "desc",
+      where = [],
+    } = options;
+
+    let query = db.collectionGroup(collectionId);
+
+    // 필터 조건 적용
+    if (where && Array.isArray(where) && where.length > 0) {
+      where.forEach((condition) => {
+        if (condition && condition.field && condition.operator && condition.value !== undefined) {
+          query = query.where(condition.field, condition.operator, condition.value);
+        }
+      });
+    }
+
+    // orderBy 적용
+    if (orderBy) {
+      const finalOrderBy = orderBy;
+      const finalOrderDirection = orderDirection || "desc";
+      query = query.orderBy(finalOrderBy, finalOrderDirection);
+    }
+
+    const safeSize = isNaN(size) ? 10 : size;
+    const snapshot = await query.limit(safeSize + 1).get();
+    const documents = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const item = {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      };
+
+      const pathSegments = doc.ref.path.split('/');
+      if (pathSegments.length >= 2 && pathSegments[0] === 'communities') {
+        item.communityId = pathSegments[1];
+      }
+
+      documents.push(item);
+    });
+
+    const hasNext = documents.length > safeSize;
+    const items = hasNext ? documents.slice(0, safeSize) : documents;
+
+    return {
+      content: items,
+      pageable: {
+        pageNumber: 0,
+        pageSize: safeSize,
+        totalElements: items.length,
+        totalPages: items.length === 0 ? 0 : 1,
+        hasNext,
+        hasPrevious: false,
+        isFirst: true,
+        isLast: !hasNext,
       },
     };
   }

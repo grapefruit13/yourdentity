@@ -783,6 +783,135 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
 
 /**
  * @swagger
+ * /users/me/participating-communities:
+ *   get:
+ *     summary: 내가 참여 중인 커뮤니티 조회
+ *     description: 로그인한 사용자가 참여 중인 커뮤니티를 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 참여 중인 커뮤니티 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     routine:
+ *                       type: object
+ *                       description: 한끗 루틴 그룹
+ *                       properties:
+ *                         label:
+ *                           type: string
+ *                           example: "한끗 루틴"
+ *                         items:
+ *                           type: array
+ *                           description: 한끗 루틴 커뮤니티 목록
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 description: 커뮤니티 ID
+ *                                 example: "CP:G7C66H69GK"
+ *                               name:
+ *                                 type: string
+ *                                 description: 커뮤니티 이름
+ *                                 example: "15일 동안 음악 일기 쓰기"
+ *                     gathering:
+ *                       type: object
+ *                       description: 월간 소모임 그룹
+ *                       properties:
+ *                         label:
+ *                           type: string
+ *                           example: "월간 소모임"
+ *                         items:
+ *                           type: array
+ *                           description: 월간 소모임 커뮤니티 목록
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 description: 커뮤니티 ID
+ *                                 example: "CP:VYTTZW33IH"
+ *                               name:
+ *                                 type: string
+ *                                 description: 커뮤니티 이름
+ *                                 example: "하루 한조각, 일상 속 퍼즐 찾기"
+ *                     tmi:
+ *                       type: object
+ *                       description: TMI 그룹
+ *                       properties:
+ *                         label:
+ *                           type: string
+ *                           example: "TMI"
+ *                         items:
+ *                           type: array
+ *                           description: TMI 커뮤니티 목록
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 description: 커뮤니티 ID
+ *                                 example: "CP:I4U3J7TM07"
+ *                               name:
+ *                                 type: string
+ *                                 description: 커뮤니티 이름
+ *                                 example: "TMI 자아탐색"
+ *             example:
+ *               status: 200
+ *               data:
+ *                 routine:
+ *                   label: "한끗 루틴"
+ *                   items:
+ *                     - id: "CP:G7C66H69GK"
+ *                       name: "15일 동안 음악 일기 쓰기"
+ *                     - id: "CP:ABC123DEF456"
+ *                       name: "플래너 작성하기"
+ *                 gathering:
+ *                   label: "월간 소모임"
+ *                   items:
+ *                     - id: "CP:VYTTZW33IH"
+ *                       name: "하루 한조각, 일상 속 퍼즐 찾기"
+ *                 tmi:
+ *                   label: "TMI"
+ *                   items:
+ *                     - id: "CP:I4U3J7TM07"
+ *                       name: "TMI 자아탐색"
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 401
+ *               message: 인증이 필요합니다
+ *               code: UNAUTHORIZED
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               status: 500
+ *               message: 내부 서버 오류가 발생했습니다
+ *               code: INTERNAL_ERROR
+ */
+router.get("/me/participating-communities", authGuard, userController.getMyParticipatingCommunities);
+
+/**
+ * @swagger
  * /users/nickname-availability:
  *   get:
  *     summary: 닉네임 가용성 확인

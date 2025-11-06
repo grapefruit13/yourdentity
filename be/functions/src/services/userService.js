@@ -511,6 +511,128 @@ class UserService {
       "내가 댓글 단 게시글 조회에 실패했습니다"
     );
   }
+
+  /**
+   * 내가 참여 중인 커뮤니티 조회 (postType별 그룹화)
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>} postType별로 그룹화된 커뮤니티 목록
+   */
+  async getMyParticipatingCommunities(userId) {
+    try {
+     
+      const tempService = new FirestoreService("temp");
+      
+      let allMembers = [];
+      let currentPage = 0;
+      const pageSize = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        try {
+          const pageResult = await tempService.getCollectionGroup("members", {
+            where: [
+              { field: "userId", operator: "==", value: userId }
+            ],
+            size: pageSize,
+            page: currentPage,
+            orderBy: "joinedAt",
+            orderDirection: "desc"
+          });
+
+          allMembers = allMembers.concat(pageResult.content || []);
+          hasMore = pageResult.pageable?.hasNext || false;
+          currentPage++;
+
+          if (currentPage >= 10) {
+            break;
+          }
+        } catch (error) {
+          
+          if (error.code === 9 || error.message.includes("FAILED_PRECONDITION") || error.message.includes("AggregateQuery")) {
+
+            const fallbackResult = await tempService.getCollectionGroupWithoutCount("members", {
+              where: [
+                { field: "userId", operator: "==", value: userId }
+              ],
+              size: 1000, 
+              orderBy: "joinedAt",
+              orderDirection: "desc"
+            });
+            allMembers = fallbackResult.content || [];
+            hasMore = false;
+          } else {
+            throw error;
+          }
+          break;
+        }
+      }
+
+      const membersResult = {
+        content: allMembers,
+        pageable: {}
+      };
+
+      const communityIds = [...new Set(
+        membersResult.content
+          .map(member => member.communityId)
+          .filter(id => id) 
+      )];
+
+      if (communityIds.length === 0) {
+        return {
+          "routine": { "label": "한끗 루틴", "items": [] },
+          "gathering": { "label": "월간 소모임", "items": [] },
+          "tmi": { "label": "TMI", "items": [] }
+        };
+      }
+
+      const chunkedIds = [];
+      for (let i = 0; i < communityIds.length; i += 10) {
+        chunkedIds.push(communityIds.slice(i, i + 10));
+      }
+
+      const communitiesChunked = await Promise.all(
+        chunkedIds.map(chunk =>
+          this.firestoreService.getCollectionWhereIn("communities", "id", chunk)
+        )
+      );
+
+      const communities = communitiesChunked.flat();
+      
+      const postTypeMapping = {
+        "ROUTINE_CERT": { key: "routine", label: "한끗 루틴" },
+        "GATHERING_REVIEW": { key: "gathering", label: "월간 소모임" },
+        "TMI": { key: "tmi", label: "TMI" }
+      };
+
+      const grouped = {
+        "routine": { "label": "한끗 루틴", "items": [] },
+        "gathering": { "label": "월간 소모임", "items": [] },
+        "tmi": { "label": "TMI", "items": [] }
+      };
+
+      communities.forEach(community => {
+        const postType = community.postType;
+        if (postType && postTypeMapping[postType]) {
+          const typeInfo = postTypeMapping[postType];
+          grouped[typeInfo.key].items.push({
+            id: community.id,
+            name: community.name
+          });
+        }
+      });
+
+      return grouped;
+    } catch (error) {
+      console.error("내가 참여 중인 커뮤니티 조회 에러:", error.message);
+      if (error.code) {
+        throw error;
+      }
+      const e = new Error("내가 참여 중인 커뮤니티 조회에 실패했습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
+    }
+  }
 }
 
 module.exports = UserService;
