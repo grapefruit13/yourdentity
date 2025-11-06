@@ -8,6 +8,7 @@ const {admin} = require("./src/config/database");
 
 // 미들웨어
 const responseHandler = require("./src/middleware/responseHandler");
+const rewardHandler = require("./src/middleware/rewardHandler");
 const errorHandler = require("./src/middleware/errorHandler");
 
 // 라우터
@@ -89,6 +90,7 @@ app.use(
 
 app.use(express.json());
 app.use(responseHandler); // 표준 response 메서드 추가 (res.success, res.error, res.paginate)
+app.use(rewardHandler); // 리워드 부여 함수 추가 (req.grantReward)
 
 // TODO: 자동 업데이트 미들웨어 히스토리 확인 필요
 // if (process.env.NODE_ENV === "development") {
