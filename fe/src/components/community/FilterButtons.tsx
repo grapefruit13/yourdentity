@@ -262,7 +262,7 @@ const FilterButtons = ({
         )}
         {/* 하단 블러 요소 */}
         <div
-          className="pointer-events-none absolute right-0 bottom-[-2] left-0 z-10 h-5 w-full bg-gradient-to-b from-white via-white to-transparent"
+          className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-5 w-full translate-y-full bg-gradient-to-b from-white via-white to-transparent"
           style={{ pointerEvents: "none" }}
         />
       </div>
