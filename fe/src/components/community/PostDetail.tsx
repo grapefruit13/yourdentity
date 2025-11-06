@@ -9,11 +9,11 @@ import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
 import ShareModal from "./ShareModal";
 
-interface CommunityDetailProps {
+interface PostDetailProps {
   post: Schema.CommunityPost;
 }
 
-const CommunityDetail = ({ post }: CommunityDetailProps) => {
+const PostDetail = ({ post }: PostDetailProps) => {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -256,9 +256,6 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
               <span className="text-sm font-medium text-gray-800">
                 {post?.author || "익명"}
               </span>
-              <span className="rounded-md bg-pink-200 px-1.5 py-0.5 text-xs text-pink-600">
-                일반 사용자
-              </span>
             </div>
             <div className="text-xs text-gray-500">
               {post?.createdAt && getTimeAgo(post.createdAt)}
@@ -268,68 +265,12 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
 
         {/* 내용 */}
         <div className="mb-6 text-base leading-relaxed text-gray-700">
-          {post?.content && Array.isArray(post.content) ? (
-            <div className="whitespace-pre-line">
-              {post.content
-                .filter(
-                  (item) => item.type === "text" || typeof item === "string"
-                )
-                .map((item, index) => {
-                  if (typeof item === "string") return item;
-                  if (item.content) return item.content;
-                  return "";
-                })
-                .join("\n\n")}
-            </div>
-          ) : (
-            <>
-              <p className="mb-3">
-                학교 밖 생활을 시작한 지 얼마 되지 않아 마음이 복잡했지만, 이번
-                달 &apos;유스보이스&apos;라는 커뮤니티의 월간 소모임에 처음
-                참여하면서 생각이 조금 정리되었다. 모임에서 만난 사람들은 각자
-                다른 이유로 학교 밖을 선택했지만, 공통점은 자기 자리에서 최선을
-                다하려고 애쓴다는 점이었다.
-              </p>
-              <p className="mb-3">
-                누군가는 일을 병행하며 자격증을 준비하고, 누군가는 창작을 꾸준히
-                이어가고, 또 다른 누군가는 새로운 진로를 탐색 중이었다.
-                &quot;나만 낯선 길을 걷는 게 아니구나&quot;라는 안도감이 들었다.
-              </p>
-              <p className="mb-3">
-                가장 인상 깊었던 순간은 초청 강연 시간이었다. 강연자
-                &apos;서하림(가명)&apos;은 어린 시절부터 이어진 굴곡과 실패를
-                숨기지 않고 이야기했다. 화려한 성공담 대신, 멈추지 않고 버틴
-                날들의 기록을 조용히 꺼내 놓는 모습이 오래 마음에 남았다.
-              </p>
-              <p className="mb-3">
-                &quot;완벽한 계획보다, 오늘 조금이라도 움직였다는 사실이 내일의
-                나를 지탱한다&quot;는 말이 특히 큰 울림이었다. 나는 강연 내내
-                고개를 끄덕이며, 지금의 불안도 언젠가 내 문장이 되고 내 선택을
-                지지해 줄 자원이 될 수 있겠다고 생각했다.
-              </p>
-              <p className="mb-3">
-                모임이 끝날 무렵, 작은 책 선물을 받았다. 표지를 쓰다듬다 보니
-                오늘의 감정이 서랍에 곱게 정리되는 느낌이었다. 집에 돌아오자마자
-                첫 장에 날짜를 적고, 강연에서 메모한 문장들을 옮겨 적었다.
-              </p>
-              <p className="mb-3">
-                다음 달에는 그냥 참여자에 머무르지 말고, 내가 겪는 시행착오와
-                작은 성취들을 짧은 글로 나눠 보기로 했다. 시작선에 서 있는
-                마음은 여전히 떨리지만, 오늘 만난 사람들과 문장 덕분에 한 발 더
-                나아갈 용기가 생겼다. 다음 소모임에도 꼭 참여할 것이다.
-              </p>
-              <p className="text-gray-500">+ 책 선물 진짜 너무너무 좋아요..</p>
-            </>
+          {post?.content && (
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
           )}
-        </div>
-
-        {/* 이미지 섹션 */}
-        <div className="mb-6">
-          <img
-            src="/imgs/mockup.jpg"
-            alt="커뮤니티 활동 이미지"
-            className="h-auto w-full rounded-lg shadow-sm"
-          />
         </div>
 
         {/* 태그 섹션 */}
@@ -572,4 +513,4 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
   );
 };
 
-export default CommunityDetail;
+export default PostDetail;

@@ -66,11 +66,33 @@ const PostFeed = ({
     }
   };
 
-  const handlePostClick = (post: CommunityPost) => {
+  const handlePostClick = (post: CommunityPostListItem) => {
     if (onPostClick) {
       onPostClick(post);
     } else {
-      router.push(`/community/${post.communityId}/post/${post.id}`);
+      // CommunityPostListItem을 Schema.CommunityPost로 확장하여 communityId 추출
+      const postWithCommunity = post as CommunityPostListItem & {
+        communityId?: string;
+        communityPath?: string;
+        community?: { id?: string };
+      };
+
+      // communityId 추출: communityId > community?.id > communityPath에서 추출
+      const communityId =
+        postWithCommunity.communityId ||
+        postWithCommunity.community?.id ||
+        (postWithCommunity.communityPath
+          ? postWithCommunity.communityPath.replace("communities/", "")
+          : "");
+
+      const postId = post.id;
+      if (postId && communityId) {
+        // communityId를 쿼리 파라미터로 전달
+        router.push(`/community/post/${postId}?communityId=${communityId}`);
+      } else if (postId) {
+        // communityId가 없으면 postId만으로 라우팅
+        router.push(`/community/post/${postId}`);
+      }
     }
   };
 

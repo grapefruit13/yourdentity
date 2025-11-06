@@ -47,7 +47,28 @@ const Page = () => {
   const isInitialLoading = isLoading && posts.length === 0;
 
   const handlePostClick = (post: CommunityPostListItem) => {
-    router.push(`/community/${post.id}`);
+    // CommunityPostListItem을 Schema.CommunityPost로 확장하여 communityId 추출
+    const postWithCommunity = post as CommunityPostListItem & {
+      communityId?: string;
+      communityPath?: string;
+      community?: { id?: string };
+    };
+
+    // communityId 추출: communityId > community?.id > communityPath에서 추출
+    const communityId =
+      postWithCommunity.communityId ||
+      postWithCommunity.community?.id ||
+      (postWithCommunity.communityPath
+        ? postWithCommunity.communityPath.replace("communities/", "")
+        : "");
+
+    const postId = post.id;
+    if (postId && communityId) {
+      // communityId를 쿼리 파라미터로 전달
+      router.push(`/community/post/${postId}?communityId=${communityId}`);
+    } else {
+      alert("게시물 정보를 찾을 수 없습니다.");
+    }
   };
 
   const handleFilterChange = (filter: string) => {
