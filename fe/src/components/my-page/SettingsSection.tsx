@@ -2,27 +2,89 @@
 
 import { ChevronRight } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
+import Icon from "@/components/shared/ui/icon";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { cn } from "@/utils/shared/cn";
 
 interface SettingsItemProps {
   text: string;
+  iconUrl?: string;
   onClick?: () => void;
   showArrow?: boolean;
+  toggle?: {
+    checked: boolean;
+    onCheckedChange: (checked: boolean) => void;
+  };
 }
 
 const SettingsItem = ({
   text,
+  iconUrl,
   onClick,
   showArrow = false,
+  toggle,
 }: SettingsItemProps) => {
+  const content = (
+    <div className="flex w-full items-center justify-between px-5 py-6">
+      <div className="flex items-center gap-5">
+        {iconUrl && (
+          <Icon
+            src={iconUrl}
+            width={24}
+            height={24}
+            className="text-gray-600"
+          />
+        )}
+        <Typography font="noto" variant="body2M" className="text-black">
+          {text}
+        </Typography>
+      </div>
+      <div className="flex items-center gap-2">
+        {toggle && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle.onCheckedChange(!toggle.checked);
+            }}
+            className={cn(
+              "relative h-6 w-11 rounded-full transition-colors",
+              toggle.checked ? "bg-primary-600" : "bg-gray-300"
+            )}
+            role="switch"
+            aria-checked={toggle.checked}
+            aria-label={text}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+                toggle.checked ? "translate-x-5" : "translate-x-0"
+              )}
+            />
+          </button>
+        )}
+        {showArrow && (
+          <Icon
+            src={IMAGE_URL.ICON.settings.chevronRight.url}
+            width={20}
+            height={20}
+            className="text-gray-400"
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  if (toggle || !onClick) {
+    return content;
+  }
+
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center justify-between p-4 transition-colors hover:bg-gray-50"
+      className="w-full transition-colors hover:bg-gray-50"
     >
-      <Typography font="noto" variant="body1R" className="text-black">
-        {text}
-      </Typography>
-      {showArrow && <ChevronRight className="h-5 w-5 text-gray-400" />}
+      {content}
     </button>
   );
 };
@@ -35,17 +97,22 @@ interface SettingsSectionProps {
 const SettingsSection = ({ title, items }: SettingsSectionProps) => {
   return (
     <div className="flex flex-col gap-2">
-      <Typography
-        as="h3"
-        font="noto"
-        variant="body2B"
-        className="px-4 text-gray-500"
-      >
-        {title}
-      </Typography>
+      {title && (
+        <Typography
+          as="h3"
+          font="noto"
+          variant="body2B"
+          className="px-4 text-gray-500"
+        >
+          {title}
+        </Typography>
+      )}
       <div className="overflow-hidden rounded-2xl bg-white">
         {items.map((item, index) => (
-          <div key={index} className="border-b border-gray-100 last:border-b-0">
+          <div
+            key={index}
+            className="flex h-[72px] items-center border-b border-gray-100 last:border-b-0"
+          >
             <SettingsItem {...item} />
           </div>
         ))}

@@ -16,4 +16,5 @@ export const LINK_URL = {
   MY_PAGE_EDIT: "/my-page/edit",
   MYPAGE_SETTING_LEAVE: "/mypage-setting-leave",
   SETTINGS: "/settings",
+  PERSONAL_INFO: "/settings/personal-info",
 } as const;

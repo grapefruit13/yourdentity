@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import DeleteAccountModal from "@/components/my-page/DeleteAccountModal";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
 import { useLogout } from "@/hooks/auth/useLogout";
@@ -20,6 +21,7 @@ const SettingsPage = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false);
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
 
   const { mutate: logoutMutate } = useLogout();
   const { mutate: deleteAccountMutate, isPending: isDeleting } =
@@ -119,46 +121,61 @@ const SettingsPage = () => {
     });
   };
 
-  const loginSectionItems = [
+  const handlePersonalInfoClick = () => {
+    router.push(LINK_URL.PERSONAL_INFO);
+  };
+
+  const handleHistoryClick = () => {
+    // TODO: 나다움 내역 페이지로 이동
+    console.log("나다움 내역 클릭");
+  };
+
+  const handleNotificationToggle = (checked: boolean) => {
+    setIsNotificationEnabled(checked);
+    // TODO: 알림 설정 백엔드 API 호출
+    console.log("알림 설정 변경:", checked);
+  };
+
+  const settingsItems = [
+    {
+      text: "개인 정보 관리",
+      iconUrl: IMAGE_URL.ICON.settings.userRound.url,
+      onClick: handlePersonalInfoClick,
+      showArrow: true,
+    },
+    {
+      text: "나다움 내역",
+      iconUrl: IMAGE_URL.ICON.settings.wallet.url,
+      onClick: handleHistoryClick,
+      showArrow: true,
+    },
+    {
+      text: "알림 설정",
+      iconUrl: IMAGE_URL.ICON.settings.bell.url,
+      toggle: {
+        checked: isNotificationEnabled,
+        onCheckedChange: handleNotificationToggle,
+      },
+    },
     {
       text: "로그아웃",
+      iconUrl: IMAGE_URL.ICON.settings.arrowRightFromLine.url,
       onClick: handleLogout,
     },
     {
       text: "유스-잇 떠나기",
+      iconUrl: IMAGE_URL.ICON.settings.doorOpen.url,
       onClick: handleDeleteAccount,
       showArrow: true,
     },
   ];
 
-  const policySectionItems = [
-    {
-      text: "서비스 이용약관",
-      onClick: () => {
-        // TODO: 서비스 이용약관 페이지로 이동
-        console.log("서비스 이용약관 클릭");
-      },
-      showArrow: true,
-    },
-    {
-      text: "개인정보 처리방침",
-      onClick: () => {
-        // TODO: 개인정보 처리방침 페이지로 이동
-        console.log("개인정보 처리방침 클릭");
-      },
-      showArrow: true,
-    },
-  ];
-
   return (
-    <div className="flex min-h-full w-full flex-col bg-gray-50">
+    <div className="flex min-h-full w-full flex-col pt-12">
       {/* 메인 컨텐츠 */}
-      <main className="flex flex-1 flex-col gap-6 px-4 pt-6">
-        {/* 로그인/회원정보 섹션 */}
-        <SettingsSection title="로그인/회원정보" items={loginSectionItems} />
-
-        {/* 정책 및 약관 섹션 */}
-        <SettingsSection title="정책 및 약관" items={policySectionItems} />
+      <main className="flex flex-1 flex-col gap-6">
+        {/* 설정 메뉴 */}
+        <SettingsSection title="" items={settingsItems} />
       </main>
 
       {/* 로그아웃 모달 */}

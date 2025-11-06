@@ -1,0 +1,116 @@
+"use client";
+
+import Input from "@/components/shared/input";
+import { Typography } from "@/components/shared/typography";
+import { useGetUsersMe } from "@/hooks/generated/users-hooks";
+import { getCurrentUser } from "@/lib/auth";
+
+/**
+ * @description 개인 정보 관리 페이지
+ * 읽기 전용으로 사용자 정보를 표시
+ */
+const PersonalInfoPage = () => {
+  const user = getCurrentUser();
+
+  const { data: userData } = useGetUsersMe({
+    select: (data) => {
+      return data?.user;
+    },
+  });
+
+  // Firebase User에서 가져올 수 있는 정보
+  const displayName = user?.displayName || userData?.nickname || "";
+  const email = user?.email || "";
+  const phoneNumber = user?.phoneNumber || "";
+
+  // 백엔드 API에서 가져올 수 있는 정보 (추후 구현)
+  // TODO: 백엔드 API에 생년월일, 성별 필드 추가 시 사용
+  const birthDate = ""; // userData?.birthDate || "";
+  const gender = ""; // userData?.gender || "";
+
+  return (
+    <div className="flex min-h-full w-full flex-col pt-12">
+      <main className="flex flex-1 flex-col gap-2 px-4">
+        <div className="overflow-hidden rounded-2xl bg-white">
+          {/* 이름 */}
+          <div className="flex flex-col gap-3 p-4">
+            <Typography font="noto" variant="label1M" className="text-gray-600">
+              이름
+            </Typography>
+            <Input
+              value={displayName}
+              readOnly
+              className="bg-gray-50 text-gray-900"
+            />
+          </div>
+
+          {/* 생년월일 */}
+          <div className="flex flex-col gap-3 p-4">
+            <Typography font="noto" variant="label1M" className="text-gray-600">
+              생년월일
+            </Typography>
+            <Input
+              value={birthDate || "-"}
+              readOnly
+              className="bg-gray-50 text-gray-900"
+              placeholder="생년월일 정보가 없습니다"
+            />
+          </div>
+
+          {/* 성별 */}
+          <div className="flex flex-col gap-3 p-4">
+            <Typography font="noto" variant="label1M" className="text-gray-600">
+              성별
+            </Typography>
+            <Input
+              value={gender || "-"}
+              readOnly
+              className="bg-gray-50 text-gray-900"
+              placeholder="성별 정보가 없습니다"
+            />
+          </div>
+
+          {/* 휴대폰 번호 */}
+          <div className="flex flex-col gap-3 p-4">
+            <div className="mb-2">
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-600"
+              >
+                휴대폰 번호
+              </Typography>
+            </div>
+            <Input
+              value={phoneNumber || "-"}
+              readOnly
+              className="bg-gray-50 text-gray-900"
+              placeholder="휴대폰 번호 정보가 없습니다"
+            />
+          </div>
+
+          {/* 이메일 주소 */}
+          <div className="p-4">
+            <div className="mb-2">
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-600"
+              >
+                이메일 주소
+              </Typography>
+            </div>
+            <Input
+              value={email || "-"}
+              readOnly
+              className="bg-gray-50 text-gray-900"
+              placeholder="이메일 주소 정보가 없습니다"
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default PersonalInfoPage;

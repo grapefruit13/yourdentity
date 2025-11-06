@@ -61,6 +61,32 @@ const ICON = {
     url: "/icons/ic-pen-line.svg",
     alt: "작성하기",
   },
+  settings: {
+    userRound: {
+      url: "/icons/user-round.svg",
+      alt: "개인 정보 관리",
+    },
+    wallet: {
+      url: "/icons/wallet.svg",
+      alt: "나다움 내역",
+    },
+    bell: {
+      url: "/icons/bell.svg",
+      alt: "알림 설정",
+    },
+    doorOpen: {
+      url: "/icons/door-open.svg",
+      alt: "로그아웃",
+    },
+    arrowRightFromLine: {
+      url: "/icons/arrow-right-from-line.svg",
+      alt: "유스-잇 떠나기",
+    },
+    chevronRight: {
+      url: "/icons/chevron-right.svg",
+      alt: "오른쪽 화살표",
+    },
+  },
 };
 
 const IMG = {
