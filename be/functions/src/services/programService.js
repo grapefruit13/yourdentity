@@ -603,7 +603,18 @@ class ProgramService {
       }
 
       // 4. CommunityService를 통해 멤버 추가 (Firestore에 저장)
-      const memberResult = await this.communityService.addMemberToCommunity(programId, applicantId, nickname);
+      let memberResult;
+      try {
+        memberResult = await this.communityService.addMemberToCommunity(programId, applicantId, nickname);
+      } catch (memberError) {
+        if (memberError.code === 'CONFLICT') {
+          const duplicateError = new Error('이미 신청한 프로그램입니다.');
+          duplicateError.code = 'DUPLICATE_APPLICATION';
+          duplicateError.statusCode = 409;
+          throw duplicateError;
+        }
+        throw memberError;
+      }
 
       // 5. Notion 프로그램신청자DB에 저장
       let notionPageId = null;
