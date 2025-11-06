@@ -220,7 +220,7 @@ const FilterButtons = ({
               {/* 화살표 버튼 - 그라데이션 영역 중앙 */}
               <button
                 onClick={handleScrollLeft}
-                className="pointer-events-auto absolute top-1/2 left-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                className="pointer-events-auto absolute top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center"
                 aria-label="왼쪽으로 스크롤"
               >
                 <Icon
@@ -247,7 +247,7 @@ const FilterButtons = ({
               {/* 화살표 버튼 - 그라데이션 영역 중앙 */}
               <button
                 onClick={handleScrollRight}
-                className="pointer-events-auto absolute top-1/2 left-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                className="pointer-events-auto absolute top-1/2 right-0 flex h-8 w-8 -translate-y-1/2 items-center justify-center"
                 aria-label="오른쪽으로 스크롤"
               >
                 <Icon
