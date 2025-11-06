@@ -583,10 +583,8 @@ class FirestoreService {
     }
 
     const safeSize = isNaN(size) ? 10 : size;
-    query = query.limit(safeSize);
-
-    const snapshot = await query.get();
-    const items = [];
+    const snapshot = await query.limit(safeSize + 1).get();
+    const documents = [];
 
     snapshot.forEach((doc) => {
       const data = doc.data();
@@ -602,8 +600,11 @@ class FirestoreService {
         item.communityId = pathSegments[1];
       }
 
-      items.push(item);
+      documents.push(item);
     });
+
+    const hasNext = documents.length > safeSize;
+    const items = hasNext ? documents.slice(0, safeSize) : documents;
 
     return {
       content: items,
@@ -611,11 +612,11 @@ class FirestoreService {
         pageNumber: 0,
         pageSize: safeSize,
         totalElements: items.length,
-        totalPages: 1,
-        hasNext: items.length === safeSize,
+        totalPages: items.length === 0 ? 0 : 1,
+        hasNext,
         hasPrevious: false,
         isFirst: true,
-        isLast: true,
+        isLast: !hasNext,
       },
     };
   }
