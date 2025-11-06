@@ -6,7 +6,7 @@ import FilterButtons from "@/components/community/FilterButtons";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
 import UserImageCarouselSection from "@/components/community/UserImageCarouselSection";
-import { userImages } from "@/constants/community/sampleData";
+import { userImages } from "@/constants/community/sampleData"; // TODO: 삭제 예정
 import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 

@@ -3,14 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import type * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
 import ShareModal from "./ShareModal";
-import { CommunityPost } from "@/types/community";
 
 interface CommunityDetailProps {
-  post: CommunityPost;
+  post: Schema.CommunityPost;
 }
 
 const CommunityDetail = ({ post }: CommunityDetailProps) => {
@@ -250,22 +250,14 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
 
         {/* 프로필 섹션 */}
         <div className="mb-6 flex items-center">
-          <div className="mr-3 h-8 w-8 rounded-full bg-gray-300">
-            {post?.author.avatar && (
-              <img
-                src={post.author.avatar}
-                alt={post.author.name}
-                className="h-full w-full rounded-full object-cover"
-              />
-            )}
-          </div>
+          <div className="mr-3 h-8 w-8 rounded-full bg-gray-300"></div>
           <div>
             <div className="flex items-center gap-1">
               <span className="text-sm font-medium text-gray-800">
-                {post?.author.name}
+                {post?.author || "익명"}
               </span>
               <span className="rounded-md bg-pink-200 px-1.5 py-0.5 text-xs text-pink-600">
-                {post?.author.badge}
+                일반 사용자
               </span>
             </div>
             <div className="text-xs text-gray-500">
@@ -276,8 +268,19 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
 
         {/* 내용 */}
         <div className="mb-6 text-base leading-relaxed text-gray-700">
-          {post?.content ? (
-            <div className="whitespace-pre-line">{post.content}</div>
+          {post?.content && Array.isArray(post.content) ? (
+            <div className="whitespace-pre-line">
+              {post.content
+                .filter(
+                  (item) => item.type === "text" || typeof item === "string"
+                )
+                .map((item, index) => {
+                  if (typeof item === "string") return item;
+                  if (item.content) return item.content;
+                  return "";
+                })
+                .join("\n\n")}
+            </div>
           ) : (
             <>
               <p className="mb-3">
@@ -330,21 +333,7 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
         </div>
 
         {/* 태그 섹션 */}
-        {post?.tags && post.tags.length > 0 && (
-          <div className="mb-6 flex flex-col gap-2">
-            <span className="text-sm text-gray-500">{post.category}</span>
-            <div className="flex flex-wrap gap-2">
-              {post.tags.map((tag, index) => (
-                <div
-                  key={index}
-                  className="flex h-6 w-auto items-center justify-center rounded-full border border-gray-300 bg-white px-3"
-                >
-                  <span className="text-xs text-gray-600">{tag}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* TODO: tags는 generated CommunityPost에 없으므로 추후 확장 타입으로 처리 필요 */}
 
         {/* 하단 액션 바 */}
         <div className="mb-6 flex items-center justify-between border-t border-gray-100 pt-4">
@@ -395,7 +384,7 @@ const CommunityDetail = ({ post }: CommunityDetailProps) => {
                 />
               </svg>
               <span className="text-sm text-gray-600">
-                {post?.stats.comments || 0}
+                {post?.commentsCount || 0}
               </span>
             </div>
           </div>

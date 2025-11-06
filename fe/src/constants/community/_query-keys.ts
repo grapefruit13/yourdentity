@@ -1,9 +1,9 @@
 import { KEY } from "@/constants/shared/_query-keys-base";
 import {
-  GETCommunityListReq,
-  GETCommunityPostListReq,
-  GETCommunityPostDetailReq,
-} from "@/types/community/request";
+  TGETCommunitiesReq,
+  TGETCommunitiesPostsReq,
+  TGETCommunitiesPostsByTwoIdsReq,
+} from "@/types/generated/communities-types";
 
 const { BASE, COMMON } = KEY;
 
@@ -19,16 +19,16 @@ const COMMUNITY_KEYS = {
 
 export const communityKeys = {
   all: [BASE.COMMUNITY] as const,
-  list: (request: GETCommunityListReq) =>
+  list: (request: TGETCommunitiesReq) =>
     [...COMMUNITY_KEYS.LIST, request.page, request.size, request.type] as const,
-  postList: (request: GETCommunityPostListReq) =>
+  postList: (request: TGETCommunitiesPostsReq) =>
     [
       ...COMMUNITY_KEYS.POST_LIST,
       request.page,
       request.size,
       request.filter,
     ] as const,
-  postDetail: (request: GETCommunityPostDetailReq) =>
+  postDetail: (request: TGETCommunitiesPostsByTwoIdsReq) =>
     [
       ...COMMUNITY_KEYS.POST_DETAIL,
       request.communityId,

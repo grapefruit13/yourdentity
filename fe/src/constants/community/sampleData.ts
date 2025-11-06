@@ -1,10 +1,8 @@
-import { CommunityPost } from "@/types/community";
-
 /**
  * @description 커뮤니티 샘플 데이터
  * 향후 API 연동 시 이 데이터를 API 응답으로 대체
  */
-export const samplePosts: CommunityPost[] = [
+export const samplePosts: unknown[] = [
   {
     id: "AMrsQRg9tBY0ZGJMbKG2",
     communityId: "CP:ABC123DEF456",
