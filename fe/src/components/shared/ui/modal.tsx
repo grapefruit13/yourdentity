@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
 import { Typography } from "@/components/shared/typography";
+import { cn } from "@/utils/shared/cn";
 
 interface ModalProps {
   /** 모달 열림/닫힘 상태 */
@@ -99,12 +100,6 @@ const Modal = ({
 
   if (!isOpen) return null;
 
-  // 버튼 스타일 설정
-  const confirmButtonStyle =
-    "bg-[#FF006C] hover:bg-[#e6005a] disabled:bg-gray-300";
-
-  const cancelButtonStyle = "border-none text-black hover:bg-gray-50 shadow-md";
-
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       {/* 오버레이: #000 60% 투명도 */}
@@ -116,7 +111,7 @@ const Modal = ({
 
       {/* 모달 컨텐츠 */}
       <div
-        className="relative mx-8 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+        className="relative mx-8 w-full max-w-sm rounded-lg bg-white p-6 shadow-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -128,7 +123,7 @@ const Modal = ({
           id="modal-title"
           font="noto"
           variant="heading2B"
-          className="mb-6 text-left text-black"
+          className="mb-2 text-black"
         >
           {title}
         </Typography>
@@ -139,9 +134,10 @@ const Modal = ({
             as="p"
             font="noto"
             variant="body2R"
-            className={`mb-4 text-center ${
-              variant === "danger" ? "text-red-500" : "text-gray-600"
-            }`}
+            className={cn(
+              "mb-4",
+              variant === "danger" ? "text-red-500" : "text-gray-700"
+            )}
           >
             {description}
           </Typography>
@@ -155,7 +151,7 @@ const Modal = ({
           {/* 취소 버튼 */}
           <button
             onClick={handleClose}
-            className={`flex-1 rounded-xl bg-white px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 ${cancelButtonStyle}`}
+            className="flex-1 grow rounded-lg border border-gray-100 bg-white py-2 text-black shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
             aria-label={cancelText}
           >
             <Typography font="noto" variant="body2M">
@@ -167,7 +163,7 @@ const Modal = ({
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className={`flex-1 rounded-xl px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed ${confirmButtonStyle}`}
+            className="bg-main-600 hover:bg-main-700 flex-1 grow rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300"
             aria-label={confirmText}
           >
             <Typography font="noto" variant="body2M" className="text-white">

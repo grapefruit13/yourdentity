@@ -53,3 +53,31 @@ export const setCursorPosition = (
   selection.removeAllRanges();
   selection.addRange(range);
 };
+
+/**
+ * URL 정규화: 프로토콜이 없으면 https://를 붙임
+ * @param raw - 정규화할 URL 문자열
+ * @returns 정규화된 URL 문자열 (유효하지 않으면 빈 문자열)
+ */
+export const normalizeUrl = (raw: string): string => {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  try {
+    // 이미 유효한 절대 URL이면 그대로
+    // new URL은 절대 URL만 허용
+    // http/https 외는 차단
+    const u = new URL(trimmed);
+    if (u.protocol === "http:" || u.protocol === "https:") return u.toString();
+    return "";
+  } catch {
+    // 프로토콜이 없으면 https 붙여 재시도
+    try {
+      const u2 = new URL(`https://${trimmed}`);
+      if (u2.protocol === "http:" || u2.protocol === "https:")
+        return u2.toString();
+      return "";
+    } catch {
+      return "";
+    }
+  }
+};
