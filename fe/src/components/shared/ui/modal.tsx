@@ -163,7 +163,7 @@ const Modal = ({
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className="bg-primary-600 hover:bg-primary-700 flex-1 grow rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="bg-main-600 hover:bg-main-700 flex-1 grow rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300"
             aria-label={confirmText}
           >
             <Typography font="noto" variant="body2M" className="text-white">
