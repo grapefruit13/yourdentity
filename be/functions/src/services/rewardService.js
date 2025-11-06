@@ -1,5 +1,6 @@
-const { Client } = require('@notionhq/client');
 const { db, FieldValue, Timestamp } = require('../config/database');
+const FirestoreService = require('./firestoreService');
+const { getCheckboxValue, getNumberValue } = require('../utils/notionHelper');
 
 /**
  * Reward Service
@@ -7,21 +8,8 @@ const { db, FieldValue, Timestamp } = require('../config/database');
  */
 class RewardService {
   constructor() {
-    if (!process.env.NOTION_API_KEY) {
-      console.warn('[REWARD] NOTION_API_KEY 환경변수가 설정되지 않았습니다');
-    }
-    
-    this.notion = new Client({
-      auth: process.env.NOTION_API_KEY,
-    });
-
     this.rewardPolicyDB = process.env.NOTION_REWARD_POLICY_DB_ID;
-    
-    console.log('[REWARD] RewardService 초기화:', {
-      hasNotionClient: !!this.notion,
-      hasQuery: typeof this.notion?.databases?.query === 'function',
-      rewardPolicyDB: this.rewardPolicyDB,
-    });
+    this.firestoreService = new FirestoreService();
   }
 
   /**
@@ -36,34 +24,43 @@ class RewardService {
         return 0;
       }
 
-      // Notion DB에서 해당 Key 조회
-      const response = await this.notion.databases.query({
-        database_id: this.rewardPolicyDB,
-        filter: {
-          property: 'Key',
-          title: {
-            equals: actionKey,
-          },
+      // Notion REST API로 직접 호출 (기존 notionUserService 패턴)
+      const response = await fetch(`https://api.notion.com/v1/databases/${this.rewardPolicyDB}/query`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          filter: {
+            property: 'Key',
+            title: {
+              equals: actionKey,
+            },
+          },
+        }),
       });
 
-      if (response.results.length === 0) {
+      const data = await response.json();
+
+      if (!data.results || data.results.length === 0) {
         console.warn(`[REWARD] 액션 "${actionKey}"에 대한 리워드 정책이 없습니다`);
         return 0;
       }
 
-      const page = response.results[0];
+      const page = data.results[0];
       const props = page.properties;
 
       // IsActive 체크
-      const isActive = props['IsActive']?.checkbox || false;
+      const isActive = getCheckboxValue(props['IsActive']);
       if (!isActive) {
         console.log(`[REWARD] 액션 "${actionKey}"는 비활성화 상태입니다`);
         return 0;
       }
 
       // Rewards 포인트 가져오기
-      const rewards = props['Rewards']?.number || 0;
+      const rewards = getNumberValue(props['Rewards']) || 0;
       return rewards;
     } catch (error) {
       console.error('[REWARD ERROR] getRewardByAction:', error.message);
@@ -72,13 +69,46 @@ class RewardService {
   }
 
   /**
-   * 사용자에게 리워드 부여
+   * 사용자 리워드 총량 업데이트 + 히스토리 추가
+   * @private
    * @param {string} userId - 사용자 ID
-   * @param {string} actionKey - 액션 키
+   * @param {number} amount - 리워드 금액
+   * @param {string} actionKey - 액션 키 또는 사유
+   * @param {string} historyId - 히스토리 문서 ID (중복 체크용)
+   * @param {Object} metadata - 추가 메타데이터
+   * @return {Promise<void>}
+   */
+  async addRewardToUser(userId, amount, actionKey, historyId, metadata = {}) {
+    const userRef = db.collection('users').doc(userId);
+    const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
+
+    await this.firestoreService.runTransaction(async (transaction) => {
+      // users/{userId}.rewards 증가
+      transaction.update(userRef, {
+        rewards: FieldValue.increment(amount),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      // rewardsHistory에 기록 추가
+      transaction.set(historyRef, {
+        actionKey,
+        amount,
+        changeType: 'add',
+        metadata,
+        createdAt: FieldValue.serverTimestamp(),
+        isProcessed: true,
+      });
+    });
+  }
+
+  /**
+   * Action 기반 리워드 부여 (Notion DB 조회)
+   * @param {string} userId - 사용자 ID
+   * @param {string} actionKey - 액션 키 (예: "comment_create")
    * @param {Object} metadata - 추가 정보 (postId, commentId 등)
    * @return {Promise<Object>} 부여 결과
    */
-  async grantReward(userId, actionKey, metadata = {}) {
+  async grantActionReward(userId, actionKey, metadata = {}) {
     try {
       // 1. Notion에서 리워드 포인트 조회
       const rewardAmount = await this.getRewardByAction(actionKey);
@@ -92,36 +122,20 @@ class RewardService {
       const targetId = metadata.commentId || metadata.postId || metadata.targetId || 'unknown';
       const historyId = `${actionKey}_${targetId}`;
 
-      const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
-      const historyDoc = await historyRef.get();
+      const historyDoc = await this.firestoreService.getDocument(
+        `users/${userId}/rewardsHistory`,
+        historyId
+      );
 
-      if (historyDoc.exists) {
+      if (historyDoc) {
         console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, targetId=${targetId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };
       }
 
-      // 3. Firestore 트랜잭션으로 원자적 처리
-      await db.runTransaction(async (transaction) => {
-        const userRef = db.collection('users').doc(userId);
-
-        // users/{userId}.rewards 증가
-        transaction.update(userRef, {
-          rewards: FieldValue.increment(rewardAmount),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-
-        // rewardsHistory에 기록 추가
-        transaction.set(historyRef, {
-          actionKey,
-          amount: rewardAmount,
-          changeType: 'add',
-          metadata: {
-            ...metadata,
-            targetId,
-          },
-          createdAt: FieldValue.serverTimestamp(),
-          isProcessed: true,
-        });
+      // 3. 공통 메서드로 리워드 부여
+      await this.addRewardToUser(userId, rewardAmount, actionKey, historyId, {
+        ...metadata,
+        targetId,
       });
 
       console.log(`[REWARD SUCCESS] userId=${userId}, action=${actionKey}, amount=${rewardAmount}, targetId=${targetId}`);
@@ -132,7 +146,7 @@ class RewardService {
         message: `Granted ${rewardAmount} rewards for ${actionKey}`,
       };
     } catch (error) {
-      console.error('[REWARD ERROR] grantReward:', error.message, {
+      console.error('[REWARD ERROR] grantActionReward:', error.message, {
         userId,
         actionKey,
         metadata,
