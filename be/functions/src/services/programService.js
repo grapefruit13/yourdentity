@@ -220,25 +220,12 @@ class ProgramService {
       });
       const programData = this.formatProgramData(page, true);
 
-      // 프로그램 페이지 블록 내용 조회 (병렬 처리)
-      const [pageBlocks, faqList] = await Promise.allSettled([
-        this.getProgramPageBlocks(programId),
-        this.getFaqListForProgram(programData.faqRelation)
-      ]);
+      // 프로그램 페이지 블록 내용 조회
+      const pageBlocks = await this.getProgramPageBlocks(programId);
+      programData.pageContent = pageBlocks;
 
-      // 페이지 블록 내용 추가
-      if (pageBlocks.status === 'fulfilled') {
-        programData.pageContent = pageBlocks.value;
-      } else {
-        programData.pageContent = [];
-      }
-
-      // FAQ 목록 추가
-      if (faqList.status === 'fulfilled') {
-        programData.faqList = faqList.value;
-      } else {
-        programData.faqList = [];
-      }
+      // FAQ ID 목록만 추가 (상세 내용은 별도 API로 조회)
+      programData.faqList = this.getFaqListForProgram(programData.faqRelation);
 
       return programData;
 
@@ -288,9 +275,9 @@ class ProgramService {
   }
 
   /**
-   * FAQ 관계를 통한 FAQ 목록 조회
+   * FAQ 관계를 통한 FAQ 목록 조회 (ID만)
    * @param {Object} faqRelation - FAQ 관계 객체
-   * @returns {Promise<Array>} FAQ 목록
+   * @returns {Promise<Array>} FAQ ID 목록
    */
   async getFaqListForProgram(faqRelation) {
     if (!faqRelation || !faqRelation.relations || faqRelation.relations.length === 0) {
@@ -298,8 +285,10 @@ class ProgramService {
     }
 
     try {
-      const faqIds = faqRelation.relations.map(relation => relation.id);
-      return await this.getFaqListByIds(faqIds);
+      // FAQ ID 목록만 반환 (상세 내용은 별도 API로 조회)
+      return faqRelation.relations.map(relation => ({
+        id: relation.id
+      }));
     } catch (error) {
       console.warn('[ProgramService] FAQ 목록 조회 오류:', error.message);
       return [];
@@ -580,12 +569,20 @@ class ProgramService {
     try {
       const { applicantId, nickname } = applicationData;
       
-      // 1. 프로그램 존재 확인
-      const program = await this.getProgramById(programId);
-      if (!program) {
-        const error = new Error('해당 프로그램을 찾을 수 없습니다.');
-        error.code = ERROR_CODES.PROGRAM_NOT_FOUND;
-        error.statusCode = 404;
+      // 1. 프로그램 존재 확인 (간단하게)
+      let program;
+      try {
+        const page = await this.notion.pages.retrieve({
+          page_id: programId
+        });
+        program = this.formatProgramData(page);
+      } catch (error) {
+        if (error.code === 'object_not_found') {
+          const notFoundError = new Error('해당 프로그램을 찾을 수 없습니다.');
+          notFoundError.code = ERROR_CODES.PROGRAM_NOT_FOUND;
+          notFoundError.statusCode = 404;
+          throw notFoundError;
+        }
         throw error;
       }
 
@@ -678,7 +675,6 @@ class ProgramService {
       });
 
       if (response.results && response.results.length > 0) {
-        console.log(`[ProgramService] Notion "회원 관리"에서 사용자 찾음: ${firebaseUid}`);
         return response.results[0].id;
       }
 
@@ -802,9 +798,8 @@ class ProgramService {
             }
           ]
         };
-        console.log(`[ProgramService] "회원 관리" relation 연결 성공: ${userNotionPageId}`);
       } else {
-        console.warn(`[ProgramService] "회원 관리" relation 연결 실패: 사용자를 찾을 수 없음 (Firebase UID: ${applicantId})`);
+        console.warn(`[ProgramService] "회원 관리" relation 연결 실패: 사용자를 찾을 수 없음 (UID: ${applicantId})`);
       }
 
       // 선택적 필드 추가
@@ -877,17 +872,10 @@ class ProgramService {
       };
 
       const response = await this.notion.pages.create(notionData);
-      console.log('[ProgramService] Notion 신청 정보 저장 성공:', response.id);
       return response.id;
 
     } catch (error) {
-      console.error('[ProgramService] Notion 저장 오류:', error);
-      console.error('[ProgramService] Notion 저장 오류 상세:', {
-        message: error.message,
-        code: error.code,
-        status: error.status,
-        body: error.body
-      });
+      console.error('[ProgramService] Notion 저장 오류:', error.message);
       throw new Error(`Notion 신청 정보 저장에 실패했습니다: ${error.message}`);
     }
   }
@@ -923,21 +911,19 @@ class ProgramService {
         }
       );
 
-      // 3. Notion 페이지의 승인 상태도 업데이트 (member에 notionPageId가 있는 경우)
+      // 3. Notion 페이지의 승인여부 체크박스 업데이트
       if (member.notionPageId) {
         try {
           await this.notion.pages.update({
             page_id: member.notionPageId,
             properties: {
-              '승인 상태': {
-                status: {
-                  name: '승인됨'
-                }
+              '승인여부': {
+                checkbox: true
               }
             }
           });
         } catch (notionError) {
-          console.warn('[ProgramService] Notion 업데이트 실패 (무시됨):', notionError.message);
+          console.warn('[ProgramService] Notion 업데이트 실패:', notionError.message);
         }
       }
 
@@ -993,21 +979,19 @@ class ProgramService {
         }
       );
 
-      // 3. Notion 페이지의 승인 상태도 업데이트 (member에 notionPageId가 있는 경우)
+      // 3. Notion 페이지의 승인여부 체크박스 업데이트
       if (member.notionPageId) {
         try {
           await this.notion.pages.update({
             page_id: member.notionPageId,
             properties: {
-              '승인 상태': {
-                status: {
-                  name: '거부됨'
-                }
+              '승인여부': {
+                checkbox: false
               }
             }
           });
         } catch (notionError) {
-          console.warn('[ProgramService] Notion 업데이트 실패 (무시됨):', notionError.message);
+          console.warn('[ProgramService] Notion 업데이트 실패:', notionError.message);
         }
       }
 
@@ -1046,8 +1030,6 @@ class ProgramService {
 
       // Community 생성
       await this.firestoreService.setDocument('communities', programId, communityData);
-
-      console.log(`[ProgramService] Community 생성 완료: ${programId}`);
       return communityData;
 
     } catch (error) {
