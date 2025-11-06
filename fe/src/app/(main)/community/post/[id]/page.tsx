@@ -1,9 +1,17 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
+import type { FormEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import PostDetail from "@/components/community/PostDetail";
+import CommentItem from "@/components/community/CommentItem";
+import ShareModal from "@/components/community/ShareModal";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useGetCommentsCommunitiesPostsByTwoIds } from "@/hooks/generated/comments-hooks";
 import { useGetCommunitiesPostsByTwoIds } from "@/hooks/generated/communities-hooks";
 import type * as Schema from "@/types/generated/api-schema";
+import { cn } from "@/utils/shared/cn";
+import { getTimeAgo } from "@/utils/shared/date";
+import { debug } from "@/utils/shared/debugger";
 
 /**
  * @description 게시글 상세 페이지
@@ -16,6 +24,13 @@ const PostDetailPage = () => {
   // URL에서 postId와 communityId를 추출
   const postId = params.id as string;
   const communityId = searchParams.get("communityId") || "";
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [comment, setComment] = useState("");
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // API 연동 - useGetCommunitiesPostsByTwoIds 사용 (communityId와 postId 모두 필요)
   const {
@@ -30,12 +45,143 @@ const PostDetailPage = () => {
     enabled: !!postId && !!communityId, // communityId가 있을 때만 요청
   });
 
-  // 로딩 중
+  // 댓글 데이터 가져오기
+  const { data: commentsData, isLoading: isCommentsLoading } =
+    useGetCommentsCommunitiesPostsByTwoIds({
+      request: {
+        communityId: communityId || "",
+        postId,
+      },
+      enabled: !!postId && !!communityId && !!postData,
+    });
+
+  const comments = commentsData?.comments || [];
+
+  // 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    router.back();
+  };
+
+  // 메뉴 아이템 클릭 핸들러
+  const handleMenuAction = (action: string) => {
+    debug.log(`${action} 클릭됨`);
+    setIsMenuOpen(false);
+
+    // 향후 각 액션에 따른 로직 구현
+    switch (action) {
+      case "수정":
+        // 수정 로직
+        break;
+      case "상단 고정":
+        // 상단 고정 로직
+        break;
+      case "삭제":
+        // 삭제 로직
+        break;
+      case "신고":
+        // 신고 로직
+        break;
+      case "게시글 복사":
+        // 복사 로직
+        break;
+      case "게시글 이동":
+        // 이동 로직
+        break;
+    }
+  };
+
+  // 댓글 제출 핸들러
+  const handleCommentSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (comment.trim()) {
+      debug.log("댓글 제출:", comment);
+      setComment("");
+    }
+  };
+
+  // 로딩 중 - 스켈레톤 표시
   if (isLoading || !communityId) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-8">
-          <div className="text-gray-500">포스트를 불러오는 중...</div>
+        {/* 헤더 스켈레톤 */}
+        <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
+          <Skeleton className="h-6 w-16" />
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-5 w-5" />
+            <Skeleton className="h-5 w-5" />
+            <Skeleton className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* 메인 콘텐츠 스켈레톤 */}
+        <div className="px-4 py-6 pb-26">
+          {/* 카테고리 스켈레톤 */}
+          <Skeleton className="mb-2 h-4 w-20" />
+
+          {/* 제목 스켈레톤 */}
+          <Skeleton className="mb-4 h-9 w-3/4" />
+
+          {/* 프로필 섹션 스켈레톤 */}
+          <div className="mb-6 flex items-center">
+            <Skeleton className="mr-3 h-8 w-8 rounded-full" />
+            <div>
+              <Skeleton className="mb-1 h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+
+          {/* 내용 스켈레톤 */}
+          <div className="mb-6 space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </div>
+
+          {/* 하단 액션 바 스켈레톤 */}
+          <div className="mb-6 flex items-center justify-between border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-6">
+              <Skeleton className="h-5 w-12" />
+              <Skeleton className="h-5 w-12" />
+            </div>
+          </div>
+
+          {/* 댓글 섹션 스켈레톤 */}
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-12" />
+            <div className="space-y-3">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={`comment-skeleton-${index}`} className="flex gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div className="flex-1">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="mt-1 h-4 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -72,7 +218,430 @@ const PostDetailPage = () => {
   // postData를 Schema.CommunityPost 타입으로 변환
   const post = postData as Schema.CommunityPost;
 
-  return <PostDetail post={post} />;
+  return (
+    <div className="min-h-screen bg-white">
+      {/* 헤더 */}
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          <span className="text-sm font-medium">뒤로</span>
+        </button>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            className={cn(
+              "p-1 text-gray-600 transition-colors hover:text-gray-800"
+            )}
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={() => setIsBookmarked(!isBookmarked)}
+            className={cn(
+              "p-1 text-gray-600 transition-colors hover:text-gray-800"
+            )}
+          >
+            <svg
+              className={cn(
+                "h-5 w-5 transition-colors",
+                isBookmarked
+                  ? "fill-yellow-500 text-yellow-500"
+                  : "text-gray-600"
+              )}
+              fill={isBookmarked ? "currentColor" : "none"}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+              />
+            </svg>
+          </button>
+
+          {/* 점 3개 메뉴 */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={cn(
+                "p-1 text-gray-600 transition-colors hover:text-gray-800"
+              )}
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+            </button>
+
+            {/* 드롭다운 메뉴 */}
+            {isMenuOpen && (
+              <div
+                className={cn(
+                  "absolute top-8 right-0 z-10 w-32 rounded-lg border border-gray-200 bg-white shadow-lg"
+                )}
+              >
+                <div className="py-1">
+                  <button
+                    onClick={() => handleMenuAction("수정")}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => handleMenuAction("상단 고정")}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    상단 고정
+                  </button>
+                  <button
+                    onClick={() => handleMenuAction("삭제")}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    삭제
+                  </button>
+                  <button
+                    onClick={() => handleMenuAction("신고")}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    신고
+                  </button>
+                  <button
+                    onClick={() => handleMenuAction("게시글 복사")}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    게시글 복사
+                  </button>
+                  <button
+                    onClick={() => handleMenuAction("게시글 이동")}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    게시글 이동
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 메인 콘텐츠 */}
+      <div className="px-4 py-6 pb-26">
+        {/* 활동 후기 헤더 */}
+        <div className="mb-2 text-sm text-gray-500">
+          {post?.category || "활동 후기"}
+        </div>
+
+        {/* 제목 */}
+        <h1 className="mb-4 text-3xl font-bold text-gray-800">{post?.title}</h1>
+
+        {/* 프로필 섹션 */}
+        <div className="mb-6 flex items-center">
+          <div className="mr-3 h-8 w-8 rounded-full bg-gray-300"></div>
+          <div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-medium text-gray-800">
+                {post?.author || "익명"}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500">
+              {post?.createdAt && getTimeAgo(post.createdAt)}
+            </div>
+          </div>
+        </div>
+
+        {/* 내용 */}
+        <div className="mb-6 text-base leading-relaxed text-gray-700">
+          {post?.content && (
+            <div
+              className="prose prose-sm image-load-prevention max-w-none [&_img]:block [&_img]:h-auto [&_img]:max-h-[400px] [&_img]:min-h-0 [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
+          )}
+        </div>
+
+        {/* 태그 섹션 */}
+        {/* TODO: tags는 generated CommunityPost에 없으므로 추후 확장 타입으로 처리 필요 */}
+
+        {/* 하단 액션 바 */}
+        <div className="mb-6 flex items-center justify-between border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => setIsLiked(!isLiked)}
+              className={cn(
+                "flex items-center gap-2 transition-opacity hover:opacity-80"
+              )}
+            >
+              <svg
+                className={cn(
+                  "h-5 w-5 transition-colors",
+                  isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
+                )}
+                fill={isLiked ? "currentColor" : "none"}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+              <span
+                className={cn(
+                  "text-sm transition-colors",
+                  isLiked ? "text-red-500" : "text-gray-600"
+                )}
+              >
+                {(post?.likesCount || 0) + (isLiked ? 1 : 0)}
+              </span>
+            </button>
+            <div className="flex items-center gap-2">
+              <svg
+                className="h-5 w-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+              <span className="text-sm text-gray-600">
+                {post?.commentsCount || 0}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 댓글 섹션 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-800">댓글</h3>
+
+          {/* 댓글 목록 */}
+          {isCommentsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={`comment-skeleton-${index}`} className="flex gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div className="flex-1">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="mt-1 h-4 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : comments.length > 0 ? (
+            <div className="space-y-3">
+              {comments.map((comment) => (
+                <CommentItem key={comment.id} comment={comment} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-4">
+              <div className="text-sm text-gray-500">아직 댓글이 없습니다.</div>
+            </div>
+          )}
+
+          {/* 댓글 작성칸 */}
+          <form
+            onSubmit={handleCommentSubmit}
+            className="rounded-lg border border-gray-200 p-4"
+          >
+            <input
+              type="text"
+              placeholder="댓글을 작성해보세요."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="w-full border-none bg-transparent px-0 py-2 focus:outline-none"
+            />
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <span className="text-sm font-bold">Aa</span>
+              </button>
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="p-1 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* 공유 모달 */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        postTitle={post?.title}
+        postUrl={`https://youthvoice.vake.io/sharing/${post?.id || "1"}`}
+      />
+    </div>
+  );
 };
 
 export default PostDetailPage;

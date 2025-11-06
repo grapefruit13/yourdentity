@@ -63,3 +63,13 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
+
+/* 이미지 로드 전 공백 방지 */
+.prose img {
+  min-height: 0 !important;
+}
+
+.prose img:not([src]),
+.prose img[src=""] {
+  display: none;
+}
