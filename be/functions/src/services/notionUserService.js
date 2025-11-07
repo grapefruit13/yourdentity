@@ -826,8 +826,8 @@ async syncPenaltyUsers() {
       // Firebase 자격정지 정보 업데이트
       await userRef.update({
         suspensionReason: penaltyReason,
-        suspensionStart: penaltyPeriodStart,
-        suspensionEnd: penaltyPeriodEnd,
+        suspensionStartAt: penaltyPeriodStart,
+        suspensionEndAt: penaltyPeriodEnd,
       });
 
       // Firebase 업데이트 후 최신 데이터 가져오기
