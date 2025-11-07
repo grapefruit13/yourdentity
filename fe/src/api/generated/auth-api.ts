@@ -13,3 +13,12 @@ export const postAuthLogout = () => {
 export const getAuthVerify = () => {
   return get<Types.TGETAuthVerifyRes>(`/auth/verify`);
 };
+
+export const deleteAuthDeleteAccount = (
+  request: Types.TDELETEAuthDeleteAccountReq
+) => {
+  return del<Types.TDELETEAuthDeleteAccountRes>(
+    `/auth/delete-account`,
+    request.data ?? request
+  );
+};

@@ -18,3 +18,13 @@ export type TGETAuthVerifyRes = {
     emailVerified?: boolean;
   };
 };
+
+export interface TDELETEAuthDeleteAccountReq {
+  data: {
+    kakaoAccessToken?: string;
+  };
+}
+
+export type TDELETEAuthDeleteAccountRes = {
+  message?: string;
+};

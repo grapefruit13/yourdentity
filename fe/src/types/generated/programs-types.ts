@@ -5,7 +5,7 @@
 
 import type * as Schema from "./api-schema";
 
-export interface TGETApiProgramsReq {
+export interface TGETProgramsReq {
   recruitmentStatus?: "before" | "ongoing" | "completed" | "cancelled";
   programStatus?: "before" | "ongoing" | "completed" | "cancelled";
   programType?: "ROUTINE" | "TMI" | "GATHERING";
@@ -13,9 +13,9 @@ export interface TGETApiProgramsReq {
   cursor?: string;
 }
 
-export type TGETApiProgramsRes = Schema.ProgramListResponse;
+export type TGETProgramsRes = Schema.ProgramListResponse;
 
-export interface TGETApiProgramsSearchReq {
+export interface TGETProgramsSearchReq {
   q: string;
   recruitmentStatus?: "before" | "ongoing" | "completed" | "cancelled";
   programStatus?: "before" | "ongoing" | "completed" | "cancelled";
@@ -24,10 +24,27 @@ export interface TGETApiProgramsSearchReq {
   cursor?: string;
 }
 
-export type TGETApiProgramsSearchRes = Schema.ProgramSearchResponse;
+export type TGETProgramsSearchRes = Schema.ProgramSearchResponse;
 
-export interface TGETApiProgramsByIdReq {
+export interface TGETProgramsByIdReq {
   programId: string;
 }
 
-export type TGETApiProgramsByIdRes = Schema.ProgramDetailResponse;
+export type TGETProgramsByIdRes = Schema.ProgramDetailResponse;
+
+export interface TPOSTProgramsApplyByIdReq {
+  programId: string;
+  data: Schema.ProgramApplicationRequest;
+}
+
+export type TPOSTProgramsApplyByIdRes = Schema.ProgramApplicationResponse;
+
+export interface TGETProgramsApplicationsApproveByTwoIdsReq {
+  programId: string;
+  applicationId: string;
+}
+
+export interface TGETProgramsApplicationsRejectByTwoIdsReq {
+  programId: string;
+  applicationId: string;
+}

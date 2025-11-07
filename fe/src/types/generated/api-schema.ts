@@ -161,7 +161,9 @@ export interface StandardResponse {
 export interface ErrorResponse {
   status: number;
   message: string;
+  success?: boolean;
   code?: string;
+  statusCode?: number;
 }
 
 export interface PaginatedResponse {
@@ -655,6 +657,20 @@ export interface CommunityMember {
   lastActiveAt?: string;
 }
 
+export interface ProgramApplicationRequest {
+  applicantId: string;
+  nickname: string;
+}
+
+export interface ProgramApplicationResponse {
+  applicationId?: string;
+  programId?: string;
+  applicantId?: string;
+  nickname?: string;
+  appliedAt?: string;
+  notionPageId?: string;
+}
+
 export interface Report {
   id?: string;
   targetType: "post" | "comment";
@@ -675,70 +691,43 @@ export interface ProductListItem {
   id?: string;
   name?: string;
   description?: string;
-  status?: string;
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  createdAt?: number;
-  updatedAt?: any;
+  thumbnail?: {
+    name?: string;
+    url?: string;
+    type?: string;
+  }[];
+  requiredPoints?: number;
+  onSale?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Product {
   id?: string;
   name?: string;
   description?: string;
-  price?: number;
-  originalPrice?: number;
-  normalPrice?: number;
-  currency?: string;
-  additionalFees?: {
+  thumbnail?: {
+    name?: string;
+    url?: string;
     type?: string;
-    resourceId?: string;
-    amount?: number;
   }[];
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
-  options?: any[];
-  productVariants?: any[];
-  view_count_member?: number;
-  soldCount?: number;
-  soldAmount?: number;
-  buyersCount?: number;
-  status?: string;
-  shippingRequired?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  shippingFee?: number;
-  customFields?: any[];
-  completeMessage?: {
-    title?: {
-      ko?: string;
-    };
-    description?: Record<string, any>;
-  };
-  primaryDetails?: any[];
-  repliesCount?: number;
-  reviewsCount?: number;
-  ratingsCount?: number;
-  commentsCount?: number;
-  avgRate?: number;
-  deliveryType?: string;
-  isDisplayed?: boolean;
-  variantSkus?: any[];
-  creditAmount?: number;
-  buyable?: boolean;
-  createdAt?: number;
-  type?: string;
-  likesCount?: number;
-  view_count?: number;
+  requiredPoints?: number;
+  onSale?: boolean;
+  createdAt?: string;
   updatedAt?: string;
-  viewCount?: number;
-  qna?: Schema.QnAItem[];
+  pageContent?: {
+    type?: string;
+    id?: string;
+    text?: string;
+    url?: string;
+    caption?: string;
+    links?: {
+      text?: string;
+      url?: string;
+    }[];
+    richText?: any[];
+    hasChildren?: boolean;
+  }[];
 }
 
 export interface Purchase {

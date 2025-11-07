@@ -130,6 +130,24 @@ export const useGetUsersMeCommentedPosts = <
   });
 };
 
+export const useGetUsersMeParticipatingCommunities = <
+  TData = Types.TGETUsersMeParticipatingCommunitiesRes,
+>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETUsersMeParticipatingCommunitiesRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETUsersMeParticipatingCommunitiesRes, Error, TData>({
+    queryKey: usersKeys.getUsersMeParticipatingCommunities,
+    queryFn: async () => {
+      const response = await Api.getUsersMeParticipatingCommunities();
+      return response.data;
+    },
+    ...options,
+  });
+};
+
 export const useGetUsersNicknameAvailability = <
   TData = Types.TGETUsersNicknameAvailabilityRes,
 >(

@@ -192,8 +192,8 @@ export const notionusersKeys = {
 
 // Programs Query Keys
 export const programsKeys = {
-  getApiPrograms: (request: programsTypes.TGETApiProgramsReq) =>
-    __buildKey("programs", "getApiPrograms", {
+  getPrograms: (request: programsTypes.TGETProgramsReq) =>
+    __buildKey("programs", "getPrograms", {
       path: {},
       query: {
         recruitmentStatus: request.recruitmentStatus,
@@ -203,8 +203,8 @@ export const programsKeys = {
         cursor: request.cursor,
       },
     }),
-  getApiProgramsSearch: (request: programsTypes.TGETApiProgramsSearchReq) =>
-    __buildKey("programs", "getApiProgramsSearch", {
+  getProgramsSearch: (request: programsTypes.TGETProgramsSearchReq) =>
+    __buildKey("programs", "getProgramsSearch", {
       path: {},
       query: {
         q: request.q,
@@ -215,9 +215,29 @@ export const programsKeys = {
         cursor: request.cursor,
       },
     }),
-  getApiProgramsById: (request: programsTypes.TGETApiProgramsByIdReq) =>
-    __buildKey("programs", "getApiProgramsById", {
+  getProgramsById: (request: programsTypes.TGETProgramsByIdReq) =>
+    __buildKey("programs", "getProgramsById", {
       path: { programId: request.programId },
+      query: {},
+    }),
+  getProgramsApplicationsApproveByTwoIds: (
+    request: programsTypes.TGETProgramsApplicationsApproveByTwoIdsReq
+  ) =>
+    __buildKey("programs", "getProgramsApplicationsApproveByTwoIds", {
+      path: {
+        programId: request.programId,
+        applicationId: request.applicationId,
+      },
+      query: {},
+    }),
+  getProgramsApplicationsRejectByTwoIds: (
+    request: programsTypes.TGETProgramsApplicationsRejectByTwoIdsReq
+  ) =>
+    __buildKey("programs", "getProgramsApplicationsRejectByTwoIds", {
+      path: {
+        programId: request.programId,
+        applicationId: request.applicationId,
+      },
       query: {},
     }),
 } as const;
@@ -249,7 +269,11 @@ export const storeKeys = {
   getStoreProducts: (request: storeTypes.TGETStoreProductsReq) =>
     __buildKey("store", "getStoreProducts", {
       path: {},
-      query: { page: request.page, size: request.size },
+      query: {
+        onSale: request.onSale,
+        pageSize: request.pageSize,
+        cursor: request.cursor,
+      },
     }),
   getStoreProductsById: (request: storeTypes.TGETStoreProductsByIdReq) =>
     __buildKey("store", "getStoreProductsById", {
@@ -293,6 +317,10 @@ export const usersKeys = {
       path: {},
       query: { page: request.page, size: request.size },
     }),
+  getUsersMeParticipatingCommunities: __buildKey(
+    "users",
+    "getUsersMeParticipatingCommunities"
+  ),
   getUsersNicknameAvailability: (
     request: usersTypes.TGETUsersNicknameAvailabilityReq
   ) =>

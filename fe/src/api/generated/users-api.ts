@@ -43,6 +43,12 @@ export const getUsersMeCommentedPosts = (
   });
 };
 
+export const getUsersMeParticipatingCommunities = () => {
+  return get<Types.TGETUsersMeParticipatingCommunitiesRes>(
+    `/users/me/participating-communities`
+  );
+};
+
 export const getUsersNicknameAvailability = (
   request: Types.TGETUsersNicknameAvailabilityReq
 ) => {

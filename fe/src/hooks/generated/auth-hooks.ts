@@ -50,3 +50,31 @@ export const useGetAuthVerify = <TData = Types.TGETAuthVerifyRes>(
     ...options,
   });
 };
+
+export const useDeleteAuthDeleteAccount = <
+  TContext = unknown,
+  TVariables = Types.TDELETEAuthDeleteAccountReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.deleteAuthDeleteAccount>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.deleteAuthDeleteAccount>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.deleteAuthDeleteAccount(
+        variables as Types.TDELETEAuthDeleteAccountReq
+      ),
+    ...options,
+  });
+};

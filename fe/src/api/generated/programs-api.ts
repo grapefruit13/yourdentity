@@ -3,23 +3,46 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/programs-types";
 
-export const getApiPrograms = (request: Types.TGETApiProgramsReq) => {
-  return get<Types.TGETApiProgramsRes>(`/api/programs`, { params: request });
+export const getPrograms = (request: Types.TGETProgramsReq) => {
+  return get<Types.TGETProgramsRes>(`/programs`, { params: request });
 };
 
-export const getApiProgramsSearch = (
-  request: Types.TGETApiProgramsSearchReq
-) => {
-  return get<Types.TGETApiProgramsSearchRes>(`/api/programs/search`, {
+export const getProgramsSearch = (request: Types.TGETProgramsSearchReq) => {
+  return get<Types.TGETProgramsSearchRes>(`/programs/search`, {
     params: request,
   });
 };
 
-export const getApiProgramsById = (request: Types.TGETApiProgramsByIdReq) => {
-  return get<Types.TGETApiProgramsByIdRes>(
-    `/api/programs/${request.programId}`
+export const getProgramsById = (request: Types.TGETProgramsByIdReq) => {
+  return get<Types.TGETProgramsByIdRes>(`/programs/${request.programId}`);
+};
+
+export const postProgramsApplyById = (
+  request: Types.TPOSTProgramsApplyByIdReq
+) => {
+  const { programId, ...data } = request;
+  return post<Types.TPOSTProgramsApplyByIdRes>(
+    `/programs/${request.programId}/apply`,
+    data.data ?? data
+  );
+};
+
+export const getProgramsApplicationsApproveByTwoIds = (
+  request: Types.TGETProgramsApplicationsApproveByTwoIdsReq
+) => {
+  return get<any>(
+    `/programs/${request.programId}/applications/${request.applicationId}/approve`
+  );
+};
+
+export const getProgramsApplicationsRejectByTwoIds = (
+  request: Types.TGETProgramsApplicationsRejectByTwoIdsReq
+) => {
+  return get<any>(
+    `/programs/${request.programId}/applications/${request.applicationId}/reject`
   );
 };

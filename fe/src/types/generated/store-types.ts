@@ -7,21 +7,18 @@
 import type * as Schema from "./api-schema";
 
 export interface TGETStoreProductsReq {
-  page?: number;
-  size?: number;
+  onSale?: boolean;
+  pageSize?: number;
+  cursor?: string;
 }
 
 export type TGETStoreProductsRes = {
+  message?: string;
   products?: Schema.ProductListItem[];
   pagination?: {
-    pageNumber?: number;
-    pageSize?: number;
-    totalElements?: number;
-    totalPages?: number;
-    hasNext?: boolean;
-    hasPrevious?: boolean;
-    isFirst?: boolean;
-    isLast?: boolean;
+    hasMore?: boolean;
+    nextCursor?: string;
+    currentPageCount?: number;
   };
 };
 
@@ -30,56 +27,8 @@ export interface TGETStoreProductsByIdReq {
 }
 
 export type TGETStoreProductsByIdRes = {
-  id?: string;
-  name?: string;
-  description?: string;
-  price?: number;
-  originalPrice?: number;
-  normalPrice?: number;
-  currency?: string;
-  additionalFees?: {
-    type?: string;
-    resourceId?: string;
-    amount?: number;
-  }[];
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
-  options?: any[];
-  productVariants?: any[];
-  view_count_member?: number;
-  soldCount?: number;
-  soldAmount?: number;
-  buyersCount?: number;
-  status?: string;
-  shippingRequired?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  shippingFee?: number;
-  customFields?: any[];
-  completeMessage?: {
-    title?: {
-      ko?: string;
-    };
-    description?: Record<string, any>;
-  };
-  primaryDetails?: any[];
-  repliesCount?: number;
-  reviewsCount?: number;
-  ratingsCount?: number;
-  commentsCount?: number;
-  avgRate?: number;
-  deliveryType?: string;
-  isDisplayed?: boolean;
-  variantSkus?: any[];
-  creditAmount?: number;
-  buyable?: boolean;
-  createdAt?: number;
-  type?: string;
-  likesCount?: number;
-  view_count?: number;
-  updatedAt?: string;
-  viewCount?: number;
-  qna?: Schema.QnAItem[];
+  message?: string;
+  product?: Schema.Product;
 };
 
 export interface TPOSTStorePurchaseReq {

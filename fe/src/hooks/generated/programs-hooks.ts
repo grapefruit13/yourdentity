@@ -13,57 +13,142 @@ import * as Api from "@/api/generated/programs-api";
 import { programsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/programs-types";
 
-export const useGetApiPrograms = <TData = Types.TGETApiProgramsRes>(
+export const useGetPrograms = <TData = Types.TGETProgramsRes>(
   options: {
-    request: Types.TGETApiProgramsReq;
+    request: Types.TGETProgramsReq;
   } & Omit<
-    UseQueryOptions<Types.TGETApiProgramsRes, Error, TData>,
+    UseQueryOptions<Types.TGETProgramsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETApiProgramsRes, Error, TData>({
-    queryKey: programsKeys.getApiPrograms(request),
+  return useQuery<Types.TGETProgramsRes, Error, TData>({
+    queryKey: programsKeys.getPrograms(request),
     queryFn: async () => {
-      const response = await Api.getApiPrograms(request);
+      const response = await Api.getPrograms(request);
       return response.data;
     },
     ...queryOptions,
   });
 };
 
-export const useGetApiProgramsSearch = <TData = Types.TGETApiProgramsSearchRes>(
+export const useGetProgramsSearch = <TData = Types.TGETProgramsSearchRes>(
   options: {
-    request: Types.TGETApiProgramsSearchReq;
+    request: Types.TGETProgramsSearchReq;
   } & Omit<
-    UseQueryOptions<Types.TGETApiProgramsSearchRes, Error, TData>,
+    UseQueryOptions<Types.TGETProgramsSearchRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETApiProgramsSearchRes, Error, TData>({
-    queryKey: programsKeys.getApiProgramsSearch(request),
+  return useQuery<Types.TGETProgramsSearchRes, Error, TData>({
+    queryKey: programsKeys.getProgramsSearch(request),
     queryFn: async () => {
-      const response = await Api.getApiProgramsSearch(request);
+      const response = await Api.getProgramsSearch(request);
       return response.data;
     },
     ...queryOptions,
   });
 };
 
-export const useGetApiProgramsById = <TData = Types.TGETApiProgramsByIdRes>(
+export const useGetProgramsById = <TData = Types.TGETProgramsByIdRes>(
   options: {
-    request: Types.TGETApiProgramsByIdReq;
+    request: Types.TGETProgramsByIdReq;
   } & Omit<
-    UseQueryOptions<Types.TGETApiProgramsByIdRes, Error, TData>,
+    UseQueryOptions<Types.TGETProgramsByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETApiProgramsByIdRes, Error, TData>({
-    queryKey: programsKeys.getApiProgramsById(request),
+  return useQuery<Types.TGETProgramsByIdRes, Error, TData>({
+    queryKey: programsKeys.getProgramsById(request),
     queryFn: async () => {
-      const response = await Api.getApiProgramsById(request);
+      const response = await Api.getProgramsById(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const usePostProgramsApplyById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTProgramsApplyByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postProgramsApplyById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postProgramsApplyById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postProgramsApplyById(variables as Types.TPOSTProgramsApplyByIdReq),
+    ...options,
+  });
+};
+
+export const useGetProgramsApplicationsApproveByTwoIds = <
+  TData = Types.TGETProgramsApplicationsApproveByTwoIdsRes,
+>(
+  options: {
+    request: Types.TGETProgramsApplicationsApproveByTwoIdsReq;
+  } & Omit<
+    UseQueryOptions<
+      Types.TGETProgramsApplicationsApproveByTwoIdsRes,
+      Error,
+      TData
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<
+    Types.TGETProgramsApplicationsApproveByTwoIdsRes,
+    Error,
+    TData
+  >({
+    queryKey: programsKeys.getProgramsApplicationsApproveByTwoIds(request),
+    queryFn: async () => {
+      const response =
+        await Api.getProgramsApplicationsApproveByTwoIds(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetProgramsApplicationsRejectByTwoIds = <
+  TData = Types.TGETProgramsApplicationsRejectByTwoIdsRes,
+>(
+  options: {
+    request: Types.TGETProgramsApplicationsRejectByTwoIdsReq;
+  } & Omit<
+    UseQueryOptions<
+      Types.TGETProgramsApplicationsRejectByTwoIdsRes,
+      Error,
+      TData
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<
+    Types.TGETProgramsApplicationsRejectByTwoIdsRes,
+    Error,
+    TData
+  >({
+    queryKey: programsKeys.getProgramsApplicationsRejectByTwoIds(request),
+    queryFn: async () => {
+      const response = await Api.getProgramsApplicationsRejectByTwoIds(request);
       return response.data;
     },
     ...queryOptions,
