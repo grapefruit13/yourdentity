@@ -219,13 +219,7 @@ class StoreController {
       const userId = req.user.uid;
       const purchaseRequest = req.body;
 
-      // Firestore에서 사용자 닉네임 가져오기
-      const FirestoreService = require("../services/firestoreService");
-      const userService = new FirestoreService("users");
-      const userData = await userService.getById(userId);
-      const userNickname = userData?.nickname || '';
-
-      const result = await storeService.createStorePurchase(userId, purchaseRequest, userNickname);
+      const result = await storeService.createStorePurchase(userId, purchaseRequest);
       return res.created(result);
     } catch (error) {
       return next(error);
