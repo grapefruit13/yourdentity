@@ -5,7 +5,8 @@ import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import Icon from "@/components/shared/ui/icon";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
-import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+// TEMP: 실제 데이터 생기면 주석 해제
+// import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { cn } from "@/utils/shared/cn";
 
 interface ProgramSelectBottomSheetProps {

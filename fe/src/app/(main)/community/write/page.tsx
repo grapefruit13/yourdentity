@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -80,9 +80,9 @@ const replaceEditorImageSrcWithUploadedUrls = (
 };
 
 /**
- * @description 커뮤니티 글 작성 페이지
+ * @description 커뮤니티 글 작성 페이지 콘텐츠 (useSearchParams 사용)
  */
-const Page = () => {
+const WritePageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
@@ -736,6 +736,17 @@ const Page = () => {
         variant="primary"
       />
     </form>
+  );
+};
+
+/**
+ * @description 커뮤니티 글 작성 페이지 (Suspense로 감싸기)
+ */
+const Page = () => {
+  return (
+    <Suspense>
+      <WritePageContent />
+    </Suspense>
   );
 };
 
