@@ -1045,6 +1045,14 @@ async syncSelectedUsers() {
         updateData.suspensionEndAt = suspensionEndAt;
       }
 
+
+      if(!suspensionStartAt && !suspensionEndAt && suspensionReason){
+        console.warn(`사용자 ${name}의 자격정지 기간(시작)과 자격정지 기간(종료)가 없는데 정지 사유가 설정되어 있습니다`);
+        validateErrorCount++;
+        failedUserIds.push(userId);
+        continue;
+      }
+
       // lastUpdated 업데이트
       const now = new Date();
       updateData.lastUpdated = now;
@@ -1732,6 +1740,28 @@ async syncSelectedUsers() {
           // lastUpdated 업데이트
           const now = new Date();
           updateData.lastUpdated = now;
+
+          if(!suspensionStartAt && !suspensionEndAt && suspensionReason){
+            console.warn(`사용자 ${name}의 자격정지 기간(시작)과 자격정지 기간(종료)가 없는데 정지 사유가 설정되어 있습니다`);
+            validateErrorCount++;
+            failedUserIds.push(userId);
+
+            if (pageId) {
+              try {
+                await this.notion.pages.update({
+                  page_id: pageId,
+                  properties: {
+                    "백업 결과": {
+                      select: { name: "실패" }
+                    }
+                  }
+                });
+              } catch (updateError) {
+                console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
+              }
+            }
+            return { success: false, userId, reason: "validation_error" };
+          }
 
           // 자격정지 기간 검증
           if (!suspensionStartAt && suspensionEndAt) {
