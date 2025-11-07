@@ -375,7 +375,11 @@ class NotificationService {
         throw error;
       }
 
-      throw new Error(`사용자 ID를 추출하는데 실패했습니다: ${error.message}`);
+      const serviceError = new Error(`사용자 ID를 추출하는데 실패했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.statusCode = 500;
+      serviceError.originalError = error;
+      throw serviceError;
     }
   }
 

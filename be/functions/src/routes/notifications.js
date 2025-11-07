@@ -6,7 +6,7 @@ const router = express.Router();
 /**
  * @swagger
  * /notifications/send-all-pending:
- *   post:
+ *   get:
  *     summary: 모든 "전송 대기" 상태 알림 일괄 전송
  *     description: |
  *       "전송 대기" 상태인 모든 알림을 찾아서 전송합니다.
