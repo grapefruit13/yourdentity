@@ -1190,6 +1190,10 @@ async syncSelectedUsers() {
 
             // properties 복사 (모든 필드 복제)
             const backupProperties = {};
+
+            // 읽기 전용 타입 목록 (페이지 생성/업데이트 시 설정 불가)
+            const readOnlyTypes = ['formula', 'rollup', 'created_time', 'created_by', 'last_edited_time', 'last_edited_by'];
+            
             
             // 각 필드 타입별로 복사
             for (const [key, value] of Object.entries(sourceProps)) {
@@ -1198,6 +1202,11 @@ async syncSelectedUsers() {
                // value가 유효한지 확인
                if (!value || !value.type) {
                 console.warn(`[WARN] 필드 ${key}의 값이 유효하지 않습니다. 건너뜁니다.`);
+                continue;
+              }
+
+              // 읽기 전용 타입은 백업에서 제외
+              if (readOnlyTypes.includes(value.type)) {
                 continue;
               }
               
@@ -1220,18 +1229,6 @@ async syncSelectedUsers() {
                 backupProperties[key] = { multi_select: value.multi_select || [] };
               } else if (value.type === "relation") {
                 backupProperties[key] = { relation: value.relation || [] };
-              } else if (value.type === "rollup") {
-                backupProperties[key] = { rollup: value.rollup || null };
-              } else if (value.type === "formula") {
-                backupProperties[key] = { formula: value.formula || null };
-              } else if (value.type === "created_time") {
-                backupProperties[key] = { created_time: value.created_time || null };
-              } else if (value.type === "created_by") {
-                backupProperties[key] = { created_by: value.created_by || null };
-              } else if (value.type === "last_edited_time") {
-                backupProperties[key] = { last_edited_time: value.last_edited_time || null };
-              } else if (value.type === "last_edited_by") {
-                backupProperties[key] = { last_edited_by: value.last_edited_by || null };
               }
             }
 
