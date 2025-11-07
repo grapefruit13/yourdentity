@@ -1,6 +1,7 @@
 const express = require("express");
 const notionUserController = require("../controllers/notionUserController");
 const router = express.Router();
+const authGuard = require("../middleware/authGuard");
 
 // 관리자 회원 동기화 라우트
 /**
@@ -206,7 +207,8 @@ router.get("/sync/selected", notionUserController.syncSelectedUsers);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/test/create", notionUserController.createTestUsers);
+//router.post("/test/create", notionUserController.createTestUsers);
+router.post("/test/create", authGuard, notionUserController.createTestUsers);
 
 
 /**
