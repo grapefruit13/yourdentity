@@ -22,8 +22,12 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const isScrolled = useTopBarStore((state) => state.isScrolled);
+  const storeTitle = useTopBarStore((state) => state.title);
+  const storeRightSlot = useTopBarStore((state) => state.rightSlot);
+
   const currentTitle =
     title ||
+    storeTitle ||
     TOPBAR_TITLE_MAP.find((item) => pathname?.startsWith(item.prefix))?.label ||
     "\n";
 
@@ -71,8 +75,10 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
   const rightSlotEl = useMemo(() => {
     if (showAlarmButton) return alarmButtonEl;
     if (rightSlot) return <div className="absolute right-4">{rightSlot}</div>;
+    if (storeRightSlot)
+      return <div className="absolute right-4">{storeRightSlot}</div>;
     return null;
-  }, [showAlarmButton, alarmButtonEl, rightSlot]);
+  }, [showAlarmButton, alarmButtonEl, rightSlot, storeRightSlot]);
 
   return (
     <div
@@ -94,14 +100,18 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
           <Image
             src={IMAGE_URL.ICON.chevron.left.url}
             alt={IMAGE_URL.ICON.chevron.left.alt}
-            width={20}
-            height={20}
+            width={24}
+            height={24}
           />
         </button>
       )}
 
       {/* Title */}
-      <Typography font="noto" variant="body1M">
+      <Typography
+        font="noto"
+        variant="body1M"
+        className="max-w-[285px] overflow-hidden text-ellipsis whitespace-nowrap"
+      >
         {currentTitle}
       </Typography>
 

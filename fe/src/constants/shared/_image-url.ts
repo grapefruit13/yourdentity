@@ -61,6 +61,10 @@ const ICON = {
     url: "/icons/ic-pen-line.svg",
     alt: "작성하기",
   },
+  share: {
+    url: "/icons/share.svg",
+    alt: "공유하기",
+  },
   settings: {
     userRound: {
       url: "/icons/user-round.svg",
