@@ -70,7 +70,6 @@ class RewardService {
 
   /**
    * 사용자 리워드 총량 업데이트 + 히스토리 추가
-   * @private
    * @param {string} userId - 사용자 ID
    * @param {number} amount - 리워드 금액
    * @param {string} actionKey - 액션 키 또는 사유
