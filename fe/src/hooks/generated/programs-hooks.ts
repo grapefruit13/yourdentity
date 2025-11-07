@@ -3,6 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   useQuery,
   useMutation,
@@ -96,26 +97,13 @@ export const usePostProgramsApplyById = <
   });
 };
 
-export const useGetProgramsApplicationsApproveByTwoIds = <
-  TData = Types.TGETProgramsApplicationsApproveByTwoIdsRes,
->(
+export const useGetProgramsApplicationsApproveByTwoIds = <TData = any>(
   options: {
     request: Types.TGETProgramsApplicationsApproveByTwoIdsReq;
-  } & Omit<
-    UseQueryOptions<
-      Types.TGETProgramsApplicationsApproveByTwoIdsRes,
-      Error,
-      TData
-    >,
-    "queryKey" | "queryFn"
-  >
+  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Types.TGETProgramsApplicationsApproveByTwoIdsRes,
-    Error,
-    TData
-  >({
+  return useQuery<any, Error, TData>({
     queryKey: programsKeys.getProgramsApplicationsApproveByTwoIds(request),
     queryFn: async () => {
       const response =
@@ -126,26 +114,13 @@ export const useGetProgramsApplicationsApproveByTwoIds = <
   });
 };
 
-export const useGetProgramsApplicationsRejectByTwoIds = <
-  TData = Types.TGETProgramsApplicationsRejectByTwoIdsRes,
->(
+export const useGetProgramsApplicationsRejectByTwoIds = <TData = any>(
   options: {
     request: Types.TGETProgramsApplicationsRejectByTwoIdsReq;
-  } & Omit<
-    UseQueryOptions<
-      Types.TGETProgramsApplicationsRejectByTwoIdsRes,
-      Error,
-      TData
-    >,
-    "queryKey" | "queryFn"
-  >
+  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Types.TGETProgramsApplicationsRejectByTwoIdsRes,
-    Error,
-    TData
-  >({
+  return useQuery<any, Error, TData>({
     queryKey: programsKeys.getProgramsApplicationsRejectByTwoIds(request),
     queryFn: async () => {
       const response = await Api.getProgramsApplicationsRejectByTwoIds(request);

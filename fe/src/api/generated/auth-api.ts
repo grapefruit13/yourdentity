@@ -17,8 +17,7 @@ export const getAuthVerify = () => {
 export const deleteAuthDeleteAccount = (
   request: Types.TDELETEAuthDeleteAccountReq
 ) => {
-  return del<Types.TDELETEAuthDeleteAccountRes>(
-    `/auth/delete-account`,
-    request.data ?? request
-  );
+  return del<Types.TDELETEAuthDeleteAccountRes>(`/auth/delete-account`, {
+    data: request.data ?? request,
+  });
 };

@@ -452,19 +452,29 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, { params: request });\n`;
       } else if (hasRequestBody && pathParams.length > 0) {
-        // POST/PUT/PATCH 요청의 경우 pathParams와 data 분리
+        // POST/PUT/PATCH/DELETE 요청의 경우 pathParams와 data 분리
         const pathParamNames = pathParams.map((p: any) => p.name).join(", ");
         // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
         const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
         fileContent += `  const { ${pathParamNames}, ...data } = request;\n`;
-        // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
-        fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, data.data ?? data);\n`;
+        // DELETE 요청은 config.data에 body를 전달해야 함
+        if (httpMethod === "delete") {
+          fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, { data: data.data ?? data });\n`;
+        } else {
+          // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
+          fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, data.data ?? data);\n`;
+        }
       } else if (hasRequestBody) {
-        // POST/PUT/PATCH 요청 (pathParams 없는 경우)
+        // POST/PUT/PATCH/DELETE 요청 (pathParams 없는 경우)
         // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
         const responseType = hasResponseType ? `Types.${resTypeName}` : "any";
-        // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
-        fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, request.data ?? request);\n`;
+        // DELETE 요청은 config.data에 body를 전달해야 함
+        if (httpMethod === "delete") {
+          fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, { data: request.data ?? request });\n`;
+        } else {
+          // request body가 data 필드로 감싸져 있는 경우 data.data를 전달
+          fileContent += `  return ${axiosMethod}<${responseType}>(\`${url}\`, request.data ?? request);\n`;
+        }
       } else {
         // GET 요청 (pathParams만 있는 경우 또는 파라미터 없는 경우)
         // axios interceptor가 Result<TData>를 TData로 변환하므로 Result 래핑 제거
@@ -789,6 +799,7 @@ function generateHooks(endpoints: ApiEndpoint[]): string {
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import * as Api from "@/api/generated/${tag.toLowerCase()}-api";
 import { ${tag.toLowerCase()}Keys } from "@/constants/generated/query-keys";
@@ -803,6 +814,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         path,
         parameters = [],
         requestBody,
+        responses,
       } = endpoint;
       const funcName = operationId || generateFunctionName(method, path);
       const hookName = `use${funcName.charAt(0).toUpperCase() + funcName.slice(1)}`;
@@ -819,18 +831,26 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         hasRequestBody ||
         isMultipart;
 
+      // 응답 타입이 있는지 확인
+      const successResponse =
+        responses["200"] || responses["201"] || responses["204"];
+      const hasResponseSchema =
+        successResponse?.content?.["application/json"]?.schema;
+      const reqTypeName = generateTypeName(method, path, "Req");
+      const resTypeName = generateTypeName(method, path, "Res");
+      // 응답 타입이 없으면 any 사용
+      const responseType = hasResponseSchema ? `Types.${resTypeName}` : "any";
+
       if (method.toLowerCase() === "get") {
         // Query Hook
         if (hasRequestParams) {
-          const reqTypeName = generateTypeName(method, path, "Req");
-          const resTypeName = generateTypeName(method, path, "Res");
-          fileContent += `export const ${hookName} = <TData = Types.${resTypeName}>(\n`;
+          fileContent += `export const ${hookName} = <TData = ${responseType}>(\n`;
           fileContent += `  options: {\n`;
           fileContent += `    request: Types.${reqTypeName};\n`;
-          fileContent += `  } & Omit<UseQueryOptions<Types.${resTypeName}, Error, TData>, "queryKey" | "queryFn">\n`;
+          fileContent += `  } & Omit<UseQueryOptions<${responseType}, Error, TData>, "queryKey" | "queryFn">\n`;
           fileContent += `) => {\n`;
           fileContent += `  const { request, ...queryOptions } = options;\n`;
-          fileContent += `  return useQuery<Types.${resTypeName}, Error, TData>({\n`;
+          fileContent += `  return useQuery<${responseType}, Error, TData>({\n`;
           fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName}(request),\n`;
           fileContent += `    queryFn: async () => {\n`;
           fileContent += `      const response = await Api.${funcName}(request);\n`;
@@ -840,11 +860,10 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
           fileContent += `  });\n`;
           fileContent += `};\n\n`;
         } else {
-          const resTypeName = generateTypeName(method, path, "Res");
-          fileContent += `export const ${hookName} = <TData = Types.${resTypeName}>(\n`;
-          fileContent += `  options?: Omit<UseQueryOptions<Types.${resTypeName}, Error, TData>, "queryKey" | "queryFn">\n`;
+          fileContent += `export const ${hookName} = <TData = ${responseType}>(\n`;
+          fileContent += `  options?: Omit<UseQueryOptions<${responseType}, Error, TData>, "queryKey" | "queryFn">\n`;
           fileContent += `) => {\n`;
-          fileContent += `  return useQuery<Types.${resTypeName}, Error, TData>({\n`;
+          fileContent += `  return useQuery<${responseType}, Error, TData>({\n`;
           fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName},\n`;
           fileContent += `    queryFn: async () => {\n`;
           fileContent += `      const response = await Api.${funcName}();\n`;
