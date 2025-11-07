@@ -2,6 +2,7 @@ const { Client } = require('@notionhq/client');
 const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 const {admin} = require("../config/database");
+const crypto = require("crypto");
 /*
 - 1초, 10배치 : 100명에서 끊어짐
 - 1.5초, 20배치 : 200명 문제X

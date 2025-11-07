@@ -535,19 +535,19 @@ async syncResolvedReports() {
        // Firebase 동기화 성공 시 Notion 데이터베이스 이동 및 users 컬렉션 reportCount 증가
        if (syncSuccess) {
          try {
-           // users 컬렉션의 reportCount 증가 (작성자가 있는 경우만)
-           if (targetUserId) {
-             try {
-               const userRef = db.collection("users").doc(targetUserId);
-               await userRef.set({
-                 reportCount: FieldValue.increment(1)
-               }, { merge: true });
-               console.log(`[Users] ${targetUserId}의 reportCount 증가 완료`);
-             } catch (userError) {
-               console.error(`[Users] ${targetUserId}의 reportCount 증가 실패:`, userError.message);
-               // users 업데이트 실패는 전체 프로세스를 중단하지 않음
-             }
-           }
+          //  // users 컬렉션의 reportCount 증가 (작성자가 있는 경우만)
+          //  if (targetUserId) {
+          //    try {
+          //      const userRef = db.collection("users").doc(targetUserId);
+          //      await userRef.set({
+          //        reportCount: FieldValue.increment(1)
+          //      }, { merge: true });
+          //      console.log(`[Users] ${targetUserId}의 reportCount 증가 완료`);
+          //    } catch (userError) {
+          //      console.error(`[Users] ${targetUserId}의 reportCount 증가 실패:`, userError.message);
+          //      // users 업데이트 실패는 전체 프로세스를 중단하지 않음
+          //    }
+          //  }
 
            // 원본 페이지의 모든 properties 복사
            const sourceProps = notionPage.properties;
@@ -614,6 +614,22 @@ async syncResolvedReports() {
              page_id: report.notionPageId,
              archived: true
            });
+
+
+          // Notion 페이지 이동이 모두 성공한 후에 reportCount 증가
+          // users 컬렉션의 reportCount 증가 (작성자가 있는 경우만)
+           if (targetUserId) {
+            try {
+              const userRef = db.collection("users").doc(targetUserId);
+              await userRef.set({
+                reportCount: FieldValue.increment(1)
+              }, { merge: true });
+              console.log(`[Users] ${targetUserId}의 reportCount 증가 완료`);
+            } catch (userError) {
+              console.error(`[Users] ${targetUserId}의 reportCount 증가 실패:`, userError.message);
+              // users 업데이트 실패는 전체 프로세스를 중단하지 않음
+            }
+          }
 
            syncedCount++;
            console.log(`[성공] ${targetId} → reportedDatabaseId로 이동 완료`);
