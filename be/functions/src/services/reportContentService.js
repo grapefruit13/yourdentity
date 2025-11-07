@@ -10,6 +10,7 @@ class ReportContentService {
     });
     
     this.reportsDatabaseId = process.env.NOTION_REPORT_CONTENT_DB_ID;
+    this.reportedDatabaseId = process.env.NOTION_REPORTED_CONTENT_DB_ID;
   }
 
 /**
@@ -47,7 +48,7 @@ async createReport(reportData) {
       communityId,
       reporterId,
       reportReason,
-      status: 'pending',
+      status: false,
       reviewedBy: null,
       reviewedAt: null,
       memo: null,
@@ -73,12 +74,23 @@ async createReport(reportData) {
 
 /**
  * 동일 신고(중복 신고) 여부 체크 - 노션 데이터베이스에서 확인
+ * reportsDatabaseId와 reportedDatabaseId 두 데이터베이스 모두에서 확인
  */
 async checkDuplicateReport(reporterId, targetType, targetId) {
   try {
     const notionTargetType = this.mapTargetType(targetType);
 
-    const response = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
+    // 두 데이터베이스에서 중복 체크를 위한 공통 필터
+    const filter = {
+      and: [
+        { property: '신고자ID', rich_text: { equals: reporterId } },
+        { property: '신고 타입', title: { equals: notionTargetType } },
+        { property: '신고 콘텐츠', rich_text: { equals: targetId } },
+      ]
+    };
+
+    // 1. reportsDatabaseId에서 중복 체크
+    const response1 = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
@@ -86,27 +98,51 @@ async checkDuplicateReport(reporterId, targetType, targetId) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        filter: {
-          and: [
-            { property: '신고자ID', rich_text: { equals: reporterId } },
-            { property: '신고 타입', title: { equals: notionTargetType } },
-            { property: '신고 콘텐츠', rich_text: { equals: targetId } },
-          ]
-        },
+        filter: filter,
         page_size: 1
       })
     });
 
-    const data = await response.json();
+    const data1 = await response1.json();
 
-    if (!response.ok) {
-      throw new Error(`Notion duplicate check failed: ${data.message || response.statusText}`);
+    if (!response1.ok) {
+      throw new Error(`Notion duplicate check failed (reportsDatabaseId): ${data1.message || response1.statusText}`);
     }
 
-    if (!data.results || data.results.length === 0) return null;
+    // reportsDatabaseId에서 중복 발견
+    if (data1.results && data1.results.length > 0) {
+      const page = data1.results[0];
+      return { id: page.id, reporterId, targetType, targetId, database: 'reportsDatabaseId' };
+    }
 
-    const page = data.results[0];
-    return { id: page.id, reporterId, targetType, targetId };
+    // 2. reportedDatabaseId에서 중복 체크
+    const response2 = await fetch(`https://api.notion.com/v1/databases/${this.reportedDatabaseId}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filter: filter,
+        page_size: 1
+      })
+    });
+
+    const data2 = await response2.json();
+
+    if (!response2.ok) {
+      throw new Error(`Notion duplicate check failed (reportedDatabaseId): ${data2.message || response2.statusText}`);
+    }
+
+    // reportedDatabaseId에서 중복 발견
+    if (data2.results && data2.results.length > 0) {
+      const page = data2.results[0];
+      return { id: page.id, reporterId, targetType, targetId, database: 'reportedDatabaseId' };
+    }
+
+    // 두 데이터베이스 모두에서 중복 없음
+    return null;
 
   } catch (error) {
     console.error('Notion 중복 신고 확인 실패:', error);
@@ -214,7 +250,8 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
         reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
         reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
         communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
-        status: props['상태']?.select?.name || null,
+        //status: props['상태']?.select?.name || null,
+        status : props['상태']?.checkbox || false,
         reportedAt: props['신고일시']?.date?.start || null,
         syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
         syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null
@@ -255,8 +292,8 @@ async syncToNotion(reportData) {
 async syncReportToNotion(reportData) {
   try {
     
-    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = 'pending'} = reportData;
-
+    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false} = reportData;
+    
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
     - 작성자 ID를 저장하고 노션에 보여줄때는 users컬렉션에서 작성자 이름 + 해당 작성자 이름을 클릭하면 작성자 정보 데이터베이스 추가필요
@@ -287,7 +324,7 @@ async syncReportToNotion(reportData) {
         '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
         '신고일시': { date: { start: new Date().toISOString() } },
         '커뮤니티 ID': { rich_text: communityId ? [{ text: { content: communityId } }] : [] },
-        '상태': { select: { name: status } },
+        '상태': { checkbox: status },
         '동기화 시간(Firebase)': { 
             date: { 
               start: new Date(new Date().getTime()).toISOString()
@@ -375,11 +412,12 @@ async syncResolvedReports() {
         const targetType = props['신고 타입']?.title?.[0]?.text?.content || null;
         const targetId = props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null;
         const communityId = props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null;
-        const status = props['상태']?.select?.name || 'pending';
+        const status = props['상태']?.checkbox || false;
         const notionUpdatedAt = new Date().toISOString();
 
         reports.push({
           notionPageId: page.id,
+          notionPage: page, // 전체 페이지 객체도 저장 (properties 복사용)
           targetType,
           targetId,
           communityId,
@@ -392,86 +430,216 @@ async syncResolvedReports() {
       cursor = data.next_cursor;
     }
 
-    console.log("✅ Notion 신고 데이터 개수:", reports.length);
+    console.log("Notion 신고 데이터 개수:", reports.length);
 
-    // 2. Firebase 동기화
-
+    // 2. targetId별로 그룹화하고, 그룹 내 하나라도 status=true이면 모두 true로 처리
+    const reportsByTarget = {};
+    
     for (const report of reports) {
-      try {
-        const { targetType, targetId, communityId, status } = report;
-        if (!targetId || !targetType) continue;
-
-        if (targetType === "게시글") {
-          const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
-
-          await db.runTransaction(async (t) => {
-            const postSnap = await t.get(postRef);
-
-            // 안전하게 reportsCount 초기화
-            let reportsCount = postSnap.exists ? postSnap.data().reportsCount : 0;
-            if (typeof reportsCount !== 'number' || isNaN(reportsCount)) {
-              reportsCount = 0;
-            }
-
-            if (status === "resolved") {
-              t.update(postRef, { isLocked: true, reportsCount: FieldValue.increment(1) });
-            } else {
-              const updateData = { isLocked: false };
-              if (reportsCount > 0) {
-                updateData.reportsCount = FieldValue.increment(-1);
-              }
-              t.update(postRef, updateData);
-            }
-
-            console.log(`📄 [게시글] ${targetId} → ${status}, reportsCount: ${reportsCount}`);
-          });
-
-        } else if (targetType === "댓글") {
-          const commentRef = db.doc(`comments/${targetId}`);
-
-          await db.runTransaction(async (t) => {
-            const commentSnap = await t.get(commentRef);
-
-            // 안전하게 reportsCount 초기화
-            let reportsCount = commentSnap.exists ? commentSnap.data().reportsCount : 0;
-            if (typeof reportsCount !== 'number' || isNaN(reportsCount)) {
-              reportsCount = 0;
-            }
-
-            if (status === "resolved") {
-              t.update(commentRef, { isLocked: true, reportsCount: reportsCount + 1 });
-            } else {
-              t.update(commentRef, { isLocked: false });
-              if (reportsCount > 0) {
-                t.update(commentRef, { reportsCount: reportsCount - 1 });
-              }
-            }
-
-            console.log(`💬 [댓글] ${targetId} → ${status}, reportsCount: ${reportsCount}`);
-          });
-        }
-
-        // 🔹 3. Notion에 동기화 시간 기록
-        await this.notion.pages.update({
-          page_id: report.notionPageId,
-          properties: {
-            '동기화 시간(Notion)': {
-              date: {
-                start: new Date(report.notionUpdatedAt).toISOString()
-              }
-            }
-          }
-        });
-
-      } catch (err) {
-        console.error(`⚠️ 동기화 중 오류 (targetId: ${report.targetId}):`, err);
+      const { targetId, targetType, communityId } = report;
+      if (!targetId || !targetType) continue;
+      
+      // targetId를 키로 사용 (게시글은 communityId도 포함, 댓글은 targetId만)
+      const key = targetType === "게시글" 
+        ? `${targetType}_${communityId}_${targetId}` 
+        : `${targetType}_${targetId}`;
+      
+      if (!reportsByTarget[key]) {
+        reportsByTarget[key] = {
+          targetType,
+          targetId,
+          communityId,
+          reports: [],
+          hasResolved: false
+        };
+      }
+      
+      reportsByTarget[key].reports.push(report);
+      
+      // 그룹 내 하나라도 status=true이면 hasResolved를 true로 설정
+      if (report.status) {
+        reportsByTarget[key].hasResolved = true;
       }
     }
 
-    console.log("✅ Notion → Firebase 동기화 완료");
-    return reports;
+    // 3. hasResolved가 true인 그룹의 모든 리포트를 status=true로 처리
+    const processedReports = [];
+    for (const key in reportsByTarget) {
+      const group = reportsByTarget[key];
+      
+      if (group.hasResolved) {
+        // 그룹 내 모든 리포트를 status=true로 처리
+        for (const report of group.reports) {
+          processedReports.push({
+            ...report,
+            status: true // 모두 true로 설정
+          });
+        }
+      } else {
+        // hasResolved가 false인 경우는 그대로 유지
+        processedReports.push(...group.reports);
+      }
+    }
+
+    console.log(`처리된 신고 데이터 개수: ${processedReports.length} (그룹화 후)`);
+
+   // 4. Firebase 동기화 및 Notion 데이터베이스 이동
+   let syncedCount = 0;
+   let failedCount = 0;
+
+   for (const report of processedReports) {
+     try {
+       const { targetType, targetId, communityId, status, notionPage } = report;
+       if (!targetId || !targetType) continue;
+
+       // status=true인 경우에만 동기화 진행
+       // (그룹화 단계에서 동일한 신고 콘텐츠에 status=true가 하나라도 있으면 모두 true로 처리됨)
+       if (!status) {
+         console.log(`[건너뜀] ${targetId} → status가 false이므로 동기화하지 않음`);
+         continue;
+       }
+
+       // 작성자 ID 가져오기
+       const targetUserId = notionPage.properties['작성자']?.rich_text?.[0]?.text?.content || null;
+
+       let syncSuccess = false;
+
+       // Firebase 동기화 (status=true인 경우만 여기 도달)
+       if (targetType === "게시글") {
+         const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+
+         await db.runTransaction(async (t) => {
+           const postSnap = await t.get(postRef);
+
+           // status=true이므로 항상 isLocked: true로 설정
+           t.update(postRef, { isLocked: true });
+
+           console.log(`[게시글] ${targetId} → locked`);
+         });
+         syncSuccess = true;
+
+       } else if (targetType === "댓글") {
+         const commentRef = db.doc(`comments/${targetId}`);
+
+         await db.runTransaction(async (t) => {
+           const commentSnap = await t.get(commentRef);
+
+           // status=true이므로 항상 isLocked: true로 설정
+           t.update(commentRef, { isLocked: true });
+
+           console.log(`[댓글] ${targetId} → locked`);
+         });
+         syncSuccess = true;
+       }
+
+       // Firebase 동기화 성공 시 Notion 데이터베이스 이동 및 users 컬렉션 reportCount 증가
+       if (syncSuccess) {
+         try {
+           // users 컬렉션의 reportCount 증가 (작성자가 있는 경우만)
+           if (targetUserId) {
+             try {
+               const userRef = db.collection("users").doc(targetUserId);
+               await userRef.set({
+                 reportCount: FieldValue.increment(1)
+               }, { merge: true });
+               console.log(`[Users] ${targetUserId}의 reportCount 증가 완료`);
+             } catch (userError) {
+               console.error(`[Users] ${targetUserId}의 reportCount 증가 실패:`, userError.message);
+               // users 업데이트 실패는 전체 프로세스를 중단하지 않음
+             }
+           }
+
+           // 원본 페이지의 모든 properties 복사
+           const sourceProps = notionPage.properties;
+           const backupProperties = {};
+
+           // 각 필드 타입별로 복사
+           for (const [key, value] of Object.entries(sourceProps)) {
+             if (!value || !value.type) continue;
+
+             // Notion API 형식 그대로 복사
+             if (value.type === "title") {
+               backupProperties[key] = { title: value.title || [] };
+             } else if (value.type === "rich_text") {
+               backupProperties[key] = { rich_text: value.rich_text || [] };
+             } else if (value.type === "select") {
+               backupProperties[key] = value.select ? { select: value.select } : { select: null };
+             } else if (value.type === "date") {
+               backupProperties[key] = value.date ? { date: value.date } : { date: null };
+             } else if (value.type === "number") {
+               backupProperties[key] = { number: value.number ?? null };
+             } else if (value.type === "checkbox") {
+               backupProperties[key] = { checkbox: value.checkbox ?? false };
+             } else if (value.type === "files") {
+               backupProperties[key] = { files: value.files || [] };
+             } else if (value.type === "multi_select") {
+               backupProperties[key] = { multi_select: value.multi_select || [] };
+             } else if (value.type === "relation") {
+               backupProperties[key] = { relation: value.relation || [] };
+             } else if (value.type === "rollup") {
+               backupProperties[key] = { rollup: value.rollup || null };
+             } else if (value.type === "formula") {
+               backupProperties[key] = { formula: value.formula || null };
+             } else if (value.type === "created_time") {
+               backupProperties[key] = { created_time: value.created_time || null };
+             } else if (value.type === "created_by") {
+               backupProperties[key] = { created_by: value.created_by || null };
+             } else if (value.type === "last_edited_time") {
+               backupProperties[key] = { last_edited_time: value.last_edited_time || null };
+             } else if (value.type === "last_edited_by") {
+               backupProperties[key] = { last_edited_by: value.last_edited_by || null };
+             }
+           }
+
+           // 상태를 true로 설정 (status=true인 경우만 여기 도달)
+           backupProperties['상태'] = {
+             checkbox: true
+           };
+
+           // 동기화 시간 추가
+           backupProperties['동기화 시간(Notion)'] = {
+             date: {
+               start: new Date(report.notionUpdatedAt).toISOString()
+             }
+           };
+
+           // reportedDatabaseId에 새 페이지 생성
+           await this.notion.pages.create({
+             parent: { database_id: this.reportedDatabaseId },
+             properties: backupProperties
+           });
+
+           // 원본 데이터베이스에서 페이지 아카이브 (삭제)
+           await this.notion.pages.update({
+             page_id: report.notionPageId,
+             archived: true
+           });
+
+           syncedCount++;
+           console.log(`[성공] ${targetId} → reportedDatabaseId로 이동 완료`);
+         } catch (notionError) {
+           console.error(`[Notion 이동 실패] ${targetId}:`, notionError.message);
+           failedCount++;
+         }
+       } else {
+         failedCount++;
+       }
+
+     } catch (err) {
+       console.error(`동기화 중 오류 (targetId: ${report.targetId}):`, err);
+       failedCount++;
+     }
+   }
+
+    console.log(`Notion → Firebase 동기화 완료: 성공 ${syncedCount}개, 실패 ${failedCount}개`);
+    return { 
+      total: reports.length, 
+      synced: syncedCount, 
+      failed: failedCount,
+      reports: processedReports
+    };
   } catch (error) {
-    console.error("❌ Notion 데이터 가져오기 실패:", error);
+    console.error("Notion 데이터 가져오기 실패:", error);
     throw error;
   }
 }
