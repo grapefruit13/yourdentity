@@ -207,6 +207,71 @@ class StoreController {
       return next(error);
     }
   }
+
+  /**
+   * 스토어 구매신청
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async createStorePurchase(req, res, next) {
+    try {
+      const userId = req.user.uid;
+      const purchaseRequest = req.body;
+
+      // Firestore에서 사용자 닉네임 가져오기
+      const FirestoreService = require("../services/firestoreService");
+      const userService = new FirestoreService("users");
+      const userData = await userService.getById(userId);
+      const userNickname = userData?.nickname || '';
+
+      const result = await storeService.createStorePurchase(userId, purchaseRequest, userNickname);
+      return res.created(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 스토어 구매신청내역 조회
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async getStorePurchases(req, res, next) {
+    try {
+      const userId = req.user.uid;
+      const {
+        pageSize = DEFAULT_PAGE_SIZE,
+        cursor
+      } = req.query;
+
+      // 페이지 크기 검증
+      const pageSizeNum = parseInt(pageSize, 10);
+      if (isNaN(pageSizeNum) || pageSizeNum < MIN_PAGE_SIZE || pageSizeNum > MAX_PAGE_SIZE) {
+        const error = new Error("페이지 크기는 1-100 사이의 숫자여야 합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await storeService.getStorePurchases(userId, pageSizeNum, cursor);
+
+      return res.success({
+        message: "스토어 구매신청내역을 성공적으로 조회했습니다.",
+        purchases: result.purchases,
+        pagination: {
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          currentPageCount: result.currentPageCount
+        }
+      });
+
+    } catch (error) {
+      console.error("[StoreController] 스토어 구매신청내역 조회 오류:", error.message);
+      return next(error);
+    }
+  }
 }
 
 module.exports = new StoreController();

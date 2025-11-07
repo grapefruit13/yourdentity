@@ -45,6 +45,10 @@ const authGuard = require("../middleware/authGuard");
  *           type: boolean
  *           description: 판매 여부
  *           example: true
+ *         requiresDelivery:
+ *           type: boolean
+ *           description: 배송 필요 여부
+ *           example: true
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -90,6 +94,10 @@ const authGuard = require("../middleware/authGuard");
  *         onSale:
  *           type: boolean
  *           description: 판매 여부
+ *           example: true
+ *         requiresDelivery:
+ *           type: boolean
+ *           description: 배송 필요 여부
  *           example: true
  *         createdAt:
  *           type: string
@@ -870,5 +878,276 @@ router.post("/qna/:qnaId/like", authGuard, storeController.toggleProductQnALike)
  *                   example: "서버 내부 오류가 발생했습니다"
  */
 router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
+
+// 스토어 구매신청
+/**
+ * @swagger
+ * /store/purchases:
+ *   post:
+ *     tags: [Store]
+ *     summary: 스토어 구매신청
+ *     description: 스토어 상품 구매를 신청하고 Notion DB에 저장
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productId
+ *             properties:
+ *               productId:
+ *                 type: string
+ *                 description: 상품 ID (Notion 페이지 ID)
+ *                 example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
+ *               quantity:
+ *                 type: integer
+ *                 default: 1
+ *                 description: 구매 개수
+ *                 example: 2
+ *               recipientName:
+ *                 type: string
+ *                 description: 수령인 이름
+ *                 example: "홍길동"
+ *               recipientAddress:
+ *                 type: string
+ *                 description: 수령인 주소지
+ *                 example: "서울시 강남구 테헤란로 123"
+ *               recipientDetailAddress:
+ *                 type: string
+ *                 description: 수령인 상세 주소지
+ *                 example: "456호"
+ *     responses:
+ *       201:
+ *         description: 구매신청 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     purchaseId:
+ *                       type: string
+ *                       description: 구매신청 ID
+ *                       example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                       example: "firebase-uid-123"
+ *                     productId:
+ *                       type: string
+ *                       description: 상품 ID
+ *                       example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
+ *                     quantity:
+ *                       type: integer
+ *                       example: 2
+ *                     recipientName:
+ *                       type: string
+ *                       example: "홍길동"
+ *                     recipientAddress:
+ *                       type: string
+ *                       example: "서울시 강남구 테헤란로 123"
+ *                     recipientDetailAddress:
+ *                       type: string
+ *                       example: "456호"
+ *                     orderDate:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 주문 완료 일시
+ *                       example: "2025-11-06T15:28:00.000Z"
+ *                     deliveryCompleted:
+ *                       type: boolean
+ *                       example: false
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "상품 ID가 필요합니다."
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "인증에 실패했습니다"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
+ */
+router.post("/purchases", authGuard, storeController.createStorePurchase);
+
+// 스토어 구매신청내역 조회
+/**
+ * @swagger
+ * /store/purchases:
+ *   get:
+ *     tags: [Store]
+ *     summary: 스토어 구매신청내역 조회
+ *     description: 본인의 스토어 구매신청내역을 조회 (Notion DB 기반)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 페이지 크기 (1-100)
+ *       - in: query
+ *         name: cursor
+ *         schema:
+ *           type: string
+ *         description: 페이지네이션 커서 (다음 페이지 조회 시 사용)
+ *     responses:
+ *       200:
+ *         description: 구매신청내역 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "스토어 구매신청내역을 성공적으로 조회했습니다."
+ *                     purchases:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           purchaseId:
+ *                             type: string
+ *                             description: 구매신청 ID
+ *                             example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *                           userId:
+ *                             type: string
+ *                             description: 사용자 ID
+ *                             example: "firebase-uid-123"
+ *                           userNickname:
+ *                             type: string
+ *                             description: 주문자 닉네임
+ *                             example: "나다움123"
+ *                           productId:
+ *                             type: string
+ *                             description: 상품 ID
+ *                             example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
+ *                           quantity:
+ *                             type: integer
+ *                             example: 2
+ *                           recipientName:
+ *                             type: string
+ *                             example: "홍길동"
+ *                           recipientAddress:
+ *                             type: string
+ *                             example: "서울시 강남구 테헤란로 123"
+ *                           recipientDetailAddress:
+ *                             type: string
+ *                             example: "456호"
+ *                           deliveryCompleted:
+ *                             type: boolean
+ *                             example: false
+ *                           orderDate:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-06T15:28:00.000Z"
+ *                           lastEditedTime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-06T15:30:00.000Z"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         hasMore:
+ *                           type: boolean
+ *                           description: 다음 페이지 존재 여부
+ *                           example: false
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                           description: 다음 페이지 커서
+ *                           example: null
+ *                         currentPageCount:
+ *                           type: integer
+ *                           description: 현재 페이지 항목 수
+ *                           example: 5
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "페이지 크기는 1-100 사이의 숫자여야 합니다."
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "인증에 실패했습니다"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "서버 내부 오류가 발생했습니다"
+ */
+router.get("/purchases", authGuard, storeController.getStorePurchases);
 
 module.exports = router;

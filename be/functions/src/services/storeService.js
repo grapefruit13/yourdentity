@@ -7,6 +7,7 @@ const {
   getCheckboxValue,
   getNumberValue,
   getFileUrls,
+  getRelationValues,
   formatNotionBlocks
 } = require('../utils/notionHelper');
 
@@ -15,6 +16,9 @@ const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MIN_PAGE_SIZE = 1;
+
+// Notion 스토어 구매신청 DB ID
+const STORE_PURCHASE_DB_ID = process.env.NOTION_STORE_PURCHASE_DB_ID;
 
 // page_size 검증 및 클램프 함수
 function normalizePageSize(value) {
@@ -38,7 +42,21 @@ const NOTION_FIELDS = {
   DESCRIPTION: "설명",
   THUMBNAIL: "썸네일",
   REQUIRED_POINTS: "필요한 나다움",
-  ON_SALE: "판매 여부"
+  ON_SALE: "판매 여부",
+  REQUIRES_DELIVERY: "배송 필요 여부"
+};
+
+// Notion 스토어 구매신청 필드명 상수
+const PURCHASE_FIELDS = {
+  ORDERER_ID: "주문자 ID",
+  ORDERER_NICKNAME: "주문자 기본 닉네임",
+  PRODUCT_NAME: "주문한 상품명",
+  QUANTITY: "개수",
+  RECIPIENT_NAME: "수령인 이름",
+  RECIPIENT_ADDRESS: "수령인 주소지",
+  RECIPIENT_DETAIL_ADDRESS: "수령인 상세 주소지",
+  DELIVERY_COMPLETED: "지급 완료 여부",
+  ORDER_DATE: "주문 완료 일시"
 };
 
 /**
@@ -239,6 +257,7 @@ class StoreService {
       thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
       requiredPoints: getNumberValue(props[NOTION_FIELDS.REQUIRED_POINTS]) || 0,
       onSale: getCheckboxValue(props[NOTION_FIELDS.ON_SALE]),
+      requiresDelivery: getCheckboxValue(props[NOTION_FIELDS.REQUIRES_DELIVERY]),
       createdAt: page.created_time,
       updatedAt: page.last_edited_time
     };
@@ -741,6 +760,282 @@ class StoreService {
       }
       throw new Error("Failed to delete product Q&A");
     }
+  }
+
+  /**
+   * 스토어 구매신청 (Notion DB에 저장)
+   * @param {string} userId - 사용자 ID (Firebase UID)
+   * @param {Object} purchaseRequest - 구매신청 데이터
+   * @param {string} purchaseRequest.productId - 상품 ID (Notion 페이지 ID)
+   * @param {number} purchaseRequest.quantity - 구매 개수
+   * @param {string} [purchaseRequest.recipientName] - 수령인 이름
+   * @param {string} [purchaseRequest.recipientAddress] - 수령인 주소지
+   * @param {string} [purchaseRequest.recipientDetailAddress] - 수령인 상세 주소지
+   * @param {string} userNickname - 주문자 기본 닉네임
+   * @return {Promise<Object>} 구매신청 결과
+   */
+  async createStorePurchase(userId, purchaseRequest, userNickname) {
+    try {
+      if (!this.notion || !STORE_PURCHASE_DB_ID) {
+        const error = new Error('스토어 구매신청 DB가 설정되지 않았습니다.');
+        error.code = ERROR_CODES.MISSING_DB_ID;
+        error.statusCode = 500;
+        throw error;
+      }
+
+      const {
+        productId,
+        quantity = 1,
+        recipientName = '',
+        recipientAddress = '',
+        recipientDetailAddress = ''
+      } = purchaseRequest;
+
+      // 필수 검증
+      if (!productId) {
+        const error = new Error('상품 ID가 필요합니다.');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        const error = new Error('구매 개수는 1 이상의 정수여야 합니다.');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 1. Notion에서 상품 정보 조회 (requiredPoints, requiresDelivery 확인)
+      const product = await this.getProductById(productId);
+      const totalPoints = product.requiredPoints * quantity;
+
+      // 2. 배송이 필요한 상품인 경우 주소 검증
+      if (product.requiresDelivery && (!recipientName || !recipientAddress)) {
+        const error = new Error('배송이 필요한 상품은 수령인 정보가 필요합니다.');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 3. 사용자 포인트 확인
+      const userService = new FirestoreService("users");
+      const userDoc = await userService.getById(userId);
+      
+      if (!userDoc) {
+        const error = new Error('사용자를 찾을 수 없습니다.');
+        error.code = 'NOT_FOUND';
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const currentRewards = userDoc.rewards || 0;
+      if (currentRewards < totalPoints) {
+        const error = new Error(`리워드(나다움)가 부족합니다. (필요: ${totalPoints}, 보유: ${currentRewards})`);
+        error.code = 'INSUFFICIENT_REWARDS';
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 4. 트랜잭션으로 포인트 차감 및 히스토리 기록
+      await this.firestoreService.runTransaction(async (transaction) => {
+        const userRef = this.firestoreService.db.collection("users").doc(userId);
+        
+        // users rewards 차감
+        transaction.update(userRef, {
+          rewards: FieldValue.increment(-totalPoints),
+          lastUpdated: FieldValue.serverTimestamp()
+        });
+
+        // rewardsHistory 생성
+        const historyRef = this.firestoreService.db
+          .collection(`users/${userId}/rewardsHistory`)
+          .doc();
+        
+        transaction.set(historyRef, {
+          amount: totalPoints,
+          changeType: "deduct",
+          reason: `${product.name} 구매`,
+          expiredAt: null,
+          isProcessed: false,
+          createdAt: FieldValue.serverTimestamp()
+        });
+      });
+
+      // Notion 페이지 생성
+      const notionData = {
+        parent: { database_id: STORE_PURCHASE_DB_ID },
+        properties: {
+          [PURCHASE_FIELDS.ORDERER_ID]: {
+            title: [{ text: { content: userId } }]
+          },
+          [PURCHASE_FIELDS.ORDERER_NICKNAME]: {
+            rich_text: [{ text: { content: userNickname || '' } }]
+          },
+          [PURCHASE_FIELDS.PRODUCT_NAME]: {
+            relation: [{ id: productId }]
+          },
+          [PURCHASE_FIELDS.QUANTITY]: {
+            number: quantity
+          },
+          [PURCHASE_FIELDS.RECIPIENT_NAME]: {
+            rich_text: recipientName ? [{ text: { content: recipientName } }] : []
+          },
+          [PURCHASE_FIELDS.RECIPIENT_ADDRESS]: {
+            rich_text: recipientAddress ? [{ text: { content: recipientAddress } }] : []
+          },
+          [PURCHASE_FIELDS.RECIPIENT_DETAIL_ADDRESS]: {
+            rich_text: recipientDetailAddress ? [{ text: { content: recipientDetailAddress } }] : []
+          },
+          [PURCHASE_FIELDS.DELIVERY_COMPLETED]: {
+            checkbox: false
+          }
+        }
+      };
+
+      const response = await this.notion.pages.create(notionData);
+
+      console.log('[StoreService] 스토어 구매신청 성공:', response.id);
+
+      return {
+        purchaseId: response.id,
+        userId,
+        productId,
+        quantity,
+        recipientName,
+        recipientAddress,
+        recipientDetailAddress,
+        orderDate: response.created_time,
+        deliveryCompleted: false
+      };
+
+    } catch (error) {
+      console.error('[StoreService] 스토어 구매신청 오류:', error.message);
+
+      if (error.code === 'BAD_REQUEST' || error.code === ERROR_CODES.MISSING_DB_ID) {
+        throw error;
+      }
+
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('스토어 구매신청 DB를 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.MISSING_DB_ID;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+
+      const serviceError = new Error(`스토어 구매신청 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 스토어 구매신청내역 조회 (Notion DB에서 조회)
+   * @param {string} userId - 사용자 ID (Firebase UID)
+   * @param {number} [pageSize=20] - 페이지 크기
+   * @param {string} [startCursor] - 페이지네이션 커서
+   * @return {Promise<Object>} 구매신청내역 목록
+   */
+  async getStorePurchases(userId, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
+    try {
+      if (!this.notion || !STORE_PURCHASE_DB_ID) {
+        const error = new Error('스토어 구매신청 DB가 설정되지 않았습니다.');
+        error.code = ERROR_CODES.MISSING_DB_ID;
+        error.statusCode = 500;
+        throw error;
+      }
+
+      const queryBody = {
+        page_size: normalizePageSize(pageSize),
+        filter: {
+          property: PURCHASE_FIELDS.ORDERER_ID,
+          title: {
+            equals: userId
+          }
+        },
+        sorts: [
+          {
+            timestamp: "created_time",
+            direction: "descending"
+          }
+        ]
+      };
+
+      if (startCursor) {
+        queryBody.start_cursor = startCursor;
+      }
+
+      const data = await this.notion.dataSources.query({
+        data_source_id: STORE_PURCHASE_DB_ID,
+        ...queryBody
+      });
+
+      const purchases = data.results.map(page => this.formatPurchaseData(page));
+
+      return {
+        purchases,
+        hasMore: data.has_more,
+        nextCursor: data.next_cursor,
+        currentPageCount: data.results.length
+      };
+
+    } catch (error) {
+      console.error('[StoreService] 스토어 구매신청내역 조회 오류:', error.message);
+
+      if (error.code === 'object_not_found') {
+        const notFoundError = new Error('스토어 구매신청 DB를 찾을 수 없습니다.');
+        notFoundError.code = ERROR_CODES.MISSING_DB_ID;
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      if (error.code === 'rate_limited') {
+        const rateLimitError = new Error('Notion API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+
+      const serviceError = new Error(`스토어 구매신청내역 조회 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 구매신청 데이터 포맷팅
+   * @param {Object} page - Notion 페이지 객체
+   * @returns {Object} 포맷팅된 구매신청 데이터
+   */
+  formatPurchaseData(page) {
+    const props = page.properties;
+
+    // Relation에서 상품 ID 추출
+    const productRelation = getRelationValues(props[PURCHASE_FIELDS.PRODUCT_NAME]);
+    const productId = productRelation?.relations?.length > 0 
+      ? productRelation.relations[0].id 
+      : null;
+
+    return {
+      purchaseId: page.id,
+      userId: getTitleValue(props[PURCHASE_FIELDS.ORDERER_ID]),
+      userNickname: getTextContent(props[PURCHASE_FIELDS.ORDERER_NICKNAME]),
+      productId: productId,
+      quantity: getNumberValue(props[PURCHASE_FIELDS.QUANTITY]) || 1,
+      recipientName: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_NAME]),
+      recipientAddress: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_ADDRESS]),
+      recipientDetailAddress: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_DETAIL_ADDRESS]),
+      deliveryCompleted: getCheckboxValue(props[PURCHASE_FIELDS.DELIVERY_COMPLETED]),
+      orderDate: page.created_time,
+      lastEditedTime: page.last_edited_time
+    };
   }
 }
 
