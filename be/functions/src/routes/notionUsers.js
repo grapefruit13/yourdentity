@@ -211,7 +211,7 @@ router.post("/test/create", notionUserController.createTestUsers);
 
 /**
  * @swagger
- * /notionUsers/sync/selected-from-backup:
+ * /notionUsers/sync/allUsersBackup:
  *   get:
  *     summary: 백업 DB에서 전체 회원 복원
  *     description: |
@@ -238,6 +238,6 @@ router.post("/test/create", notionUserController.createTestUsers);
  *       500:
  *         description: 서버 오류
  */
-router.get("/sync/selectedFromBackup", notionUserController.syncSelectedUsersFromBackup);
+router.get("/sync/allUsersBackup", notionUserController.syncAllUsersBackup);
 
 module.exports = router;

@@ -15,7 +15,7 @@ const {admin} = require("../config/database");
 -> 유스보이스 사용자가 최대 3,000명 이라고 가정하면 1초에 1000배치로 처리 가능 (3000명을 넘어갈까...?)
  */
 const DELAY_MS = 1200; // 지연시간
-const BATCH_SIZE = 350; // 배치 사이즈
+const BATCH_SIZE = 500; // 배치 사이즈
 
 class NotionUserService {
 
@@ -821,10 +821,26 @@ async syncSelectedUsers() {
   const failedUserIds = []; // 건너뜀한 사용자 ID 목록
   let validateErrorCount = 0; //값이 잘못된 경우
 
-   // 백업 먼저 실행
+
+   /*
+   - 백업 먼저 진행
+     + 회원 데이터의 경우 중요한 데이터이기 때문에 백업이 완료 되어야 firebase에 적용이 가능 하도록함
+     + 노션 회원 관리 데이터베이스에 있는 데이터는 대부분 firebase에서 땡겨오는 데이터이지만  적용을 수행하는 경우 잘못된 데이터가 firebase에 들어간 것을 복구 하기 위해 백업
+   */
    console.log('백업을 시작합니다...');
-   const backupResult = await this.backupNotionUserDatabase();
-   console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨`);
+   try {
+     const backupResult = await this.backupNotionUserDatabase();
+     console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨`);
+   } catch (error) {
+     console.error('백업 실패:', error);
+     return { 
+       error: '백업을 실패했습니다', 
+       errorMessage: error.message || '알 수 없는 오류가 발생했습니다',
+       syncedCount: 0, 
+       skippedCount: 0, 
+       validateErrorCount: 0 
+     };
+   }
   
   // 모든 페이지를 순회하며 "선택" 필드가 체크된 데이터만 조회
   while (hasMore) {
@@ -1072,10 +1088,20 @@ async syncSelectedUsers() {
       const backupUsers = await this.getNotionUsers(this.notionUserAccountBackupDB);
       console.log(`백업 데이터베이스에 기존 ${Object.keys(backupUsers).length}개의 페이지가 있습니다.`);
 
+       // 원본에 있는 사용자ID Set 생성
+       const sourceUserIds = new Set();
+       for (const page of sourcePages) {
+         const userId = page.properties["사용자ID"]?.rich_text?.[0]?.plain_text || null;
+         if (userId) {
+           sourceUserIds.add(userId);
+         }
+       }
+       
       let backedUpCount = 0;
       let updatedCount = 0;
       let createdCount = 0;
       let failedCount = 0;
+      let deletedCount = 0;
       const errors = [];
 
       // 3. 배치 처리로 백업
@@ -1183,6 +1209,48 @@ async syncSelectedUsers() {
         }
       }
 
+
+      // 4. 원본에 없는데 백업 DB에만 있는 데이터 삭제
+      const backupAllPages = await this.getAllNotionPages(this.notionUserAccountBackupDB);
+      const pagesToDelete = [];
+      
+      for (const backupPage of backupAllPages) {
+        const backupUserId = backupPage.properties["사용자ID"]?.rich_text?.[0]?.plain_text || null;
+        
+        // 사용자ID가 없거나, 원본에 없는 경우 삭제 대상
+        if (!backupUserId || !sourceUserIds.has(backupUserId)) {
+          pagesToDelete.push({
+            pageId: backupPage.id,
+            userId: backupUserId || "(사용자ID 없음)",
+          });
+        }
+      }
+
+      if (pagesToDelete.length > 0) {
+        console.log(`원본에 없는데 백업 DB에만 있는 페이지 ${pagesToDelete.length}개 삭제 중...`);
+        
+        // 배치 처리로 삭제
+        for (let i = 0; i < pagesToDelete.length; i += BATCH_SIZE) {
+          const batch = pagesToDelete.slice(i, i + BATCH_SIZE);
+          console.log(`삭제 배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(pagesToDelete.length / BATCH_SIZE)} 처리 중...`);
+          
+          await Promise.all(batch.map(async (page) => {
+            try {
+              await this.archiveNotionPageWithRetry(page.pageId);
+              deletedCount++;
+              console.log(`[삭제 성공] 페이지 ${page.pageId} (사용자ID: ${page.userId})`);
+            } catch (error) {
+              console.error(`[삭제 실패] 페이지 ${page.pageId} (사용자ID: ${page.userId}):`, error.message);
+            }
+          }));
+          
+          // 마지막 배치가 아니면 지연
+          if (i + BATCH_SIZE < pagesToDelete.length) {
+            await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+          }
+        }
+      }
+
       console.log(`=== 백업 완료 ===`);
       console.log(`총 ${backedUpCount}개 백업 (생성: ${createdCount}개, 업데이트: ${updatedCount}개, 실패: ${failedCount}개)`);
 
@@ -1191,6 +1259,7 @@ async syncSelectedUsers() {
         created: createdCount,
         updated: updatedCount,
         failed: failedCount,
+        deleted: deletedCount,
         ...(errors.length > 0 && { errors })
       };
     } catch (error) {
@@ -1413,7 +1482,7 @@ async syncSelectedUsers() {
    * notionUserAccountBackupDB의 모든 데이터를 조회하여 Firebase에 업데이트
    * @return {Promise<{syncedCount: number, skippedCount: number, validateErrorCount: number}>}
    */
-  async syncSelectedUsersFromBackup() {
+  async syncAllUsersBackup() {
     let hasMore = true;
     let startCursor = undefined;
     let syncedCount = 0;
