@@ -105,4 +105,33 @@ router.get("/sync/full", notionUserController.syncAllUserAccounts);
 router.get("/sync/penalty", notionUserController.syncPenaltyUsers);
 
 
+
+/**
+ * @swagger
+ * /notionUsers/sync/selected:
+ *   get:
+ *     summary: 선택된 회원 동기화
+ *     description: |
+ *       노션 DB에서 "선택" 필드가 체크된 회원만 조회하여 Firebase users 컬렉션에 데이터를 업데이트합니다.
+ *     tags: [NotionUsers]
+ *     responses:
+ *       200:
+ *         description: 동기화 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: string
+ *                   example: "선택된 회원 동기화 완료: 10명"
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/sync/selected", notionUserController.syncSelectedUsers);
+
+
 module.exports = router;

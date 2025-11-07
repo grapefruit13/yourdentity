@@ -37,6 +37,17 @@ class NotionUserController {
   }
 
 
+  async syncSelectedUsers(req, res, next) {
+    try {
+      const result = await notionUserService.syncSelectedUsers();
+      res.success(`선택된 회원 동기화 완료: ${result.syncedCount}명, Firebase에 존재하지 않는 회원 건너뜀: ${result.skippedCount}명, 잘못된 값: ${result.validateErrorCount}명`);
+    } catch (error) {
+      console.error("[Controller Error] syncSelectedUsers:", error);
+      next(error);
+    }
+  }
+
+
 
 }
 
