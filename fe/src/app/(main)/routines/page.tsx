@@ -3,55 +3,78 @@
 import Link from "next/link";
 import { Typography } from "@/components/shared/typography";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetRoutines } from "@/hooks/generated/routines-hooks";
-import type { RoutineListItem } from "@/types/generated/api-schema"; // TEMP
+import { useGetPrograms } from "@/hooks/generated/programs-hooks";
+import type { ProgramListResponse } from "@/types/generated/api-schema";
+import { formatDateWithDay, formatDateRange } from "@/utils/shared/date";
+
+const MAX_PAGE_SIZE = 20;
 
 /**
  * @description 한끗루틴 목록 페이지
  */
 const RoutinesPage = () => {
   const {
-    data: routinesData,
+    data: programsData,
     isLoading,
     error,
-  } = useGetRoutines({
-    request: { page: 0, size: 20 },
+  } = useGetPrograms({
+    request: { pageSize: MAX_PAGE_SIZE },
     select: (data) => {
-      return data?.routines || [];
+      if (!data || typeof data !== "object") {
+        return [];
+      }
+      const responseData = data as ProgramListResponse["data"];
+      if (
+        responseData &&
+        "programs" in responseData &&
+        Array.isArray(responseData.programs)
+      ) {
+        return responseData.programs || [];
+      }
+      return [];
     },
   });
 
-  // 상태 텍스트 변환 함수
-  const getStatusText = (
-    status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED"
-  ) => {
-    switch (status) {
-      case "RECRUITING":
-        return "모집중";
-      case "IN_PROGRESS":
-        return "진행중";
-      case "COMPLETED":
-        return "완료";
+  // 프로그램 타입에 따른 일러스트 배경색
+  const getProgramBgColor = (programType?: string): string => {
+    switch (programType) {
+      case "ROUTINE":
+        return "bg-pink-100";
+      case "TMI":
+        return "bg-green-100";
+      case "GATHERING":
+        return "bg-orange-100";
       default:
-        return "-";
+        return "bg-blue-100";
     }
   };
 
-  // 상태 배경색 클래스 반환 함수
-  const getStatusBgClass = (
-    status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED"
-  ) => {
-    switch (status) {
-      case "RECRUITING":
-        return "bg-blue-100 text-blue-700";
-      case "IN_PROGRESS":
-        return "bg-green-100 text-green-700";
-      case "COMPLETED":
-        return "bg-gray-100 text-gray-700";
+  // TEMP: 프로그램 타입에 따른 일러스트 아이콘
+  const getProgramIcon = (programType?: string): string => {
+    switch (programType) {
+      case "ROUTINE":
+        return "🎵";
+      case "TMI":
+        return "🍿";
+      case "GATHERING":
+        return "✂️";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "📋";
     }
   };
+
+  // 선착순 모집 섹션: 진행 중이 아니면서 모집 완료가 아닌 항목들
+  const recruitingPrograms =
+    programsData?.filter(
+      (program) =>
+        program.programStatus !== "진행 중" &&
+        program.recruitmentStatus !== "모집 완료"
+    ) || [];
+
+  // 활동 중인 루틴 섹션: 진행 중 상태의 항목들만
+  const activePrograms =
+    programsData?.filter((program) => program.programStatus === "진행 중") ||
+    [];
 
   if (error) {
     return (
@@ -63,129 +86,197 @@ const RoutinesPage = () => {
     );
   }
 
-  // TEMP: 서버 데이터가 없을 때 사용할 폴백 데이터 적용
-  const routines: RoutineListItem[] =
-    routinesData && routinesData.length > 0
-      ? routinesData
-      : MOCK_ROUTINES_FALLBACK;
-
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="mt-12 h-full bg-[#F5F5F0] p-4">
       {isLoading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-4 rounded-lg border border-gray-200 p-4"
-            >
-              <Skeleton className="h-20 w-20 flex-shrink-0 rounded-lg" />
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-5 w-16" />
-                </div>
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <div className="flex gap-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              </div>
+        <div className="space-y-6">
+          {/* 선착순 모집 섹션 스켈레톤 */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-64 w-full rounded-lg" />
+              ))}
             </div>
-          ))}
+          </div>
+          {/* 활동 중인 루틴 섹션 스켈레톤 */}
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-48" />
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton
+                  key={index}
+                  className="h-64 w-64 flex-shrink-0 rounded-lg"
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {routines?.map((routine) => (
-            <Link
-              key={routine.id}
-              href={`/routines/${routine.id || ""}`}
-              className="block rounded-lg border border-gray-200 p-4 hover:bg-gray-50"
-            >
-              <div className="flex items-start gap-4">
-                <div className="h-20 w-20 flex-shrink-0">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-gray-100">
-                    <span className="text-2xl">📋</span>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="mb-2 flex items-center gap-2">
-                    <h2 className="text-lg font-semibold">
-                      {routine.name || "-"}
-                    </h2>
-                    {routine.status && (
-                      <span
-                        className={`rounded px-2 py-1 text-xs ${getStatusBgClass(routine.status)}`}
-                      >
-                        {getStatusText(routine.status)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mb-2 text-sm text-gray-600">
-                    {routine.description || "-"}
-                  </p>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                    {routine.stockCount !== undefined &&
-                      routine.soldCount !== undefined && (
-                        <span>
-                          👥 {routine.soldCount}/{routine.stockCount}명
-                        </span>
-                      )}
-                    {routine.viewCount !== undefined && (
-                      <span>👁️ {routine.viewCount}회</span>
-                    )}
-                    {routine.deadline && (
-                      <span>
-                        📅 {new Date(routine.deadline).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
+        <div className="space-y-6">
+          {recruitingPrograms.length > 0 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {recruitingPrograms.map((program) => (
+                  <Link
+                    key={program.id}
+                    href={`/routines/${program.id || ""}`}
+                    className="flex flex-col overflow-hidden rounded-lg border-2 border-pink-300 bg-white"
+                  >
+                    {/* 일러스트 영역 */}
+                    <div
+                      className={`relative flex h-32 items-center justify-center ${getProgramBgColor(program.programType)}`}
+                    >
+                      {/* 선착순 모집 배지 */}
+                      <div className="absolute top-2 left-2 flex h-8 w-20 items-center justify-center rounded bg-yellow-400 text-xs font-bold text-black">
+                        선착순 모집
+                      </div>
+                      {/* 일러스트 아이콘 */}
+                      <div className="text-6xl">
+                        {getProgramIcon(program.programType)}
+                      </div>
+                    </div>
+                    {/* 텍스트 영역 */}
+                    <div className="flex flex-1 flex-col justify-between p-4">
+                      <div>
+                        <Typography
+                          as="h3"
+                          font="noto"
+                          variant="heading2B"
+                          className="mb-2"
+                        >
+                          {program.title || program.programName || "-"}
+                        </Typography>
+                        <div className="mb-4 flex items-center gap-1">
+                          <Typography
+                            font="noto"
+                            variant="body2B"
+                            className="text-main-500"
+                          >
+                            신청기간
+                          </Typography>
+                          <Typography
+                            font="noto"
+                            variant="body2R"
+                            className="text-gray-600"
+                          >
+                            {formatDateWithDay(program.recruitmentEndDate)}까지
+                          </Typography>
+                        </div>
+                      </div>
+                      <button className="w-full rounded bg-pink-500 px-4 py-2 text-white">
+                        <Typography
+                          font="noto"
+                          variant="body2B"
+                          className="text-white"
+                        >
+                          참여하기 →
+                        </Typography>
+                      </button>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
-          ))}
+            </div>
+          )}
+
+          {/* 활동 중인 루틴 섹션 */}
+          {activePrograms.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-500 text-white">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                    />
+                  </svg>
+                </div>
+                <Typography as="h2" font="noto" variant="title5">
+                  활동 중인 루틴
+                </Typography>
+              </div>
+              <Typography
+                as="p"
+                font="noto"
+                variant="body2R"
+                className="text-gray-600"
+              >
+                현재 활동 중인 한끗루틴입니다!
+              </Typography>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {activePrograms.map((program) => (
+                  <Link
+                    key={program.id}
+                    href={`/routines/${program.id || ""}`}
+                    className="flex min-w-[240px] flex-shrink-0 flex-col overflow-hidden rounded-lg border-2 border-black bg-white"
+                  >
+                    {/* 일러스트 영역 */}
+                    <div
+                      className={`relative flex h-32 items-center justify-center ${getProgramBgColor(program.programType)}`}
+                    >
+                      {/* 일러스트 아이콘 */}
+                      <div className="text-6xl">
+                        {getProgramIcon(program.programType)}
+                      </div>
+                    </div>
+                    {/* 텍스트 영역 */}
+                    <div className="flex flex-1 flex-col justify-between p-4">
+                      <div>
+                        <Typography as="h3" font="noto" variant="heading2B">
+                          {program.title || program.programName || "-"}
+                        </Typography>
+                        <div className="mb-2 flex justify-center">
+                          <Typography
+                            font="noto"
+                            variant="body3R"
+                            className="text-black-100"
+                          >
+                            {formatDateRange(
+                              program.startDate,
+                              program.endDate
+                            )}
+                          </Typography>
+                        </div>
+                      </div>
+                      <button className="w-full rounded bg-black px-4 py-2 text-white">
+                        <Typography
+                          font="noto"
+                          variant="body2B"
+                          className="text-white"
+                        >
+                          한끗루틴 활동하러 가기 →
+                        </Typography>
+                      </button>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 데이터가 없는 경우 */}
+          {recruitingPrograms.length === 0 && activePrograms.length === 0 && (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                현재 모집 중이거나 진행 중인 루틴이 없습니다.
+              </Typography>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
-
-// TEMP: 동기화된 서버데이터가 아직 없어 서버 스펙을 반영한 임시 폴백 목데이터 (페이지 하단에 상수로 정의)
-const MOCK_ROUTINES_FALLBACK: RoutineListItem[] = [
-  {
-    id: "routine_1",
-    name: "10분 마음챙김 명상",
-    description: "하루 10분, 현재에 집중하는 명상 루틴",
-    status: "IN_PROGRESS",
-    stockCount: 25,
-    soldCount: 18,
-    viewCount: 150,
-    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    sellerId: "seller_001",
-    sellerName: "유스보이스",
-    price: 0,
-    currency: "KRW",
-    buyable: true,
-  },
-  {
-    id: "routine_2",
-    name: "아침 15분 스트레칭",
-    description: "가볍게 몸을 깨우는 전신 스트레칭 루틴",
-    status: "RECRUITING",
-    stockCount: 20,
-    soldCount: 5,
-    viewCount: 85,
-    deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    sellerId: "seller_001",
-    sellerName: "유스보이스",
-    price: 0,
-    currency: "KRW",
-    buyable: true,
-  },
-];
 
 export default RoutinesPage;

@@ -40,3 +40,39 @@ export const formatDate = (date: string | Date): string => {
   const day = targetDate.getDate();
   return `${year}년 ${month}월 ${day}일`;
 };
+
+/**
+ * 날짜를 "MM.DD.요일" 형식으로 변환
+ * @param dateString - ISO 8601 문자열 또는 Date 객체
+ * @returns "MM.DD.요일" 형식의 문자열
+ */
+export const formatDateWithDay = (dateString?: string | Date): string => {
+  if (!dateString) return "";
+  const date =
+    typeof dateString === "string" ? new Date(dateString) : dateString;
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const dayName = dayNames[date.getDay()];
+  return `${month}.${day}.${dayName}요일`;
+};
+
+/**
+ * 날짜 범위를 "MM.DD ~ MM.DD" 형식으로 변환
+ * @param startDate - 시작 날짜 (ISO 8601 문자열 또는 Date 객체)
+ * @param endDate - 종료 날짜 (ISO 8601 문자열 또는 Date 객체)
+ * @returns "MM.DD ~ MM.DD" 형식의 문자열
+ */
+export const formatDateRange = (
+  startDate?: string | Date,
+  endDate?: string | Date
+): string => {
+  if (!startDate || !endDate) return "";
+  const start = typeof startDate === "string" ? new Date(startDate) : startDate;
+  const end = typeof endDate === "string" ? new Date(endDate) : endDate;
+  const startMonth = String(start.getMonth() + 1).padStart(2, "0");
+  const startDay = String(start.getDate()).padStart(2, "0");
+  const endMonth = String(end.getMonth() + 1).padStart(2, "0");
+  const endDay = String(end.getDate()).padStart(2, "0");
+  return `${startMonth}.${startDay} ~ ${endMonth}.${endDay}`;
+};
