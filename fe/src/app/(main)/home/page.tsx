@@ -6,6 +6,7 @@ import { HomeContentRenderer } from "@/components/shared/HomeContentRenderer";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETHomeRes } from "@/types/generated/home-types";
+import { isS3UrlExpired } from "@/utils/shared/s3-url-parser";
 
 /**
  * @description 홈 페이지 - Notion 기반 홈 화면
@@ -29,10 +30,15 @@ const HomePage = () => {
 
   const content = homeData?.content || [];
 
-  const backgroundImages = useMemo(
-    () => homeData?.backgroundImage || [],
-    [homeData?.backgroundImage]
-  );
+  const backgroundImages = useMemo(() => {
+    if (!homeData?.backgroundImage) return [];
+    // 만료된 URL 필터링
+    return homeData.backgroundImage.filter((img) => {
+      if (!img.url) return false;
+      const expired = isS3UrlExpired(img.url);
+      return expired !== true; // 만료되지 않은 URL만 반환
+    });
+  }, [homeData?.backgroundImage]);
 
   // 이미지가 1개일 때 고정 배경 이미지 URL 추출
   const singleBackgroundImage =

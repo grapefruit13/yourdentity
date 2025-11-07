@@ -10,8 +10,14 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import type { TGETHomeRes } from "@/types/generated/home-types";
+import {
+  findEarliestExpiry,
+  hasExpiredS3Urls,
+} from "@/utils/shared/s3-url-parser";
 
+const isDev = process.env.NODE_ENV === "development";
 const HOME_DATA_STALE_TIME = 60 * 1000; // 1분
+const CACHE_EXPIRY_KEY = "notion-home-data-expiry";
 
 /**
  * @description 하단 네브바 포함 레이아웃
@@ -36,12 +42,31 @@ export default function MainLayout({
   }, [pathname]);
 
   // LocalStorage 캐시 (브라우저 전용)
+  // S3 URL 만료 시간을 기준으로 캐시 무효화
   const [cachedHome, setCachedHome] = useState<TGETHomeRes | null>(() => {
     if (typeof window === "undefined") return null;
     try {
+      // 만료 시간 확인
+      const expiryStr = localStorage.getItem(CACHE_EXPIRY_KEY);
+      if (expiryStr) {
+        const expiryTime = parseInt(expiryStr, 10);
+        const now = Date.now();
+        if (now >= expiryTime) {
+          // 만료된 캐시 삭제
+          localStorage.removeItem("notion-home-data");
+          localStorage.removeItem(CACHE_EXPIRY_KEY);
+          return null;
+        }
+      }
+
       const raw = localStorage.getItem("notion-home-data");
       if (!raw) return null;
-      return JSON.parse(raw) as TGETHomeRes;
+      const parsed = JSON.parse(raw);
+      // API 응답이 { message, data } 형태일 경우 unwrap
+      if (parsed && typeof parsed === "object" && "data" in parsed) {
+        return parsed.data as TGETHomeRes;
+      }
+      return parsed as TGETHomeRes;
     } catch {
       return null;
     }
@@ -49,12 +74,23 @@ export default function MainLayout({
 
   // 홈 페이지일 때만 홈 데이터 로드 여부 확인 (스플래시 표시용)
   // initialData로 캐시를 주입하여 첫 렌더에서 로딩 스플래시를 최소화
-  const { data: homeData, isLoading: isHomeLoading } = useGetHome({
+  const {
+    data: homeData,
+    isLoading: isHomeLoading,
+    refetch: refetchHome,
+  } = useGetHome({
     enabled: isHomePage,
     initialData: cachedHome ?? undefined,
     staleTime: HOME_DATA_STALE_TIME,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    select: (data) => {
+      // API 응답이 { data: TGETHomeRes } 형태일 경우 unwrap
+      if (data && typeof data === "object" && "data" in data) {
+        return (data as { data: TGETHomeRes }).data;
+      }
+      return data;
+    },
   });
 
   // updatedAt 기준으로 변경된 경우에만 캐시 갱신
@@ -65,20 +101,80 @@ export default function MainLayout({
     const currentUpdatedAt = homeData.updatedAt;
     const prevUpdatedAt = cachedHome?.updatedAt;
 
+    // S3 URL 만료 체크: 만료된 URL이 있으면 캐시 무효화
+    const hasExpiredUrls = hasExpiredS3Urls(homeData);
+    if (hasExpiredUrls) {
+      // 만료된 URL이 있으면 캐시 삭제하고 데이터 재요청
+      try {
+        localStorage.removeItem("notion-home-data");
+        localStorage.removeItem(CACHE_EXPIRY_KEY);
+        setCachedHome(null);
+        // 데이터 재요청
+        void refetchHome();
+      } catch {
+        // 캐시 삭제 실패는 무시
+      }
+      return;
+    }
+
     // updatedAt이 없거나 변경된 경우에만 캐시 갱신
-    if (
-      !cachedHome ||
-      !currentUpdatedAt ||
-      prevUpdatedAt !== currentUpdatedAt
-    ) {
+    const shouldUpdateCache =
+      !cachedHome || !currentUpdatedAt || prevUpdatedAt !== currentUpdatedAt;
+
+    if (shouldUpdateCache) {
       try {
         localStorage.setItem("notion-home-data", JSON.stringify(homeData));
+
+        // S3 URL 만료 시간 계산 및 저장
+        // 모든 이미지 URL의 만료 시간을 확인하여 가장 짧은 만료 시간을 캐시 만료 시간으로 설정
+        const earliestExpiry = findEarliestExpiry(homeData);
+        if (earliestExpiry) {
+          localStorage.setItem(CACHE_EXPIRY_KEY, earliestExpiry.toString());
+          if (isDev) {
+            console.log(
+              "✅ 캐시 만료 시간 저장:",
+              new Date(earliestExpiry).toISOString()
+            );
+          }
+        } else {
+          // S3 URL이 없거나 만료 시간을 파싱할 수 없는 경우 캐시 만료 키 제거
+          localStorage.removeItem(CACHE_EXPIRY_KEY);
+          if (isDev) {
+            console.warn("⚠️ S3 URL 만료 시간을 파싱할 수 없습니다.");
+          }
+        }
+
         setCachedHome(homeData);
-      } catch {
-        // 캐시 실패는 무시
+      } catch (error) {
+        console.error("캐시 저장 실패:", error);
+      }
+    } else {
+      // updatedAt이 변경되지 않았지만, 만료 시간이 없으면 저장
+      // (이전에 저장 실패했을 수 있음)
+      const existingExpiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+      if (!existingExpiry) {
+        const earliestExpiry = findEarliestExpiry(homeData);
+        if (earliestExpiry) {
+          try {
+            localStorage.setItem(CACHE_EXPIRY_KEY, earliestExpiry.toString());
+            if (isDev) {
+              console.log(
+                "✅ 캐시 만료 시간 보완 저장:",
+                new Date(earliestExpiry).toISOString()
+              );
+            }
+          } catch (error) {
+            // 저장 실패는 무시
+            console.error("만료 시간 저장 실패:", error);
+          }
+        } else if (isDev) {
+          console.warn(
+            "⚠️ updatedAt이 변경되지 않았지만 만료 시간을 파싱할 수 없습니다."
+          );
+        }
       }
     }
-  }, [homeData, cachedHome]);
+  }, [homeData, cachedHome, refetchHome]);
 
   // 스플래시 페이드아웃: 데이터가 준비되면 짧게 opacity 전환 후 제거
   const [isFading, setIsFading] = useState(false);
