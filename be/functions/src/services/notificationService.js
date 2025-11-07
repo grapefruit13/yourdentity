@@ -1,6 +1,6 @@
 const { Client } = require('@notionhq/client');
 const fcmHelper = require('../utils/fcmHelper');
-const { getRelationValues, getTitleValue, getTextContent } = require('../utils/notionHelper');
+const { getRelationValues, getTitleValue, getTextContent, getSelectValue } = require('../utils/notionHelper');
 const FirestoreService = require('./firestoreService');
 
 // 에러 코드 정의
@@ -18,11 +18,18 @@ const ERROR_CODES = {
 
 // Notion 필드명 상수
 const NOTION_FIELDS = {
-  TITLE: '제목',
-  CONTENT: '내용',
+  TITLE: '이름',
+  CONTENT: '알림 내용',
   MEMBER_MANAGEMENT: '회원 관리',
   SEND_STATUS: '전송 상태',
   USER_ID: '사용자ID',
+  LAST_PAYMENT_DATE: '가장 최근에 지급한 일시',
+};
+
+// 상황별 알림 내용 템플릿 필드명 상수
+const TEMPLATE_FIELDS = {
+  PROGRAM_TYPE: '프로그램 유형',
+  NOTIFICATION_CONTENT: '알림 내용',
 };
 
 // 전송 상태 값 상수
@@ -38,6 +45,7 @@ class NotificationService {
     const {
       NOTION_API_KEY,
       NOTION_NOTIFICATION_DB_ID,
+      NOTION_NOTIFICATION_TEMPLATE_DB_ID,
       NOTION_VERSION,
     } = process.env;
 
@@ -59,13 +67,130 @@ class NotificationService {
     });
 
     this.notificationDatabaseId = NOTION_NOTIFICATION_DB_ID;
+    this.templateDatabaseId = NOTION_NOTIFICATION_TEMPLATE_DB_ID;
     this.firestoreService = new FirestoreService("users");
+  }
+
+  /**
+   * 프로그램 유형별 알림 내용 템플릿 조회
+   * @param {string} programType - 프로그램 유형 (예: "한끗루틴", "TMI 프로젝트" 등)
+   * @return {Promise<string>} 알림 내용 템플릿
+   */
+  async getNotificationTemplateByType(programType) {
+    try {
+      if (!this.templateDatabaseId) {
+        return null;
+      }
+
+      if (!programType) {
+        return null;
+      }
+
+      let databaseId = this.templateDatabaseId;
+      if (databaseId && !databaseId.includes('-')) {
+        if (databaseId.length === 32) {
+          databaseId = `${databaseId.slice(0, 8)}-${databaseId.slice(8, 12)}-${databaseId.slice(12, 16)}-${databaseId.slice(16, 20)}-${databaseId.slice(20)}`;
+        }
+      }
+
+      let allResults = [];
+      let hasMore = true;
+      let startCursor = undefined;
+      
+      while (hasMore) {
+        try {
+          const queryParams = {
+            database_id: databaseId,
+            page_size: 100
+          };
+          
+          if (startCursor) {
+            queryParams.start_cursor = startCursor;
+          }
+
+          const response = await this.notion.databases.query(queryParams);
+          
+          if (response.results) {
+            allResults = allResults.concat(response.results);
+          }
+          
+          hasMore = response.has_more || false;
+          startCursor = response.next_cursor;
+          
+          if (!hasMore) break;
+        } catch (queryError) {
+          try {
+            const fetchUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+            const fetchResponse = await fetch(fetchUrl, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+                "Notion-Version": "2022-06-28",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                page_size: 100,
+                start_cursor: startCursor
+              })
+            });
+
+            if (!fetchResponse.ok) {
+              break;
+            }
+
+            const fetchData = await fetchResponse.json();
+            if (fetchData.results) {
+              allResults = allResults.concat(fetchData.results);
+            }
+            hasMore = fetchData.has_more || false;
+            startCursor = fetchData.next_cursor;
+          } catch (fetchError) {
+            break;
+          }
+        }
+      }
+      
+      const results = allResults.filter(page => {
+        const props = page.properties || {};
+        const programTypeField = props[TEMPLATE_FIELDS.PROGRAM_TYPE];
+        
+        if (!programTypeField) return false;
+        
+        if (programTypeField.select && programTypeField.select.name === programType) {
+          return true;
+        }
+        
+        if (programTypeField.title && programTypeField.title.length > 0) {
+          const titleText = programTypeField.title.map(t => t.plain_text).join('');
+          return titleText === programType;
+        }
+        
+        return false;
+      });
+
+      if (results.length === 0) {
+        return null;
+      }
+
+      const templatePage = results[0];
+      const props = templatePage.properties;
+      const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]);
+
+      if (!notificationContent) {
+        return null;
+      }
+
+      return notificationContent;
+    } catch (error) {
+      console.error(`템플릿 조회 실패:`, error.message);
+      return null;
+    }
   }
 
   /**
    * Notion 알림 페이지에서 데이터 추출
    * @param {string} pageId - Notion 알림 페이지 ID
-   * @return {Promise<Object>} 알림 데이터 (title, content, userIds)
+   * @return {Promise<Object>} 알림 데이터 (title, content, userIds, programType)
    */
   async getNotificationData(pageId) {
     try {
@@ -79,10 +204,34 @@ class NotificationService {
           props[NOTION_FIELDS.TITLE]?.rich_text?.[0]?.plain_text || '';
       }
 
-      let content = getTextContent(props[NOTION_FIELDS.CONTENT]);
-      if (!content) {
-        content = (props[NOTION_FIELDS.CONTENT]?.rich_text || []).map(text => text.plain_text).join('') ||
-          props[NOTION_FIELDS.CONTENT]?.title?.[0]?.plain_text || '';
+      const contentField = props[NOTION_FIELDS.CONTENT];
+      
+      let programTypeName = '';
+      
+      if (contentField) {
+        if (contentField.type === 'rich_text' && contentField.rich_text) {
+          programTypeName = contentField.rich_text.map(text => text.plain_text).join('').trim();
+        } else if (contentField.type === 'title' && contentField.title) {
+          programTypeName = contentField.title.map(text => text.plain_text).join('').trim();
+        } else if (contentField.type === 'select' && contentField.select) {
+          programTypeName = contentField.select.name || '';
+        } else if (contentField.type === 'text' && contentField.text) {
+          programTypeName = contentField.text.map(text => text.plain_text).join('').trim();
+        } else {
+          programTypeName = getTextContent(contentField) || '';
+          if (!programTypeName) {
+            programTypeName = (contentField.rich_text || []).map(text => text.plain_text).join('').trim() ||
+              (contentField.title || []).map(text => text.plain_text).join('').trim() || '';
+          }
+        }
+      }
+
+      let content = '';
+      if (programTypeName && programTypeName.trim()) {
+        const templateContent = await this.getNotificationTemplateByType(programTypeName.trim());
+        if (templateContent) {
+          content = templateContent;
+        }
       }
 
       const userRelations = props[NOTION_FIELDS.MEMBER_MANAGEMENT]?.relation || [];
@@ -238,12 +387,14 @@ class NotificationService {
       if (successCount === totalCount && failureCount === 0) {
         try {
           await this.updateNotionStatus(pageId, SEND_STATUS.COMPLETED);
+          await this.updateLastPaymentDate(pageId);
         } catch (err) {
           console.warn("상태 업데이트 실패:", err.message);
         }
       } else if (successCount > 0) {
         try {
           await this.updateNotionStatus(pageId, SEND_STATUS.PARTIAL);
+          await this.updateLastPaymentDate(pageId);
         } catch (err) {
           console.warn("상태 업데이트 실패:", err.message);
         }
@@ -436,6 +587,30 @@ class NotificationService {
       serviceError.code = ERROR_CODES.STATUS_UPDATE_FAILED;
       serviceError.originalError = error;
       throw serviceError;
+    }
+  }
+
+  /**
+   * "가장 최근에 지급한 일시" 필드 업데이트
+   * @param {string} pageId - Notion 페이지 ID
+   * @return {Promise<void>}
+   */
+  async updateLastPaymentDate(pageId) {
+    try {
+      const now = new Date().toISOString();
+      await this.notion.pages.update({
+        page_id: pageId,
+        properties: {
+          [NOTION_FIELDS.LAST_PAYMENT_DATE]: {
+            date: {
+              start: now,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error("가장 최근에 지급한 일시 업데이트 실패:", error.message);
+      // 에러가 발생해도 알림 전송은 성공했으므로 에러를 throw하지 않음
     }
   }
 }
