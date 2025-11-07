@@ -193,11 +193,13 @@ class AdminLogsService {
         }),
       });
 
-       // 응답 상태 확인
-       if (!res.ok) {
+      // 응답 상태 확인
+      if (!res.ok) {
         const errorText = await res.text();
         console.error(`[Notion API Error] Status: ${res.status}, Response: ${errorText}`);
-        throw new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+        const err = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+        err.code = "INTERNAL_ERROR";
+        throw err;
       }
 
       const data = await res.json();
@@ -205,13 +207,17 @@ class AdminLogsService {
       // 에러 응답 확인
       if (data.error) {
         console.error(`[Notion API Error]`, data.error);
-        throw new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+        const err = new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+        err.code = "INTERNAL_ERROR";
+        throw err;
       }
 
       // results가 배열인지 확인
       if (!Array.isArray(data.results)) {
         console.error(`[Notion API Error] 예상치 못한 응답 구조:`, data);
-        throw new Error(`Notion API 응답 형식 오류: results가 배열이 아닙니다.`);
+        const err = new Error(`Notion API 응답 형식 오류: results가 배열이 아닙니다.`);
+        err.code = "INTERNAL_ERROR";
+        throw err;
       }
 
 
