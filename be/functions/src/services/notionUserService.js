@@ -1347,214 +1347,6 @@ async syncSelectedUsers() {
   }
 
 
-
-  /**
-   * 백업 DB에서 전체 데이터를 기반으로 Firebase 업데이트
-   * notionUserAccountBackupDB의 모든 데이터를 조회하여 Firebase에 업데이트
-   * @return {Promise<{syncedCount: number, skippedCount: number, validateErrorCount: number}>}
-   */
-  // async syncSelectedUsersFromBackup() {
-  //   let hasMore = true;
-  //   let startCursor = undefined;
-  //   let syncedCount = 0;
-  //   let skippedCount = 0;
-  //   let failedCount = 0;
-  //   const syncedUserIds = [];
-  //   const failedUserIds = [];
-  //   let validateErrorCount = 0;
-
-  //   console.log('=== 백업 DB에서 전체 회원 복원 시작 ===');
-
-  //   // 백업 DB에서 모든 데이터 조회 (필터 없음)
-  //   while (hasMore) {
-  //     const notionResponse = await fetch(`https://api.notion.com/v1/databases/${this.notionUserAccountBackupDB}/query`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-  //         "Notion-Version": "2022-06-28",
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({
-  //         page_size: 100,
-  //         start_cursor: startCursor,
-  //       }),
-  //     });
-
-  //     const data = await notionResponse.json();
-  //     const pages = data.results || [];
-
-  //     // 각 페이지(회원)에 대해 Firebase 업데이트
-  //     for (const page of pages) {
-  //       const pageId = page.id;
-  //       const props = page.properties;
-
-  //       const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text;
-        
-  //       if (!userId) {
-  //         console.warn(`[WARN] 사용자ID가 없는 노션 페이지: ${pageId}`);
-  //         skippedCount++;
-  //         failedUserIds.push("unknown");
-  //         continue;
-  //       }
-
-  //       // Firebase users 컬렉션에서 해당 사용자 찾기
-  //       const userRef = db.collection("users").doc(userId);
-  //       const userDoc = await userRef.get();
-
-  //       if (!userDoc.exists) {
-  //         console.warn(`[WARN] Firebase에 ${userId} 사용자가 존재하지 않음`);
-  //         skippedCount++;
-  //         failedUserIds.push(userId);
-  //         continue;
-  //       }
-
-  //       // 노션 필드에서 데이터 추출 (syncSelectedUsers와 동일한 로직)
-  //       const nickname = props["기본 닉네임"]?.title?.[0]?.plain_text || "";
-  //       const name = props["사용자 실명"]?.rich_text?.[0]?.plain_text || "";
-        
-  //       // 프로필 사진 URL 추출 (files 타입)
-  //       let profileImageUrl = "";
-  //       if (props["프로필 사진"]?.files && props["프로필 사진"].files.length > 0) {
-  //         const file = props["프로필 사진"].files[0];
-  //         profileImageUrl = file.external?.url || file.file?.url || "";
-  //       }
-
-  //       // 상태 매핑
-  //       const statusSelect = props["상태"]?.select?.name;
-  //       let status = undefined;
-  //       if (statusSelect) {
-  //         if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
-  //           status = statusSelect;
-  //         } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
-  //           status = statusSelect === "대기" ? "pending" : 
-  //                    statusSelect === "활동" ? "active" : "suspended";
-  //         }
-  //       }
-
-  //       const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
-  //       const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
-  //                         (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
-  //       const email = props["이메일"]?.rich_text?.[0]?.plain_text || "";
-
-  //       // 날짜 필드 추출
-  //       const createdAtDate = props["가입완료 일시"]?.date?.start || null;
-  //       const lastLoginDate = props["최근 앱 활동 일시"]?.date?.start || 
-  //                            props["앱 첫 로그인"]?.date?.start || null;
-
-  //       // 가입 방법 매핑
-  //       const authTypeSelect = props["가입 방법"]?.select?.name || "";
-
-  //       // Push 광고 수신 여부
-  //       const pushAgreeSelect = props["Push 광고 수신 여부"]?.select?.name || "";
-  //       let pushTermsAgreed = undefined;
-  //       if (pushAgreeSelect === "동의" || pushAgreeSelect === "true") {
-  //         pushTermsAgreed = true;
-  //       } else if (pushAgreeSelect === "거부" || pushAgreeSelect === "false") {
-  //         pushTermsAgreed = false;
-  //       }
-
-  //       // 성별 매핑
-  //       const genderSelect = props["성별"]?.select?.name || "";
-  //       let gender = undefined;
-  //       if (genderSelect === "남성" || genderSelect === "male") {
-  //         gender = "male";
-  //       } else if (genderSelect === "여성" || genderSelect === "female") {
-  //         gender = "female";
-  //       }
-
-  //       // 자격정지 관련 필드
-  //       const suspensionStartAt = props["자격정지 기간(시작)"]?.date?.start || null;
-  //       const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
-  //       const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
-
-  //       // 업데이트할 데이터 객체 생성
-  //       const updateData = {};
-        
-  //       if (nickname) updateData.nickname = nickname;
-  //       if (name) updateData.name = name;
-  //       if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-  //       if (status) updateData.status = status;
-  //       if (phoneNumber) updateData.phoneNumber = phoneNumber;
-  //       if (birthDate) updateData.birthDate = birthDate;
-  //       if (email) updateData.email = email;
-  //       if (pushTermsAgreed !== undefined) updateData.pushTermsAgreed = pushTermsAgreed;
-  //       if (gender) updateData.gender = gender;
-        
-  //       // 날짜 필드 처리
-  //       if (createdAtDate) {
-  //         updateData.createdAt = createdAtDate;
-  //       }
-  //       if (lastLoginDate) {
-  //         updateData.lastLogin = lastLoginDate;
-  //       }
-
-  //       // 자격정지 필드 처리
-  //       if (suspensionReason) updateData.suspensionReason = suspensionReason;
-  //       if (suspensionStartAt) {
-  //         updateData.suspensionStartAt = suspensionStartAt;
-  //       }
-  //       if (suspensionEndAt) {
-  //         updateData.suspensionEndAt = suspensionEndAt;
-  //       }
-
-  //       // lastUpdated 업데이트
-  //       const now = new Date();
-  //       updateData.lastUpdated = now;
-
-  //       // 자격정지 기간 검증
-  //       if (!suspensionStartAt && suspensionEndAt) {
-  //         const endDate = new Date(suspensionEndAt);
-  //         const isPermanentSuspension = endDate.getFullYear() === 9999 && 
-  //                                      endDate.getMonth() === 11 &&
-  //                                      endDate.getDate() === 31;
-                                       
-  //         if (!isPermanentSuspension) {
-  //           console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
-  //           validateErrorCount++;
-  //           failedUserIds.push(userId);
-  //           continue;
-  //         }
-  //       }
-
-  //       // Firebase 업데이트 실행
-  //       await userRef.update(updateData);
-
-  //       console.log(`[SUCCESS] ${userId} (${name || nickname}) 백업 DB에서 복원 완료`);
-
-  //       syncedCount++;
-  //       syncedUserIds.push(userId);
-  //     }
-
-  //     // 다음 페이지가 있으면 cursor 갱신
-  //     hasMore = data.has_more;
-  //     startCursor = data.next_cursor;
-  //   }
-
-  //   console.log(`백업 DB에서 전체 회원 복원 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
-
-  //   try {
-  //     const logRef = db.collection("adminLogs").doc();
-  //     await logRef.set({
-  //       adminId: "Notion 관리자",
-  //       action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
-  //       targetId: "",
-  //       timestamp: new Date(),
-  //       metadata: {
-  //         syncedCount: syncedCount,
-  //         failedCount: skippedCount + validateErrorCount,
-  //         total: syncedCount + skippedCount + validateErrorCount,
-  //         syncedUserIds: syncedUserIds,
-  //         failedUserIds: failedUserIds,
-  //         source: "backup" // 백업 DB에서 복원했음을 표시
-  //       }
-  //     });
-  //     console.log(`[adminLogs] 백업 DB 복원 이력 저장 완료: ${syncedCount}명 성공, ${skippedCount + validateErrorCount}명 실패`);
-  //   } catch (logError) {
-  //     console.error("[adminLogs] 로그 저장 실패:", logError);
-  //   }
-
-  //   return { syncedCount, skippedCount, validateErrorCount };
-  // }
   /**
    * 백업 DB에서 전체 데이터를 기반으로 Firebase 업데이트
    * notionUserAccountBackupDB의 모든 데이터를 조회하여 Firebase에 업데이트
@@ -1921,6 +1713,117 @@ async createTestUsers(count) {
     users: createdUsers,
     ...(errors.length > 0 && { errors })
   };
+}
+
+
+/**
+   * 특정 사용자만 Notion에 동기화
+   * @param {string} userId - 동기화할 사용자 ID
+   * @return {Promise<{success: boolean, userId: string}>}
+   */
+async syncSingleUserToNotion(userId) {
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
+    
+    if (!userDoc.exists) {
+      console.warn(`[동기화 건너뜀] 사용자 ${userId}가 Firebase에 존재하지 않음`);
+      return { success: false, userId, reason: 'not_found' };
+    }
+
+    const user = userDoc.data();
+    const now = new Date();
+
+    // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
+    const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
+
+    // 날짜 변환
+    const createdAtIso = safeDateToIso(user.createdAt);
+    const lastLoginIso = safeDateToIso(user.lastLogin);
+    const lastUpdatedIso = now;
+
+    // 노션 페이지 데이터 구성
+    const notionPage = {
+      '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
+      "프로필 사진": {
+        files: [
+          {
+            name: "profile-image",
+            type: "external",
+            external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+          },
+        ],
+      },
+      "사용자ID": { rich_text: [{ text: { content: userId } }] },
+      "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
+      "상태": user.status
+        ? { select: { name: user.status } }
+        : { select: { name: "데이터 없음" } },
+      "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
+      "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
+      "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
+      "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+      "가입 방법": { select: { name: user.authType || "email" } },
+      "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+      "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+      "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
+      "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
+      "성별": { 
+        select: { 
+          name: 
+            user.gender === 'male' ? "남성" : user.gender === 'female' ? "여성" : "미선택",
+        } 
+      },
+      "Push 광고 수신 여부": {
+        select: {
+          name:
+            user.pushTermsAgreed === true
+              ? "동의"
+              : user.pushTermsAgreed === false
+              ? "거부"
+              : "미설정",
+        },
+      },
+      "자격정지 기간(시작)": user.suspensionStartAt ? {
+        date: { 
+          start: user.suspensionStartAt 
+        }
+      } : undefined,
+      "자격정지 기간(종료)": user.suspensionEndAt ? {
+        date: { 
+          start: user.suspensionEndAt 
+        }
+      } : undefined,
+      "정지 사유": user.suspensionReason ? {
+        rich_text: [{
+          text: { content: user.suspensionReason }
+        }]
+      } : {
+        rich_text: []
+      },
+      "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+    };
+
+    // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
+    if (notionUsers[userId]) {
+      // 기존 페이지 업데이트
+      await this.updateNotionPageWithRetry(notionUsers[userId].pageId, notionPage);
+      console.log(`[Notion 동기화] 사용자 ${userId} 업데이트 완료`);
+    } else {
+      // 새 페이지 생성
+      await this.createNotionPageWithRetry(notionPage);
+      console.log(`[Notion 동기화] 사용자 ${userId} 생성 완료`);
+    }
+
+    // Firebase lastUpdated 업데이트
+    await db.collection("users").doc(userId).update({
+      lastUpdated: lastUpdatedIso,
+    });
+
+    return { success: true, userId };
+  } catch (error) {
+    console.error(`[Notion 동기화 실패] 사용자 ${userId}:`, error.message || error);
+    return { success: false, userId, error: error.message };
+  }
 }
 
 
