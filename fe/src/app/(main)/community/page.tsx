@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import FilterButtons from "@/components/community/FilterButtons";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
+import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
 import UserImageCarouselSection from "@/components/community/UserImageCarouselSection";
 import { userImages } from "@/constants/community/sampleData"; // TODO: 삭제 예정
 import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
@@ -18,6 +19,8 @@ const COMMUNITY_POST_LIST_SIZE = 100;
 const Page = () => {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("전체");
+  const [isProgramSelectSheetOpen, setIsProgramSelectSheetOpen] =
+    useState(false);
 
   // 커뮤니티 포스트 데이터 관리 - 실제 API 연동
   // 자동 생성된 hook 사용 (useGetCommunitiesPosts)
@@ -204,7 +207,15 @@ const Page = () => {
       </div>
 
       {/* 플로팅 작성 버튼 */}
-      <FloatingWriteButton />
+      <FloatingWriteButton
+        onOpenBottomSheet={() => setIsProgramSelectSheetOpen(true)}
+      />
+
+      {/* 프로그램 선택 바텀시트 */}
+      <ProgramSelectBottomSheet
+        isOpen={isProgramSelectSheetOpen}
+        onClose={() => setIsProgramSelectSheetOpen(false)}
+      />
     </div>
   );
 };

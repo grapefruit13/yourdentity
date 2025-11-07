@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import {
@@ -84,10 +84,17 @@ const replaceEditorImageSrcWithUploadedUrls = (
  */
 const Page = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
 
-  const COMMUNITY_ID = "CP:VYTTZW33IH";
+  // 쿼리 파라미터에서 프로그램 정보 가져오기
+  const selectedCommunityId =
+    searchParams.get("communityId") || "CP:VYTTZW33IH";
+  const selectedCommunityName = searchParams.get("communityName") || "";
+
+  // 선택된 커뮤니티 ID가 있으면 사용, 없으면 기본값 사용
+  const COMMUNITY_ID = selectedCommunityId;
 
   const {
     handleSubmit,
@@ -465,8 +472,35 @@ const Page = () => {
     };
   }, []);
 
+  // 현재 날짜/시간 포맷팅
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+    const dayName = dayNames[now.getDay()];
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    return `${year}.${month}.${day}(${dayName}) ${hours}:${minutes} 작성 중`;
+  };
+
   return (
     <form className="flex flex-col pt-12" onSubmit={handleSubmit(onSubmit)}>
+      {/* 선택된 프로그램 정보 표시 */}
+      {selectedCommunityName && (
+        <div className="mb-4 flex flex-col gap-2 px-5">
+          <div className="flex items-center gap-2">
+            <span className="bg-main-600 rounded-full px-3 py-1 text-xs font-medium text-white">
+              {selectedCommunityName}
+            </span>
+          </div>
+          <Typography font="noto" variant="body2R" className="text-gray-500">
+            {getCurrentDateTime()}
+          </Typography>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 bg-gray-100 px-5 py-3">
         {/* 카테고리 선택 */}
         <div className="flex border-collapse flex-col rounded-lg border border-gray-200 bg-white">
@@ -485,7 +519,7 @@ const Page = () => {
             </div>
             <ButtonBase className="flex items-center gap-1">
               <Typography font="noto" variant="body2M">
-                프로그램
+                {selectedCommunityName || "프로그램"}
               </Typography>
               <ChevronDown size={16} className="text-gray-950" />
             </ButtonBase>

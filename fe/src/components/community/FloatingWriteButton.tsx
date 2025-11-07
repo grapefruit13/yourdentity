@@ -7,11 +7,18 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import { getCurrentUser } from "@/lib/auth";
 import { cn } from "@/utils/shared/cn";
 
+interface FloatingWriteButtonProps {
+  /** 바텀시트 열기 핸들러 */
+  onOpenBottomSheet?: () => void;
+}
+
 /**
  * @description 커뮤니티 글 작성 플로팅 버튼
  * BottomNavigation 위에 고정되어 스크롤해도 보이는 버튼
  */
-const FloatingWriteButton = () => {
+const FloatingWriteButton = ({
+  onOpenBottomSheet,
+}: FloatingWriteButtonProps) => {
   const router = useRouter();
 
   const handleClick = () => {
@@ -20,7 +27,13 @@ const FloatingWriteButton = () => {
       router.push(LINK_URL.LOGIN);
       return;
     }
-    router.push("/community/write");
+
+    // 바텀시트 열기 핸들러가 있으면 바텀시트 열기, 없으면 바로 작성 페이지로 이동
+    if (onOpenBottomSheet) {
+      onOpenBottomSheet();
+    } else {
+      router.push("/community/write");
+    }
   };
 
   return (
