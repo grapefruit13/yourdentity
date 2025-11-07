@@ -841,11 +841,19 @@ class StoreService {
         throw error;
       }
 
-      // 1. Notion에서 상품 정보 조회 (requiredPoints, requiresDelivery 확인)
+      // 1. Notion에서 상품 정보 조회 (requiredPoints, requiresDelivery, onSale 확인)
       const product = await this.getProductById(productId);
       const totalPoints = product.requiredPoints * quantity;
 
-      // 2. 배송이 필요한 상품인 경우 주소 검증
+      // 2. 판매 중지된 상품 차단
+      if (!product.onSale) {
+        const error = new Error('판매 중지된 상품은 구매신청할 수 없습니다.');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 3. 배송이 필요한 상품인 경우 주소 검증
       if (product.requiresDelivery && (!recipientName || !recipientAddress)) {
         const error = new Error('배송이 필요한 상품은 수령인 정보가 필요합니다.');
         error.code = 'BAD_REQUEST';
@@ -853,7 +861,7 @@ class StoreService {
         throw error;
       }
 
-      // 3. 트랜잭션으로 사용자 정보 조회 + 포인트 차감 + 히스토리 기록
+      // 4. 트랜잭션으로 사용자 정보 조회 + 포인트 차감 + 히스토리 기록
       let userNickname = '';
       
       await this.firestoreService.runTransaction(async (transaction) => {
@@ -899,7 +907,7 @@ class StoreService {
         });
       });
 
-      // 4. Notion 페이지 생성 (보상 트랜잭션 포함)
+      // 5. Notion 페이지 생성 (보상 트랜잭션 포함)
       const notionData = {
         parent: { database_id: STORE_PURCHASE_DB_ID },
         properties: {
