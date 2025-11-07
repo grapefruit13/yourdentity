@@ -841,13 +841,13 @@ async syncPenaltyUsers() {
         page_id: pageId,
         properties: {
           "자격정지 기간(시작)": {
-            date: updatedUserData.suspensionStart ? { 
-              start: updatedUserData.suspensionStart 
+            date: updatedUserData.suspensionStartAt ? { 
+              start: updatedUserData.suspensionStartAt 
             } : null
           },
           "자격정지 기간(종료)": {
-            date: updatedUserData.suspensionEnd ? { 
-              start: updatedUserData.suspensionEnd 
+            date: updatedUserData.suspensionEndAt  ? { 
+              start: updatedUserData.suspensionEndAt  
             } : null
           },
           "정지 사유": {
