@@ -40,7 +40,7 @@ class NotionUserController {
   async syncSelectedUsers(req, res, next) {
     try {
       const result = await notionUserService.syncSelectedUsers();
-      res.success(`선택된 회원 동기화 완료: ${result.syncedCount}명, Firebase에 존재하지 않는 회원 건너뜀: ${result.skippedCount}명, 잘못된 값: ${result.validateErrorCount}명, 삭제: ${result.deletedCount}명`);
+      res.success(`선택된 회원 동기화 완료: ${result.syncedCount}명, Firebase에 존재하지 않는 회원 건너뜀: ${result.skippedCount}명, 잘못된 값: ${result.validateErrorCount}명`);
     } catch (error) {
       console.error("[Controller Error] syncSelectedUsers:", error);
       next(error);
@@ -79,12 +79,12 @@ class NotionUserController {
     }
 
 
-    async syncAllUsersBackup(req, res, next) {
+    async allUsersRollback(req, res, next) {
       try {
-        const result = await notionUserService.syncAllUsersBackup();
+        const result = await notionUserService.allUsersRollback();
         res.success(`백업 DB에서 전체 회원 복원 완료: ${result.syncedCount}명, Firebase에 존재하지 않는 회원 건너뜀: ${result.skippedCount}명, 잘못된 값: ${result.validateErrorCount}명`);
       } catch (error) {
-        console.error("[Controller Error] syncAllUsersBackup:", error);
+        console.error("[Controller Error] allUsersRollback:", error);
         next(error);
       }
     }

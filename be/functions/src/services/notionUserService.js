@@ -34,21 +34,10 @@ class NotionUserService {
 
 
   /**
-   * Firebase의 users 컬렉션에서 활동회원 조회 후
-   * Notion 데이터베이스에 등록
-   * TODO
-   * 1. 지갑주소를 어떠한 값으로 사용할 것인지>
-   * 2. 현재 가입완료 일시, 앱 첫 로그인 데이터는 동일하게 users의 createdAt을 사용하는데 통일 or 구분 고려
-   * 3. 최초 접속언어, 설정 언어가 로그인 하는 경우 설정 프로세스에 포함이 되는지 -> firebase구조 추가 고려
-   * 4. 초대자를 유입경로 타입으로 대체가 가능한지? 초대자를 저장하는 프로세스 확인 -> firebase구조 추가 고려
-   * 5. push광고 수신 여부에 대해 설정하는 프로세스 확인 -> firebase구조 추가 고려
-   * 6. 현재 firebase에서는 role에는 user|admin인데 기획쪽에서는 한끗, 유스보이스, 교육자....추가되는 환경으로 컬렉션 구조를 role에 사용할지 분리할지 고려필요
-   * 7. 노션 데이터베이스를 지우는 경우 속도 측면에서 느림 -> 개선이 필요해 보임
-   *   + 노션에서는 전체 삭제를 지원하지 않고 페이지를 아카이브 처리해서 개별적으로 archived: true로 삭제를 진행
-   * ※ firebase구조 추가 고려라고 되어 있는 부분은 우선 컬럼은 다 추가함
-   * 8. SMS광고 수신 여부, Push 광고 수신 여부 통일 고려 -> 현재는 push만 사용
+   * Firebase의 users 컬렉션에서 전체회원 조회 후 -> Notion 데이터베이스에 등록
    */  
 async syncUserAccounts() {
+  
   const snapshot = await db.collection("users").get();
 
   // Firebase에 lastUpdated 필드 존재 여부 확인
@@ -214,6 +203,53 @@ async syncUserAccounts() {
   }
   
   console.log(`동기화 완료: ${syncedCount}명 갱신됨, ${archivedCount}개 페이지 아카이브됨`);
+
+
+  // 동기화 완료 후 백업 실행
+  let backupResult = null;
+  let backupSuccess = false;
+  let backupError = null;
+  try {
+    console.log('동기화 완료 후 백업을 시작합니다...');
+    backupResult = await this.backupNotionUserDatabase();
+    backupSuccess = true;
+    console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨 (생성: ${backupResult.created}개, 업데이트: ${backupResult.updated}개, 삭제: ${backupResult.deleted}개, 실패: ${backupResult.failed}개)`);
+  } catch (error) {
+    backupSuccess = false;
+    backupError = error.message || '알 수 없는 오류가 발생했습니다';
+    console.error('백업 실패:', error);
+  }
+
+
+  // 백업 결과 이력 저장 (별도 action으로 저장)
+  try {
+    const backupLogRef = db.collection("adminLogs").doc();
+    await backupLogRef.set({
+      adminId: "Notion 관리자",
+      action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
+      targetId: "", // 백업 작업이므로 빈 값
+      timestamp: new Date(),
+      metadata: backupSuccess && backupResult ? {
+        syncedCount: backupResult.backedUp,
+        created: backupResult.created,
+        archivedCount: backupResult.deleted,
+        total: backupResult.backedUp + backupResult.failed,
+        failedCount: backupResult.failed,
+        ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
+      } : {
+        logMessage : backupError
+      }
+    });
+    if (backupSuccess) {
+      console.log(`[adminLogs] 백업 결과 저장 완료: 성공 (${backupResult.backedUp}개 백업)`);
+    } else {
+      console.log(`[adminLogs] 백업 결과 저장 완료: 실패 - ${backupError}`);
+    }
+  } catch (backupLogError) {
+    console.error("[adminLogs] 백업 로그 저장 실패:", backupLogError);
+    // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+  }
+
 
   try {
     const logRef = db.collection("adminLogs").doc();
@@ -495,6 +531,55 @@ async syncAllUserAccounts() {
     console.log(`=== 전체 동기화 완료 ===`);
     console.log(`총 ${syncedCount}명 동기화 (업데이트: ${updatedCount}명, 생성: ${createdCount}명)`);
     console.log(`실패: ${failedCount}명, 아카이브: ${archivedCount}명`);
+
+
+
+    // 동기화 완료 후 백업 실행
+    let backupResult = null;
+    let backupSuccess = false;
+    let backupError = null;
+    try {
+      console.log('동기화 완료 후 백업을 시작합니다...');
+      backupResult = await this.backupNotionUserDatabase();
+      backupSuccess = true;
+      console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨 (생성: ${backupResult.created}개, 업데이트: ${backupResult.updated}개, 삭제: ${backupResult.deleted}개, 실패: ${backupResult.failed}개)`);
+    } catch (error) {
+      backupSuccess = false;
+      backupError = error.message || '알 수 없는 오류가 발생했습니다';
+      console.error('백업 실패:', error);
+    }
+
+
+    // 백업 결과 이력 저장 (별도 action으로 저장)
+    try {
+      const backupLogRef = db.collection("adminLogs").doc();
+      await backupLogRef.set({
+        adminId: "Notion 관리자",
+        action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
+        targetId: "", // 백업 작업이므로 빈 값
+        timestamp: new Date(),
+        metadata: backupSuccess && backupResult ? {
+          syncedCount: backupResult.backedUp,
+          created: backupResult.created,
+          archivedCount: backupResult.deleted,
+          total: backupResult.backedUp + backupResult.failed,
+          failedCount: backupResult.failed,
+          ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
+        } : {
+          logMessage : backupError
+        }
+      });
+      if (backupSuccess) {
+        console.log(`[adminLogs] 백업 결과 저장 완료: 성공 (${backupResult.backedUp}개 백업)`);
+      } else {
+        console.log(`[adminLogs] 백업 결과 저장 완료: 실패 - ${backupError}`);
+      }
+    } catch (backupLogError) {
+      console.error("[adminLogs] 백업 로그 저장 실패:", backupLogError);
+      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+    }
+
+
 
     try {
       const logRef = db.collection("adminLogs").doc();
@@ -821,26 +906,6 @@ async syncSelectedUsers() {
   const failedUserIds = []; // 건너뜀한 사용자 ID 목록
   let validateErrorCount = 0; //값이 잘못된 경우
 
-
-   /*
-   - 백업 먼저 진행
-     + 회원 데이터의 경우 중요한 데이터이기 때문에 백업이 완료 되어야 firebase에 적용이 가능 하도록함
-     + 노션 회원 관리 데이터베이스에 있는 데이터는 대부분 firebase에서 땡겨오는 데이터이지만  적용을 수행하는 경우 잘못된 데이터가 firebase에 들어간 것을 복구 하기 위해 백업
-   */
-   console.log('백업을 시작합니다...');
-   try {
-     const backupResult = await this.backupNotionUserDatabase();
-     console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨`);
-   } catch (error) {
-     console.error('백업 실패:', error);
-     return { 
-       error: '백업을 실패했습니다', 
-       errorMessage: error.message || '알 수 없는 오류가 발생했습니다',
-       syncedCount: 0, 
-       skippedCount: 0, 
-       validateErrorCount: 0 
-     };
-   }
   
   // 모든 페이지를 순회하며 "선택" 필드가 체크된 데이터만 조회
   while (hasMore) {
@@ -939,9 +1004,9 @@ async syncSelectedUsers() {
       // 성별 매핑
       const genderSelect = props["성별"]?.select?.name || "";
       let gender = undefined;
-      if (genderSelect === "남성" || genderSelect === "male") {
+      if (genderSelect === "남자" || genderSelect === "남성" || genderSelect === "male") {
         gender = "male";
-      } else if (genderSelect === "여성" || genderSelect === "female") {
+      } else if (genderSelect === "여자" || genderSelect === "여성" || genderSelect === "female") {
         gender = "female";
       }
 
@@ -972,7 +1037,7 @@ async syncSelectedUsers() {
       }
 
       // 자격정지 필드 처리
-      if (suspensionReason) updateData.suspensionReason = suspensionReason;
+      if (suspensionReason || suspensionReason === "") updateData.suspensionReason = suspensionReason;
       if (suspensionStartAt) {
         updateData.suspensionStartAt = suspensionStartAt;
       }
@@ -1096,7 +1161,7 @@ async syncSelectedUsers() {
            sourceUserIds.add(userId);
          }
        }
-       
+
       let backedUpCount = 0;
       let updatedCount = 0;
       let createdCount = 0;
@@ -1164,6 +1229,11 @@ async syncSelectedUsers() {
              // 백업 시점의 동기화 시간 추가 (백업 DB에만 추가되는 필드)
              backupProperties["백업 시간"] = {
               date: { start: backupTimestamp }
+            };
+
+             // 백업 결과 필드 추가 (select 타입, 빈 값으로 초기화)
+             backupProperties["백업 결과"] = {
+              select: null
             };
 
             // 백업 페이지 생성 또는 업데이트
@@ -1482,7 +1552,7 @@ async syncSelectedUsers() {
    * notionUserAccountBackupDB의 모든 데이터를 조회하여 Firebase에 업데이트
    * @return {Promise<{syncedCount: number, skippedCount: number, validateErrorCount: number}>}
    */
-  async syncAllUsersBackup() {
+  async allUsersRollback() {
     let hasMore = true;
     let startCursor = undefined;
     let syncedCount = 0;
@@ -1616,10 +1686,12 @@ async syncSelectedUsers() {
           // 성별 매핑
           const genderSelect = props["성별"]?.select?.name || "";
           let gender = undefined;
-          if (genderSelect === "남성" || genderSelect === "male") {
+          if (genderSelect === "남자" || genderSelect === "남성" || genderSelect === "male") {
             gender = "male";
-          } else if (genderSelect === "여성" || genderSelect === "female") {
+          } else if (genderSelect === "여자" || genderSelect === "여성" || genderSelect === "female") {
             gender = "female";
+          }else{
+            gender = "unknown";
           }
 
           // 자격정지 관련 필드
@@ -1649,7 +1721,7 @@ async syncSelectedUsers() {
           }
 
           // 자격정지 필드 처리
-          if (suspensionReason) updateData.suspensionReason = suspensionReason;
+          if (suspensionReason || suspensionReason === "") updateData.suspensionReason = suspensionReason;
           if (suspensionStartAt) {
             updateData.suspensionStartAt = suspensionStartAt;
           }
