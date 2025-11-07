@@ -31,6 +31,8 @@ const fcmRoutes = require("./src/routes/fcm");
 const programRoutes = require("./src/routes/programs");
 const homeRoutes = require("./src/routes/home");
 const notificationRoutes = require("./src/routes/notifications");
+const adminLogsRoutes = require("./src/routes/adminLogs");
+
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -206,6 +208,7 @@ app.use("/fcm", fcmRoutes);
 app.use("/programs", programRoutes);
 app.use("/home", homeRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/adminLogs", adminLogsRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
