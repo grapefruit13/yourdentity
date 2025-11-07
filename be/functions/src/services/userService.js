@@ -124,7 +124,7 @@ class UserService {
       return {
         activityParticipationCount: user.activityParticipationCount || 0,
         certificationPosts: user.certificationPosts || 0,
-        rewardPoints: user.rewardPoints || 0,
+        rewardPoints: user.rewards || 0,
         name: user.name || "",
         profileImageUrl: user.profileImageUrl || "",
         bio: user.bio || "",
