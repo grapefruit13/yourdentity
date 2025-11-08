@@ -1,83 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  REWARD_HISTORY_DATA,
+  REWARD_HISTORY_TABS,
+} from "@/constants/reward-history";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
-
-type HistoryType = "earn" | "use" | "expire";
-
-interface HistoryEntry {
-  id: string;
-  title: string;
-  amount: number;
-  type: HistoryType;
-  label: string;
-  description?: string;
-}
-
-interface HistorySection {
-  date: string;
-  items: HistoryEntry[];
-}
-
-const TABS: { key: "all" | HistoryType; label: string }[] = [
-  { key: "all", label: "전체" },
-  { key: "earn", label: "적립" },
-  { key: "use", label: "사용" },
-  { key: "expire", label: "소멸" },
-];
-
-const HISTORY_DATA: HistorySection[] = [
-  {
-    date: "2025.10.23(수)",
-    items: [
-      {
-        id: "20251023-1",
-        title: "한끗루틴 참여",
-        amount: 300,
-        type: "earn",
-        label: "적립",
-      },
-      {
-        id: "20251023-2",
-        title: "한끗루틴 참여",
-        amount: 300,
-        type: "earn",
-        label: "적립",
-      },
-    ],
-  },
-  {
-    date: "2025.10.20(일)",
-    items: [
-      {
-        id: "20251020-1",
-        title: "온라인 상품권 2만원권 교환",
-        amount: -150,
-        type: "use",
-        label: "사용",
-      },
-      {
-        id: "20251020-2",
-        title: "한끗루틴 참여",
-        amount: 300,
-        type: "earn",
-        label: "적립",
-        description: "적립 · 2025.11.01(토) 소멸 예정",
-      },
-      {
-        id: "20251020-3",
-        title: "온라인 상품권 2만원권 교환",
-        amount: -150,
-        type: "use",
-        label: "사용",
-      },
-    ],
-  },
-];
 
 const RewardsHistoryPage = () => {
   const [activeTab, setActiveTab] =
-    useState<(typeof TABS)[number]["key"]>("all");
+    useState<(typeof REWARD_HISTORY_TABS)[number]["key"]>("all");
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const setTitle = useTopBarStore((state) => state.setTitle);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
@@ -87,9 +19,9 @@ const RewardsHistoryPage = () => {
   const expiringRewards = 120;
 
   const filteredHistory = useMemo(() => {
-    if (activeTab === "all") return HISTORY_DATA;
+    if (activeTab === "all") return REWARD_HISTORY_DATA;
 
-    return HISTORY_DATA.map((section) => ({
+    return REWARD_HISTORY_DATA.map((section) => ({
       date: section.date,
       items: section.items.filter((item) => item.type === activeTab),
     })).filter((section) => section.items.length > 0);
@@ -102,6 +34,9 @@ const RewardsHistoryPage = () => {
   const handleGuideClose = useCallback(() => {
     setIsGuideOpen(false);
   }, []);
+
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const infoButton = (
@@ -121,6 +56,59 @@ const RewardsHistoryPage = () => {
       resetTopBar();
     };
   }, [handleGuideOpen, setTitle, setRightSlot, resetTopBar]);
+
+  useEffect(() => {
+    if (!isGuideOpen) return;
+
+    previouslyFocusedElement.current =
+      document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+
+    const focusableSelectors =
+      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
+    const focusableElements =
+      modalRef.current?.querySelectorAll<HTMLElement>(focusableSelectors);
+    const firstFocusable = focusableElements?.[0];
+    const lastFocusable =
+      focusableElements && focusableElements[focusableElements.length - 1];
+
+    if (firstFocusable) {
+      firstFocusable.focus();
+    } else {
+      modalRef.current?.focus();
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        handleGuideClose();
+      }
+
+      if (
+        event.key === "Tab" &&
+        focusableElements &&
+        focusableElements.length > 0
+      ) {
+        if (event.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            event.preventDefault();
+            lastFocusable?.focus();
+          }
+        } else if (document.activeElement === lastFocusable) {
+          event.preventDefault();
+          firstFocusable?.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedElement.current?.focus();
+    };
+  }, [isGuideOpen, handleGuideClose]);
 
   return (
     <>
@@ -145,7 +133,7 @@ const RewardsHistoryPage = () => {
         </section>
 
         <nav className="mt-6 flex flex-wrap gap-2 px-5">
-          {TABS.map((tab) => {
+          {REWARD_HISTORY_TABS.map((tab) => {
             const isActive = tab.key === activeTab;
             return (
               <button
@@ -200,9 +188,7 @@ const RewardsHistoryPage = () => {
                       </div>
                       <div className="text-right">
                         <p className={`text-base font-semibold ${amountColor}`}>
-                          {item.amount > 0
-                            ? `+${item.amount}N`
-                            : `${item.amount}N`}
+                          {amount}
                         </p>
                       </div>
                     </div>
@@ -215,16 +201,35 @@ const RewardsHistoryPage = () => {
       </div>
 
       {isGuideOpen && (
-        <div className="fixed inset-0 z-[999] bg-black/70">
+        <div className="fixed inset-0 bg-black/70" style={{ zIndex: 999 }}>
           <button
             type="button"
             aria-label="나다움 가이드 닫기"
             onClick={handleGuideClose}
-            className="absolute inset-0 h-full w-full cursor-default"
+            className="absolute inset-0 h-full w-full"
           />
-          <div className="absolute inset-x-0 bottom-0 z-[1000] rounded-t-3xl bg-white px-6 pt-4 pb-10">
+          <div
+            ref={modalRef}
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white px-6 pt-4 pb-10 focus:outline-none"
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rewards-guide-title"
+            style={{ zIndex: 1000 }}
+          >
             <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-gray-200" />
-            <h2 className="text-lg font-semibold text-gray-900">
+            <button
+              type="button"
+              onClick={handleGuideClose}
+              className="absolute top-4 right-6 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-lg font-semibold text-gray-500"
+              aria-label="나다움 가이드 닫기"
+            >
+              ×
+            </button>
+            <h2
+              id="rewards-guide-title"
+              className="text-lg font-semibold text-gray-900"
+            >
               나다움 가이드
             </h2>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-gray-600">

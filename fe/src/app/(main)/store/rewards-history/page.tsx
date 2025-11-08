@@ -1,90 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-type HistoryType = "earn" | "use" | "expire";
-
-interface HistoryEntry {
-  id: string;
-  title: string;
-  amount: number;
-  type: HistoryType;
-  label: string;
-  description?: string;
-}
-
-interface HistorySection {
-  date: string;
-  items: HistoryEntry[];
-}
-
-const TABS: { key: "all" | HistoryType; label: string }[] = [
-  { key: "all", label: "전체" },
-  { key: "earn", label: "적립" },
-  { key: "use", label: "사용" },
-  { key: "expire", label: "소멸" },
-];
-
-const HISTORY_DATA: HistorySection[] = [
-  {
-    date: "2025.10.23(수)",
-    items: [
-      {
-        id: "20251023-1",
-        title: "한꽃루틴 참여",
-        amount: 300,
-        type: "earn",
-        label: "적립",
-      },
-      {
-        id: "20251023-2",
-        title: "한꽃루틴 참여",
-        amount: 300,
-        type: "earn",
-        label: "적립",
-      },
-    ],
-  },
-  {
-    date: "2025.10.20(일)",
-    items: [
-      {
-        id: "20251020-1",
-        title: "온라인 상품권 2만원권 교환",
-        amount: -150,
-        type: "use",
-        label: "사용",
-      },
-      {
-        id: "20251020-2",
-        title: "한꽃루틴 참여",
-        amount: 300,
-        type: "earn",
-        label: "적립",
-        description: "적립 · 2025.11.01(토) 소멸 예정",
-      },
-      {
-        id: "20251020-3",
-        title: "온라인 상품권 2만원권 교환",
-        amount: -150,
-        type: "use",
-        label: "사용",
-      },
-    ],
-  },
-];
+import {
+  REWARD_HISTORY_DATA,
+  REWARD_HISTORY_TABS,
+} from "@/constants/reward-history";
 
 const RewardsHistoryPage = () => {
   const [activeTab, setActiveTab] =
-    useState<(typeof TABS)[number]["key"]>("all");
+    useState<(typeof REWARD_HISTORY_TABS)[number]["key"]>("all");
 
   const availableRewards = 1500;
   const expiringRewards = 120;
 
   const filteredHistory = useMemo(() => {
-    if (activeTab === "all") return HISTORY_DATA;
+    if (activeTab === "all") return REWARD_HISTORY_DATA;
 
-    return HISTORY_DATA.map((section) => ({
+    return REWARD_HISTORY_DATA.map((section) => ({
       date: section.date,
       items: section.items.filter((item) => item.type === activeTab),
     })).filter((section) => section.items.length > 0);
@@ -110,7 +42,7 @@ const RewardsHistoryPage = () => {
       </section>
 
       <nav className="mt-6 flex gap-2 px-5">
-        {TABS.map((tab) => {
+        {REWARD_HISTORY_TABS.map((tab) => {
           const isActive = tab.key === activeTab;
           return (
             <button
