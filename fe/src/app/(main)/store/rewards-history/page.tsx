@@ -75,7 +75,8 @@ const HISTORY_DATA: HistorySection[] = [
 ];
 
 const RewardsHistoryPage = () => {
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["key"]>("all");
+  const [activeTab, setActiveTab] =
+    useState<(typeof TABS)[number]["key"]>("all");
 
   const availableRewards = 1500;
   const expiringRewards = 120;
@@ -181,4 +182,3 @@ const RewardsHistoryPage = () => {
 };
 
 export default RewardsHistoryPage;
-
