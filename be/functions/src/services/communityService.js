@@ -484,6 +484,18 @@ class CommunityService {
       }
 
       const sanitizedContent = sanitizeContent(content);
+      console.log("[CommunityService] createPost - sanitized content prepared", {
+        communityId,
+        userId,
+        titleLength: title?.length,
+        contentLength: content?.length,
+        sanitizedContentLength: sanitizedContent?.length,
+        mediaCount: Array.isArray(postMedia) ? postMedia.length : 0,
+        requestedType: type,
+        requestedChannel: channel,
+        requestedCategory: category,
+        scheduledDate,
+      });
 
       const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
       if (sanitizedText.length === 0) {
@@ -497,6 +509,12 @@ class CommunityService {
       if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
         try {
           validatedFiles = await fileService.validateFilesForPost(postMedia, userId);
+          console.log("[CommunityService] createPost - file validation success", {
+            communityId,
+            userId,
+            validatedFileCount: validatedFiles.length,
+            validatedFileIds: validatedFiles.map((file) => file?.id).filter(Boolean),
+          });
         } catch (fileError) {
           console.error("파일 검증 실패:", fileError);
           // 파일 검증 실패 시 게시글 생성 안 함
@@ -510,6 +528,13 @@ class CommunityService {
         error.code = "NOT_FOUND";
         throw error;
       }
+      console.log("[CommunityService] createPost - community fetched", {
+        communityId,
+        userId,
+        communityType: community?.type,
+        communityPostType: community?.postType,
+        communityChannel: community?.channel,
+      });
 
       let author = "익명"; 
       try {
@@ -562,6 +587,13 @@ class CommunityService {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
+      console.log("[CommunityService] createPost - entering transaction", {
+        communityId,
+        userId,
+        postType: newPost.type,
+        hasValidatedFiles: validatedFiles.length > 0,
+      });
+
       const result = await this.firestoreService.runTransaction(async (transaction) => {
 
         const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc();
@@ -593,6 +625,11 @@ class CommunityService {
         return { postId: postRef.id };
       });
       const postId = result.postId;
+      console.log("[CommunityService] createPost - transaction committed", {
+        communityId,
+        userId,
+        postId,
+      });
 
       const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, preview: _preview, ...restNewPost} = newPost;
       
@@ -608,6 +645,27 @@ class CommunityService {
       };
     } catch (error) {
       console.error("Create post error:", error.message);
+      console.error("[CommunityService] createPost - detailed error context", {
+        communityId,
+        userId,
+        postDataSummary: {
+          hasTitle: Boolean(postData?.title),
+          titleLength: postData?.title?.length,
+          hasContent: Boolean(postData?.content),
+          contentLength: postData?.content?.length,
+          mediaCount: Array.isArray(postData?.media) ? postData.media.length : 0,
+          type: postData?.type,
+          channel: postData?.channel,
+          category: postData?.category,
+          scheduledDate: postData?.scheduledDate,
+        },
+        errorCode: error.code,
+        firestoreErrorInfo: {
+          status: error.status,
+          details: error.details,
+        },
+        stack: error.stack,
+      });
       if (error.code === "NOT_FOUND") {
         throw error;
       }
