@@ -782,6 +782,83 @@ class FileService {
   }
 
   /**
+   * 파일 URL로 파일 문서 조회 및 소유권 검증
+   * @param {string} fileUrl - 파일 퍼블릭 URL
+   * @param {string} userId - 사용자 ID
+   * @returns {Promise<Object>} 파일 문서
+   */
+  async getFileByUrlForUser(fileUrl, userId) {
+    try {
+      if (!fileUrl) {
+        const error = new Error("파일 URL이 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!userId) {
+        const error = new Error("사용자 ID가 필요합니다");
+        error.code = "UNAUTHORIZED";
+        throw error;
+      }
+
+      const normalizedUrl = fileUrl.trim();
+      if (!normalizedUrl) {
+        const error = new Error("파일 URL이 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const files = await this.firestoreService.getWhere(
+        "fileUrl",
+        "==",
+        normalizedUrl
+      );
+
+      if (!files || files.length === 0) {
+        const error = new Error("파일을 찾을 수 없습니다");
+        error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      const fileDoc = files.find((file) => file.uploadedBy === userId);
+      if (!fileDoc) {
+        const error = new Error("이 파일에 대한 권한이 없습니다");
+        error.code = "FORBIDDEN";
+        throw error;
+      }
+
+      if (fileDoc.profileOwner && fileDoc.profileOwner !== userId) {
+        const error = new Error("다른 사용자의 프로필에서 사용 중인 파일입니다");
+        error.code = "CONFLICT";
+        throw error;
+      }
+
+      if (fileDoc.attachedTo) {
+        const error = new Error("이미 다른 게시글에 연결된 파일입니다");
+        error.code = "CONFLICT";
+        throw error;
+      }
+
+      const existsInStorage = await this.fileExists(fileDoc.filePath);
+      if (!existsInStorage) {
+        const error = new Error("Storage 파일이 존재하지 않습니다");
+        error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      return fileDoc;
+    } catch (error) {
+      console.error("파일 URL 조회 오류:", error);
+      if (error.code === "BAD_REQUEST" || error.code === "UNAUTHORIZED" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN" || error.code === "CONFLICT") {
+        throw error;
+      }
+      const internalError = new Error("파일 URL 조회 중 오류가 발생했습니다");
+      internalError.code = "INTERNAL";
+      throw internalError;
+    }
+  }
+
+  /**
    * 파일들을 게시글에 연결 (트랜잭션 내에서 사용)
    * @param {Array<Object>} validatedFiles - 검증된 파일 문서 배열 (validateFilesForPost 결과)
    * @param {string} postId - 게시글 ID
