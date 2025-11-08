@@ -81,3 +81,16 @@ export const normalizeUrl = (raw: string): string => {
     }
   }
 };
+
+/**
+ * HTML 문자열에서 텍스트만 추출
+ * @param html - HTML 문자열
+ * @returns 태그와 HTML 엔티티가 제거된 순수 텍스트
+ */
+export const extractTextFromHtml = (html: string): string => {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>/g, "") // 태그 제거
+    .replace(/&nbsp;/g, " ") // nbsp 치환
+    .trim();
+};
