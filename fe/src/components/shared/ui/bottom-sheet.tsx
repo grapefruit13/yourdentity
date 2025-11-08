@@ -123,12 +123,12 @@ const BottomSheet = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 핸들 바 */}
-        <div className="flex w-full justify-center py-3">
-          <div className="h-1 w-12 rounded-full bg-gray-300" />
+        <div className="flex w-full justify-center py-4">
+          <div className="h-1 w-8 rounded-full bg-gray-400" />
         </div>
 
         {/* 컨텐츠 */}
-        <div className="px-4 pb-6">{children}</div>
+        <div className="px-5 pb-6">{children}</div>
       </div>
     </div>
   );
