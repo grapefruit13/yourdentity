@@ -118,6 +118,7 @@ const router = express.Router();
  *       최초 온보딩 정보를 업데이트합니다.
  *       - nickname (필수)
  *       - profileImageUrl (선택)
+ *       - profileImagePath (선택)
  *       - bio (선택)
 
  *     tags: [Users]
@@ -136,6 +137,9 @@ const router = express.Router();
  *               profileImageUrl:
  *                 type: string
  *                 description: 프로필 이미지 URL (선택)
+ *               profileImagePath:
+ *                 type: string
+ *                 description: 프로필 이미지 파일 경로 (선택)
  *               bio:
  *                 type: string
  *                 description: 자기소개 (선택)
@@ -143,6 +147,7 @@ const router = express.Router();
  *             example:
  *               nickname: gildong
  *               profileImageUrl: https://example.com/profile.jpg
+ *               profileImagePath: files/abc/profile.png
  *               bio: 안녕하세요!
  *     responses:
  *       200:
