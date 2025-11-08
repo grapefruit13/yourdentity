@@ -13,8 +13,8 @@ const QUERY_PAGE_SIZE = 1; // 홈 화면은 최신 1개만 조회
 const NOTION_FIELDS = {
   NAME: "이름",
   BACKGROUND_IMAGE: "배경화면",
-  ACTIVITY_REVIEW: "활동후기",
-  NADAUM_EXHIBITION: "나다움전시",
+  ACTIVITY_REVIEW: "활동후기 여부",
+  NADAUM_EXHIBITION: "나다움전시 여부",
   DEPLOY_DATE: "운영 배포일자",
 };
 
