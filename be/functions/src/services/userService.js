@@ -46,7 +46,6 @@ class UserService {
       "nickname",
       "profileImageUrl",
       "bio",
-      "profileImagePath",
     ];
     const update = {};
     for (const key of allowedFields) {
@@ -72,20 +71,30 @@ class UserService {
     let newProfileImageUrl = update.profileImageUrl !== undefined ? update.profileImageUrl : null;
     let previousProfilePath = existing.profileImagePath || null;
 
-    const requestedProfilePath = update.profileImagePath;
+    const requestedProfileUrl = typeof update.profileImageUrl === "string"
+      ? update.profileImageUrl.trim()
+      : null;
 
-    if (requestedProfilePath) {
+    if (requestedProfileUrl) {
+      let profileFileDoc;
+      try {
+        profileFileDoc = await fileService.getFileByUrlForUser(requestedProfileUrl, uid);
+      } catch (fileLookupError) {
+        console.error("[USER][updateOnboarding] 프로필 파일 조회 실패", fileLookupError);
+        throw fileLookupError;
+      }
+
+      const requestedProfilePath = profileFileDoc.filePath;
+
       if (previousProfilePath && requestedProfilePath === previousProfilePath) {
         newProfileImagePath = previousProfilePath;
         if (newProfileImageUrl === null) {
-          newProfileImageUrl = existing.profileImageUrl || null;
+          newProfileImageUrl = existing.profileImageUrl || requestedProfileUrl;
         }
       } else {
-        const profileFileDoc = await fileService.validateFileForProfile(requestedProfilePath, uid);
-
         newProfileImagePath = profileFileDoc.filePath;
-        if (newProfileImageUrl === null) {
-          newProfileImageUrl = profileFileDoc.fileUrl || profileFileDoc.url || null;
+        if (newProfileImageUrl === null || newProfileImageUrl === requestedProfileUrl) {
+          newProfileImageUrl = profileFileDoc.fileUrl || profileFileDoc.url || requestedProfileUrl;
         }
 
         try {
