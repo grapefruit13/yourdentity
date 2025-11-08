@@ -12,19 +12,17 @@ import {
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
-import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import Modal from "@/components/shared/ui/modal";
+import {
+  MAX_FILES,
+  WRITE_MESSAGES,
+} from "@/constants/community/_write-constants";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
+import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
-import { cn } from "@/utils/shared/cn";
-
-type WriteFormValues = {
-  title: string;
-  content: string; // HTML 포함
-  category: "한끗 루틴" | "TMI 프로젝트" | "월간 소모임";
-};
-
-const MAX_FILES = 5;
+import { debug } from "@/utils/shared/debugger";
+import { extractTextFromHtml } from "@/utils/shared/text-editor";
 
 /**
  * content HTML의 a[data-file-id]를 응답 fileUrl로 교체하고 data 속성을 제거
@@ -92,25 +90,21 @@ const WritePageContent = () => {
   const selectedCommunityId =
     searchParams.get("communityId") || "CP:VYTTZW33IH";
   const selectedCommunityName = searchParams.get("communityName") || "";
+  const selectedCategory =
+    searchParams.get("category") || "선택된 카테고리 없음";
 
   // 선택된 커뮤니티 ID가 있으면 사용, 없으면 기본값 사용
   const COMMUNITY_ID = selectedCommunityId;
 
-  const {
-    handleSubmit,
-    setValue,
-    getValues,
-    watch,
-    formState: { isDirty },
-  } = useForm<WriteFormValues>({
-    defaultValues: { title: "", content: "", category: "한끗 루틴" },
-    mode: "onChange",
-  });
+  const { handleSubmit, setValue, getValues, watch, reset } =
+    useForm<WriteFormValues>({
+      defaultValues: { title: "", content: "", category: "한끗 루틴" },
+      mode: "onChange",
+    });
 
-  const selectedCategory = watch("category");
-  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
   const allowLeaveCountRef = useRef(0);
+  const setRightSlot = useTopBarStore((state) => state.setRightSlot);
 
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
   const [fileQueue, setFileQueue] = useState<
@@ -141,7 +135,7 @@ const WritePageContent = () => {
   /**
    * 이미지 선택 시 clientId를 발급/등록하고 반환 (즉시 업로드는 하지 않음)
    */
-  const registerImage = useCallback((file: File): string => {
+  const registerImage = (file: File): string => {
     const clientId = crypto.randomUUID();
     setImageQueue((prev) => {
       if (prev.length >= MAX_FILES) {
@@ -151,12 +145,12 @@ const WritePageContent = () => {
       return [...prev, { clientId, file }];
     });
     return clientId;
-  }, []);
+  };
 
   /**
    * 단일 일반 파일 추가 (clientId 발급 후 큐에 등록)
    */
-  const addAttachFile = useCallback((file: File): string => {
+  const addAttachFile = (file: File): string => {
     const clientId = crypto.randomUUID();
     setFileQueue((prev) => {
       // 중복 체크
@@ -168,7 +162,7 @@ const WritePageContent = () => {
       return [...prev, { clientId, file }];
     });
     return clientId;
-  }, []);
+  };
 
   /**
    * 파일 다건 업로드
@@ -181,7 +175,7 @@ const WritePageContent = () => {
   /**
    * 파일 큐를 한 번에 업로드하고 clientId 매핑을 반환
    */
-  const uploadQueuedFiles = useCallback(async () => {
+  const uploadQueuedFiles = async () => {
     if (!fileQueue.length)
       return {
         byIdToPath: new Map<string, string>(),
@@ -204,24 +198,26 @@ const WritePageContent = () => {
     const byIdToUrl = new Map<string, string>();
     for (const item of items) {
       const data = item?.data;
-      if (!item?.success || !data?.path) continue;
+      // path 또는 fileName이 없으면 건너뛰기
+      const filePath = data?.path ?? data?.fileName;
+      if (!item?.success || !filePath) continue;
       const original = data.originalFileName ?? data.fileName ?? "";
       const clientId = String(original).split("__")[0] || "";
       if (clientId) {
-        byIdToPath.set(clientId, data.path);
+        byIdToPath.set(clientId, filePath);
         // fileUrl이 없으면 path를 URL로 사용
-        const url = data.fileUrl || data.path;
+        const url = data.fileUrl || filePath;
         if (url) byIdToUrl.set(clientId, url);
       }
     }
     return { byIdToPath, byIdToUrl };
-  }, [fileQueue]);
+  };
 
   /**
    * 이미지 큐를 한 번에 업로드하고 clientId 매핑을 반환
    * @returns { byIdToPath, byIdToUrl, failedCount } - 실패한 이미지 개수 포함
    */
-  const uploadQueuedImages = useCallback(async () => {
+  const uploadQueuedImages = async () => {
     if (!imageQueue.length)
       return {
         byIdToPath: new Map<string, string>(),
@@ -262,8 +258,9 @@ const WritePageContent = () => {
       }
 
       const data = item?.data;
-      // path가 없으면 업로드 실패로 간주
-      if (!data?.path) {
+      // path 또는 fileName이 없으면 업로드 실패로 간주
+      const filePath = data?.path ?? data?.fileName;
+      if (!filePath) {
         failedCount += 1;
         continue;
       }
@@ -274,15 +271,15 @@ const WritePageContent = () => {
 
       // clientId 파싱 실패는 경고이지만 업로드 자체는 성공
       if (clientId) {
-        byIdToPath.set(clientId, data.path);
+        byIdToPath.set(clientId, filePath);
         // fileUrl이 없으면 path를 URL로 사용
-        const url = data.fileUrl || data.path;
+        const url = data.fileUrl || filePath;
         byIdToUrl.set(clientId, url);
       }
     }
 
     return { byIdToPath, byIdToUrl, failedCount };
-  }, [imageQueue]);
+  };
 
   /**
    * 파일 경로 배열로 다건 삭제 요청
@@ -296,154 +293,249 @@ const WritePageContent = () => {
   };
 
   /**
+   * 이미지 업로드 및 검증
+   * @returns 업로드된 이미지 경로와 URL 매핑
+   */
+  const handleImageUpload = async () => {
+    const {
+      byIdToPath: imgIdToPath,
+      byIdToUrl: imgIdToUrl,
+      failedCount: imageFailedCount,
+    } = await uploadQueuedImages();
+
+    // 이미지 업로드 실패 확인
+    if (imageQueue.length > 0 && imageFailedCount > 0) {
+      alert(WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount));
+      throw new Error("IMAGE_UPLOAD_FAILED");
+    }
+
+    // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
+    if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
+      alert(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      throw new Error("IMAGE_UPLOAD_FAILED");
+    }
+
+    return {
+      imagePaths: Array.from(imgIdToPath.values()),
+      imageUrlMap: imgIdToUrl,
+    };
+  };
+
+  /**
+   * 이미지 URL 교체 및 검증
+   * @param content - 원본 콘텐츠 HTML
+   * @param imageUrlMap - 이미지 URL 매핑
+   * @returns URL이 교체된 콘텐츠 HTML
+   */
+  const handleImageUrlReplacement = (
+    content: string,
+    imageUrlMap: Map<string, string>
+  ): string => {
+    const contentWithUrls = replaceEditorImageSrcWithUploadedUrls(
+      content,
+      imageUrlMap
+    );
+
+    // 이미지가 있는데 src가 교체되지 않은 경우 확인
+    if (imageQueue.length > 0) {
+      const tempContainer = document.createElement("div");
+      tempContainer.innerHTML = contentWithUrls;
+      const imagesWithClientId = tempContainer.querySelectorAll(
+        "img[data-client-id]"
+      );
+      if (imagesWithClientId.length > 0) {
+        alert(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        throw new Error("IMAGE_URL_REPLACE_FAILED");
+      }
+    }
+
+    return contentWithUrls;
+  };
+
+  /**
+   * 파일 업로드 및 URL 교체
+   * @param content - 콘텐츠 HTML
+   * @returns 업로드된 파일 경로와 URL이 교체된 콘텐츠
+   */
+  const handleFileUpload = async (content: string) => {
+    const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
+      await uploadQueuedFiles();
+    const uploadedFilePaths = Array.from(fileIdToPath.values());
+    const contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
+      content,
+      fileIdToUrl
+    );
+
+    setValue("content", contentWithUrls, {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
+
+    return { filePaths: uploadedFilePaths, content: contentWithUrls };
+  };
+
+  /**
+   * 게시글 등록
+   * @param title - 제목
+   * @param content - 콘텐츠 HTML
+   * @param category - 카테고리
+   * @param media - 미디어 파일 경로 배열
+   * @returns 등록된 게시글 ID와 커뮤니티 ID
+   */
+  const createPost = (
+    title: string,
+    content: string,
+    category: string,
+    media: string[]
+  ): Promise<{ postId: string; communityId: string }> => {
+    return new Promise((resolve, reject) => {
+      const requestParam = {
+        communityId: COMMUNITY_ID,
+        data: {
+          title,
+          content,
+          category,
+          media,
+        },
+      } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
+
+      mutate(requestParam, {
+        onSuccess: (res) => {
+          const responseData = (res as any)?.data as
+            | CommunityTypes.TPOSTCommunitiesPostsByIdRes
+            | undefined;
+          const postId = responseData?.id;
+          const communityId = responseData?.communityId;
+
+          if (!postId || !communityId) {
+            reject(new Error(WRITE_MESSAGES.POST_RESPONSE_INVALID));
+            return;
+          }
+
+          resolve({ postId, communityId });
+        },
+        onError: (err) => {
+          reject(err);
+        },
+      });
+    });
+  };
+
+  /**
+   * 에러가 이미 처리된 경우인지 확인
+   * @param error - 에러 객체
+   * @returns 이미 처리된 에러인지 여부
+   */
+  const isHandledError = (error: unknown): boolean => {
+    if (!(error instanceof Error)) return false;
+    return (
+      error.message === "IMAGE_UPLOAD_FAILED" ||
+      error.message === "IMAGE_URL_REPLACE_FAILED"
+    );
+  };
+
+  /**
+   * 업로드된 파일들 롤백 삭제
+   * @param imagePaths - 업로드된 이미지 경로 배열
+   * @param filePaths - 업로드된 파일 경로 배열
+   */
+  const rollbackUploadedFiles = async (
+    imagePaths: string[],
+    filePaths: string[]
+  ) => {
+    const filesToDelete = [...imagePaths, ...filePaths];
+    if (filesToDelete.length === 0) return;
+
+    debug.log("게시글 작성 실패, 파일 삭제 시작:", filesToDelete);
+    try {
+      await deleteFilesByPath(filesToDelete);
+      debug.log("파일 삭제 완료");
+    } catch (deleteError) {
+      debug.error("파일 삭제 중 에러:", deleteError);
+    }
+  };
+
+  /**
    * 제출 핸들러
    * - 제목/내용 유효성 검사 후 첨부 파일 업로드 → 글 등록까지 수행
    * - 실패 시 업로드된 파일들 롤백 삭제
    */
   const onSubmit = async (values: WriteFormValues) => {
     const trimmedTitle = values.title.trim();
-    const hasContent = (() => {
-      const html = values.content || "";
-      const text = html
-        .replace(/<[^>]*>/g, "") // 태그 제거
-        .replace(/&nbsp;/g, " ") // nbsp 치환
-        .trim();
-      return text.length > 0;
-    })();
-
-    if (!trimmedTitle) {
-      alert("제목을 입력해주세요.");
-      return;
-    }
-    if (!hasContent) {
-      alert("내용을 입력해주세요.");
-      return;
-    }
-
-    let uploadedImagePathsLocal: string[] = [];
+    const currentContent = getValues("content");
+    let uploadedImagePaths: string[] = [];
     let uploadedFilePaths: string[] = [];
 
     try {
-      // 이미지 일괄 업로드 및 콘텐츠 내 src 교체
-      const {
-        byIdToPath: imgIdToPath,
-        byIdToUrl: imgIdToUrl,
-        failedCount: imageFailedCount,
-      } = await uploadQueuedImages();
+      // 1. 이미지 업로드 및 검증
+      const { imagePaths, imageUrlMap } = await handleImageUpload();
+      uploadedImagePaths = imagePaths;
 
-      // 이미지 업로드 실패 확인
-      if (imageQueue.length > 0 && imageFailedCount > 0) {
-        alert(
-          `에 실패했습니다. (${imageFailedCount}개 실패) 잠시 후 다시 시도해주세요.`
-        );
-        return;
-      }
-
-      // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
-      if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
-        alert("이미지 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-        return;
-      }
-
-      uploadedImagePathsLocal = Array.from(imgIdToPath.values());
-      // getValues()를 사용하여 최신 content 값을 가져옴
-      const currentContent = getValues("content");
-      let contentWithUrls = replaceEditorImageSrcWithUploadedUrls(
+      // 2. 이미지 URL 교체 및 검증
+      const contentWithUrls = handleImageUrlReplacement(
         currentContent,
-        imgIdToUrl
+        imageUrlMap
       );
 
-      // 이미지가 있는데 src가 교체되지 않은 경우 확인
-      if (imageQueue.length > 0) {
-        const tempContainer = document.createElement("div");
-        tempContainer.innerHTML = contentWithUrls;
-        const imagesWithClientId = tempContainer.querySelectorAll(
-          "img[data-client-id]"
-        );
-        if (imagesWithClientId.length > 0) {
-          alert("이미지 URL 교체에 실패했습니다. 잠시 후 다시 시도해주세요.");
-          return;
-        }
-      }
+      // 3. 파일 업로드 및 URL 교체
+      const { filePaths, content: finalContent } =
+        await handleFileUpload(contentWithUrls);
+      uploadedFilePaths = filePaths;
 
-      // 파일 큐 업로드 및 a[href] 교체
-      const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
-        await uploadQueuedFiles();
-      // 파일 업로드 경로는 큐 결과만 사용 (중복 업로드 방지)
-      const uploadedFilePathsSet = Array.from(fileIdToPath.values());
-      contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
-        contentWithUrls,
-        fileIdToUrl
+      // 4. 게시글 등록
+      const postResponse = await createPost(
+        trimmedTitle,
+        finalContent,
+        values.category,
+        [...uploadedImagePaths, ...uploadedFilePaths]
       );
-      setValue("content", contentWithUrls, {
-        shouldDirty: true,
-        shouldValidate: false,
-      });
-      // 첨부 리스트 업로드는 제거하고(중복 방지), 큐 업로드 결과만 사용
-      uploadedFilePaths = uploadedFilePathsSet;
 
-      // 글 작성
-      const postResponse = await new Promise<{
-        postId: string;
-        communityId: string;
-      }>((resolve, reject) => {
-        const requestParam = {
-          communityId: COMMUNITY_ID,
-          data: {
-            title: trimmedTitle,
-            content: contentWithUrls,
-            category: values.category,
-            media: [
-              ...uploadedImagePathsLocal,
-              ...uploadedFilePaths,
-            ] as string[],
-          },
-        } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
-
-        mutate(requestParam, {
-          onSuccess: (res) => {
-            const responseData = (res as any)?.data as
-              | CommunityTypes.TPOSTCommunitiesPostsByIdRes
-              | undefined;
-            const postId = responseData?.id;
-            const communityId = responseData?.communityId;
-
-            if (!postId || !communityId) {
-              reject(
-                new Error(
-                  "응답에서 postId 또는 communityId를 찾을 수 없습니다."
-                )
-              );
-              return;
-            }
-
-            resolve({ postId, communityId });
-          },
-          onError: (err) => reject(err),
-        });
-      });
-
-      alert("게시물이 등록되었습니다.");
-      // 상태 초기화
+      // 5. 성공 후 처리
+      alert(WRITE_MESSAGES.POST_CREATE_SUCCESS);
       setImageQueue([]);
       setFileQueue([]);
-      setValue("title", "");
-      setValue("content", "");
-
-      // 상세 페이지로 이동
-      if (postResponse.postId && postResponse.communityId) {
-        router.replace(
-          `/community/post/${postResponse.postId}?communityId=${postResponse.communityId}`
-        );
+      reset({
+        title: "",
+        content: "",
+      });
+      router.replace(
+        `/community/post/${postResponse.postId}?communityId=${postResponse.communityId}`
+      );
+    } catch (error) {
+      // 에러 발생 시 업로드된 파일들 롤백
+      if (uploadedImagePaths.length > 0 || uploadedFilePaths.length > 0) {
+        await rollbackUploadedFiles(uploadedImagePaths, uploadedFilePaths);
       }
-    } catch {
-      await deleteFilesByPath([
-        ...uploadedImagePathsLocal,
-        ...uploadedFilePaths,
-      ]);
-      alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+
+      // 에러가 이미 처리된 경우 (alert 등)는 다시 alert하지 않음
+      if (isHandledError(error)) {
+        return;
+      }
+
+      alert(WRITE_MESSAGES.POST_CREATE_FAILED);
     }
   };
+  const hasTitle = watch("title").trim();
+  const hasContent = extractTextFromHtml(watch("content") || "").length > 0;
+  const isSubmitDisabled = isPending || !hasTitle || !hasContent;
+
+  /**
+   * 화면 렌더 시 topbar에 완료(게시글 등록)버튼 추가
+   */
+  useEffect(() => {
+    setRightSlot(
+      <ButtonBase
+        type="submit"
+        className="disabled:opacity-50"
+        disabled={isSubmitDisabled}
+        onClick={handleSubmit(onSubmit)}
+      >
+        <Typography font="noto" variant="body2M" className="text-main-600">
+          완료
+        </Typography>
+      </ButtonBase>
+    );
+  }, [setRightSlot, isSubmitDisabled, handleSubmit, onSubmit]);
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {
@@ -488,91 +580,61 @@ const WritePageContent = () => {
   return (
     <form className="flex flex-col pt-12" onSubmit={handleSubmit(onSubmit)}>
       {/* 선택된 프로그램 정보 표시 */}
-      {selectedCommunityName && (
-        <div className="mb-4 flex flex-col gap-2 px-5">
-          <div className="flex items-center gap-2">
-            <span className="bg-main-600 rounded-full px-3 py-1 text-xs font-medium text-white">
-              {selectedCommunityName}
-            </span>
-          </div>
-          <Typography font="noto" variant="body2R" className="text-gray-500">
-            {getCurrentDateTime()}
-          </Typography>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4 bg-gray-100 px-5 py-3">
-        {/* 카테고리 선택 */}
-        <div className="flex border-collapse flex-col rounded-lg border border-gray-200 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-200 p-4">
-            <div className="flex items-center">
-              <Typography font="noto" variant="label1M">
-                게시판
+      <div className="flex flex-col gap-4 bg-gray-100 p-5 pt-2 pb-4">
+        {selectedCommunityName && (
+          <div className="flex border-collapse flex-col gap-1 rounded-lg border border-gray-200 bg-white">
+            {/* 글 카테고리 정보 */}
+            <div className="flex w-full flex-col gap-1 px-4 py-2">
+              <div className="flex items-center gap-2">
+                <span className="bg-main-50 rounded-lg p-1">
+                  <Typography
+                    font="noto"
+                    variant="body2M"
+                    className="text-main-500"
+                  >
+                    {selectedCategory}
+                  </Typography>
+                </span>
+                <Typography
+                  font="noto"
+                  variant="body2M"
+                  className="text-gray-950"
+                >
+                  {selectedCommunityName}
+                </Typography>
+              </div>
+              <Typography
+                font="noto"
+                variant="label2M"
+                className="text-gray-400"
+              >
+                {getCurrentDateTime()}
               </Typography>
+            </div>
+            {/* 공개 범위 */}
+            <div className="flex w-full items-center justify-between border-t border-t-gray-300 p-4">
               <Typography
                 font="noto"
                 variant="label1M"
-                className="text-main-600"
+                className="text-gray-600"
               >
-                *
+                공개 범위
               </Typography>
+              <div className="flex items-center gap-1">
+                <input type="checkbox" className="border border-gray-950" />
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  className="text-gray-600"
+                >
+                  참여자에게만 공개
+                </Typography>
+              </div>
             </div>
-            <ButtonBase className="flex items-center gap-1">
-              <Typography font="noto" variant="body2M">
-                {selectedCommunityName || "프로그램"}
-              </Typography>
-              <ChevronDown size={16} className="text-gray-950" />
-            </ButtonBase>
           </div>
-          <div className="flex items-center justify-between border-b border-gray-200 p-4">
-            <div className="flex items-center">
-              <Typography font="noto" variant="label1M">
-                카테고리
-              </Typography>
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-main-600"
-              >
-                *
-              </Typography>
-            </div>
-            <ButtonBase
-              className="flex items-center gap-1"
-              onClick={() => setIsCategorySheetOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={isCategorySheetOpen}
-              aria-controls="category-bottom-sheet"
-            >
-              <Typography font="noto" variant="body2M">
-                {selectedCategory}
-              </Typography>
-              <ChevronDown size={16} className="text-gray-950" />
-            </ButtonBase>
-          </div>
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center">
-              <Typography font="noto" variant="label1M">
-                날짜
-              </Typography>
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-main-600"
-              >
-                *
-              </Typography>
-            </div>
-            <ButtonBase className="flex items-center gap-1">
-              <Typography font="noto" variant="body2M">
-                2025년 10월 29일(목)
-              </Typography>
-              <ChevronDown size={16} className="text-gray-950" />
-            </ButtonBase>
-          </div>
-        </div>
+        )}
         {/* 인증방법 */}
-        <div className="border-main-300 bg-main-50 flex flex-col rounded-xl border px-5 py-4">
+        <div className="border-main-300 bg-main-50 flex flex-col rounded-lg border px-5 py-4">
           <div className="flex items-center justify-between">
             <Typography font="noto" variant="label1M" className="text-gray-800">
               인증 방법
@@ -625,100 +687,6 @@ const WritePageContent = () => {
           })
         }
       />
-
-      {/* 카테고리 선택 바텀시트 */}
-      <BottomSheet
-        isOpen={isCategorySheetOpen}
-        onClose={() => setIsCategorySheetOpen(false)}
-      >
-        <Typography font="noto" variant="body1B" className="mb-3">
-          카테고리 선택
-        </Typography>
-        <div className="flex flex-col gap-2">
-          {(["한끗 루틴", "TMI 프로젝트", "월간 소모임"] as const).map(
-            (label) => {
-              const checked = selectedCategory === label;
-              return (
-                <label
-                  key={label}
-                  className={
-                    "flex w-full cursor-pointer items-center gap-4 rounded-lg px-4 py-3"
-                  }
-                >
-                  <input
-                    type="radio"
-                    name="category"
-                    className="peer sr-only"
-                    checked={checked}
-                    onChange={() =>
-                      setValue("category", label, { shouldDirty: true })
-                    }
-                  />
-                  <span
-                    className="relative inline-flex size-4 items-center justify-center rounded-full border border-gray-200 shadow-xs drop-shadow-xs transition-colors"
-                    aria-hidden
-                  >
-                    <span
-                      className={cn(
-                        "inline-block size-2 rounded-full transition-colors",
-                        checked ? "bg-main-600" : "bg-transparent"
-                      )}
-                    />
-                  </span>
-                  <Typography
-                    font="noto"
-                    variant="body2M"
-                    className="select-none"
-                  >
-                    {label}
-                  </Typography>
-                </label>
-              );
-            }
-          )}
-        </div>
-
-        {/* 하단 완료 버튼 */}
-        <div className="mt-6">
-          <ButtonBase
-            className="bg-main-600 w-full rounded-lg py-[10px] text-white"
-            onClick={() => setIsCategorySheetOpen(false)}
-          >
-            완료
-          </ButtonBase>
-        </div>
-      </BottomSheet>
-
-      {/* 하단 제출 버튼 영역 */}
-      <div className="sticky bottom-0 z-40 mt-4 border-t border-gray-200 bg-white px-5 py-3">
-        <div className="flex items-center justify-end gap-2">
-          <ButtonBase
-            type="button"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-[10px] text-gray-800 active:bg-gray-100"
-            onClick={() => {
-              const { title, content } = getValues();
-              if (!title && !content) return;
-              if (confirm("작성 중인 내용을 모두 지울까요?")) {
-                setValue("title", "", { shouldDirty: true });
-                setValue("content", "", { shouldDirty: true });
-              }
-            }}
-          >
-            <Typography font="noto" variant="body2M">
-              초기화
-            </Typography>
-          </ButtonBase>
-          <ButtonBase
-            type="submit"
-            className="bg-main-600 rounded-lg px-4 py-[10px] text-white active:opacity-90 disabled:opacity-50"
-            disabled={isPending || !isDirty}
-          >
-            <Typography font="noto" variant="body2B">
-              {isPending ? "등록 중..." : "등록"}
-            </Typography>
-          </ButtonBase>
-        </div>
-      </div>
 
       {/* 뒤로가기 컨펌 모달 */}
       <Modal
