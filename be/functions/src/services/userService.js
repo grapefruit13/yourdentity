@@ -5,6 +5,7 @@ const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
 const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
+const fileService = require("./fileService");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -38,15 +39,18 @@ class UserService {
       throw e;
     }
 
+    const restPayload = payload || {};
+
     // 2) 허용 필드 화이트리스트 적용
     const allowedFields = [
       "nickname",
       "profileImageUrl",
       "bio",
+      "profileImagePath",
     ];
     const update = {};
     for (const key of allowedFields) {
-      if (payload[key] !== undefined) update[key] = payload[key];
+      if (restPayload[key] !== undefined) update[key] = restPayload[key];
     }
 
     // 3) 필수 필드 체크
@@ -64,15 +68,64 @@ class UserService {
       await this.nicknameService.setNickname(nickname, uid, existing.nickname);
     }
 
+    let newProfileImagePath = null;
+    let newProfileImageUrl = update.profileImageUrl !== undefined ? update.profileImageUrl : null;
+    let previousProfilePath = existing.profileImagePath || null;
+
+    const requestedProfilePath = update.profileImagePath;
+
+    if (requestedProfilePath) {
+      if (previousProfilePath && requestedProfilePath === previousProfilePath) {
+        newProfileImagePath = previousProfilePath;
+        if (newProfileImageUrl === null) {
+          newProfileImageUrl = existing.profileImageUrl || null;
+        }
+      } else {
+        const profileFileDoc = await fileService.validateFileForProfile(requestedProfilePath, uid);
+
+        newProfileImagePath = profileFileDoc.filePath;
+        if (newProfileImageUrl === null) {
+          newProfileImageUrl = profileFileDoc.fileUrl || profileFileDoc.url || null;
+        }
+
+        try {
+          await fileService.firestoreService.update(profileFileDoc.id, {
+            profileOwner: uid,
+            isUsed: true,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } catch (fileUpdateError) {
+          console.error("[USER][updateOnboarding] 프로필 파일 메타데이터 업데이트 실패", fileUpdateError);
+          throw fileUpdateError;
+        }
+      }
+    }
+
     // 5) 온보딩 완료 처리
     const userUpdate = {
       ...update,
       updatedAt: FieldValue.serverTimestamp(),
     };
 
+    if (newProfileImagePath) {
+      userUpdate.profileImagePath = newProfileImagePath;
+    }
+
+    if (newProfileImageUrl !== null) {
+      userUpdate.profileImageUrl = newProfileImageUrl;
+    }
+
     // 사용자 문서 업데이트
     await this.firestoreService.update(uid, userUpdate);
-    
+
+    if (newProfileImagePath && previousProfilePath && previousProfilePath !== newProfileImagePath) {
+      try {
+        await fileService.deleteFile(previousProfilePath, uid);
+      } catch (cleanupError) {
+        console.warn("[USER][updateOnboarding] 이전 프로필 이미지 삭제 실패", cleanupError.message);
+      }
+    }
+
     return {success: true};
   }
 
