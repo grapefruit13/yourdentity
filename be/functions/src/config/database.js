@@ -13,7 +13,7 @@ if (!admin.apps || admin.apps.length === 0) {
   
   if (isEmulator) {
     admin.initializeApp({
-      storageBucket: process.env.STORAGE_BUCKET || 'youthvoice-2025.appspot.com'
+      storageBucket: process.env.STORAGE_BUCKET,
     });
   } else {
     admin.initializeApp();
