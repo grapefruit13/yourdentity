@@ -140,11 +140,15 @@ class CommunityService {
         const heightMatch = imgTag.match(/height=["']?(\d+)["']?/i);
         const blurHashMatch = imgTag.match(/data-blurhash=["']([^"']+)["']/i);
 
+        const width = widthMatch ? parseInt(widthMatch[1], 10) : null;
+        const height = heightMatch ? parseInt(heightMatch[1], 10) : null;
+        const blurHash = blurHashMatch ? blurHashMatch[1] : null;
+
         thumbnail = {
           url: srcMatch ? srcMatch[1] : imgMatch[1],
-          width: widthMatch ? parseInt(widthMatch[1]) : undefined,
-          height: heightMatch ? parseInt(heightMatch[1]) : undefined,
-          blurHash: blurHashMatch ? blurHashMatch[1] : undefined,
+          width,
+          height,
+          blurHash,
         };
       }
     } else {
@@ -168,9 +172,9 @@ class CommunityService {
 
       thumbnail = firstImage ? {
         url: firstImage.url || firstImage.src,
-        blurHash: firstImage.blurHash,
-        width: firstImage.width,
-        height: firstImage.height,
+        blurHash: firstImage.blurHash || null,
+        width: typeof firstImage.width === "number" ? firstImage.width : (firstImage.width ? Number(firstImage.width) : null),
+        height: typeof firstImage.height === "number" ? firstImage.height : (firstImage.height ? Number(firstImage.height) : null),
       } : null;
     }
 
@@ -452,6 +456,12 @@ class CommunityService {
    */
   async createPost(communityId, userId, postData) {
     try {
+      console.log("[COMMUNITY][createPost] 요청 수신", {
+        communityId,
+        userId,
+        hasPostData: !!postData,
+      });
+
       const {
         title, 
         content, 
@@ -465,12 +475,14 @@ class CommunityService {
       const visibility = "PUBLIC";
 
       if (!title || typeof title !== "string" || title.trim().length === 0) {
+        console.warn("[COMMUNITY][createPost] 제목 누락", { communityId, userId });
         const error = new Error("제목은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        console.warn("[COMMUNITY][createPost] 내용 누락", { communityId, userId });
         const error = new Error("게시글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
@@ -478,27 +490,55 @@ class CommunityService {
 
       const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
       if (textWithoutTags.length === 0) {
+        console.warn("[COMMUNITY][createPost] 텍스트만 추출 시 빈 문자열", { communityId, userId });
         const error = new Error("게시글에 텍스트 내용이 필요합니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
+      console.log("[COMMUNITY][createPost] 원본 콘텐츠 검증 통과", {
+        communityId,
+        userId,
+        originalLength: content.length,
+      });
+
       const sanitizedContent = sanitizeContent(content);
 
       const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
       if (sanitizedText.length === 0) {
+        console.warn("[COMMUNITY][createPost] sanitize 이후 빈 문자열", { communityId, userId });
         const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
+      console.log("[COMMUNITY][createPost] sanitize 완료", {
+        communityId,
+        userId,
+        sanitizedLength: sanitizedContent.length,
+      });
+
       // 파일 검증 (게시글 생성 전)
       let validatedFiles = [];
       if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
+        console.log("[COMMUNITY][createPost] 미디어 검증 시작", {
+          communityId,
+          userId,
+          mediaCount: postMedia.length,
+        });
         try {
           validatedFiles = await fileService.validateFilesForPost(postMedia, userId);
+          console.log("[COMMUNITY][createPost] 미디어 검증 성공", {
+            communityId,
+            userId,
+            validatedCount: validatedFiles.length,
+          });
         } catch (fileError) {
-          console.error("파일 검증 실패:", fileError);
+          console.error("[COMMUNITY][createPost] 파일 검증 실패", {
+            communityId,
+            userId,
+            error: fileError.message,
+          });
           // 파일 검증 실패 시 게시글 생성 안 함
           throw fileError;
         }
@@ -506,10 +546,17 @@ class CommunityService {
 
       const community = await this.firestoreService.getDocument("communities", communityId);
       if (!community) {
+        console.warn("[COMMUNITY][createPost] 커뮤니티 없음", { communityId, userId });
         const error = new Error("Community not found");
         error.code = "NOT_FOUND";
         throw error;
       }
+
+      console.log("[COMMUNITY][createPost] 커뮤니티 조회 성공", {
+        communityId,
+        userId,
+        communityName: community.name,
+      });
 
       let author = "익명"; 
       try {
@@ -528,7 +575,11 @@ class CommunityService {
           }
         }
       } catch (memberError) {
-        console.warn("Failed to get member info:", memberError.message);
+        console.warn("[COMMUNITY][createPost] 멤버 정보 조회 실패", {
+          communityId,
+          userId,
+          error: memberError.message,
+        });
       }
 
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
@@ -563,6 +614,11 @@ class CommunityService {
       };
 
       const result = await this.firestoreService.runTransaction(async (transaction) => {
+        console.log("[COMMUNITY][createPost] Firestore 트랜잭션 시작", {
+          communityId,
+          userId,
+          hasValidatedFiles: validatedFiles.length > 0,
+        });
 
         const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc();
         transaction.set(postRef, newPost);
@@ -590,9 +646,21 @@ class CommunityService {
           });
         }
         
+        console.log("[COMMUNITY][createPost] 트랜잭션 내 작업 완료", {
+          communityId,
+          userId,
+          postId: postRef.id,
+        });
+
         return { postId: postRef.id };
       });
       const postId = result.postId;
+
+      console.log("[COMMUNITY][createPost] 게시글 생성 완료", {
+        communityId,
+        userId,
+        postId,
+      });
 
       const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, preview: _preview, ...restNewPost} = newPost;
       
@@ -607,7 +675,11 @@ class CommunityService {
         },
       };
     } catch (error) {
-      console.error("Create post error:", error.message);
+      console.error("[COMMUNITY][createPost] 게시글 생성 에러", {
+        communityId,
+        userId,
+        error: error.message,
+      });
       if (error.code === "NOT_FOUND") {
         throw error;
       }
