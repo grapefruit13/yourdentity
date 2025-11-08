@@ -12,6 +12,8 @@ export const LINK_URL = {
   COMMUNITY: "/community",
   DOWNLOAD: "/download",
   ROUTINES: "/routines",
+  STORE: "/store",
+  STORE_DETAIL: "/store/detail",
   MY_PAGE: "/my-page",
   MY_PAGE_EDIT: "/my-page/edit",
   MYPAGE_SETTING_LEAVE: "/mypage-setting-leave",
