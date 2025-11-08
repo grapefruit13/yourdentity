@@ -68,16 +68,16 @@ class UserController {
 
   /**
    * 온보딩 정보 업데이트
-   * @param {Object} req.body - { nickname, profileImageUrl?, profileImagePath?, bio? }
+   * @param {Object} req.body - { nickname, profileImageUrl?, bio? }
    */
   async updateOnboarding(req, res, next) {
     try {
       const {uid} = req.user;
-      const {nickname, profileImageUrl, profileImagePath, bio} = req.body || {};
+      const {nickname, profileImageUrl, bio} = req.body || {};
 
       const result = await userService.updateOnboarding({
         uid,
-        payload: {nickname, profileImageUrl, profileImagePath, bio},
+        payload: {nickname, profileImageUrl, bio},
       });
 
       return res.success(result);
