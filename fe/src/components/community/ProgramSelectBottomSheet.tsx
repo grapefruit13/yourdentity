@@ -72,11 +72,15 @@ const ProgramSelectBottomSheet = ({
    * 프로그램 선택 핸들러
    * 선택한 프로그램 정보를 쿼리 파라미터로 전달하여 작성 페이지로 이동
    */
-  const handleProgramSelect = (programId: string, programName: string) => {
+  const handleProgramSelect = (
+    programId: string,
+    programName: string,
+    category: string
+  ) => {
     onClose();
     // 쿼리 파라미터로 프로그램 정보 전달
     router.push(
-      `/community/write?communityId=${programId}&communityName=${encodeURIComponent(programName)}`
+      `/community/write?communityId=${programId}&communityName=${encodeURIComponent(programName)}&category=${category}`
     );
   };
 
@@ -109,7 +113,11 @@ const ProgramSelectBottomSheet = ({
                       key={program.id}
                       onClick={() => {
                         if (program.id && program.name) {
-                          handleProgramSelect(program.id, program.name);
+                          handleProgramSelect(
+                            program.id,
+                            program.name,
+                            group.label
+                          );
                         }
                       }}
                       className={cn(
