@@ -26,7 +26,6 @@ const NOTION_FIELDS = {
   SEND_STATUS: '전송 상태',
   USER_ID: '사용자ID',
   LAST_PAYMENT_DATE: '가장 최근에 지급한 일시',
-  NADUM_AMOUNT: '지급할 나다움',
   PAYMENT_RESULT: '지급 결과',
 };
 
@@ -34,6 +33,7 @@ const NOTION_FIELDS = {
 const TEMPLATE_FIELDS = {
   PROGRAM_TYPE: '프로그램 유형',
   NOTIFICATION_CONTENT: '알림 내용',
+  NADUM_AMOUNT: '지급할 나다움',
 };
 
 // 전송 상태 값 상수
@@ -186,13 +186,13 @@ class NotificationService {
 
       const templatePage = results[0];
       const props = templatePage.properties;
-      const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]);
+      const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]) || '';
+      const nadumAmount = getNumberValue(props[TEMPLATE_FIELDS.NADUM_AMOUNT]) || 0;
 
-      if (!notificationContent) {
-        return null;
-      }
-
-      return notificationContent;
+      return {
+        content: notificationContent,
+        nadumAmount,
+      };
     } catch (error) {
       console.error(`템플릿 조회 실패:`, error.message);
       return null;
@@ -239,11 +239,17 @@ class NotificationService {
       }
 
       let content = '';
+      let nadumAmount = 0;
       if (programTypeName && programTypeName.trim()) {
-        const templateContent = await this.getNotificationTemplateByType(programTypeName.trim());
-        if (templateContent) {
-          content = templateContent;
+        const templateData = await this.getNotificationTemplateByType(programTypeName.trim());
+        if (templateData) {
+          content = templateData.content || '';
+          nadumAmount = typeof templateData.nadumAmount === 'number' ? templateData.nadumAmount : 0;
         }
+      }
+
+      if (!content) {
+        content = getTextContent(contentField) || '';
       }
 
       const userRelations = props[NOTION_FIELDS.MEMBER_MANAGEMENT]?.relation || [];
@@ -264,9 +270,6 @@ class NotificationService {
         error.statusCode = 400;
         throw error;
       }
-
-      const nadumAmountField = props[NOTION_FIELDS.NADUM_AMOUNT];
-      const nadumAmount = getNumberValue(nadumAmountField) || 0;
 
       return {
         title,
