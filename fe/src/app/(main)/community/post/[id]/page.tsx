@@ -31,6 +31,7 @@ const PostDetailPage = () => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [comment, setComment] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // API 연동 - useGetCommunitiesPostsByTwoIds 사용 (communityId와 postId 모두 필요)
   const {
@@ -56,6 +57,9 @@ const PostDetailPage = () => {
     });
 
   const comments = commentsData?.comments || [];
+
+  // postData를 Schema.CommunityPost 타입으로 변환
+  const post = postData as Schema.CommunityPost;
 
   // 메뉴 외부 클릭 시 닫기
   useEffect(() => {
@@ -214,9 +218,6 @@ const PostDetailPage = () => {
       </div>
     );
   }
-
-  // postData를 Schema.CommunityPost 타입으로 변환
-  const post = postData as Schema.CommunityPost;
 
   return (
     <div className="min-h-screen bg-white">
@@ -401,10 +402,21 @@ const PostDetailPage = () => {
         </div>
 
         {/* 내용 */}
-        <div className="mb-6 text-base leading-relaxed text-gray-700">
+        <div className="mb-6">
           {post?.content && (
             <div
-              className="prose prose-sm image-load-prevention max-w-none [&_img]:block [&_img]:h-auto [&_img]:max-h-[400px] [&_img]:min-h-0 [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
+              ref={contentRef}
+              className={cn(
+                "prose prose-sm prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2",
+                "prose-img:max-w-full prose-img:h-auto prose-img:rounded-lg prose-img:block prose-img:mx-auto prose-img:max-h-[400px] prose-img:object-contain",
+                "prose-a:text-blue-500 prose-a:underline prose-a:cursor-pointer prose-a:break-all",
+                "w-full max-w-none overflow-x-hidden break-words whitespace-pre-wrap",
+                "[&_span[data-attachment='file']]:inline-flex [&_span[data-attachment='file']]:items-center [&_span[data-attachment='file']]:gap-1 [&_span[data-attachment='file']]:select-none",
+                "[&_span[data-heading='1']]:text-[22px] [&_span[data-heading='1']]:leading-snug [&_span[data-heading='1']]:font-bold",
+                "[&_span[data-heading='2']]:text-[16px] [&_span[data-heading='2']]:leading-snug [&_span[data-heading='2']]:font-bold",
+                "[&_span[data-heading='3']]:text-[16px] [&_span[data-heading='3']]:leading-snug [&_span[data-heading='3']]:font-medium",
+                "[&_span[data-heading='4']]:text-[14px] [&_span[data-heading='4']]:leading-snug [&_span[data-heading='4']]:font-medium"
+              )}
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
           )}

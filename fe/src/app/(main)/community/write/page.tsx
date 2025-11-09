@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Suspense, useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -22,7 +22,7 @@ import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
 import { debug } from "@/utils/shared/debugger";
-import { extractTextFromHtml } from "@/utils/shared/text-editor";
+import { extractTextFromHtml, elementToHtml } from "@/utils/shared/text-editor";
 
 /**
  * content HTML의 a[data-file-id]를 응답 fileUrl로 교체하고 data 속성을 제거
@@ -32,8 +32,16 @@ const replaceEditorFileHrefWithUploadedUrls = (
   byIdToUrl: Map<string, string>
 ) => {
   if (!html) return html;
+
+  // 파일 링크가 없으면 원본 HTML 반환 (속성 보존)
+  if (byIdToUrl.size === 0) {
+    return html;
+  }
+
   const container = document.createElement("div");
   container.innerHTML = html;
+
+  // 파일 링크 URL 교체
   container
     .querySelectorAll<HTMLAnchorElement>("a[data-file-id]")
     .forEach((a) => {
@@ -44,7 +52,14 @@ const replaceEditorFileHrefWithUploadedUrls = (
         a.removeAttribute("data-file-id");
       }
     });
-  return container.innerHTML;
+
+  // container.innerHTML 사용 후 속성이 사라질 수 있으므로
+  // elementToHtml을 사용하여 속성을 복원
+  let resultHtml = "";
+  container.childNodes.forEach((child) => {
+    resultHtml += elementToHtml(child);
+  });
+  return resultHtml;
 };
 
 /**
@@ -55,10 +70,16 @@ const replaceEditorImageSrcWithUploadedUrls = (
   byIdToUrl: Map<string, string>
 ) => {
   if (!html) return html;
-  if (byIdToUrl.size === 0) return html; // 매핑이 없으면 그대로 반환
+
+  // 이미지가 없으면 원본 HTML 반환 (속성 보존)
+  if (byIdToUrl.size === 0) {
+    return html;
+  }
 
   const container = document.createElement("div");
   container.innerHTML = html;
+
+  // 이미지 URL 교체
   const images = container.querySelectorAll<HTMLImageElement>(
     "img[data-client-id]"
   );
@@ -74,7 +95,13 @@ const replaceEditorImageSrcWithUploadedUrls = (
     }
   });
 
-  return container.innerHTML;
+  // container.innerHTML 사용 후 속성이 사라질 수 있으므로
+  // elementToHtml을 사용하여 속성을 복원
+  let resultHtml = "";
+  container.childNodes.forEach((child) => {
+    resultHtml += elementToHtml(child);
+  });
+  return resultHtml;
 };
 
 /**
@@ -687,6 +714,33 @@ const WritePageContent = () => {
           })
         }
       />
+
+      {/* Content 실시간 확인 데모 컴포넌트 */}
+      {/* <div className="fixed right-4 bottom-20 z-50 max-h-[400px] w-[400px] overflow-auto rounded-lg border-2 border-blue-500 bg-white p-4 shadow-lg">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-800">
+            Request Body Content (임시)
+          </h3>
+          <button
+            onClick={() => {
+              const content = getValues("content");
+              navigator.clipboard.writeText(content);
+              alert("Content가 클립보드에 복사되었습니다!");
+            }}
+            className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600"
+          >
+            복사
+          </button>
+        </div>
+        <div className="mb-2 text-xs text-gray-500">
+          길이: {watch("content")?.length || 0}자
+        </div>
+        <div className="rounded border border-gray-200 bg-gray-50 p-2">
+          <pre className="text-xs break-words whitespace-pre-wrap">
+            {watch("content") || "(비어있음)"}
+          </pre>
+        </div>
+      </div> */}
 
       {/* 뒤로가기 컨펌 모달 */}
       <Modal
