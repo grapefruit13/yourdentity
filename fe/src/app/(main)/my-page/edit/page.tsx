@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Camera, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as FilesApi from "@/api/generated/files-api";
+import { deleteFilesById } from "@/api/generated/files-api";
 import * as UsersApi from "@/api/generated/users-api";
 import ProfileImageBottomSheet from "@/components/my-page/ProfileImageBottomSheet";
 import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
@@ -32,6 +33,9 @@ import type { FileUploadResponse } from "@/types/generated/api-schema";
 import type { ProfileEditFormValues } from "@/types/my-page/_profile-edit-types";
 import { debug } from "@/utils/shared/debugger";
 
+/**
+ * @description 프로필 편집 페이지(온보딩)
+ */
 const ProfileEditPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -97,28 +101,25 @@ const ProfileEditPage = () => {
 
   /**
    * 이미지 파일 업로드
+   * @returns { fileUrl, filePath } - 업로드된 이미지의 URL과 경로
    */
-  const uploadImageFile = async (file: File): Promise<string> => {
+  const uploadImageFile = async (
+    file: File
+  ): Promise<{
+    fileUrl: string;
+    filePath: string;
+  }> => {
     const formData = new FormData();
     formData.append("file", file);
 
     const uploadResponse = await FilesApi.postFilesUploadMultiple(formData);
-    // community/write 페이지 패턴과 동일하게 접근: res.data.data.files
-    // AxiosResponse<Result<FileUploadResponse>> 구조:
-    // - uploadResponse.data = Result<FileUploadResponse> = { data: FileUploadResponse, status: number }
-    // - uploadResponse.data.data = FileUploadResponse = { status: number, data: { files: [...] } }
-    // 실제 백엔드 응답 구조에 따라 res.data.data.files 또는 res.data.data.data.files로 접근
+    // axios interceptor가 response.data.data를 response.data로 변환하므로
+    // uploadResponse.data가 바로 FileUploadResponse["data"] 형태입니다
+    // 따라서 uploadResponse.data.files로 접근해야 합니다
+    // community/write 페이지와 동일한 패턴 사용
     const items =
-      (
-        uploadResponse as unknown as {
-          data?: {
-            data?: {
-              files?: FileUploadResponse["data"]["files"];
-              data?: { files?: FileUploadResponse["data"]["files"] };
-            };
-          };
-        }
-      )?.data?.data?.files ?? [];
+      (uploadResponse.data as unknown as FileUploadResponse["data"])?.files ??
+      [];
 
     debug.log("이미지 업로드 응답:", {
       uploadResponse: uploadResponse.data,
@@ -137,7 +138,11 @@ const ProfileEditPage = () => {
       throw new Error(PROFILE_EDIT_MESSAGES.IMAGE_URL_FETCH_FAILED);
     }
 
-    return firstFile.data.fileUrl;
+    // fileUrl과 path 모두 반환 (삭제 시 path 필요)
+    const fileUrl = firstFile.data.fileUrl;
+    const filePath = firstFile.data.path ?? firstFile.data.fileName ?? fileUrl;
+
+    return { fileUrl, filePath };
   };
 
   /**
@@ -214,76 +219,129 @@ const ProfileEditPage = () => {
   };
 
   /**
+   * 닉네임 중복 체크
+   */
+  const checkNicknameAvailability = async (
+    nickname: string
+  ): Promise<boolean> => {
+    const response = await UsersApi.getUsersNicknameAvailability({
+      nickname,
+    });
+    return response.data?.available ?? false;
+  };
+
+  /**
+   * 새로 선택한 이미지 업로드 처리
+   */
+  const handleImageUploadIfNeeded = async (
+    currentImageUrl: string
+  ): Promise<{ fileUrl: string; filePath: string | null }> => {
+    const initialImageUrl = actualUserData?.profileImageUrl ?? "";
+    const isImageChanged = currentImageUrl !== initialImageUrl;
+    const isNewlySelectedImage = currentImageUrl.startsWith("data:");
+
+    if (!isImageChanged || !isNewlySelectedImage || !selectedFileRef.current) {
+      return { fileUrl: currentImageUrl, filePath: null };
+    }
+
+    try {
+      const uploadResult = await uploadImageFile(selectedFileRef.current);
+      return { fileUrl: uploadResult.fileUrl, filePath: uploadResult.filePath };
+    } catch (error) {
+      debug.error("이미지 업로드 실패:", error);
+      alert(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED);
+      throw error;
+    }
+  };
+
+  /**
+   * 업로드한 이미지 롤백 삭제
+   */
+  const rollbackUploadedImage = async (filePath: string | null) => {
+    if (!filePath) return;
+
+    try {
+      await deleteFilesById({ filePath });
+      debug.log("업로드한 이미지 삭제 완료:", filePath);
+    } catch (deleteError) {
+      debug.error("업로드한 이미지 삭제 실패:", deleteError);
+    }
+  };
+
+  /**
+   * 사용자 관련 쿼리 캐시 무효화
+   */
+  const invalidateUserQueries = () => {
+    queryClient.invalidateQueries({
+      queryKey: usersKeys.getUsersMe,
+    });
+    queryClient.invalidateQueries({
+      queryKey: usersKeys.getUsersMeMyPage,
+    });
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        return (
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "users" &&
+          (query.queryKey[1] === "getUsersMePosts" ||
+            query.queryKey[1] === "getUsersMeLikedPosts" ||
+            query.queryKey[1] === "getUsersMeCommentedPosts")
+        );
+      },
+    });
+  };
+
+  /**
    * 프로필 편집 완료 핸들러
    * 닉네임 중복 체크 → 이미지 업로드 → 프로필 업데이트 순서로 진행
    */
   const onSubmit = async (data: ProfileEditFormValues) => {
     const trimmedNickname = data.nickname.trim();
     const initialNickname = actualUserData?.nickname ?? "";
+    let uploadedImagePath: string | null = null;
 
     try {
+      // 닉네임 중복 체크
       const isNicknameChanged = trimmedNickname !== initialNickname;
       if (isNicknameChanged) {
-        const nicknameCheckResponse =
-          await UsersApi.getUsersNicknameAvailability({
-            nickname: trimmedNickname,
-          });
-        const isAvailable = nicknameCheckResponse.data?.available ?? false;
-
+        const isAvailable = await checkNicknameAvailability(trimmedNickname);
         if (!isAvailable) {
           alert(PROFILE_EDIT_MESSAGES.NICKNAME_DUPLICATED);
           return;
         }
       }
 
-      let finalImageUrl = data.profileImageUrl;
-      const initialImageUrl = actualUserData?.profileImageUrl ?? "";
-      const isImageChanged = data.profileImageUrl !== initialImageUrl;
-      const isNewlySelectedImage = data.profileImageUrl.startsWith("data:");
+      // 이미지 업로드 처리
+      const { fileUrl: finalImageUrl, filePath } =
+        await handleImageUploadIfNeeded(data.profileImageUrl);
+      uploadedImagePath = filePath;
 
-      if (isImageChanged && isNewlySelectedImage && selectedFileRef.current) {
-        try {
-          finalImageUrl = await uploadImageFile(selectedFileRef.current);
-        } catch (error) {
-          debug.error("이미지 업로드 실패:", error);
-          alert(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED);
-          return;
+      // 프로필 업데이트
+      await patchOnboardingAsync(
+        {
+          data: {
+            nickname: trimmedNickname,
+            profileImageUrl: finalImageUrl || undefined,
+            bio: data.bio.trim() || undefined,
+          },
+        },
+        {
+          onSuccess: () => {
+            invalidateUserQueries();
+            alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_SUCCESS);
+            router.push(LINK_URL.MY_PAGE);
+          },
+          onError: async (error) => {
+            debug.error("프로필 업데이트 실패:", error);
+            alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_FAILED);
+            await rollbackUploadedImage(uploadedImagePath);
+          },
         }
-      }
-
-      await patchOnboardingAsync({
-        data: {
-          nickname: trimmedNickname,
-          profileImageUrl: finalImageUrl || undefined,
-          bio: data.bio.trim() || undefined,
-        },
-      });
-
-      // 사용자 정보 관련 쿼리 캐시 무효화
-      queryClient.invalidateQueries({
-        queryKey: usersKeys.getUsersMe,
-      });
-      queryClient.invalidateQueries({
-        queryKey: usersKeys.getUsersMeMyPage,
-      });
-      // 사용자 게시글 관련 쿼리도 무효화 (프로필이 변경되면 게시글 목록도 업데이트될 수 있음)
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          return (
-            Array.isArray(query.queryKey) &&
-            query.queryKey[0] === "users" &&
-            (query.queryKey[1] === "getUsersMePosts" ||
-              query.queryKey[1] === "getUsersMeLikedPosts" ||
-              query.queryKey[1] === "getUsersMeCommentedPosts")
-          );
-        },
-      });
-
-      alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_SUCCESS);
-      router.push(LINK_URL.MY_PAGE);
+      );
     } catch (error) {
       debug.error("프로필 업데이트 실패:", error);
       alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_FAILED);
+      await rollbackUploadedImage(uploadedImagePath);
     }
   };
 
