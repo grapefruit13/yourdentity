@@ -249,8 +249,8 @@ const ProfileEditPage = () => {
       return { fileUrl: uploadResult.fileUrl, filePath: uploadResult.filePath };
     } catch (error) {
       debug.error("이미지 업로드 실패:", error);
-      alert(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED);
-      throw error;
+      // 사용자 알림 없이 메시지를 포함한 오류만 던지기
+      throw new Error(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
   };
 
