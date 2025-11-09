@@ -96,6 +96,21 @@ export const extractTextFromHtml = (html: string): string => {
 };
 
 /**
+ * 텍스트를 HTML 엔티티로 이스케이프하여 XSS 공격 방지
+ * @param text - 이스케이프할 텍스트
+ * @returns HTML 엔티티로 변환된 안전한 텍스트
+ */
+export const escapeHtml = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/&/g, "&amp;") // &를 먼저 처리해야 다른 엔티티가 깨지지 않음
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+/**
  * DOM 요소를 HTML 문자열로 변환 (속성 보존)
  * container.innerHTML로 파싱한 후에도 속성을 보존하기 위해
  * outerHTML을 사용하여 브라우저가 파싱한 HTML을 그대로 가져옴
@@ -104,7 +119,8 @@ export const extractTextFromHtml = (html: string): string => {
  */
 export const elementToHtml = (element: Node): string => {
   if (element.nodeType === Node.TEXT_NODE) {
-    return element.textContent || "";
+    // 텍스트 노드는 HTML 이스케이프 필수 (XSS 방지)
+    return escapeHtml(element.textContent || "");
   }
 
   if (element.nodeType === Node.ELEMENT_NODE) {
