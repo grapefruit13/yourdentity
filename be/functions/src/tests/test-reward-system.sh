@@ -48,7 +48,9 @@ echo ""
 
 # Step 1: ID 토큰 발급
 echo -e "${YELLOW}[1/5] ID 토큰 발급 중...${NC}"
-cd /Users/hyerin/TechforImpact/yourdentity/be/functions
+# 스크립트 위치 기반 상대 경로로 functions 디렉토리 이동 (이식성 향상)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/../.."
 TOKEN_OUTPUT=$(PRODUCTION=true node src/scripts/getIdToken.js "$TEST_USER_ID" 2>&1)
 echo "$TOKEN_OUTPUT"
 

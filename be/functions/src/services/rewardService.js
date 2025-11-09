@@ -8,7 +8,21 @@ const { getCheckboxValue, getNumberValue } = require('../utils/notionHelper');
  */
 class RewardService {
   constructor() {
+    // Fail-fast: 필수 환경 변수 검증 (서비스 시작 시점에 실패)
+    if (!process.env.NOTION_REWARD_POLICY_DB_ID) {
+      const error = new Error('[REWARD SERVICE] NOTION_REWARD_POLICY_DB_ID 환경변수가 설정되지 않았습니다');
+      error.code = 'INTERNAL_ERROR';
+      throw error;
+    }
+    
+    if (!process.env.NOTION_API_KEY) {
+      const error = new Error('[REWARD SERVICE] NOTION_API_KEY 환경변수가 설정되지 않았습니다');
+      error.code = 'INTERNAL_ERROR';
+      throw error;
+    }
+    
     this.rewardPolicyDB = process.env.NOTION_REWARD_POLICY_DB_ID;
+    this.notionApiKey = process.env.NOTION_API_KEY;
     this.firestoreService = new FirestoreService();
   }
 
@@ -19,16 +33,11 @@ class RewardService {
    */
   async getRewardByAction(actionKey) {
     try {
-      if (!this.rewardPolicyDB) {
-        console.warn('[REWARD] NOTION_REWARD_POLICY_DB_ID 환경변수가 설정되지 않았습니다');
-        return 0;
-      }
-
       // Notion REST API로 직접 호출 (기존 notionUserService 패턴)
       const response = await fetch(`https://api.notion.com/v1/databases/${this.rewardPolicyDB}/query`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Authorization': `Bearer ${this.notionApiKey}`,
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json',
         },
@@ -102,6 +111,7 @@ class RewardService {
 
   /**
    * Action 기반 리워드 부여 (Notion DB 조회)
+   * Race condition 방지를 위해 중복 체크와 리워드 부여를 단일 transaction으로 처리
    * @param {string} userId - 사용자 ID
    * @param {string} actionKey - 액션 키 (예: "comment_create")
    * @param {Object} metadata - 추가 정보 (postId, commentId 등)
@@ -117,25 +127,50 @@ class RewardService {
         return { success: true, amount: 0, message: 'No reward for this action' };
       }
 
-      // 2. 중복 부여 방지: rewardsHistory에서 확인
+      // 2. targetId 및 historyId 생성
       const targetId = metadata.commentId || metadata.postId || metadata.targetId || 'unknown';
       const historyId = `${actionKey}_${targetId}`;
 
-      const historyDoc = await this.firestoreService.getDocument(
-        `users/${userId}/rewardsHistory`,
-        historyId
-      );
+      const userRef = db.collection('users').doc(userId);
+      const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
-      if (historyDoc) {
+      // 3. Transaction 내에서 중복 체크 + 리워드 부여를 원자적으로 수행 (race condition 방지)
+      let isDuplicate = false;
+      
+      await this.firestoreService.runTransaction(async (transaction) => {
+        // 3-1. 히스토리 문서 존재 여부 확인
+        const historyDoc = await transaction.get(historyRef);
+        
+        if (historyDoc.exists) {
+          // 중복 부여 - transaction abort
+          isDuplicate = true;
+          return;
+        }
+
+        // 3-2. 중복이 아니면 히스토리 문서 생성 + 사용자 리워드 업데이트
+        transaction.set(historyRef, {
+          actionKey,
+          amount: rewardAmount,
+          changeType: 'add',
+          metadata: {
+            ...metadata,
+            targetId,
+          },
+          createdAt: FieldValue.serverTimestamp(),
+          isProcessed: true,
+        });
+
+        transaction.update(userRef, {
+          rewards: FieldValue.increment(rewardAmount),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      // 4. 결과 반환
+      if (isDuplicate) {
         console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, targetId=${targetId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };
       }
-
-      // 3. 공통 메서드로 리워드 부여
-      await this.addRewardToUser(userId, rewardAmount, actionKey, historyId, {
-        ...metadata,
-        targetId,
-      });
 
       console.log(`[REWARD SUCCESS] userId=${userId}, action=${actionKey}, amount=${rewardAmount}, targetId=${targetId}`);
 
@@ -150,6 +185,12 @@ class RewardService {
         actionKey,
         metadata,
       });
+      
+      // error.code가 없으면 적절한 코드 설정 (Service 에러 가이드라인 준수)
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
+      
       throw error;
     }
   }
