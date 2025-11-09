@@ -77,6 +77,7 @@ const ProfileEditPage = () => {
 
   const isNicknameValid = nickname.trim().length > 0;
   const isCompleteEnabled = isDirty && isNicknameValid;
+  const isDataLoaded = !!actualUserData;
 
   /**
    * 파일 검증 (타입 및 크기 체크)
@@ -142,18 +143,18 @@ const ProfileEditPage = () => {
 
   /**
    * 사용자 데이터 로드 시 초기 상태 설정
-   * React Hook Form의 reset 메서드를 사용하여 초기값 설정
-   * isDirty가 false인 경우(아직 편집하지 않은 경우)에만 리셋
+   * 레이스 컨디션 방지: 데이터가 로드되기 전에는 입력을 막고,
+   * 데이터 로드 후 초기값 설정
    */
   useEffect(() => {
-    if (!actualUserData || isDirty) return;
+    if (!actualUserData) return;
 
     reset({
       profileImageUrl: actualUserData.profileImageUrl ?? "",
       nickname: actualUserData.nickname ?? "",
       bio: actualUserData.bio ?? "",
     });
-  }, [actualUserData, reset, isDirty]);
+  }, [actualUserData, reset]);
 
   /**
    * 브라우저 뒤로가기 시 변경사항 확인 모달 표시
@@ -383,7 +384,8 @@ const ProfileEditPage = () => {
         <div className="mb-6 flex justify-center">
           <button
             onClick={openBottomSheet}
-            className="relative"
+            disabled={!isDataLoaded}
+            className="relative disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={PROFILE_EDIT_LABELS.PROFILE_IMAGE_CHANGE}
           >
             <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-pink-100">
@@ -427,6 +429,7 @@ const ProfileEditPage = () => {
             })}
             type="text"
             placeholder={PROFILE_EDIT_PLACEHOLDERS.NICKNAME}
+            disabled={!isDataLoaded}
           />
         </div>
 
@@ -442,8 +445,9 @@ const ProfileEditPage = () => {
             {...register("bio", {
               maxLength: MAX_BIO_LENGTH,
             })}
-            className="h-32 w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-pink-600 focus:outline-none"
+            className="h-32 w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-pink-600 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50"
             placeholder={PROFILE_EDIT_PLACEHOLDERS.BIO}
+            disabled={!isDataLoaded}
           />
         </div>
       </main>
