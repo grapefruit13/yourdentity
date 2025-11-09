@@ -135,19 +135,24 @@ export const elementToHtml = (element: Node): string => {
     if (outerHtml) {
       // 자식 노드들을 재귀적으로 처리하기 위해
       // 시작 태그와 끝 태그를 분리하고 자식만 재귀 처리
-      const startTagMatch = outerHtml.match(new RegExp(`<${tagName}[^>]*>`));
+      // ReDoS 방지를 위해 indexOf 사용 (정규표현식 대신)
+      const tagStart = outerHtml.indexOf(`<${tagName}`);
       const endTag = `</${tagName}>`;
 
-      if (startTagMatch) {
-        const startTag = startTagMatch[0];
+      if (tagStart !== -1) {
+        // 시작 태그의 끝 위치 찾기 (> 문자)
+        const tagEnd = outerHtml.indexOf(">", tagStart);
+        if (tagEnd !== -1) {
+          const startTag = outerHtml.substring(tagStart, tagEnd + 1);
 
-        // 자식 노드들을 재귀적으로 처리
-        let childrenHtml = "";
-        el.childNodes.forEach((child) => {
-          childrenHtml += elementToHtml(child);
-        });
+          // 자식 노드들을 재귀적으로 처리
+          let childrenHtml = "";
+          el.childNodes.forEach((child) => {
+            childrenHtml += elementToHtml(child);
+          });
 
-        return `${startTag}${childrenHtml}${endTag}`;
+          return `${startTag}${childrenHtml}${endTag}`;
+        }
       }
     }
 
