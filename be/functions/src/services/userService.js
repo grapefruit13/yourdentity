@@ -248,6 +248,8 @@ class UserService {
    * @param {string} accessToken
    */
   async syncKakaoProfile(uid, accessToken) {
+    console.log(`[UserService] 카카오 프로필 동기화 시작 (uid: ${uid})`);
+    
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
     let userinfoJson;
 
@@ -325,7 +327,9 @@ class UserService {
     const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
     // 2. 서비스 약관 동의 내역 조회
+    console.log(`[UserService] 약관 동기화 호출`);
     await this.termsService.syncFromKakao(uid, accessToken);
+    console.log(`[UserService] 약관 동기화 완료`);
 
     // 3. Firestore 업데이트 준비
     const update = {
