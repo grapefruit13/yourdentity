@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Suspense, useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -716,7 +716,7 @@ const WritePageContent = () => {
       />
 
       {/* Content 실시간 확인 데모 컴포넌트 */}
-      <div className="fixed right-4 bottom-20 z-50 max-h-[400px] w-[400px] overflow-auto rounded-lg border-2 border-blue-500 bg-white p-4 shadow-lg">
+      {/* <div className="fixed right-4 bottom-20 z-50 max-h-[400px] w-[400px] overflow-auto rounded-lg border-2 border-blue-500 bg-white p-4 shadow-lg">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-800">
             Request Body Content (임시)
@@ -740,7 +740,7 @@ const WritePageContent = () => {
             {watch("content") || "(비어있음)"}
           </pre>
         </div>
-      </div>
+      </div> */}
 
       {/* 뒤로가기 컨펌 모달 */}
       <Modal
