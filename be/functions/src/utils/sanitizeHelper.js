@@ -8,45 +8,69 @@ const sanitizeHtml = require("sanitize-html");
 function sanitizeContent(dirty) {
   return sanitizeHtml(dirty, {
     allowedTags: [
-      "p", "b", "i", "u", "strong", "em",
-      "blockquote", "br", "ul", "ol", "li",
-      "span", "img", "a",
-      "h1", "h2", "h3", "h4", "h5", "h6",
-      "hr", "div"
+      "p",
+      "b",
+      "i",
+      "u",
+      "strong",
+      "em",
+      "blockquote",
+      "br",
+      "ul",
+      "ol",
+      "li",
+      "span",
+      "img",
+      "a",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "hr",
+      "div",
     ],
     allowedAttributes: {
-      "*": ["style"],
-      img: ["src", "width", "height", "alt", "data-blurhash", "data-mimetype"],
-      a: ["href", "target"]
+      "*": ["style", "class", "data-heading"],
+      img: [
+        "src",
+        "width",
+        "height",
+        "alt",
+        "data-blurhash",
+        "data-mimetype",
+        "data-client-id",
+      ],
+      a: ["href", "target", "data-file-id"],
     },
     allowedStyles: {
       "*": {
-        "color": [/^.*$/],
+        color: [/^.*$/],
         "background-color": [/^.*$/],
         "text-align": [/^left|right|center|justify$/],
         "font-size": [/^\d+(px|em|rem|%)$/],
-      }
+      },
     },
     allowedSchemes: ["http", "https", "data"],
     allowedSchemesByTag: {
       a: ["http", "https", "mailto"],
-      img: ["http", "https", "data"]
+      img: ["http", "https", "data"],
     },
     transformTags: {
-      a: function(tagName, attribs) {
+      a: (tagName, attribs) => {
         if (attribs.target === "_blank") {
           attribs.rel = "noopener noreferrer";
         }
         return {
           tagName: tagName,
-          attribs: attribs
+          attribs: attribs,
         };
-      }
-    }
+      },
+    },
   });
 }
 
 module.exports = {
-  sanitizeContent
+  sanitizeContent,
 };
-
