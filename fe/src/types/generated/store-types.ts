@@ -110,3 +110,52 @@ export type TPOSTStoreQnaLikeByIdRes = {
 export interface TDELETEStoreQnaByIdReq {
   qnaId: string;
 }
+
+export interface TPOSTStorePurchasesReq {
+  data: {
+    productId: string;
+    quantity?: number;
+    recipientName?: string;
+    recipientAddress?: string;
+    recipientDetailAddress?: string;
+  };
+}
+
+export type TPOSTStorePurchasesRes = {
+  purchaseId?: string;
+  userId?: string;
+  productId?: string;
+  quantity?: number;
+  recipientName?: string;
+  recipientAddress?: string;
+  recipientDetailAddress?: string;
+  orderDate?: string;
+  deliveryCompleted?: boolean;
+};
+
+export interface TGETStorePurchasesReq {
+  pageSize?: number;
+  cursor?: string;
+}
+
+export type TGETStorePurchasesRes = {
+  message?: string;
+  purchases?: {
+    purchaseId?: string;
+    userId?: string;
+    userNickname?: string;
+    productId?: string;
+    quantity?: number;
+    recipientName?: string;
+    recipientAddress?: string;
+    recipientDetailAddress?: string;
+    deliveryCompleted?: boolean;
+    orderDate?: string;
+    lastEditedTime?: string;
+  }[];
+  pagination?: {
+    hasMore?: boolean;
+    nextCursor?: string;
+    currentPageCount?: number;
+  };
+};

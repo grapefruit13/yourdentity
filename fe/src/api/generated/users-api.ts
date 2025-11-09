@@ -6,6 +6,13 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/users-types";
 
+export const postUsersTestCreate = (request: Types.TPOSTUsersTestCreateReq) => {
+  return post<Types.TPOSTUsersTestCreateRes>(
+    `/users/test/create`,
+    request.data ?? request
+  );
+};
+
 export const patchUsersMeOnboarding = (
   request: Types.TPATCHUsersMeOnboardingReq
 ) => {

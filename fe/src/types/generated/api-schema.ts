@@ -698,6 +698,7 @@ export interface ProductListItem {
   }[];
   requiredPoints?: number;
   onSale?: boolean;
+  requiresDelivery?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -713,6 +714,7 @@ export interface Product {
   }[];
   requiredPoints?: number;
   onSale?: boolean;
+  requiresDelivery?: boolean;
   createdAt?: string;
   updatedAt?: string;
   pageContent?: {

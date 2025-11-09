@@ -5,6 +5,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+import type * as adminlogsTypes from "@/types/generated/adminlogs-types";
 import type * as announcementsTypes from "@/types/generated/announcements-types";
 import type * as authTypes from "@/types/generated/auth-types";
 import type * as commentsTypes from "@/types/generated/comments-types";
@@ -13,9 +14,9 @@ import type * as faqsTypes from "@/types/generated/faqs-types";
 import type * as fcmTypes from "@/types/generated/fcm-types";
 import type * as filesTypes from "@/types/generated/files-types";
 import type * as gatheringsTypes from "@/types/generated/gatherings-types";
-import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
+import type * as notificationsTypes from "@/types/generated/notifications-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
@@ -43,6 +44,14 @@ function __buildKey(
   const { path, query } = parts;
   return [tag, name, path ?? {}, __normalizeQuery(query ?? {})] as const;
 }
+
+// AdminLogs Query Keys
+export const adminlogsKeys = {
+  getAdminlogsSyncAdminLogs: __buildKey(
+    "adminlogs",
+    "getAdminlogsSyncAdminLogs"
+  ),
+} as const;
 
 // Announcements Query Keys
 export const announcementsKeys = {
@@ -177,6 +186,14 @@ export const missionsKeys = {
     }),
 } as const;
 
+// Notifications Query Keys
+export const notificationsKeys = {
+  getNotificationsSendAllPending: __buildKey(
+    "notifications",
+    "getNotificationsSendAllPending"
+  ),
+} as const;
+
 // NotionUsers Query Keys
 export const notionusersKeys = {
   getNotionusersSyncActive: __buildKey(
@@ -188,6 +205,54 @@ export const notionusersKeys = {
     "notionusers",
     "getNotionusersSyncPenalty"
   ),
+  getNotionusersSyncSelected: __buildKey(
+    "notionusers",
+    "getNotionusersSyncSelected"
+  ),
+  getNotionusersSyncAllUsersRollback: __buildKey(
+    "notionusers",
+    "getNotionusersSyncAllUsersRollback"
+  ),
+} as const;
+
+// Users Query Keys
+export const usersKeys = {
+  getUsersMe: __buildKey("users", "getUsersMe"),
+  getUsersMeMyPage: __buildKey("users", "getUsersMeMyPage"),
+  getUsersMePosts: (request: usersTypes.TGETUsersMePostsReq) =>
+    __buildKey("users", "getUsersMePosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeLikedPosts: (request: usersTypes.TGETUsersMeLikedPostsReq) =>
+    __buildKey("users", "getUsersMeLikedPosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeCommentedPosts: (
+    request: usersTypes.TGETUsersMeCommentedPostsReq
+  ) =>
+    __buildKey("users", "getUsersMeCommentedPosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeParticipatingCommunities: __buildKey(
+    "users",
+    "getUsersMeParticipatingCommunities"
+  ),
+  getUsersNicknameAvailability: (
+    request: usersTypes.TGETUsersNicknameAvailabilityReq
+  ) =>
+    __buildKey("users", "getUsersNicknameAvailability", {
+      path: {},
+      query: { nickname: request.nickname },
+    }),
+  getUsers: __buildKey("users", "getUsers"),
+  getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
+    __buildKey("users", "getUsersById", {
+      path: { userId: request.userId },
+      query: {},
+    }),
 } as const;
 
 // Programs Query Keys
@@ -280,6 +345,11 @@ export const storeKeys = {
       path: { productId: request.productId },
       query: {},
     }),
+  getStorePurchases: (request: storeTypes.TGETStorePurchasesReq) =>
+    __buildKey("store", "getStorePurchases", {
+      path: {},
+      query: { pageSize: request.pageSize, cursor: request.cursor },
+    }),
 } as const;
 
 // TMI Query Keys
@@ -292,46 +362,6 @@ export const tmiKeys = {
   getTmisById: (request: tmiTypes.TGETTmisByIdReq) =>
     __buildKey("tmi", "getTmisById", {
       path: { projectId: request.projectId },
-      query: {},
-    }),
-} as const;
-
-// Users Query Keys
-export const usersKeys = {
-  getUsersMe: __buildKey("users", "getUsersMe"),
-  getUsersMeMyPage: __buildKey("users", "getUsersMeMyPage"),
-  getUsersMePosts: (request: usersTypes.TGETUsersMePostsReq) =>
-    __buildKey("users", "getUsersMePosts", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getUsersMeLikedPosts: (request: usersTypes.TGETUsersMeLikedPostsReq) =>
-    __buildKey("users", "getUsersMeLikedPosts", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getUsersMeCommentedPosts: (
-    request: usersTypes.TGETUsersMeCommentedPostsReq
-  ) =>
-    __buildKey("users", "getUsersMeCommentedPosts", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getUsersMeParticipatingCommunities: __buildKey(
-    "users",
-    "getUsersMeParticipatingCommunities"
-  ),
-  getUsersNicknameAvailability: (
-    request: usersTypes.TGETUsersNicknameAvailabilityReq
-  ) =>
-    __buildKey("users", "getUsersNicknameAvailability", {
-      path: {},
-      query: { nickname: request.nickname },
-    }),
-  getUsers: __buildKey("users", "getUsers"),
-  getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
-    __buildKey("users", "getUsersById", {
-      path: { userId: request.userId },
       query: {},
     }),
 } as const;
