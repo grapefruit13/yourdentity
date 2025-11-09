@@ -32,7 +32,7 @@ function sanitizeContent(dirty) {
       "div",
     ],
     allowedAttributes: {
-      "*": ["style", "class", "data-*"],
+      "*": ["style", "class", "data-heading"],
       img: [
         "src",
         "width",
