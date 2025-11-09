@@ -11,8 +11,7 @@ const {
 
 class FaqService {
   constructor() {
-    this.databaseId = process.env.NOTION_FAQ_DATABASE_ID;
-    this.dataSourceId = process.env.NOTION_FAQ_DATA_SOURCE_ID;
+    this.dataSourceId = process.env.NOTION_FAQ_DB_ID;
     this.baseUrl = "https://api.notion.com/v1";
     this.NOTION_API_TIMEOUT = 10000;
   }
