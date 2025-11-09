@@ -331,11 +331,6 @@ const ProfileEditPage = () => {
             alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_SUCCESS);
             router.push(LINK_URL.MY_PAGE);
           },
-          onError: async (error) => {
-            debug.error("프로필 업데이트 실패:", error);
-            alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_FAILED);
-            await rollbackUploadedImage(uploadedImagePath);
-          },
         }
       );
     } catch (error) {
