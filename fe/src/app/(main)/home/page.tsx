@@ -9,6 +9,8 @@ import type { TGETHomeRes } from "@/types/generated/home-types";
 import { cn } from "@/utils/shared/cn";
 import { isS3UrlExpired } from "@/utils/shared/s3-url-parser";
 
+const INITIAL_HEIGHT = 950;
+
 /**
  * @description 홈 페이지 - Notion 기반 홈 화면
  * 서버에서 가져온 Notion 데이터를 나열식으로 렌더링
@@ -30,8 +32,16 @@ const HomePage = () => {
 
   const [imageHeights, setImageHeights] = useState<number[]>([]);
   const [contentHeight, setContentHeight] = useState<number>(0);
+  const [defaultHeight, setDefaultHeight] = useState<number>(INITIAL_HEIGHT);
 
   const content = homeData?.content || [];
+
+  // 클라이언트에서만 window.innerHeight 설정
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDefaultHeight(window.innerHeight);
+    }
+  }, []);
 
   const backgroundImages = useMemo(() => {
     if (!homeData?.backgroundImage) return [];
@@ -67,7 +77,7 @@ const HomePage = () => {
 
   // 배경 이미지 높이 계산
   useEffect(() => {
-    if (backgroundImages.length === 0) return;
+    if (backgroundImages.length === 0 || typeof window === "undefined") return;
 
     let active = true;
     const heights: number[] = [];
@@ -83,6 +93,7 @@ const HomePage = () => {
 
       const img = new window.Image();
       img.onload = () => {
+        if (!active) return;
         const screenWidth = window.innerWidth;
         const imageAspectRatio = img.height / img.width;
         const containerHeight = screenWidth * imageAspectRatio;
@@ -94,6 +105,7 @@ const HomePage = () => {
         }
       };
       img.onerror = () => {
+        if (!active) return;
         heights[index] = 0;
         loadedCount++;
         if (loadedCount === backgroundImages.length && active) {
@@ -149,12 +161,13 @@ const HomePage = () => {
   // 배경 이미지 컨테이너의 최종 높이 계산
   const backgroundContainerHeight = useMemo(() => {
     // 총 배경 이미지 높이와 콘텐츠 높이 중 큰 값 사용
+    const fallbackHeight = defaultHeight;
     return Math.max(
-      totalBackgroundHeight || window.innerHeight,
-      contentHeight || window.innerHeight,
-      window.innerHeight
+      totalBackgroundHeight || fallbackHeight,
+      contentHeight || fallbackHeight,
+      fallbackHeight
     );
-  }, [totalBackgroundHeight, contentHeight]);
+  }, [totalBackgroundHeight, contentHeight, defaultHeight]);
 
   return (
     <div className="relative h-screen w-full">
@@ -176,7 +189,7 @@ const HomePage = () => {
               const imageUrl = bgImage?.url;
               if (!imageUrl) return null;
 
-              const imageHeight = imageHeights[index] || window.innerHeight;
+              const imageHeight = imageHeights[index] || defaultHeight;
               const cumulativeTop = getCumulativeHeight(index);
 
               return (
