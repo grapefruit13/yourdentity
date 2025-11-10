@@ -38,6 +38,10 @@ const ICON = {
       url: "/icons/logo/lg-youth-voice.svg",
       alt: "유스보이스 로고",
     },
+    youthIt: {
+      url: "/icons/logo/lg-youth-it.svg",
+      alt: "유스잇 로고",
+    },
     kakao: {
       url: "/icons/logo/lg-kakao.svg",
       alt: "카카오 로고",

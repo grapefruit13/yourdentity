@@ -237,9 +237,9 @@ export default function MainLayout({
           <TopBar
             leftSlot={
               isHomePage ? (
-                <div className="relative h-[30px] w-[60px]">
+                <div className="relative h-[40px] w-[40px]">
                   <Image
-                    src={IMAGE_URL.ICON.logo.youthVoice.url}
+                    src={IMAGE_URL.ICON.logo.youthIt.url}
                     alt="Youth Voice 로고"
                     fill
                     priority
