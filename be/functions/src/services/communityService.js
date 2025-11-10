@@ -4,6 +4,43 @@ const fcmHelper = require("../utils/fcmHelper");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
 
+const PROGRAM_TYPES = {
+  ROUTINE: "ROUTINE",
+  GATHERING: "GATHERING",
+  TMI: "TMI",
+};
+
+const PROGRAM_TYPE_TO_POST_TYPE = {
+  [PROGRAM_TYPES.ROUTINE]: {
+    cert: "ROUTINE_CERT",
+    review: "ROUTINE_REVIEW",
+  },
+  [PROGRAM_TYPES.GATHERING]: {
+    cert: "GATHERING_CERT",
+    review: "GATHERING_REVIEW",
+  },
+  [PROGRAM_TYPES.TMI]: {
+    cert: "TMI_CERT",
+    review: "TMI_REVIEW",
+  },
+};
+
+const LEGACY_POST_TYPE_TO_PROGRAM_TYPE = {
+  ROUTINE_CERT: PROGRAM_TYPES.ROUTINE,
+  ROUTINE_REVIEW: PROGRAM_TYPES.ROUTINE,
+  GATHERING_CERT: PROGRAM_TYPES.GATHERING,
+  GATHERING_REVIEW: PROGRAM_TYPES.GATHERING,
+  TMI_CERT: PROGRAM_TYPES.TMI,
+  TMI_REVIEW: PROGRAM_TYPES.TMI,
+  TMI: PROGRAM_TYPES.TMI,
+};
+
+const CERTIFICATION_COUNT_TYPES = new Set([
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert,
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.GATHERING].review,
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.TMI].cert,
+]);
+
 // 멤버 역할 상수
 const MEMBER_ROLES = {
   MEMBER: 'member',
@@ -20,6 +57,72 @@ class CommunityService {
 
   constructor() {
     this.firestoreService = new FirestoreService("communities");
+  }
+
+  static normalizeProgramType(value) {
+    if (!value || typeof value !== "string") {
+      return null;
+    }
+    const upper = value.toUpperCase();
+    return PROGRAM_TYPES[upper] ? PROGRAM_TYPES[upper] : (Object.values(PROGRAM_TYPES).includes(upper) ? upper : null);
+  }
+
+  static mapLegacyPostTypeToProgramType(type) {
+    if (!type || typeof type !== "string") {
+      return null;
+    }
+    const upper = type.toUpperCase();
+    return LEGACY_POST_TYPE_TO_PROGRAM_TYPE[upper] || null;
+  }
+
+  static resolveIsReviewFromLegacyType(type) {
+    if (!type || typeof type !== "string") {
+      return null;
+    }
+    const upper = type.toUpperCase();
+    if (upper.endsWith("_REVIEW")) {
+      return true;
+    }
+    if (upper.endsWith("_CERT")) {
+      return false;
+    }
+    return null;
+  }
+
+  static resolvePostType(programType, isReview) {
+    const normalizedProgramType = CommunityService.normalizeProgramType(programType);
+    if (!normalizedProgramType) {
+      return null;
+    }
+    const mapping = PROGRAM_TYPE_TO_POST_TYPE[normalizedProgramType];
+    if (!mapping) {
+      return null;
+    }
+    return isReview ? mapping.review : mapping.cert;
+  }
+
+  static normalizeProgramTypeList(values) {
+    if (!values) {
+      return [];
+    }
+    const rawValues = Array.isArray(values) ? values : [values];
+    const normalized = [];
+    rawValues.forEach((rawValue) => {
+      if (typeof rawValue !== "string") {
+        return;
+      }
+      rawValue
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .forEach((token) => {
+          const normalizedToken = CommunityService.normalizeProgramType(token);
+          if (normalizedToken) {
+            normalized.push(normalizedToken);
+          }
+        });
+    });
+    return Array.from(new Set(normalized));
   }
 
   getUserService() {
@@ -123,7 +226,7 @@ class CommunityService {
         name: community.name,
         type: community.type,
         channel: community.channel,
-        postType: community.postType,
+        programType: CommunityService.normalizeProgramType(community.programType),
       };
     } catch (error) {
       console.error("[COMMUNITY] 커뮤니티 매핑 정보 조회 실패:", error.message);
@@ -264,23 +367,53 @@ class CommunityService {
   async getAllCommunityPosts(options = {}, viewerId = null) {
     try {
       const {
-        type,
+        programTypes: programTypesOption,
+        programType: programTypeOption,
         page = 0,
         size = 10,
         orderBy = "createdAt",
         orderDirection = "desc",
       } = options;
 
-      const postTypeMapping = {
-        routine: "ROUTINE_CERT",
-        gathering: "GATHERING_REVIEW",
-        tmi: "TMI",
-      };
+      const requestedProgramTypes = [
+        ...CommunityService.normalizeProgramTypeList(programTypesOption),
+        ...CommunityService.normalizeProgramTypeList(programTypeOption),
+      ];
+
+      const normalizedProgramTypes = Array.from(new Set(requestedProgramTypes));
+
+      if (normalizedProgramTypes.length > 10) {
+        const error = new Error("programType 필터는 최대 10개까지 지정할 수 있습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
 
       const whereConditions = [];
-      if (type && postTypeMapping[type]) {
-        whereConditions.push({field: "type", operator: "==", value: postTypeMapping[type]});
+      if (normalizedProgramTypes.length === 1) {
+        whereConditions.push({
+          field: "programType",
+          operator: "==",
+          value: normalizedProgramTypes[0],
+        });
+      } else if (normalizedProgramTypes.length > 1) {
+        whereConditions.push({
+          field: "programType",
+          operator: "in",
+          value: normalizedProgramTypes,
+        });
       }
+
+      const matchesFilter = (post) => {
+        const postProgramType =
+          CommunityService.normalizeProgramType(post.programType) ||
+          CommunityService.mapLegacyPostTypeToProgramType(post.type);
+
+        const matchesProgramType =
+          normalizedProgramTypes.length === 0 ||
+          (postProgramType && normalizedProgramTypes.includes(postProgramType));
+
+        return matchesProgramType;
+      };
 
       const membershipIds = await this.getUserCommunityIds(viewerId);
 
@@ -310,13 +443,33 @@ class CommunityService {
       const pagePosts = [];
 
       while (hasMore && !hasNextAccessible) {
-        const result = await postsService.getCollectionGroup("posts", {
-          page: rawPage,
-          size: batchSize,
-          orderBy,
-          orderDirection,
-          where: whereConditions,
-        });
+        let result;
+        try {
+          result = await postsService.getCollectionGroup("posts", {
+            page: rawPage,
+            size: batchSize,
+            orderBy,
+            orderDirection,
+            where: whereConditions,
+          });
+        } catch (firestoreError) {
+          if (firestoreError.code === 9 || firestoreError.code === "FAILED_PRECONDITION") {
+            console.error("[COMMUNITY] posts collectionGroup 인덱스 부족, fallback 쿼리 사용", {
+              whereConditions,
+              orderBy,
+              orderDirection,
+              errorMessage: firestoreError.message,
+            });
+            result = await postsService.getCollectionGroupWithoutCount("posts", {
+              size: batchSize,
+              orderBy,
+              orderDirection,
+              where: whereConditions,
+            });
+          } else {
+            throw firestoreError;
+          }
+        }
 
         const rawPosts = result.content || [];
         if (rawPosts.length === 0) {
@@ -324,7 +477,7 @@ class CommunityService {
         }
 
         for (const post of rawPosts) {
-          if (canViewPost(post)) {
+          if (canViewPost(post) && matchesFilter(post)) {
             accessibleCount += 1;
 
             if (accessibleCount > startIndex && pagePosts.length < size) {
@@ -376,6 +529,13 @@ class CommunityService {
         const createdAtDate = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
         const updatedAtDate = post.updatedAt?.toDate?.() || (post.updatedAt ? new Date(post.updatedAt) : null);
         const scheduledDate = post.scheduledDate?.toDate?.() || (post.scheduledDate ? new Date(post.scheduledDate) : null);
+        const resolvedProgramType =
+          CommunityService.normalizeProgramType(rest.programType) ||
+          CommunityService.mapLegacyPostTypeToProgramType(post.type);
+        const resolvedIsReview =
+          typeof rest.isReview === "boolean"
+            ? rest.isReview
+            : CommunityService.resolveIsReviewFromLegacyType(post.type);
 
         const processed = {
           id: post.id,
@@ -393,6 +553,8 @@ class CommunityService {
             name: communityMap[communityId].name,
           } : null,
         };
+        processed.programType = resolvedProgramType;
+        processed.isReview = resolvedIsReview;
 
         processed.preview = post.preview || this.createPreview(post);
         processed.isPublic = resolveIsPublic(post);
@@ -492,6 +654,20 @@ class CommunityService {
       delete processedPost.media;
       delete processedPost.communityId;
 
+      processedPost.programType =
+        CommunityService.normalizeProgramType(post.programType) ||
+        CommunityService.mapLegacyPostTypeToProgramType(post.type) ||
+        processedPost.programType ||
+        null;
+
+      const resolvedIsReview =
+        typeof post.isReview === "boolean"
+          ? post.isReview
+          : CommunityService.resolveIsReviewFromLegacyType(post.type);
+      if (resolvedIsReview !== null) {
+        processedPost.isReview = resolvedIsReview;
+      }
+
       return processedPost;
     };
 
@@ -523,6 +699,7 @@ class CommunityService {
         category,
         scheduledDate,
         isPublic: requestIsPublic,
+        isReview: requestIsReview,
       } = postData;
       
       if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -609,6 +786,41 @@ class CommunityService {
         communityName: community.name,
       });
 
+      const resolvedProgramType =
+        CommunityService.normalizeProgramType(community.programType);
+
+      if (!resolvedProgramType) {
+        const error = new Error("community.programType 값이 필요합니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      let resolvedIsReview = null;
+      if (Object.prototype.hasOwnProperty.call(postData, "isReview")) {
+        if (typeof requestIsReview !== "boolean") {
+          const error = new Error("isReview 값은 boolean 타입이어야 합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+        resolvedIsReview = requestIsReview;
+      }
+
+      if (resolvedIsReview === null) {
+        const inferredFromType =
+          CommunityService.resolveIsReviewFromLegacyType(type);
+        resolvedIsReview = inferredFromType !== null ? inferredFromType : false;
+      }
+
+      const resolvedType = CommunityService.resolvePostType(
+        resolvedProgramType,
+        resolvedIsReview,
+      );
+      if (!resolvedType) {
+        const error = new Error("게시글 타입을 결정할 수 없습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
       let author = "익명"; 
       try {
         const members = await this.firestoreService.getCollectionWhere(
@@ -619,7 +831,7 @@ class CommunityService {
         );
         const memberData = members && members[0];
         if (memberData) {
-          if (community.postType === "TMI") {
+          if (resolvedProgramType === PROGRAM_TYPES.TMI) {
             author = memberData.name || "익명";
           } else {
             author = memberData.nickname || "익명";
@@ -659,7 +871,9 @@ class CommunityService {
         content: sanitizedContent,
         media: postMedia,
         preview,
-        type: type || community.postType || "GENERAL",
+        type: resolvedType,
+        programType: resolvedProgramType,
+        isReview: resolvedIsReview,
         channel: channel || community.channel || "general",
         category: category || null,
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
@@ -699,7 +913,7 @@ class CommunityService {
         });
 
         // certificationPosts 카운트 증가 (해당 타입인 경우만)
-        if (newPost.type === "ROUTINE_CERT" || newPost.type === "GATHERING_REVIEW" || newPost.type === "TMI") {
+        if (CERTIFICATION_COUNT_TYPES.has(newPost.type)) {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
           transaction.update(userRef, {
             certificationPosts: FieldValue.increment(1),
@@ -778,9 +992,18 @@ class CommunityService {
       const community = await this.firestoreService.getDocument("communities", communityId);
 
       const {authorId, ...postWithoutAuthorId} = post;
+      const resolvedProgramType =
+        CommunityService.normalizeProgramType(post.programType) ||
+        CommunityService.mapLegacyPostTypeToProgramType(post.type);
+      const resolvedIsReview =
+        typeof post.isReview === "boolean"
+          ? post.isReview
+          : CommunityService.resolveIsReviewFromLegacyType(post.type);
       
       return {
         ...postWithoutAuthorId,
+        programType: resolvedProgramType,
+        isReview: resolvedIsReview,
         viewCount: newViewCount,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
