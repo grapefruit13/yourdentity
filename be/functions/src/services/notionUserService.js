@@ -300,7 +300,25 @@ async getNotionUsers(databaseId) {
       }),
     });
 
+    // HTTP 응답 상태 확인
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[Notion API Error] Status: ${res.status}, Response: ${errorText}`);
+      const err = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+      err.code = "INTERNAL_ERROR";
+      throw err;
+    }
+
     const data = await res.json();
+
+    // Notion API 에러 응답 확인
+    if (data.error) {
+      console.error(`[Notion API Error]`, data.error);
+      const err = new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+      err.code = "INTERNAL_ERROR";
+      throw err;
+    }
+
     results = results.concat(data.results);
     hasMore = data.has_more;
     startCursor = data.next_cursor;
