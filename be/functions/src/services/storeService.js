@@ -774,6 +774,14 @@ class StoreService {
    * @return {Promise<void>}
    */
   async _deductRewardsFIFO(userId, totalPoints, reason, transaction, userRef) {
+    // 입력 검증
+    if (!totalPoints || totalPoints <= 0) {
+      const error = new Error("차감할 포인트는 0보다 커야 합니다.");
+      error.code = "INVALID_INPUT";
+      error.statusCode = 400;
+      throw error;
+    }
+
     // 1. 사용 가능한 포인트 이력 조회 (changeType: "add", isProcessed: false)
     const historyRef = this.firestoreService.db
         .collection(`users/${userId}/rewardsHistory`);
@@ -860,6 +868,15 @@ class StoreService {
         // 원본 Timestamp를 그대로 사용 (이미 Firestore Timestamp 객체)
         const createdAtTimestamp = historyItem.createdAtTimestamp || historyItem.createdAt;
 
+        // createdAtTimestamp가 없으면 에러 발생
+        if (!createdAtTimestamp) {
+          console.error(`[StoreService] createdAtTimestamp가 없습니다: ${historyItem.id}`);
+          const error = new Error("포인트 차감 처리 중 데이터 오류가 발생했습니다.");
+          error.code = "DEDUCTION_ERROR";
+          error.statusCode = 500;
+          throw error;
+        }
+
         transaction.set(newHistoryRef, {
           amount: itemAmount - remainingDeduct,
           changeType: "add",
@@ -867,7 +884,13 @@ class StoreService {
           isProcessed: false,
           createdAt: createdAtTimestamp, // 기존 createdAt 유지 (expiredAt은 createdAt + 120일로 계산)
           actionKey: historyItem.actionKey,
-          metadata: historyItem.metadata || {},
+          metadata: {
+            ...(historyItem.metadata || {}),
+            // 롤백 시 식별을 위한 메타데이터 추가
+            splitParentId: historyItem.id, // 원본 문서 ID
+            originalCreatedAt: createdAtTimestamp, // 원본 createdAt (중복 확인용)
+            isSplitRemainder: true, // 부분 차감으로 생성된 잔여 이력임을 표시
+          },
         });
 
         remainingDeduct = 0;
@@ -912,6 +935,12 @@ class StoreService {
    * @return {Promise<void>}
    */
   async _rollbackRewardsDeduction(userId, totalPoints, productName) {
+    // 입력 검증
+    if (!totalPoints || totalPoints <= 0) {
+      console.warn(`[StoreService] 복구할 포인트가 0 이하입니다: ${totalPoints}`);
+      return; // 0 이하면 복구할 필요 없음
+    }
+
     await this.firestoreService.runTransaction(async (transaction) => {
       const userRef = this.firestoreService.db.collection("users").doc(userId);
       const historyRef = this.firestoreService.db
@@ -941,41 +970,101 @@ class StoreService {
       const deductHistoryData = deductHistoryDoc.data();
       const deductCreatedAt = deductHistoryData.createdAt;
 
-      // 2. 차감 이력 생성 시점 이후에 생성된 이력들 조회 (부분 차감으로 생성된 새 이력 찾기)
-      // createdAt이 차감 이력보다 나중이고, changeType이 'add'인 것들
-      const recentAddHistoryQuery = historyRef
-          .where("changeType", "==", "add")
-          .where("createdAt", ">", deductCreatedAt);
+      // deductCreatedAt이 없으면 에러 발생
+      if (!deductCreatedAt) {
+        console.error(`[StoreService] 차감 이력에 createdAt이 없습니다: ${deductHistoryDoc.id}`);
+        // createdAt이 없어도 포인트만 복구
+        transaction.update(userRef, {
+          rewards: FieldValue.increment(totalPoints),
+          lastUpdated: FieldValue.serverTimestamp(),
+        });
+        return;
+      }
 
-      const recentAddHistorySnapshot = await transaction.get(recentAddHistoryQuery);
+      // 2. 부분 차감으로 생성된 새 이력 찾기 (isSplitRemainder 메타데이터로 식별)
+      // 차감 이력 생성 시점 이후에 생성된 splitRemainder만 조회 (성능 최적화)
+      let splitRemainderSnapshot = null;
+      try {
+        const splitRemainderQuery = historyRef
+            .where("changeType", "==", "add")
+            .where("metadata.isSplitRemainder", "==", true)
+            .where("createdAt", ">", deductCreatedAt)
+            .orderBy("createdAt", "asc");
+
+        splitRemainderSnapshot = await transaction.get(splitRemainderQuery);
+      } catch (queryError) {
+        // 인덱스가 없거나 쿼리 실패 시 빈 스냅샷으로 처리
+        console.warn(`[StoreService] splitRemainderQuery 실패, 빈 결과로 처리: ${queryError.message}`);
+        // 빈 스냅샷 객체 생성 (docs 속성만 있는 객체)
+        splitRemainderSnapshot = {docs: []};
+      }
 
       // 3. 차감 이력 생성 시점 이전에 만료 처리된 이력들 복구
       // createdAt이 차감 이력보다 이전이고, isProcessed가 true인 것들
-      const processedHistoryQuery = historyRef
-          .where("changeType", "==", "add")
-          .where("isProcessed", "==", true)
-          .where("createdAt", "<=", deductCreatedAt);
+      // Firestore 규칙: orderBy에 사용된 필드에 대한 where는 orderBy 바로 앞에 와야 함
+      let processedHistorySnapshot = null;
+      try {
+        const processedHistoryQuery = historyRef
+            .where("changeType", "==", "add")
+            .where("isProcessed", "==", true)
+            .where("createdAt", "<=", deductCreatedAt)
+            .orderBy("createdAt", "asc");
 
-      const processedHistorySnapshot = await transaction.get(processedHistoryQuery);
+        processedHistorySnapshot = await transaction.get(processedHistoryQuery);
+      } catch (queryError) {
+        // 인덱스가 없거나 쿼리 실패 시 빈 스냅샷으로 처리
+        console.warn(`[StoreService] processedHistoryQuery 실패, 빈 결과로 처리: ${queryError.message}`);
+        // 빈 스냅샷 객체 생성 (docs 속성만 있는 객체)
+        processedHistorySnapshot = {docs: []};
+      }
 
       // 4. 복구 작업 수행
       // 4-1. 만료 처리된 이력들 복구 (isProcessed: false로)
+      // 단, splitParentId가 있는 경우는 제외 (부분 차감으로 생성된 원본은 복구하지 않음)
       let restoredAmount = 0;
-      for (const doc of processedHistorySnapshot.docs) {
-        const data = doc.data();
-        // 차감 이력 생성 시점 직전에 만료 처리된 것들만 복구 (안전장치)
-        const docCreatedAt = data.createdAt;
-        if (docCreatedAt && docCreatedAt <= deductCreatedAt) {
-          transaction.update(doc.ref, {
-            isProcessed: false,
-          });
-          restoredAmount += data.amount || 0;
+      const splitParentIds = new Set(); // 부분 차감으로 생성된 원본 문서 ID들
+      const splitRemainderDocIds = new Set(); // 삭제할 splitRemainder 문서 ID들 (중복 삭제 방지)
+
+      // splitRemainder 문서들에서 splitParentId 수집 및 삭제 대상 문서 ID 수집
+      if (splitRemainderSnapshot && splitRemainderSnapshot.docs) {
+        for (const doc of splitRemainderSnapshot.docs) {
+          const data = doc.data();
+          const splitParentId = data.metadata?.splitParentId;
+          if (splitParentId) {
+            splitParentIds.add(splitParentId);
+          }
+          splitRemainderDocIds.add(doc.id);
+        }
+      }
+
+      // 만료 처리된 이력들 복구 (splitParentId가 있는 원본은 제외)
+      if (processedHistorySnapshot && processedHistorySnapshot.docs) {
+        for (const doc of processedHistorySnapshot.docs) {
+          const data = doc.data();
+          // 차감 이력 생성 시점 직전에 만료 처리된 것들만 복구 (안전장치)
+          const docCreatedAt = data.createdAt;
+          if (docCreatedAt && docCreatedAt <= deductCreatedAt) {
+            // 부분 차감으로 생성된 원본 문서는 복구하지 않음 (이미 새 문서로 분할되었으므로)
+            if (!splitParentIds.has(doc.id)) {
+              // amount가 유효한 경우에만 복구
+              const amount = data.amount || 0;
+              if (amount > 0) {
+                transaction.update(doc.ref, {
+                  isProcessed: false,
+                });
+                restoredAmount += amount;
+              }
+            }
+          }
         }
       }
 
       // 4-2. 부분 차감으로 생성된 새 이력 삭제
-      for (const doc of recentAddHistorySnapshot.docs) {
-        transaction.delete(doc.ref);
+      // isSplitRemainder 메타데이터로 식별된 문서 삭제
+      if (splitRemainderSnapshot && splitRemainderSnapshot.docs) {
+        for (const doc of splitRemainderSnapshot.docs) {
+          transaction.delete(doc.ref);
+        }
       }
 
       // 4-3. 차감 이력 삭제
@@ -987,10 +1076,8 @@ class StoreService {
         lastUpdated: FieldValue.serverTimestamp(),
       });
 
-      console.log(`[StoreService] 포인트 복구 완료: ${totalPoints}, 복구된 이력: ${restoredAmount}`);
+      console.log(`[StoreService] 포인트 복구 완료: ${totalPoints}, 복구된 이력: ${restoredAmount}, 삭제된 splitRemainder: ${splitRemainderDocIds.size}`);
     });
-
-    console.log("[StoreService] 포인트 복구 완료:", totalPoints);
   }
 
   /**
@@ -1040,7 +1127,16 @@ class StoreService {
 
       // 1. Notion에서 상품 정보 조회 (requiredPoints, requiresDelivery, onSale 확인)
       const product = await this.getProductById(productId);
-      const totalPoints = product.requiredPoints * quantity;
+      const requiredPoints = product.requiredPoints || 0;
+      const totalPoints = requiredPoints * quantity;
+
+      // totalPoints가 0이면 구매 불가
+      if (totalPoints <= 0) {
+        const error = new Error("상품의 필요한 나다움이 0 이하입니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        throw error;
+      }
 
       // 2. 판매 중지된 상품 차단
       if (!product.onSale) {
