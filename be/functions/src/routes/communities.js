@@ -265,7 +265,7 @@ router.get("/", communityController.getCommunities);
  * /communities/posts:
  *   get:
  *     tags: [Communities]
- *     summary: "전체 커뮤니티 게시글 조회(필터링 가능), 로그인 시 isPublic: false인 게시글"
+ *     summary: "전체 커뮤니티 게시글 조회(필터링 가능), 로그인 시 isPublic: false인 게시글 조회 가능"
  *     description: 모든 커뮤니티의 게시글을 통합 조회
  *     parameters:
  *       - in: query

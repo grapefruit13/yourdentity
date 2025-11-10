@@ -288,9 +288,6 @@ class CommunityService {
         if (typeof post.isPublic === "boolean") {
           return post.isPublic;
         }
-        if (typeof post.visibility === "string") {
-          return post.visibility.toLowerCase() === "public";
-        }
         return true;
       };
       const canViewPost = (post) => {
@@ -375,7 +372,7 @@ class CommunityService {
       }
 
       const processPost = (post) => {
-        const {authorId: _ignored, content: _content, media: _media, communityId, visibility: _visibility, ...rest} = post;
+        const {authorId: _ignored, content: _content, media: _media, communityId, ...rest} = post;
         const createdAtDate = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
         const updatedAtDate = post.updatedAt?.toDate?.() || (post.updatedAt ? new Date(post.updatedAt) : null);
         const scheduledDate = post.scheduledDate?.toDate?.() || (post.scheduledDate ? new Date(post.scheduledDate) : null);
@@ -475,7 +472,7 @@ class CommunityService {
 
     // processPost 헬퍼 함수 적용 (저장된 preview 사용)
     const processPost = (post) => {
-      const { authorId: _, visibility: _visibility, ...postWithoutAuthorId } = post;
+      const { authorId: _, ...postWithoutAuthorId } = post;
       const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
       const processedPost = {
         ...postWithoutAuthorId,
