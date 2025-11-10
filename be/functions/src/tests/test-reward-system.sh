@@ -65,14 +65,32 @@ fi
 echo -e "${GREEN}✅ ID 토큰 발급 완료${NC}"
 echo ""
 
-# Step 2: 사용자 초기 리워드 확인
-echo -e "${YELLOW}[2/5] 사용자 초기 리워드 확인 중...${NC}"
-INITIAL_RESPONSE=$(curl -s -X GET "$BASE_URL/users/$TEST_USER_ID" \
-  -H "Authorization: Bearer $ID_TOKEN")
+# Step 2: 사용자 문서 생성 대기 (Auth Trigger)
+echo -e "${YELLOW}[2/5] 사용자 문서 생성 대기 중...${NC}"
+USER_READY=false
 
-echo "$INITIAL_RESPONSE" | jq '.' 2>/dev/null || echo "$INITIAL_RESPONSE"
-INITIAL_REWARDS=$(echo "$INITIAL_RESPONSE" | jq -r '.data.rewards // 0' 2>/dev/null || echo "0")
-echo -e "${BLUE}초기 리워드: $INITIAL_REWARDS${NC}"
+for i in {1..10}; do
+  INITIAL_RESPONSE=$(curl -s -X GET "$BASE_URL/users/$TEST_USER_ID" \
+    -H "Authorization: Bearer $ID_TOKEN")
+  
+  STATUS=$(echo "$INITIAL_RESPONSE" | jq -r '.status // 0' 2>/dev/null)
+  
+  if [ "$STATUS" -eq 200 ]; then
+    echo -e "${GREEN}✅ 사용자 문서 준비 완료 (${i}회 시도, ${i}초)${NC}"
+    USER_READY=true
+    INITIAL_REWARDS=$(echo "$INITIAL_RESPONSE" | jq -r '.data.rewards // 0' 2>/dev/null || echo "0")
+    echo -e "${BLUE}초기 리워드: $INITIAL_REWARDS${NC}"
+    break
+  fi
+  
+  [ $i -lt 10 ] && sleep 1
+done
+
+if [ "$USER_READY" = false ]; then
+  echo -e "${RED}❌ 사용자 문서 생성 실패 (10초 대기 완료)${NC}"
+  echo "$INITIAL_RESPONSE"
+  exit 1
+fi
 echo ""
 
 # Step 3: 댓글 작성 (리워드 부여)
