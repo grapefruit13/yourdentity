@@ -27,6 +27,47 @@ interface MyPageProfileSectionProps {
 }
 
 /**
+ * @description 프로필 편집 및 설정 버튼 컴포넌트
+ */
+interface ProfileActionButtonsProps {
+  /** 프로필 편집 버튼 클릭 핸들러 */
+  onEditClick: () => void;
+  /** 설정 버튼 클릭 핸들러 */
+  onSettingsClick: () => void;
+  /** 비활성화 상태 */
+  disabled?: boolean;
+}
+
+const ProfileActionButtons = ({
+  onEditClick,
+  onSettingsClick,
+  disabled = false,
+}: ProfileActionButtonsProps) => {
+  return (
+    <div className="flex items-center gap-2">
+      <ButtonBase
+        onClick={onEditClick}
+        disabled={disabled}
+        className="h-10 flex-1 rounded-lg border border-gray-300 bg-white py-3 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Typography font="noto" variant="body1M" className="text-gray-900">
+          프로필 편집
+        </Typography>
+      </ButtonBase>
+
+      <ButtonBase
+        onClick={onSettingsClick}
+        disabled={disabled}
+        className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="설정"
+      >
+        <Settings className="h-5 w-5 text-gray-900" />
+      </ButtonBase>
+    </div>
+  );
+};
+
+/**
  * @description 마이페이지 프로필 섹션 컴포넌트
  * - 프로필 이미지, 닉네임, 자기소개
  * - 통계 정보 (인증 글, 활동 참여, 포인트)
@@ -75,11 +116,11 @@ const MyPageProfileSection = ({
         {/* 자기소개 스켈레톤 */}
         <Skeleton className="mb-[13px] h-4 w-full" />
 
-        {/* 프로필 편집 버튼 및 설정 버튼 스켈레톤 */}
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-10 flex-1 rounded-lg" />
-          <Skeleton className="h-10 w-10 rounded-lg" />
-        </div>
+        <ProfileActionButtons
+          onEditClick={onEditClick}
+          onSettingsClick={handleSettingsClick}
+          disabled={true}
+        />
       </div>
     );
   }
@@ -166,24 +207,11 @@ const MyPageProfileSection = ({
       </Typography>
 
       {/* 프로필 편집 버튼 및 설정 버튼 */}
-      <div className="flex items-center gap-2">
-        <ButtonBase
-          onClick={onEditClick}
-          className="h-10 flex-1 rounded-lg border border-gray-300 bg-white py-3 transition-colors hover:bg-gray-50"
-        >
-          <Typography font="noto" variant="body1M" className="text-gray-900">
-            프로필 편집
-          </Typography>
-        </ButtonBase>
-
-        <ButtonBase
-          onClick={handleSettingsClick}
-          className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white transition-colors hover:bg-gray-50"
-          aria-label="설정"
-        >
-          <Settings className="h-5 w-5 text-gray-900" />
-        </ButtonBase>
-      </div>
+      <ProfileActionButtons
+        onEditClick={onEditClick}
+        onSettingsClick={handleSettingsClick}
+        disabled={false}
+      />
     </div>
   );
 };
