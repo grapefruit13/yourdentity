@@ -1037,23 +1037,24 @@ class StoreService {
         }
       }
 
-      // 만료 처리된 이력들 복구 (splitParentId가 있는 원본은 제외)
+      // 만료 처리된 이력들 복구
+      // 중요: splitParentIds에 포함된 문서는 반드시 복구해야 함
+      // 왜냐하면 잔여 문서(splitRemainder)를 삭제했으므로, 원본 문서를 복구해야 전체 금액이 복구됨
       if (processedHistorySnapshot && processedHistorySnapshot.docs) {
         for (const doc of processedHistorySnapshot.docs) {
           const data = doc.data();
           // 차감 이력 생성 시점 직전에 만료 처리된 것들만 복구 (안전장치)
           const docCreatedAt = data.createdAt;
           if (docCreatedAt && docCreatedAt <= deductCreatedAt) {
-            // 부분 차감으로 생성된 원본 문서는 복구하지 않음 (이미 새 문서로 분할되었으므로)
-            if (!splitParentIds.has(doc.id)) {
-              // amount가 유효한 경우에만 복구
-              const amount = data.amount || 0;
-              if (amount > 0) {
-                transaction.update(doc.ref, {
-                  isProcessed: false,
-                });
-                restoredAmount += amount;
-              }
+            // amount가 유효한 경우에만 복구
+            const amount = data.amount || 0;
+            if (amount > 0) {
+              // splitParentIds에 포함된 문서는 반드시 복구 (잔여 문서를 삭제했으므로)
+              // 일반 문서도 복구 (이번 차감으로 만료 처리된 것이므로)
+              transaction.update(doc.ref, {
+                isProcessed: false,
+              });
+              restoredAmount += amount;
             }
           }
         }
