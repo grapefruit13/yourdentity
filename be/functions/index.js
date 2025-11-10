@@ -200,7 +200,7 @@ app.use("/tmis", tmiRoutes);
 app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
-app.use("/notion/announcements", announcementRoutes);
+app.use("/announcements", announcementRoutes);
 app.use("/faqs", faqRoutes);
 app.use("/reportContent", reportContentRoutes);
 app.use("/notionUsers", notionUserRoutes);

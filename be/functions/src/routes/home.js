@@ -73,11 +73,11 @@ const homeController = require("../controllers/homeController");
  *                       example: []
  *                     activityReview:
  *                       type: boolean
- *                       description: 활동후기 여부 (Notion DB 필드: "활동후기 여부")
+ *                       description: "활동후기 여부 (Notion DB 필드: 활동후기 여부)"
  *                       example: true
  *                     nadaumExhibition:
  *                       type: boolean
- *                       description: 나다움전시 여부 (Notion DB 필드: "나다움전시 여부")
+ *                       description: "나다움전시 여부 (Notion DB 필드: 나다움전시 여부)"
  *                       example: false
  *                     deployDate:
  *                       type: string

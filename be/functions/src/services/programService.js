@@ -667,9 +667,9 @@ class ProgramService {
    */
   async findUserNotionPageId(firebaseUid) {
     try {
-      const userDbId = process.env.NOTION_USER_ACCOUNT_DATASOURCE_ID;
+      const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2;
       if (!userDbId) {
-        console.warn('[ProgramService] NOTION_USER_ACCOUNT_DB_ID 환경변수가 설정되지 않음');
+        console.warn('[ProgramService] NOTION_USER_ACCOUNT_DB_ID2 환경변수가 설정되지 않음');
         return null;
       }
 
