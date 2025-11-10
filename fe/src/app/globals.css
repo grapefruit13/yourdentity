@@ -80,3 +80,9 @@
 .prose img[src=""] {
   display: none;
 }
+
+/* react-notion-x 폰트 오버라이드 (Windows Chrome 호환성) */
+/* react-notion-x의 모든 요소에 Noto Sans 강제 적용 */
+.notion {
+  --notion-font: var(--font-noto-sans-kr), system-ui, sans-serif;
+}
