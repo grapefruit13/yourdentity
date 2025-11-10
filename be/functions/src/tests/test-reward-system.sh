@@ -79,7 +79,7 @@ echo ""
 echo -e "${YELLOW}[3/5] 댓글 작성 중 (리워드 자동 부여)...${NC}"
 COMMENT_DATA="{\"content\": \"리워드 테스트 댓글 - $(date +%Y-%m-%d\ %H:%M:%S)\"}"
 
-COMMENT_RESPONSE=$(curl -s -X POST "$BASE_URL/communities/$COMMUNITY_ID/posts/$POST_ID/comments" \
+COMMENT_RESPONSE=$(curl -s -X POST "$BASE_URL/comments/communities/$COMMUNITY_ID/posts/$POST_ID" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$COMMENT_DATA")
@@ -129,7 +129,7 @@ if [ "$REWARD_DIFF" -gt 0 ]; then
 else
   echo -e "${RED}❌ 리워드 부여 실패${NC}"
   echo -e "${YELLOW}   가능한 원인:${NC}"
-  echo -e "   - Notion DB에 'comment_create' 정책이 없거나 비활성화됨"
+  echo -e "   - Notion DB에 '댓글 작성' 정책이 없거나 비활성화됨"
   echo -e "   - 환경변수 NOTION_REWARD_POLICY_DB_ID가 잘못 설정됨"
   echo -e "   - 중복 방지로 인해 이미 부여된 리워드"
 fi
