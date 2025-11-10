@@ -81,7 +81,7 @@ export default function MainLayout({
   } = useGetHome({
     enabled: isHomePage,
     initialData: cachedHome ?? undefined,
-    staleTime: HOME_DATA_STALE_TIME,
+    staleTime: isDev ? 0 : HOME_DATA_STALE_TIME,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     select: (data) => {
@@ -130,18 +130,9 @@ export default function MainLayout({
         const earliestExpiry = findEarliestExpiry(homeData);
         if (earliestExpiry) {
           localStorage.setItem(CACHE_EXPIRY_KEY, earliestExpiry.toString());
-          if (isDev) {
-            console.log(
-              "✅ 캐시 만료 시간 저장:",
-              new Date(earliestExpiry).toISOString()
-            );
-          }
         } else {
           // S3 URL이 없거나 만료 시간을 파싱할 수 없는 경우 캐시 만료 키 제거
           localStorage.removeItem(CACHE_EXPIRY_KEY);
-          if (isDev) {
-            console.warn("⚠️ S3 URL 만료 시간을 파싱할 수 없습니다.");
-          }
         }
 
         setCachedHome(homeData);
@@ -157,20 +148,10 @@ export default function MainLayout({
         if (earliestExpiry) {
           try {
             localStorage.setItem(CACHE_EXPIRY_KEY, earliestExpiry.toString());
-            if (isDev) {
-              console.log(
-                "✅ 캐시 만료 시간 보완 저장:",
-                new Date(earliestExpiry).toISOString()
-              );
-            }
           } catch (error) {
             // 저장 실패는 무시
             console.error("만료 시간 저장 실패:", error);
           }
-        } else if (isDev) {
-          console.warn(
-            "⚠️ updatedAt이 변경되지 않았지만 만료 시간을 파싱할 수 없습니다."
-          );
         }
       }
     }
