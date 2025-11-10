@@ -91,9 +91,6 @@ async syncUserAccounts() {
           },
           "사용자ID": { rich_text: [{ text: { content: userId } }] },
           "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-          // "상태": user.status
-          //   ? { select: { name: user.status } }
-          //   : { select: { name: "데이터 없음" } },
           "상태": {
             select: {
               name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
@@ -414,9 +411,6 @@ async syncAllUserAccounts() {
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            // "상태": user.status
-            //    ? { select: { name: user.status } }
-            //    : { select: { name: "데이터 없음" } },
             "상태": {
               select: {
                 name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
@@ -996,19 +990,6 @@ async syncSelectedUsers() {
         profileImageUrl = file.external?.url || file.file?.url || "";
       }
 
-      // 상태 매핑 (노션: "pending" | "active" | "suspended" -> Firebase 동일)
-      const statusSelect = props["상태"]?.select?.name;
-      let status = undefined;
-      if (statusSelect) {
-        if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
-          status = statusSelect;
-        } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
-          // 한글 매핑
-          status = statusSelect === "대기" ? "pending" : 
-                   statusSelect === "활동" ? "active" : "suspended";
-        }
-      }
-
       const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
       const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
                         (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
@@ -1052,7 +1033,6 @@ async syncSelectedUsers() {
       if (nickname) updateData.nickname = nickname;
       if (name) updateData.name = name;
       if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-      if (status) updateData.status = status;
       if (phoneNumber) updateData.phoneNumber = phoneNumber;
       if (birthDate) updateData.birthDate = birthDate;
       if (email) updateData.email = email;
@@ -1484,18 +1464,6 @@ async syncSelectedUsers() {
             profileImageUrl = file.external?.url || file.file?.url || "";
           }
 
-          // 상태 매핑
-          const statusSelect = props["상태"]?.select?.name;
-          let status = undefined;
-          if (statusSelect) {
-            if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
-              status = statusSelect;
-            } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
-              status = statusSelect === "대기" ? "pending" : 
-                       statusSelect === "활동" ? "active" : "suspended";
-            }
-          }
-
           const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
           const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
                             (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
@@ -1540,7 +1508,6 @@ async syncSelectedUsers() {
           if (nickname) updateData.nickname = nickname;
           if (name) updateData.name = name;
           if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-          if (status) updateData.status = status;
           if (phoneNumber) updateData.phoneNumber = phoneNumber;
           if (birthDate) updateData.birthDate = birthDate;
           if (email) updateData.email = email;
@@ -1790,9 +1757,6 @@ async syncSingleUserToNotion(userId) {
       },
       "사용자ID": { rich_text: [{ text: { content: userId } }] },
       "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-      // "상태": user.status
-      //   ? { select: { name: user.status } }
-      //   : { select: { name: "데이터 없음" } },
       "상태": {
         select: {
           name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
