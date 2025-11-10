@@ -1,6 +1,6 @@
 const { db, FieldValue } = require('../config/database');
 const FirestoreService = require('./firestoreService');
-const { getSelectValue, getNumberValue } = require('../utils/notionHelper');
+const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
 
 /**
  * Reward Service
@@ -62,7 +62,7 @@ class RewardService {
       const props = page.properties;
 
       // status 체크 ('적용 완료'인 경우만 리워드 부여)
-      const status = getSelectValue(props['정책 적용 상태']);
+      const status = getStatusValue(props['정책 적용 상태']);
       if (status !== '적용 완료') {
         console.log(`[REWARD] 액션 "${actionKey}"는 적용 전 상태입니다 (status: ${status})`);
         return 0;
@@ -81,12 +81,11 @@ class RewardService {
    * 사용자 리워드 총량 업데이트 + 히스토리 추가
    * @param {string} userId - 사용자 ID
    * @param {number} amount - 리워드 금액
-   * @param {string} actionKey - 액션 키 또는 사유
+   * @param {string} actionKey - 액션 키 (나중에 reason 필드로 사용 예정)
    * @param {string} historyId - 히스토리 문서 ID (중복 체크용)
-   * @param {Object} metadata - 추가 메타데이터
    * @return {Promise<void>}
    */
-  async addRewardToUser(userId, amount, actionKey, historyId, metadata = {}) {
+  async addRewardToUser(userId, amount, actionKey, historyId) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
@@ -102,7 +101,6 @@ class RewardService {
         actionKey,
         amount,
         changeType: 'add',
-        metadata,
         createdAt: FieldValue.serverTimestamp(),
         isProcessed: true,
       });
@@ -152,10 +150,6 @@ class RewardService {
           actionKey,
           amount: rewardAmount,
           changeType: 'add',
-          metadata: {
-            ...metadata,
-            targetId,
-          },
           createdAt: FieldValue.serverTimestamp(),
           isProcessed: true,
         });

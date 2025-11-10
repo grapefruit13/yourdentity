@@ -418,8 +418,7 @@ class NotificationService {
                 userId,
                 nadumAmount,
                 'additional_point',
-                historyId,
-                {}
+                historyId
               );
               return { userId, success: true };
             } catch (error) {
