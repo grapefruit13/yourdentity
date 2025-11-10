@@ -305,9 +305,14 @@ class CommunityService {
       const batchSize = Math.max(size, 50);
       let rawPage = 0;
       let hasMore = true;
-      const accessiblePosts = [];
 
-      while (hasMore) {
+      const startIndex = page * size;
+      const targetEndIndex = (page + 1) * size;
+      let accessibleCount = 0;
+      let hasNextAccessible = false;
+      const pagePosts = [];
+
+      while (hasMore && !hasNextAccessible) {
         const result = await postsService.getCollectionGroup("posts", {
           page: rawPage,
           size: batchSize,
@@ -321,25 +326,35 @@ class CommunityService {
           break;
         }
 
-        rawPosts.forEach((post) => {
+        for (const post of rawPosts) {
           if (canViewPost(post)) {
-            accessiblePosts.push(post);
+            accessibleCount += 1;
+
+            if (accessibleCount > startIndex && pagePosts.length < size) {
+              pagePosts.push(post);
+            }
+
+            if (accessibleCount >= targetEndIndex + 1) {
+              hasNextAccessible = true;
+              break;
+            }
           }
-        });
+        }
 
         hasMore = result.pageable?.hasNext || false;
         rawPage += 1;
 
-        if (!hasMore) {
+        if (!hasMore || hasNextAccessible) {
           break;
         }
       }
 
-      const totalElements = accessiblePosts.length;
+      const totalElements = hasNextAccessible
+        ? startIndex + pagePosts.length + 1
+        : accessibleCount;
       const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
-      const startIndex = page * size;
-      const endIndex = startIndex + size;
-      const paginatedPosts = accessiblePosts.slice(startIndex, endIndex);
+      const hasNextPage = hasNextAccessible || page < totalPages - 1;
+      const paginatedPosts = pagePosts;
 
       const communityIds = [...new Set(paginatedPosts.map(post => post.communityId).filter(Boolean))];
       const communityMap = {};
@@ -397,10 +412,10 @@ class CommunityService {
           pageSize: size,
           totalElements,
           totalPages,
-          hasNext: page < totalPages - 1,
+          hasNext: hasNextPage,
           hasPrevious: page > 0,
           isFirst: page === 0,
-          isLast: totalPages === 0 ? true : page >= totalPages - 1,
+          isLast: totalPages === 0 ? true : !hasNextPage,
         },
       };
     } catch (error) {
