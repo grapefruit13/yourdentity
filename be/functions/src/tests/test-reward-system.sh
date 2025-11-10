@@ -97,9 +97,29 @@ fi
 echo -e "${GREEN}✅ 댓글 작성 완료 (ID: $COMMENT_ID)${NC}"
 echo ""
 
-# Step 4: 리워드 부여 대기 (비동기 처리)
-echo -e "${YELLOW}[4/5] 리워드 부여 처리 대기 중 (3초)...${NC}"
-sleep 3
+# Step 4: 리워드 적용 확인 (재시도 패턴)
+echo -e "${YELLOW}[4/5] 리워드 적용 확인 중...${NC}"
+FINAL_REWARDS=0
+RETRY_SUCCESS=false
+
+for i in {1..5}; do
+  CURRENT_RESPONSE=$(curl -s -X GET "$BASE_URL/users/$TEST_USER_ID" \
+    -H "Authorization: Bearer $ID_TOKEN")
+  CURRENT_REWARDS=$(echo "$CURRENT_RESPONSE" | jq -r '.data.rewards // 0' 2>/dev/null || echo "0")
+  
+  if [ "$CURRENT_REWARDS" -gt "$INITIAL_REWARDS" ]; then
+    echo -e "${GREEN}✅ 리워드 적용 확인 (${i}회 시도, $((i))초)${NC}"
+    FINAL_REWARDS=$CURRENT_REWARDS
+    RETRY_SUCCESS=true
+    break
+  fi
+  
+  [ $i -lt 5 ] && sleep 1
+done
+
+if [ "$RETRY_SUCCESS" = false ]; then
+  echo -e "${YELLOW}⚠️  리워드가 아직 적용되지 않았습니다 (5초 대기 완료)${NC}"
+fi
 echo ""
 
 # Step 5: 사용자 최종 리워드 확인
