@@ -286,6 +286,12 @@ router.get("/", communityController.getCommunities);
  *           type: string
  *           enum: [ROUTINE, GATHERING, TMI]
  *         description: "프로그램 타입 필터 (예: programType=ROUTINE,GATHERING 또는 programType=ROUTINE&programType=GATHERING)"
+ *       - in: query
+ *         name: programState
+ *         schema:
+ *           type: string
+ *           enum: [ongoing, finished]
+ *         description: "프로그램 상태 필터 (ongoing=진행 중, finished=종료됨)"
  *     responses:
  *       200:
  *         description: 전체 커뮤니티 포스트 조회 성공

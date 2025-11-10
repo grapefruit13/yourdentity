@@ -38,7 +38,7 @@ class CommunityController {
    */
   async getAllCommunityPosts(req, res, next) {
     try {
-      const {programType, programTypes} = req.query;
+      const {programType, programTypes, programState} = req.query;
       const page = parseInt(req.query.page, 10) || 0;
       const size = parseInt(req.query.size, 10) || 10;
 
@@ -68,9 +68,32 @@ class CommunityController {
         ]),
       );
 
+      const normalizeProgramState = (value) => {
+        if (!value) {
+          return null;
+        }
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            return null;
+          }
+          return normalizeProgramState(value[0]);
+        }
+        if (typeof value !== "string") {
+          return null;
+        }
+        const lower = value.toLowerCase();
+        if (lower === "ongoing" || lower === "finished") {
+          return lower;
+        }
+        return null;
+      };
+
+      const normalizedProgramState = normalizeProgramState(programState);
+
       const result = await communityService.getAllCommunityPosts(
         {
           programTypes: requestedProgramTypes,
+          programState: normalizedProgramState,
           page,
           size,
         },

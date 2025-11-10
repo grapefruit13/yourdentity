@@ -10,6 +10,11 @@ const PROGRAM_TYPES = {
   TMI: "TMI",
 };
 
+const PROGRAM_STATES = {
+  ONGOING: "ongoing",
+  FINISHED: "finished",
+};
+
 const PROGRAM_TYPE_TO_POST_TYPE = {
   [PROGRAM_TYPES.ROUTINE]: {
     cert: "ROUTINE_CERT",
@@ -123,6 +128,43 @@ class CommunityService {
         });
     });
     return Array.from(new Set(normalized));
+  }
+
+  static toDate(value) {
+    if (!value) {
+      return null;
+    }
+    if (typeof value.toDate === "function") {
+      try {
+        return value.toDate();
+      } catch (error) {
+        return null;
+      }
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  static resolveProgramState(community) {
+    if (!community) {
+      return null;
+    }
+    const now = new Date();
+    const startDate = CommunityService.toDate(community.startDate);
+    const endDate = CommunityService.toDate(community.endDate);
+
+    const hasStarted = !startDate || startDate <= now;
+    const notEnded = !endDate || endDate >= now;
+
+    if (hasStarted && notEnded) {
+      return PROGRAM_STATES.ONGOING;
+    }
+
+    if (endDate && endDate < now) {
+      return PROGRAM_STATES.FINISHED;
+    }
+
+    return null;
   }
 
   getUserService() {
@@ -369,6 +411,7 @@ class CommunityService {
       const {
         programTypes: programTypesOption,
         programType: programTypeOption,
+        programState: programStateOption,
         page = 0,
         size = 10,
         orderBy = "createdAt",
@@ -381,6 +424,19 @@ class CommunityService {
       ];
 
       const normalizedProgramTypes = Array.from(new Set(requestedProgramTypes));
+
+      let normalizedProgramState =
+        typeof programStateOption === "string"
+          ? programStateOption.toLowerCase()
+          : null;
+      if (
+        normalizedProgramState &&
+        ![PROGRAM_STATES.ONGOING, PROGRAM_STATES.FINISHED].includes(
+          normalizedProgramState,
+        )
+      ) {
+        normalizedProgramState = null;
+      }
 
       if (normalizedProgramTypes.length > 10) {
         const error = new Error("programType 필터는 최대 10개까지 지정할 수 있습니다.");
@@ -403,7 +459,38 @@ class CommunityService {
         });
       }
 
-      const matchesFilter = (post) => {
+      const communityCache = new Map();
+
+      const loadCommunities = async (communityIds = []) => {
+        if (!communityIds || communityIds.length === 0) {
+          return;
+        }
+        const uniqueIds = Array.from(
+          new Set(communityIds.filter((id) => id && !communityCache.has(id))),
+        );
+        if (uniqueIds.length === 0) {
+          return;
+        }
+
+        const chunks = [];
+        for (let i = 0; i < uniqueIds.length; i += 10) {
+          chunks.push(uniqueIds.slice(i, i + 10));
+        }
+
+        const communityResults = await Promise.all(
+          chunks.map((chunk) =>
+            this.firestoreService.getCollectionWhereIn("communities", "id", chunk),
+          ),
+        );
+        communityResults
+          .flat()
+          .filter((community) => community?.id)
+          .forEach((community) => {
+            communityCache.set(community.id, community);
+          });
+      };
+
+      const matchesFilter = (post, community) => {
         const postProgramType =
           CommunityService.normalizeProgramType(post.programType) ||
           CommunityService.mapLegacyPostTypeToProgramType(post.type);
@@ -412,7 +499,32 @@ class CommunityService {
           normalizedProgramTypes.length === 0 ||
           (postProgramType && normalizedProgramTypes.includes(postProgramType));
 
-        return matchesProgramType;
+        if (!matchesProgramType) {
+          return false;
+        }
+
+        if (!normalizedProgramState) {
+          return true;
+        }
+
+        if (!community) {
+          return false;
+        }
+
+        const communityState = CommunityService.resolveProgramState(community);
+        if (!communityState) {
+          return false;
+        }
+
+        if (normalizedProgramState === PROGRAM_STATES.ONGOING) {
+          return communityState === PROGRAM_STATES.ONGOING;
+        }
+
+        if (normalizedProgramState === PROGRAM_STATES.FINISHED) {
+          return communityState === PROGRAM_STATES.FINISHED;
+        }
+
+        return false;
       };
 
       const membershipIds = await this.getUserCommunityIds(viewerId);
@@ -476,8 +588,17 @@ class CommunityService {
           break;
         }
 
+        const communityIdsInBatch = rawPosts
+          .map((post) => post.communityId)
+          .filter(Boolean);
+        await loadCommunities(communityIdsInBatch);
+
         for (const post of rawPosts) {
-          if (canViewPost(post) && matchesFilter(post)) {
+          const community =
+            post.communityId && communityCache.has(post.communityId)
+              ? communityCache.get(post.communityId)
+              : null;
+          if (canViewPost(post) && matchesFilter(post, community)) {
             accessibleCount += 1;
 
             if (accessibleCount > startIndex && pagePosts.length < size) {
@@ -509,18 +630,11 @@ class CommunityService {
       const communityIds = [...new Set(paginatedPosts.map(post => post.communityId).filter(Boolean))];
       const communityMap = {};
       if (communityIds.length > 0) {
-        const chunks = [];
-        for (let i = 0; i < communityIds.length; i += 10) {
-          chunks.push(communityIds.slice(i, i + 10));
-        }
-
-        const communityResults = await Promise.all(
-          chunks.map(chunk =>
-            this.firestoreService.getCollectionWhereIn("communities", "id", chunk)
-          )
-        );
-        communityResults.flat().forEach((community) => {
-          communityMap[community.id] = community;
+        await loadCommunities(communityIds);
+        communityIds.forEach((communityId) => {
+          if (communityCache.has(communityId)) {
+            communityMap[communityId] = communityCache.get(communityId);
+          }
         });
       }
 
