@@ -25,7 +25,10 @@ const LoginPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { registerFCMToken } = useFCM();
 
-  const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile();
+  const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile({
+    retry: 1, // 실패 시 1회 재시도
+    retryDelay: 2000, // 재시도 간격: 1초
+  });
   const { refetch: refetchUserData } = useGetUsersMe({
     enabled: false, // 자동 실행 비활성화
     select: (data) => {
@@ -66,32 +69,31 @@ const LoginPage = () => {
           return;
         }
 
+        // 2-1. 카카오 프로필 동기화 (비동기 완료 대기, React Query가 자동으로 1회 재시도)
         try {
-          // 2-1. 카카오 프로필 동기화 (비동기 완료 대기)
           await syncMutateAsync({
             data: {
               accessToken: kakaoAccessToken,
             },
           });
+          // 성공 시, 프로필 편집(온보딩)페이지로 이동
           debug.log("카카오 프로필 동기화 성공");
-
-          // 2-2. FCM 토큰 등록 (실패해도 계속 진행)
-          try {
-            await registerFCMToken();
-          } catch (fcmError) {
-            debug.error("FCM 토큰 저장 실패:", fcmError);
-            // FCM 토큰 저장 실패해도 로그인은 계속 진행
-          }
-
-          // 2-3. 온보딩 페이지로 이동
-          setIsLoading(false);
           router.replace(LINK_URL.MY_PAGE_EDIT);
-          return;
         } catch (error) {
+          // 모든 시도 실패 시 (React Query가 자동으로 1회 재시도한 후 실패)
           debug.error("카카오 프로필 동기화 실패:", error);
-          setIsLoading(false);
           setErrorMessage("카카오 프로필 동기화에 실패했습니다.");
-          return;
+          router.replace(LINK_URL.LOGIN);
+        } finally {
+          setIsLoading(false);
+        }
+
+        // 2-2. FCM 토큰 등록 (실패해도 계속 진행)
+        try {
+          await registerFCMToken();
+        } catch (fcmError) {
+          debug.error("FCM 토큰 저장 실패:", fcmError);
+          // FCM 토큰 저장 실패해도 로그인은 계속 진행
         }
       }
 
