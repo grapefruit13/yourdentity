@@ -1,0 +1,23 @@
+diff --git a/node_modules/react-notion-x/src/styles.css b/node_modules/react-notion-x/src/styles.css
+index 0000000..1111111 100644
+--- a/node_modules/react-notion-x/src/styles.css
++++ b/node_modules/react-notion-x/src/styles.css
+@@ -1041,7 +1041,8 @@
+   max-width: 100%;
+ }
+ 
+-@media (max-width: 640px) {
++/* 패치: 640px 이하에서도 컬럼이 가로로 배치되도록 미디어 쿼리 제거 */
++/* @media (max-width: 640px) {
+   .notion-row {
+     flex-direction: column;
+   }
+@@ -1054,7 +1055,7 @@
+   .notion-row .notion-spacer {
+     display: none;
+   }
+-}
++} */
+ 
+ .notion-bookmark {
+   margin: 4px 0;
