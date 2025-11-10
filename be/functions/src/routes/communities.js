@@ -37,9 +37,9 @@ const optionalAuth = require("../middleware/optionalAuth");
  *           format: date-time
  *           description: 수정일
  *
-     *     CommunityPost:
-     *       type: object
-     *       properties:
+ *     CommunityPost:
+ *       type: object
+ *       properties:
      *         id:
      *           type: string
      *           description: 게시글 ID
@@ -265,7 +265,7 @@ router.get("/", communityController.getCommunities);
  * /communities/posts:
  *   get:
  *     tags: [Communities]
- *     summary: 전체 커뮤니티 게시글 조회(필터링 가능), 로그인 시 isPublic: false인 게시글
+ *     summary: "전체 커뮤니티 게시글 조회(필터링 가능), 로그인 시 isPublic: false인 게시글"
  *     description: 모든 커뮤니티의 게시글을 통합 조회
  *     parameters:
  *       - in: query
@@ -319,8 +319,8 @@ router.get("/", communityController.getCommunities);
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
-*                           isLocked: false
-*                           isPublic: true
+ *                           isLocked: false
+ *                           isPublic: true
  *                           rewardGiven: false
  *                           reportsCount: 0
  *                           viewCount: 0
