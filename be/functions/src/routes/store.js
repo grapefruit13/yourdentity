@@ -919,6 +919,10 @@ router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
  *                 type: string
  *                 description: 수령인 상세 주소지
  *                 example: "456호"
+ *               recipientPhone:
+ *                 type: string
+ *                 description: 수령인 전화번호
+ *                 example: "010-1234-5678"
  *     responses:
  *       201:
  *         description: 구매신청 성공
@@ -957,6 +961,9 @@ router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
  *                     recipientDetailAddress:
  *                       type: string
  *                       example: "456호"
+ *                     recipientPhone:
+ *                       type: string
+ *                       example: "010-1234-5678"
  *                     orderDate:
  *                       type: string
  *                       format: date-time
@@ -1081,6 +1088,9 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                           recipientDetailAddress:
  *                             type: string
  *                             example: "456호"
+ *                           recipientPhone:
+ *                             type: string
+ *                             example: "010-1234-5678"
  *                           deliveryCompleted:
  *                             type: boolean
  *                             example: false
