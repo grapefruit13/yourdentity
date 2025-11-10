@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
-import { HomeContentRenderer } from "@/components/shared/HomeContentRenderer";
+import type { ExtendedRecordMap } from "notion-types";
+import { NotionRenderer } from "react-notion-x";
+import "react-notion-x/src/styles.css";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
-import type { TGETHomeRes } from "@/types/generated/home-types";
 import { cn } from "@/utils/shared/cn";
 import { isS3UrlExpired } from "@/utils/shared/s3-url-parser";
 
@@ -17,12 +19,16 @@ const INITIAL_HEIGHT = 950;
  */
 const HomePage = () => {
   const { data: homeData } = useGetHome({
-    select: (data) => {
-      // API 응답이 { data: TGETHomeRes } 형태일 경우 unwrap
+    select: (data): ExtendedRecordMap => {
+      // API 응답이 { data: { data: recordMap } } 형태일 경우 unwrap
       if (data && typeof data === "object" && "data" in data) {
-        return (data as { data: TGETHomeRes }).data;
+        const innerData = (data as { data: { data: ExtendedRecordMap } }).data;
+        if (innerData && typeof innerData === "object" && "data" in innerData) {
+          return innerData.data;
+        }
+        return innerData as unknown as ExtendedRecordMap;
       }
-      return data;
+      return data as unknown as ExtendedRecordMap;
     },
   });
 
@@ -34,7 +40,99 @@ const HomePage = () => {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [defaultHeight, setDefaultHeight] = useState<number>(INITIAL_HEIGHT);
 
-  const content = homeData?.content || [];
+  // recordMap에서 배경 이미지 추출
+  const backgroundImages = useMemo(() => {
+    if (!homeData?.block) return [];
+
+    // recordMap에서 페이지 블록 찾기
+    const pageBlock = Object.values(homeData.block).find(
+      (block: any) => (block as any)?.value?.type === "page"
+    );
+
+    if (!pageBlock) return [];
+
+    // 페이지의 properties에서 배경화면 필드 찾기
+    const properties = (pageBlock as any).value?.properties;
+    if (!properties) return [];
+
+    // "배경화면" 필드 찾기 (필드 ID는 "o|d}"로 보임)
+    const backgroundImageField = properties["o|d}"] || properties["배경화면"];
+    if (!backgroundImageField || !Array.isArray(backgroundImageField))
+      return [];
+
+    // 파일 정보 추출
+    const files: Array<{ name?: string; url?: string; type?: string }> = [];
+    backgroundImageField.forEach((fileData: any) => {
+      if (Array.isArray(fileData) && fileData.length > 0) {
+        const fileName = fileData[0];
+        const fileInfo = fileData[1];
+        if (Array.isArray(fileInfo) && fileInfo.length > 0) {
+          const attachmentInfo = fileInfo[0];
+          if (Array.isArray(attachmentInfo) && attachmentInfo[0] === "a") {
+            const attachmentUrl = attachmentInfo[1];
+
+            // attachment:db4f2caa-d4a0-4e09-a1ab-9493230fc2f7:배경화면.png 형식에서 파일 ID 추출
+            if (
+              typeof attachmentUrl === "string" &&
+              attachmentUrl.startsWith("attachment:")
+            ) {
+              const parts = attachmentUrl.split(":");
+              const fileId = parts[1];
+              let signedUrl: string | null = null;
+
+              // 1. signed_urls에서 파일 ID로 직접 찾기
+              if (fileId && homeData.signed_urls) {
+                signedUrl = homeData.signed_urls[fileId] || null;
+              }
+
+              // 2. 파일 ID로 직접 찾지 못한 경우, 페이지 블록의 file_ids를 확인하여 해당 파일을 참조하는 블록 찾기
+              if (!signedUrl && fileId && homeData.block) {
+                const pageValue = (pageBlock as any).value;
+                const fileIds = pageValue?.file_ids || [];
+
+                // file_ids에 해당 파일 ID가 있는 경우, 해당 파일을 참조하는 블록 찾기
+                if (fileIds.includes(fileId)) {
+                  // 모든 블록을 순회하여 해당 파일 ID를 참조하는 블록 찾기
+                  const fileBlock = Object.values(homeData.block).find(
+                    (block: any) => {
+                      const blockFileIds = block?.value?.file_ids || [];
+                      return blockFileIds.includes(fileId);
+                    }
+                  );
+
+                  if (fileBlock) {
+                    const blockId = (fileBlock as any).value?.id;
+                    if (blockId && homeData.signed_urls) {
+                      signedUrl = homeData.signed_urls[blockId] || null;
+                    }
+                  }
+                }
+              }
+
+              // 3. signed_urls에서 찾지 못한 경우, Notion 이미지 URL 생성
+              if (!signedUrl && fileId) {
+                const pageId = (pageBlock as any).value?.id;
+                signedUrl = `https://www.notion.so/image/${encodeURIComponent(attachmentUrl)}?table=block&id=${pageId}&cache=v2`;
+              }
+
+              files.push({
+                name: fileName,
+                url: signedUrl || attachmentUrl,
+                type: "file",
+              });
+            }
+          }
+        }
+      }
+    });
+
+    // 만료된 URL 필터링
+    return files.filter((img) => {
+      if (!img.url) return false;
+      const expired = isS3UrlExpired(img.url);
+      return expired !== true;
+    });
+  }, [homeData]);
 
   // 클라이언트에서만 window.innerHeight 설정
   useEffect(() => {
@@ -42,16 +140,6 @@ const HomePage = () => {
       setDefaultHeight(window.innerHeight);
     }
   }, []);
-
-  const backgroundImages = useMemo(() => {
-    if (!homeData?.backgroundImage) return [];
-    // 만료된 URL 필터링
-    return homeData.backgroundImage.filter((img) => {
-      if (!img.url) return false;
-      const expired = isS3UrlExpired(img.url);
-      return expired !== true; // 만료되지 않은 URL만 반환
-    });
-  }, [homeData?.backgroundImage]);
 
   // TopBar 스크롤 감지 (Intersection Observer)
   useEffect(() => {
@@ -156,7 +244,7 @@ const HomePage = () => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [content]);
+  }, [homeData]);
 
   // 배경 이미지 컨테이너의 최종 높이 계산
   const backgroundContainerHeight = useMemo(() => {
@@ -233,9 +321,15 @@ const HomePage = () => {
           aria-hidden="true"
         />
 
-        <div className="relative mx-auto w-full max-w-[470px] px-[24px]">
+        <div className="relative mx-auto w-full max-w-[470px] px-1">
           <div className="relative z-10 mx-auto my-0 pt-[40px]">
-            <HomeContentRenderer content={content} className="notion-home" />
+            {homeData && (
+              <NotionRenderer
+                recordMap={homeData}
+                fullPage={false}
+                darkMode={false}
+              />
+            )}
           </div>
         </div>
       </div>
