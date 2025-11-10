@@ -1,9 +1,11 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
+const RewardService = require("../services/rewardService");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
 const nicknameService = new NicknameService();
+const rewardService = new RewardService();
 
 class UserController {
   
@@ -21,10 +23,25 @@ class UserController {
 
   /**
    * 본인 정보 조회
+   * 로그인 시점에 리워드 만료 검증 및 차감 처리
+   * (lastLogin은 syncKakaoProfile에서 업데이트됨)
    */
   async getMe(req, res, next) {
     try {
       const {uid} = req.user;
+      
+      // 로그인 시점: 리워드 만료 검증 및 차감 (비동기, 실패해도 계속 진행)
+      rewardService.checkAndDeductExpiredRewards(uid)
+        .then(result => {
+          if (result.count > 0) {
+            console.log(`[LOGIN] userId=${uid}, 만료된 리워드 ${result.count}건 차감 완료 (${result.totalDeducted}포인트)`);
+          }
+        })
+        .catch(error => {
+          console.error(`[LOGIN] userId=${uid}, 리워드 만료 체크 실패:`, error.message);
+        });
+
+      // 사용자 정보 조회
       const user = await userService.getUserById(uid);
       if (!user) {
         const err = new Error("사용자를 찾을 수 없습니다");

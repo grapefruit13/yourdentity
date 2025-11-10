@@ -226,6 +226,23 @@ class UserService {
   }
 
   /**
+   * 마지막 로그인 시간 업데이트
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<void>}
+   */
+  async updateLastLogin(uid) {
+    try {
+      await this.firestoreService.update(uid, {
+        lastLogin: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("lastLogin 업데이트 에러:", error.message);
+      // 에러를 throw하지 않고 로그만 남김 (로그인 프로세스에 영향 없도록)
+    }
+  }
+
+  /**
    * 사용자 삭제 (Firebase Auth + Firestore)
    * @param {string} uid
    * @return {Promise<void>}

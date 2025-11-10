@@ -1,4 +1,4 @@
-const { db, FieldValue } = require('../config/database');
+const { db, FieldValue, Timestamp } = require('../config/database');
 const FirestoreService = require('./firestoreService');
 const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
 const { toDate, formatDate } = require('../utils/helpers');
@@ -72,6 +72,11 @@ class RewardService {
         }),
       });
 
+      if (!response.ok) {
+        console.error(`[REWARD] Notion API 호출 실패: ${response.status} ${response.statusText}`);
+        return 0;
+      }
+
       const data = await response.json();
 
       if (!data.results || data.results.length === 0) {
@@ -110,7 +115,15 @@ class RewardService {
    * @return {Promise<{isDuplicate: boolean}>}
    * @throws {Error} DAILY_LIMIT_EXCEEDED - 일일 제한 초과 시
    */
-  async addRewardToUser(userId, amount, actionKey, historyId, actionTimestamp = null, checkDuplicate = true, reason = null) {
+  async addRewardToUser(
+    userId,
+    amount,
+    actionKey,
+    historyId,
+    actionTimestamp = null,
+    checkDuplicate = true,
+    reason = null,
+  ) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
@@ -118,8 +131,10 @@ class RewardService {
 
     await this.firestoreService.runTransaction(async (transaction) => {
       // 댓글 일일 제한 체크 (actionTimestamp가 있고, actionKey가 comment인 경우)
-      if (actionTimestamp && actionKey === 'comment') {
-        const dateKey = formatDate(actionTimestamp);
+      const actionDate = actionTimestamp ? toDate(actionTimestamp) : null;
+
+      if (actionDate && actionKey === 'comment') {
+        const dateKey = formatDate(actionDate);
         const counterRef = db.collection(`users/${userId}/dailyRewardCounters`).doc(dateKey);
         const counterDoc = await transaction.get(counterRef);
         
@@ -143,13 +158,14 @@ class RewardService {
 
       // rewardsHistory에 기록 추가
       const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 적립';
+      const createdAtValue = actionDate ? Timestamp.fromDate(actionDate) : FieldValue.serverTimestamp();
       
       transaction.set(historyRef, {
+        actionKey,
         amount,
         changeType: 'add',
         reason: rewardReason,
-        // actionTimestamp가 있으면 사용 (액션 기반), 없으면 서버 시간 사용 (관리자 직접 지급)
-        createdAt: actionTimestamp || FieldValue.serverTimestamp(),
+        createdAt: createdAtValue,
         isProcessed: false,
       });
 
@@ -160,8 +176,8 @@ class RewardService {
       });
 
       // 일일 카운터 증가 (actionTimestamp가 있고, actionKey가 comment인 경우)
-      if (actionTimestamp && actionKey === 'comment') {
-        const dateKey = formatDate(actionTimestamp);
+      if (actionDate && actionKey === 'comment') {
+        const dateKey = formatDate(actionDate);
         const counterRef = db.collection(`users/${userId}/dailyRewardCounters`).doc(dateKey);
         
         transaction.set(counterRef, {
@@ -320,6 +336,110 @@ class RewardService {
       }
       
       throw error;
+    }
+  }
+
+  /**
+   * 리워드 유효기간 검증 및 차감
+   * 로그인 시점에 호출하여 만료된 리워드를 차감 처리
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>} 차감 결과 { totalDeducted, count }
+   */
+  async checkAndDeductExpiredRewards(userId) {
+    try {
+      const now = Timestamp.now();
+      const nowDate = now.toDate();
+      const rewardsHistoryRef = db.collection(`users/${userId}/rewardsHistory`);
+      const userRef = db.collection('users').doc(userId);
+
+      const snapshot = await rewardsHistoryRef
+        .where('changeType', '==', 'add')
+        .where('isProcessed', '==', false)
+        .get();
+
+      if (snapshot.empty) {
+        return { totalDeducted: 0, count: 0 };
+      }
+
+      const expiredHistories = [];
+      let totalDeducted = 0;
+
+      // 만료된 항목 필터링 (expiredAt 기반)
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
+        if (!data || !data.expiredAt) {
+          console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}에 expiredAt이 없습니다.`);
+          continue;
+        }
+
+        let expiredAt;
+        try {
+          expiredAt = toDate(data.expiredAt);
+        } catch (parseError) {
+          console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}의 expiredAt 파싱 실패:`, parseError.message);
+          continue;
+        }
+
+        // 만료 여부 확인
+        if (expiredAt <= nowDate) {
+          expiredHistories.push({
+            id: doc.id,
+            amount: data.amount || 0,
+            expiredAt,
+            createdAt: data.createdAt,
+          });
+          totalDeducted += data.amount || 0;
+        }
+      }
+
+      if (expiredHistories.length === 0) {
+        return { totalDeducted: 0, count: 0 };
+      }
+
+      // 트랜잭션으로 일괄 처리
+      await this.firestoreService.runTransaction(async (transaction) => {
+        // 사용자 rewards 차감
+        if (totalDeducted > 0) {
+          transaction.update(userRef, {
+            rewards: FieldValue.increment(-totalDeducted),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 각 만료된 히스토리 항목 처리
+        for (const history of expiredHistories) {
+          const historyRef = rewardsHistoryRef.doc(history.id);
+
+          // isProcessed를 true로 변경
+          transaction.update(historyRef, {
+            isProcessed: true,
+          });
+
+          // 차감 히스토리 추가
+          const deductHistoryRef = rewardsHistoryRef.doc();
+          transaction.set(deductHistoryRef, {
+            amount: history.amount,
+            changeType: 'deduct',
+            reason: '리워드 만료',
+            isProcessed: true,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+        }
+      });
+
+      console.log(`[REWARD EXPIRY] userId=${userId}, 만료된 리워드 ${expiredHistories.length}건, 총 ${totalDeducted}포인트 차감`);
+
+      return {
+        totalDeducted,
+        count: expiredHistories.length,
+      };
+    } catch (error) {
+      console.error('[REWARD EXPIRY ERROR] checkAndDeductExpiredRewards:', error.message, {
+        userId,
+      });
+      // 에러가 발생해도 로그인 프로세스는 계속 진행되도록 에러를 throw하지 않음
+      // 대신 로그만 남기고 빈 결과 반환
+      return { totalDeducted: 0, count: 0, error: error.message };
     }
   }
 }
