@@ -21,10 +21,12 @@ require('dotenv').config();
 const RewardService = require('./src/services/rewardService');
 
 const policies = [
-  '댓글 작성',
-  '소모임 후기글 (텍스트 포함)',
-  '소모임 후기글 (텍스트, 사진 포함)',
-  'TMI 프로젝트 후기글',
+  { key: 'comment', name: '댓글 작성' },
+  { key: 'routine_post', name: '루틴 인증글' },
+  { key: 'routine_review', name: '루틴 후기글' },
+  { key: 'gathering_review_text', name: '소모임 후기글 (텍스트)' },
+  { key: 'gathering_review_media', name: '소모임 후기글 (사진 포함)' },
+  { key: 'tmi_review', name: 'TMI 프로젝트 후기글' },
 ];
 
 (async () => {
@@ -35,15 +37,15 @@ const policies = [
     
     let allSuccess = true;
     
-    for (const actionKey of policies) {
-      const reward = await service.getRewardByAction(actionKey);
+    for (const policy of policies) {
+      const reward = await service.getRewardByAction(policy.key);
       
       const status = reward > 0 ? '✅' : '❌';
       const message = reward > 0 
         ? \`\${reward} 포인트\` 
         : '정책 없음 또는 적용 전';
       
-      console.log(\`  \${status} \${actionKey}: \${message}\`);
+      console.log(\`  \${status} \${policy.name} (key: \${policy.key}): \${message}\`);
       
       if (reward === 0) {
         allSuccess = false;

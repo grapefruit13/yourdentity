@@ -167,7 +167,7 @@ if [ "$REWARD_DIFF" -gt 0 ]; then
 else
   echo -e "${RED}❌ 리워드 부여 실패${NC}"
   echo -e "${YELLOW}   가능한 원인:${NC}"
-  echo -e "   - Notion DB에 '댓글 작성' 정책이 없거나 비활성화됨"
+  echo -e "   - Notion DB에 'comment' 정책이 없거나 비활성화됨"
   echo -e "   - 환경변수 NOTION_REWARD_POLICY_DB_ID가 잘못 설정됨"
   echo -e "   - 중복 방지로 인해 이미 부여된 리워드"
 fi
