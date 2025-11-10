@@ -27,7 +27,7 @@ const LoginPage = () => {
 
   const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile({
     retry: 1, // 실패 시 1회 재시도
-    retryDelay: 2000, // 재시도 간격: 1초
+    retryDelay: 2000, // 재시도 간격: 2초
   });
   const { refetch: refetchUserData } = useGetUsersMe({
     enabled: false, // 자동 실행 비활성화
