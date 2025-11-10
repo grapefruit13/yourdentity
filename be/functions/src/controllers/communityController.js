@@ -82,6 +82,29 @@ class CommunityController {
       const postData = req.body;
 
       const result = await communityService.createPost(communityId, userId, postData);
+
+      // 리워드 부여 (게시글 타입별)
+      if (result.type === 'GATHERING_REVIEW') {
+        // 소모임 후기글 - 이미지 포함 여부 체크
+        const hasImage = result.content?.includes('<img') || 
+                         (Array.isArray(result.media) && result.media.length > 0);
+        
+        const actionKey = hasImage 
+          ? '소모임 후기글 (텍스트, 사진 포함)' 
+          : '소모임 후기글 (텍스트 포함)';
+        
+        await req.grantReward(actionKey, {
+          postId: result.id,
+          communityId,
+        });
+      } else if (result.type === 'TMI') {
+        // TMI 프로젝트 후기글
+        await req.grantReward('TMI 프로젝트 후기글', {
+          postId: result.id,
+          communityId,
+        });
+      }
+
       return res.created(result);
     } catch (error) {
       return next(error);
