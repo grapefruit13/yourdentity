@@ -2,6 +2,14 @@ const { db, FieldValue } = require('../config/database');
 const FirestoreService = require('./firestoreService');
 const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
 
+// 액션 키 → 타입 코드 매핑 (historyId 생성용)
+const ACTION_TYPE_MAP = {
+  '댓글 작성': 'COMMENT',
+  '소모임 후기글 (텍스트 포함)': 'GR:TEXT',
+  '소모임 후기글 (텍스트, 사진 포함)': 'GR:IMG',
+  'TMI 프로젝트 후기글': 'TMI',
+};
+
 /**
  * Reward Service
  * Notion 리워드 정책 조회 및 사용자 리워드 부여
@@ -145,9 +153,17 @@ class RewardService {
         }
       }
 
-      // 3. targetId 및 historyId 생성
-      const targetId = metadata.commentId || metadata.postId || metadata.targetId || 'unknown';
-      const historyId = `${actionKey}_${targetId}`;
+      // 3. historyId 생성 (타입 코드 기반)
+      const typeCode = ACTION_TYPE_MAP[actionKey] || 'REWARD';
+      const targetId = metadata.commentId || metadata.postId || metadata.targetId;
+      
+      if (!targetId) {
+        const error = new Error('commentId 또는 postId가 필요합니다');
+        error.code = 'BAD_REQUEST';
+        throw error;
+      }
+      
+      const historyId = `${typeCode}:${targetId}`;
 
       const userRef = db.collection('users').doc(userId);
       const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
@@ -182,11 +198,11 @@ class RewardService {
 
       // 5. 결과 반환
       if (isDuplicate) {
-        console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, targetId=${targetId}`);
+        console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, historyId=${historyId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };
       }
 
-      console.log(`[REWARD SUCCESS] userId=${userId}, action=${actionKey}, amount=${rewardAmount}, targetId=${targetId}`);
+      console.log(`[REWARD SUCCESS] userId=${userId}, action=${actionKey}, amount=${rewardAmount}, historyId=${historyId}`);
 
       return {
         success: true,
