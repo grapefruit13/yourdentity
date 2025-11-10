@@ -81,24 +81,8 @@
   display: none;
 }
 
-/* font-noto 유틸리티 클래스 명시적 정의 (Windows Chrome 호환성) */
-.font-noto {
-  font-family: var(--font-noto-sans-kr), system-ui, sans-serif;
-}
-
 /* react-notion-x 폰트 오버라이드 (Windows Chrome 호환성) */
 /* react-notion-x의 모든 요소에 Noto Sans 강제 적용 */
-.notion-page,
-.notion-page *,
-.notion-page-content,
-.notion-page-content *,
-.notion-text,
-.notion-text *,
-.notion-list,
-.notion-list *,
-.notion-heading,
-.notion-heading *,
-.notion-block,
-.notion-block * {
-  font-family: var(--font-noto-sans-kr), system-ui, sans-serif !important;
+.notion {
+  --notion-font: var(--font-noto-sans-kr), system-ui, sans-serif;
 }
