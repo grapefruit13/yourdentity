@@ -125,18 +125,38 @@ class RewardService {
         return { success: true, amount: 0, message: 'No reward for this action' };
       }
 
-      // 2. targetId 및 historyId 생성
+      // 2. 댓글 작성 일일 제한 체크 (최대 5개)
+      if (actionKey === '댓글 작성') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const todayCommentRewards = await db
+          .collection(`users/${userId}/rewardsHistory`)
+          .where('actionKey', '==', '댓글 작성')
+          .where('createdAt', '>=', today)
+          .where('createdAt', '<', tomorrow)
+          .get();
+
+        if (todayCommentRewards.size >= 5) {
+          console.log(`[REWARD LIMIT] 댓글 작성 일일 제한 도달: userId=${userId}, 오늘 ${todayCommentRewards.size}개`);
+          return { success: true, amount: 0, message: 'Daily comment reward limit reached (5/day)' };
+        }
+      }
+
+      // 3. targetId 및 historyId 생성
       const targetId = metadata.commentId || metadata.postId || metadata.targetId || 'unknown';
       const historyId = `${actionKey}_${targetId}`;
 
       const userRef = db.collection('users').doc(userId);
       const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
-      // 3. Transaction 내에서 중복 체크 + 리워드 부여를 원자적으로 수행 (race condition 방지)
+      // 4. Transaction 내에서 중복 체크 + 리워드 부여를 원자적으로 수행 (race condition 방지)
       let isDuplicate = false;
       
       await this.firestoreService.runTransaction(async (transaction) => {
-        // 3-1. 히스토리 문서 존재 여부 확인
+        // 4-1. 히스토리 문서 존재 여부 확인
         const historyDoc = await transaction.get(historyRef);
         
         if (historyDoc.exists) {
@@ -145,7 +165,7 @@ class RewardService {
           return;
         }
 
-        // 3-2. 중복이 아니면 히스토리 문서 생성 + 사용자 리워드 업데이트
+        // 4-2. 중복이 아니면 히스토리 문서 생성 + 사용자 리워드 업데이트
         transaction.set(historyRef, {
           actionKey,
           amount: rewardAmount,
@@ -160,7 +180,7 @@ class RewardService {
         });
       });
 
-      // 4. 결과 반환
+      // 5. 결과 반환
       if (isDuplicate) {
         console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, targetId=${targetId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };

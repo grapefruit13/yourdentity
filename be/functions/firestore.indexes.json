@@ -94,6 +94,14 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "joinedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "rewardsHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "actionKey", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
