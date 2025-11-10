@@ -42,7 +42,7 @@ const LEGACY_POST_TYPE_TO_PROGRAM_TYPE = {
 
 const CERTIFICATION_COUNT_TYPES = new Set([
   PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert,
-  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.GATHERING].review,
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.GATHERING].cert,
   PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.TMI].cert,
 ]);
 
@@ -1026,7 +1026,6 @@ class CommunityService {
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
 
-        // certificationPosts 카운트 증가 (해당 타입인 경우만)
         if (CERTIFICATION_COUNT_TYPES.has(newPost.type)) {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
           transaction.update(userRef, {
