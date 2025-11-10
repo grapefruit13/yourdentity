@@ -48,11 +48,14 @@ class CommunityController {
       // filter 파라미터를 type으로 매핑 (하위 호환성)
       const finalType = type || filter;
 
-      const result = await communityService.getAllCommunityPosts({
-        type: finalType,
-        page,
-        size,
-      });
+      const result = await communityService.getAllCommunityPosts(
+        {
+          type: finalType,
+          page,
+          size,
+        },
+        req.user?.uid || null,
+      );
 
       // data 객체 안에 posts 배열과 pagination 객체 분리
       const responseData = {

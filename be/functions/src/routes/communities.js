@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const communityController = require("../controllers/communityController");
 const authGuard = require("../middleware/authGuard");
+const optionalAuth = require("../middleware/optionalAuth");
 
 /**
  * @swagger
@@ -36,9 +37,9 @@ const authGuard = require("../middleware/authGuard");
  *           format: date-time
  *           description: 수정일
  *
-     *     CommunityPost:
-     *       type: object
-     *       properties:
+ *     CommunityPost:
+ *       type: object
+ *       properties:
      *         id:
      *           type: string
      *           description: 게시글 ID
@@ -80,10 +81,10 @@ const authGuard = require("../middleware/authGuard");
      *           type: boolean
      *           description: 잠금 여부
      *           example: false
- *         visibility:
- *           type: string
- *           description: 공개 범위
- *           example: "public"
+*         isPublic:
+*           type: boolean
+*           description: 게시글 공개 여부
+*           example: true
  *         rewardGiven:
  *           type: boolean
  *           description: 리워드 지급 여부
@@ -264,7 +265,7 @@ router.get("/", communityController.getCommunities);
  * /communities/posts:
  *   get:
  *     tags: [Communities]
- *     summary: 전체 커뮤니티 게시글 조회(필터링 가능)
+ *     summary: "전체 커뮤니티 게시글 조회(필터링 가능), 로그인 시 isPublic: false인 게시글 조회 가능"
  *     description: 모든 커뮤니티의 게시글을 통합 조회
  *     parameters:
  *       - in: query
@@ -319,7 +320,7 @@ router.get("/", communityController.getCommunities);
  *                           category: "string"
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
  *                           isLocked: false
- *                           visibility: "public"
+ *                           isPublic: true
  *                           rewardGiven: false
  *                           reportsCount: 0
  *                           viewCount: 0
@@ -360,7 +361,7 @@ router.get("/", communityController.getCommunities);
  *       500:
  *         description: 서버 오류
  */
-router.get("/posts", communityController.getAllCommunityPosts);
+router.get("/posts", optionalAuth,communityController.getAllCommunityPosts);
 
 
 
@@ -412,12 +413,17 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                 format: date-time
  *                 description: 예약 발행 날짜
  *                 example: "2025-10-03"
+ *               isPublic:
+ *                 type: boolean
+ *                 description: 게시글 공개 여부
+ *                 example: true
  *           example:
  *             title: "오늘의 루틴 인증!"
  *             content: "<p>오늘도 화이팅!</p><img src=\"https://example.com/image.jpg\" width=\"1080\" height=\"1080\" data-blurhash=\"L6PZfSi_.AyE_3t7t7R**0o#DgR4\" data-mimetype=\"image/jpeg\"/>"
  *             media: ["files/user123/image_abc123.jpg"]
  *             category: "한끗루틴"
  *             scheduledDate: "2025-10-03"
+ *             isPublic: true
  *     responses:
  *       201:
  *         description: 게시글 작성 성공
@@ -484,10 +490,10 @@ router.get("/posts", communityController.getAllCommunityPosts);
  *                       type: boolean
  *                       description: 잠금 여부
  *                       example: false
- *                     visibility:
- *                       type: string
- *                       description: 공개 범위
- *                       example: "public"
+*                     isPublic:
+*                       type: boolean
+*                       description: 게시글 공개 여부
+*                       example: true
  *                     rewardGiven:
  *                       type: boolean
  *                       description: 리워드 지급 여부
@@ -699,10 +705,10 @@ router.get("/:communityId/posts/:postId", communityController.getPostById);
  *                       type: boolean
  *                       description: 잠금 여부
  *                       example: false
- *                     visibility:
- *                       type: string
- *                       description: 공개 범위
- *                       example: "public"
+*                     isPublic:
+*                       type: boolean
+*                       description: 게시글 공개 여부
+*                       example: true
  *                     rewardGiven:
  *                       type: boolean
  *                       description: 리워드 지급 여부

@@ -31,6 +31,83 @@ class CommunityService {
   }
 
   /**
+   * 사용자가 참여 중인 커뮤니티 ID 목록 조회
+   * @param {string} userId
+   * @return {Promise<Set<string>>}
+   */
+  async getUserCommunityIds(userId) {
+    if (!userId) {
+      return new Set();
+    }
+
+    try {
+      const membershipIds = new Set();
+      const membershipService = this.firestoreService;
+      const pageSize = 100;
+      let currentPage = 0;
+      let hasMore = true;
+      let fallbackUsed = false;
+
+      while (hasMore) {
+        try {
+          const result = await membershipService.getCollectionGroup("members", {
+            where: [{field: "userId", operator: "==", value: userId}],
+            page: currentPage,
+            size: pageSize,
+            orderBy: "joinedAt",
+            orderDirection: "desc",
+          });
+
+          (result.content || []).forEach((member) => {
+            if (member?.communityId) {
+              membershipIds.add(member.communityId);
+            }
+          });
+
+          hasMore = result.pageable?.hasNext || false;
+          currentPage += 1;
+
+          if (currentPage >= 10) {
+            break;
+          }
+        } catch (error) {
+          if (!fallbackUsed &&
+            (error.code === 9 ||
+              (typeof error.message === "string" && (
+                error.message.includes("FAILED_PRECONDITION") ||
+                error.message.includes("AggregateQuery")
+              )))) {
+            fallbackUsed = true;
+            const fallbackResult = await membershipService.getCollectionGroupWithoutCount("members", {
+              where: [{field: "userId", operator: "==", value: userId}],
+              size: 1000,
+              orderBy: "joinedAt",
+              orderDirection: "desc",
+            });
+            (fallbackResult.content || []).forEach((member) => {
+              if (member?.communityId) {
+                membershipIds.add(member.communityId);
+              }
+            });
+            console.warn("[COMMUNITY][getUserCommunityIds] collectionGroupWithoutCount 대체 경로 사용", {
+              userId,
+              fetchedCount: fallbackResult.content?.length || 0,
+              totalCollected: membershipIds.size,
+            });
+            break;
+          }
+          throw error;
+        }
+      }
+
+      return membershipIds;
+    } catch (error) {
+      console.error("[COMMUNITY] 사용자 커뮤니티 조회 실패:", error.message);
+      return new Set();
+    }
+  }
+
+  /**
    * 커뮤니티 매핑 정보 조회
    * @param {string} communityId - 커뮤니티 ID
    * @return {Promise<Object|null>} 커뮤니티 매핑 정보
@@ -49,7 +126,7 @@ class CommunityService {
         postType: community.postType,
       };
     } catch (error) {
-      console.error("Get community mapping error:", error.message);
+      console.error("[COMMUNITY] 커뮤니티 매핑 정보 조회 실패:", error.message);
       throw new Error("커뮤니티 매핑 정보 조회에 실패했습니다");
     }
   }
@@ -86,7 +163,7 @@ class CommunityService {
         pagination: result.pageable || {},
       };
     } catch (error) {
-      console.error("Get communities error:", error.message);
+      console.error("[COMMUNITY] 커뮤니티 목록 조회 실패:", error.message);
       throw new Error("커뮤니티 목록 조회에 실패했습니다");
     }
   }
@@ -184,7 +261,7 @@ class CommunityService {
     };
   }
 
-  async getAllCommunityPosts(options = {}) {
+  async getAllCommunityPosts(options = {}, viewerId = null) {
     try {
       const {
         type,
@@ -200,171 +277,146 @@ class CommunityService {
         tmi: "TMI",
       };
 
-      let allPosts = [];
-      const communityMap = {};
+      const whereConditions = [];
+      if (type && postTypeMapping[type]) {
+        whereConditions.push({field: "type", operator: "==", value: postTypeMapping[type]});
+      }
 
-      // whereConditions 생성 헬퍼 함수
-      const buildWhereConditions = () => {
-        const conditions = [];
-        if (type && postTypeMapping[type]) {
-          conditions.push({ field: "type", operator: "==", value: postTypeMapping[type] });
+      const membershipIds = await this.getUserCommunityIds(viewerId);
+
+      const resolveIsPublic = (post) => {
+        if (typeof post.isPublic === "boolean") {
+          return post.isPublic;
         }
-        return conditions;
+        return true;
+      };
+      const canViewPost = (post) => {
+        if (resolveIsPublic(post)) return true;
+        if (!viewerId) return false;
+        if (!post.communityId) return false;
+        const allowed = membershipIds.has(post.communityId);
+        return allowed;
       };
 
-      // Collection Group 사용
-      try {
-        const postsService = new FirestoreService();
-        const postsResult = await postsService.getCollectionGroup("posts", {
-          page,
-          size,
+      const postsService = new FirestoreService();
+      const batchSize = Math.max(size, 50);
+      let rawPage = 0;
+      let hasMore = true;
+
+      const startIndex = page * size;
+      const targetEndIndex = (page + 1) * size;
+      let accessibleCount = 0;
+      let hasNextAccessible = false;
+      const pagePosts = [];
+
+      while (hasMore && !hasNextAccessible) {
+        const result = await postsService.getCollectionGroup("posts", {
+          page: rawPage,
+          size: batchSize,
           orderBy,
           orderDirection,
-          where: buildWhereConditions(),
+          where: whereConditions,
         });
 
-        const communities = await this.firestoreService.getCollection("communities");
-        communities.forEach(community => {
-          communityMap[community.id] = community;
-        });
+        const rawPosts = result.content || [];
+        if (rawPosts.length === 0) {
+          break;
+        }
 
-        allPosts = (postsResult.content || []).map(post => ({
-          ...post,
-          community: communityMap[post.communityId] ? {
-            id: post.communityId,
-            name: communityMap[post.communityId].name,
-          } : null,
-        }));
+        for (const post of rawPosts) {
+          if (canViewPost(post)) {
+            accessibleCount += 1;
 
-        const processPost = (post) => {
-          const { authorId: _, ...postWithoutAuthorId } = post;
-          const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
-          const processedPost = {
-            ...postWithoutAuthorId,
-            createdAt: createdAtDate?.toISOString?.() || post.createdAt,
-            updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
-            scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
-            timeAgo: createdAtDate ? this.getTimeAgo(new Date(createdAtDate)) : "",
-            communityPath: `communities/${post.communityId}`,
-            rewardGiven: post.rewardGiven || false,
-            reportsCount: post.reportsCount || 0,
-            viewCount: post.viewCount || 0,
-          };
+            if (accessibleCount > startIndex && pagePosts.length < size) {
+              pagePosts.push(post);
+            }
 
-          // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
-          processedPost.preview = post.preview || this.createPreview(post);
-          delete processedPost.content;
-          delete processedPost.media;
+            if (accessibleCount >= targetEndIndex + 1) {
+              hasNextAccessible = true;
+              break;
+            }
+          }
+        }
 
-          delete processedPost.communityId;
-          return processedPost;
-        };
+        hasMore = result.pageable?.hasNext || false;
+        rawPage += 1;
 
-        return {
-          content: allPosts.map(processPost),
-          pagination: postsResult.pageable || {},
-        };
-      } catch (collectionGroupError) {
-        if (collectionGroupError.code === 9) {
-        } else {
-          throw collectionGroupError;
+        if (!hasMore || hasNextAccessible) {
+          break;
         }
       }
 
-      if (Object.keys(communityMap).length === 0) {
-        const communities = await this.firestoreService.getCollection("communities");
-        if (communities.length === 0) {
-          return {
-            content: [],
-            pagination: {
-              pageNumber: 0,
-              pageSize: size,
-              totalElements: 0,
-              totalPages: 0,
-              hasNext: false,
-              hasPrevious: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
+      const totalElements = hasNextAccessible
+        ? startIndex + pagePosts.length + 1
+        : accessibleCount;
+      const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
+      const hasNextPage = hasNextAccessible || page < totalPages - 1;
+      const paginatedPosts = pagePosts;
+
+      const communityIds = [...new Set(paginatedPosts.map(post => post.communityId).filter(Boolean))];
+      const communityMap = {};
+      if (communityIds.length > 0) {
+        const chunks = [];
+        for (let i = 0; i < communityIds.length; i += 10) {
+          chunks.push(communityIds.slice(i, i + 10));
         }
-        communities.forEach(community => {
+
+        const communityResults = await Promise.all(
+          chunks.map(chunk =>
+            this.firestoreService.getCollectionWhereIn("communities", "id", chunk)
+          )
+        );
+        communityResults.flat().forEach((community) => {
           communityMap[community.id] = community;
         });
       }
 
-      const postPromises = Object.values(communityMap).map(async (community) => {
-        try {
-          const postsService = new FirestoreService(`communities/${community.id}/posts`);
-          const whereConditions = buildWhereConditions();
-          
-          const postsResult = await postsService.getWithPagination({
-            page,
-            size,
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            where: whereConditions,
-          });
-          
-          const postsArray = postsResult.content || [];
-          
-          return postsArray.map(post => ({
-            ...post,
-            communityId: community.id,
-            community: { id: community.id, name: community.name },
-          }));
-        } catch (error) {
-          return [];
-        }
-      });
-
-      const postsArrays = await Promise.all(postPromises);
-      allPosts = postsArrays.flat();
-
-      // post 처리 헬퍼 함수
       const processPost = (post) => {
-        const { authorId: _, ...postWithoutAuthorId } = post;
-        const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
-        const processedPost = {
-          ...postWithoutAuthorId,
+        const {authorId: _ignored, content: _content, media: _media, communityId, ...rest} = post;
+        const createdAtDate = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
+        const updatedAtDate = post.updatedAt?.toDate?.() || (post.updatedAt ? new Date(post.updatedAt) : null);
+        const scheduledDate = post.scheduledDate?.toDate?.() || (post.scheduledDate ? new Date(post.scheduledDate) : null);
+
+        const processed = {
+          id: post.id,
+          ...rest,
           createdAt: createdAtDate?.toISOString?.() || post.createdAt,
-          updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
-          scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
-          timeAgo: createdAtDate ? this.getTimeAgo(new Date(createdAtDate)) : "",
-          communityPath: `communities/${post.communityId}`,
+          updatedAt: updatedAtDate?.toISOString?.() || post.updatedAt,
+          scheduledDate: scheduledDate?.toISOString?.() || post.scheduledDate,
+          timeAgo: createdAtDate ? this.getTimeAgo(createdAtDate) : "",
+          communityPath: communityId ? `communities/${communityId}` : null,
           rewardGiven: post.rewardGiven || false,
           reportsCount: post.reportsCount || 0,
           viewCount: post.viewCount || 0,
+          community: communityId && communityMap[communityId] ? {
+            id: communityId,
+            name: communityMap[communityId].name,
+          } : null,
         };
 
-        // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
-        processedPost.preview = post.preview || this.createPreview(post);
-        delete processedPost.content;
-        delete processedPost.media;
+        processed.preview = post.preview || this.createPreview(post);
+        processed.isPublic = resolveIsPublic(post);
 
-        delete processedPost.communityId;
-        return processedPost;
+        return processed;
       };
 
-      const processedPosts = allPosts.map(processPost);
-      const totalElements = allPosts.length;
-      const totalPages = Math.ceil(totalElements / size);
+      const processedPosts = paginatedPosts.map(processPost);
 
       return {
         content: processedPosts,
         pagination: {
           pageNumber: page,
           pageSize: size,
-          totalElements: totalElements,
-          totalPages: totalPages,
-          hasNext: page < totalPages - 1,
+          totalElements,
+          totalPages,
+          hasNext: hasNextPage,
           hasPrevious: page > 0,
           isFirst: page === 0,
-          isLast: page >= totalPages - 1,
+          isLast: totalPages === 0 ? true : !hasNextPage,
         },
       };
     } catch (error) {
-      console.error("Get all community posts error:", error.message);
+      console.error("[COMMUNITY] 전체 게시글 조회 실패:", error.message);
       throw new Error("커뮤니티 게시글 조회에 실패했습니다");
     }
   }
@@ -410,7 +462,7 @@ class CommunityService {
           } : null,
         };
       } catch (error) {
-        console.error(`Error fetching post ${postId}:`, error.message);
+        console.error(`[COMMUNITY] 게시글 조회 실패 (${postId}):`, error.message);
         return null;
       }
     });
@@ -463,17 +515,16 @@ class CommunityService {
       });
 
       const {
-        title, 
-        content, 
-        media: postMedia = [], 
-        type, 
-        channel, 
+        title,
+        content,
+        media: postMedia = [],
+        type,
+        channel,
         category,
-        scheduledDate
+        scheduledDate,
+        isPublic: requestIsPublic,
       } = postData;
       
-      const visibility = "PUBLIC";
-
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         console.warn("[COMMUNITY][createPost] 제목 누락", { communityId, userId });
         const error = new Error("제목은 필수입니다.");
@@ -590,6 +641,16 @@ class CommunityService {
         media: postMedia,
       });
       
+      let isPublic = true;
+      if (Object.prototype.hasOwnProperty.call(postData, "isPublic")) {
+        if (typeof requestIsPublic !== "boolean") {
+          const error = new Error("isPublic 값은 boolean 타입이어야 합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+        isPublic = requestIsPublic;
+      }
+
       const newPost = {
         communityId,
         authorId: userId,
@@ -602,8 +663,8 @@ class CommunityService {
         channel: channel || community.channel || "general",
         category: category || null,
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
-        visibility,
         isLocked: false,
+        isPublic,
         rewardGiven: false,
         likesCount: 0,
         commentsCount: 0,
@@ -733,7 +794,7 @@ class CommunityService {
         } : null,
       };
     } catch (error) {
-      console.error("Get post by ID error:", error.message);
+      console.error("[COMMUNITY] 게시글 상세 조회 실패:", error.message);
       if (error.code === "NOT_FOUND") {
         throw error;
       }
@@ -764,6 +825,14 @@ class CommunityService {
         const error = new Error("게시글 수정 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updateData, "isPublic")) {
+        if (typeof updateData.isPublic !== "boolean") {
+          const error = new Error("isPublic 값은 boolean 타입이어야 합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
       }
 
       if (Object.prototype.hasOwnProperty.call(updateData, "content")) {
@@ -888,7 +957,7 @@ class CommunityService {
         } : null,
       };
     } catch (error) {
-      console.error("Update post error:", error.message);
+      console.error("[COMMUNITY] 게시글 수정 실패:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
@@ -939,7 +1008,7 @@ class CommunityService {
           .doc(postId);
         await authoredPostRef.delete();
       } catch (error) {
-        console.error("authoredPosts 삭제 실패:", error);
+        console.error("[COMMUNITY] authoredPosts 문서 삭제 실패:", error);
       }
 
       if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
@@ -954,7 +1023,7 @@ class CommunityService {
         }
       }
     } catch (error) {
-      console.error("Delete post error:", error.message);
+      console.error("[COMMUNITY] 게시글 삭제 실패:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
@@ -1066,7 +1135,7 @@ class CommunityService {
 
       return result;
     } catch (error) {
-      console.error("Toggle post like error:", error.message);
+      console.error("[COMMUNITY] 게시글 좋아요 토글 실패:", error.message);
       if (error.code === "NOT_FOUND") {
         throw error;
       }
