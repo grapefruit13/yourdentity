@@ -91,10 +91,16 @@ async syncUserAccounts() {
           },
           "사용자ID": { rich_text: [{ text: { content: userId } }] },
           "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-          "상태": user.status
-            ? { select: { name: user.status } }
-            : { select: { name: "데이터 없음" } },
-          //"역할": { select: { name: user.role || "user" } },
+          // "상태": user.status
+          //   ? { select: { name: user.status } }
+          //   : { select: { name: "데이터 없음" } },
+          "상태": {
+            select: {
+              name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+                ? "탈퇴" 
+                : "가입"
+            }
+          },
           "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
           "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
           "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
@@ -408,10 +414,16 @@ async syncAllUserAccounts() {
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            "상태": user.status
-               ? { select: { name: user.status } }
-               : { select: { name: "데이터 없음" } },
-            //"역할": { select: { name: user.role || "user" } }, 
+            // "상태": user.status
+            //    ? { select: { name: user.status } }
+            //    : { select: { name: "데이터 없음" } },
+            "상태": {
+              select: {
+                name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+                  ? "탈퇴" 
+                  : "가입"
+              }
+            },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
@@ -1233,9 +1245,16 @@ async syncSelectedUsers() {
                 backupProperties[key] = { title: value.title || [] };
               } else if (value.type === "rich_text") {
                 backupProperties[key] = { rich_text: value.rich_text || [] };
-              } else if (value.type === "select") {
-                backupProperties[key] = value.select ? { select: value.select } : { select: null };
-              } else if (value.type === "date") {
+              } 
+              else if (value.type === "select") {
+                // select 필드는 name만 사용 (id는 제외)
+                if (value.select && value.select.name) {
+                  backupProperties[key] = { select: { name: value.select.name } };
+                } else {
+                  backupProperties[key] = { select: null };
+                }
+              } 
+              else if (value.type === "date") {
                 backupProperties[key] = value.date ? { date: value.date } : { date: null };
               } else if (value.type === "number") {
                 backupProperties[key] = { number: value.number ?? null };
@@ -1771,9 +1790,16 @@ async syncSingleUserToNotion(userId) {
       },
       "사용자ID": { rich_text: [{ text: { content: userId } }] },
       "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-      "상태": user.status
-        ? { select: { name: user.status } }
-        : { select: { name: "데이터 없음" } },
+      // "상태": user.status
+      //   ? { select: { name: user.status } }
+      //   : { select: { name: "데이터 없음" } },
+      "상태": {
+        select: {
+          name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+            ? "탈퇴" 
+            : "가입"
+        }
+      },
       "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
       "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
       "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
