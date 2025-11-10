@@ -90,8 +90,8 @@ class CommunityController {
                          (Array.isArray(result.media) && result.media.length > 0);
         
         const actionKey = hasImage 
-          ? '소모임 후기글 (텍스트, 사진 포함)' 
-          : '소모임 후기글 (텍스트 포함)';
+          ? 'gathering_review_media' 
+          : 'gathering_review_text';
         
         await req.grantReward(actionKey, {
           postId: result.id,
@@ -99,7 +99,7 @@ class CommunityController {
         });
       } else if (result.type === 'TMI') {
         // TMI 프로젝트 후기글
-        await req.grantReward('TMI 프로젝트 후기글', {
+        await req.grantReward('tmi_review', {
           postId: result.id,
           communityId,
         });

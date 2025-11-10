@@ -4,10 +4,12 @@ const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
 
 // 액션 키 → 타입 코드 매핑 (historyId 생성용)
 const ACTION_TYPE_MAP = {
-  '댓글 작성': 'COMMENT',
-  '소모임 후기글 (텍스트 포함)': 'GR:TEXT',
-  '소모임 후기글 (텍스트, 사진 포함)': 'GR:IMG',
-  'TMI 프로젝트 후기글': 'TMI',
+  'comment': 'COMMENT',
+  'routine_post': 'ROUTINE:POST',
+  'routine_review': 'ROUTINE:REVIEW',
+  'gathering_review_text': 'GR:TEXT',
+  'gathering_review_media': 'GR:MEDIA',
+  'tmi_review': 'TMI',
 };
 
 /**
@@ -51,8 +53,8 @@ class RewardService {
         },
         body: JSON.stringify({
           filter: {
-            property: '사용자 행동',
-            title: {
+            property: '__DEV_ONLY__',
+            rich_text: {
               equals: actionKey,
             },
           },
@@ -134,7 +136,7 @@ class RewardService {
       }
 
       // 2. 댓글 작성 일일 제한 체크 (최대 5개)
-      if (actionKey === '댓글 작성') {
+      if (actionKey === 'comment') {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -142,7 +144,7 @@ class RewardService {
 
         const todayCommentRewards = await db
           .collection(`users/${userId}/rewardsHistory`)
-          .where('actionKey', '==', '댓글 작성')
+          .where('actionKey', '==', 'comment')
           .where('createdAt', '>=', today)
           .where('createdAt', '<', tomorrow)
           .get();
