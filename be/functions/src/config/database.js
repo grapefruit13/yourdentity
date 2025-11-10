@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const {FieldValue} = require("firebase-admin/firestore");
+const {FieldValue, Timestamp} = require("firebase-admin/firestore");
 
 try {
   require("dotenv").config();
@@ -21,9 +21,12 @@ if (!admin.apps || admin.apps.length === 0) {
 }
 const db = admin.firestore();
 
+const now = () => Timestamp.now();
 
 module.exports = {
   admin,
   db,
   FieldValue,
+  Timestamp,
+  now,
 };
