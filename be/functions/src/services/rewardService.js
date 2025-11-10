@@ -1,6 +1,6 @@
-const { db, FieldValue, Timestamp } = require('../config/database');
+const { db, FieldValue } = require('../config/database');
 const FirestoreService = require('./firestoreService');
-const { getCheckboxValue, getNumberValue } = require('../utils/notionHelper');
+const { getSelectValue, getNumberValue } = require('../utils/notionHelper');
 
 /**
  * Reward Service
@@ -43,7 +43,7 @@ class RewardService {
         },
         body: JSON.stringify({
           filter: {
-            property: 'Key',
+            property: '사용자 행동',
             title: {
               equals: actionKey,
             },
@@ -61,15 +61,15 @@ class RewardService {
       const page = data.results[0];
       const props = page.properties;
 
-      // IsActive 체크
-      const isActive = getCheckboxValue(props['IsActive']);
-      if (!isActive) {
-        console.log(`[REWARD] 액션 "${actionKey}"는 비활성화 상태입니다`);
+      // status 체크 ('적용 완료'인 경우만 리워드 부여)
+      const status = getSelectValue(props['정책 적용 상태']);
+      if (status !== '적용 완료') {
+        console.log(`[REWARD] 액션 "${actionKey}"는 적용 전 상태입니다 (status: ${status})`);
         return 0;
       }
 
       // Rewards 포인트 가져오기
-      const rewards = getNumberValue(props['Rewards']) || 0;
+      const rewards = getNumberValue(props['나다움']) || 0;
       return rewards;
     } catch (error) {
       console.error('[REWARD ERROR] getRewardByAction:', error.message);
