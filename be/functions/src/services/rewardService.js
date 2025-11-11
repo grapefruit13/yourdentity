@@ -13,6 +13,17 @@ const ACTION_TYPE_MAP = {
   'tmi_review': 'TMI',
 };
 
+// 액션 키 → 리워드 사유 매핑 (rewardsHistory의 reason 필드용)
+const ACTION_REASON_MAP = {
+  'comment': '댓글 작성',
+  'routine_post': '한끗루틴 인증',
+  'routine_review': '한끗루틴 후기',
+  'gathering_review_text': '소모임 후기',
+  'gathering_review_media': '소모임 포토 후기',
+  'tmi_review': 'TMI 후기',
+  'additional_point': '나다움 추가 지급',
+};
+
 /**
  * Reward Service
  * Notion 리워드 정책 조회 및 사용자 리워드 부여
@@ -91,14 +102,15 @@ class RewardService {
    * 사용자 리워드 총량 업데이트 + 히스토리 추가 (범용 메서드)
    * @param {string} userId - 사용자 ID
    * @param {number} amount - 리워드 금액
-   * @param {string} actionKey - 액션 키 (나중에 reason 필드로 사용 예정)
+   * @param {string} actionKey - 액션 키
    * @param {string} historyId - 히스토리 문서 ID (중복 체크용)
    * @param {Date|Timestamp|null} actionTimestamp - 액션 발생 시간 (null이면 FieldValue.serverTimestamp() 사용)
    * @param {boolean} checkDuplicate - 중복 체크 여부 (기본: true, 중복 지급 방지)
+   * @param {string|null} reason - 리워드 사유 (null이면 ACTION_REASON_MAP에서 자동 생성)
    * @return {Promise<{isDuplicate: boolean}>}
    * @throws {Error} DAILY_LIMIT_EXCEEDED - 일일 제한 초과 시
    */
-  async addRewardToUser(userId, amount, actionKey, historyId, actionTimestamp = null, checkDuplicate = true) {
+  async addRewardToUser(userId, amount, actionKey, historyId, actionTimestamp = null, checkDuplicate = true, reason = null) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
@@ -130,10 +142,12 @@ class RewardService {
       }
 
       // rewardsHistory에 기록 추가
+      const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 적립';
+      
       transaction.set(historyRef, {
-        actionKey,
         amount,
         changeType: 'add',
+        reason: rewardReason,
         // actionTimestamp가 있으면 사용 (액션 기반), 없으면 서버 시간 사용 (관리자 직접 지급)
         createdAt: actionTimestamp || FieldValue.serverTimestamp(),
         isProcessed: false,
@@ -275,16 +289,21 @@ class RewardService {
       
       const historyId = `${typeCode}-${targetId}`;
 
-      // 4. addRewardToUser 호출 (범용 메서드 활용, 트랜잭션 내 중복 체크 + 일일 제한 체크)
+      // 4. reason 생성 (ACTION_REASON_MAP에서 가져오기)
+      const reason = ACTION_REASON_MAP[actionKey] || '리워드 적립';
+
+      // 5. addRewardToUser 호출 (범용 메서드 활용, 트랜잭션 내 중복 체크 + 일일 제한 체크)
       const { isDuplicate } = await this.addRewardToUser(
         userId, 
         rewardAmount, 
         actionKey, 
         historyId, 
-        actionTimestamp
+        actionTimestamp,
+        true, // checkDuplicate
+        reason
       );
 
-      // 5. 중복 체크 결과 처리
+      // 6. 중복 체크 결과 처리
       if (isDuplicate) {
         return { success: true, amount: 0, message: 'Reward already granted' };
       }
