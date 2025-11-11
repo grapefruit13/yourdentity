@@ -8,49 +8,46 @@ class ReportContentController {
      */
   async createReport(req, res, next) {
     try {
-      // TODO : 실제 환경에서 현제 userId를 받는 것에 제한이 있는경우 로그인된  토큰정보로 userId조회하는 방안 고려
-      // const { uid } = req.user; // authGuard에서 설정
-      // const uid = 'RpqG32COF2Q3UbpDGp6PEAgiqtui_5'; // 임시 (직접 할당)
+      const uid = req.user?.uid;
+      if (!uid) {
+        return res.error(401, "로그인이 필요합니다.");
+      }
+
       const {
         targetType, // 신고 대상 종류
         targetId, // 신고 대상
         targetUserId, // 신고 대상 작성자
-        reporterId, // 신고자ID
         communityId, // 커뮤니티ID
         reportReason, // 신고 사유
       } = req.body;
 
       // 요청 데이터 검증
-      if (!targetType || !targetId || !reportReason || !targetUserId || !reporterId) {
-        return res.error(400, "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reporterId, reportReason)");
+      if (!targetType || !targetId || !reportReason || !targetUserId) {
+        return res.error(400, "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)");
       }
 
       if (!["post", "comment"].includes(targetType)) {
         return res.error(400, "targetType은 'post' 또는 'comment'여야 합니다.");
       }
 
-      // Firestore에서 유저 존재 여부 확인
-      const userDoc = await db.collection("users").doc(reporterId).get();
-      if (!userDoc.exists) {
-        return res.error(404, "해당 reporterId를 가진 사용자를 찾을 수 없습니다.");
-      }
-
-      // 사용자 이름(닉네임) 가져오기
-      // const userData = userDoc.data();
-      // const reporterName = userData.name || "알 수 없음"; //신고자
+       // Firestore에서 인증된 사용자 존재 여부 확인
+       const userDoc = await db.collection("users").doc(uid).get();
+       if (!userDoc.exists) {
+         return res.error(404, "로그인 사용자 정보를 찾을 수 없습니다.");
+       }
 
       const reportData = {
         targetType,
         targetId,
         targetUserId,
         communityId: communityId || null,
-        reporterId,
+        //reporterId,
+        reporterId: uid,
         reportReason,
       };
 
-      const result = await reportContentService.createReport(reportData);
+      await reportContentService.createReport(reportData);
 
-      //res.created({ message: "신고가 접수되었습니다.", reportId: result.notionPageId });
       res.created({ message: "신고가 접수되었습니다."});
     } catch (error) {
       console.error("Create report error:", error);

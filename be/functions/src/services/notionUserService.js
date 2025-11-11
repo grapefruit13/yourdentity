@@ -42,7 +42,8 @@ async syncUserAccounts() {
   const snapshot = await db.collection("users").get();
 
   // Firebase에 lastUpdated 필드 존재 여부 확인
-  const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdated);
+  //const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdated);
+  const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdatedAt);
 
   const now = new Date();
 
@@ -59,22 +60,27 @@ async syncUserAccounts() {
     const userId = doc.id;
 
     //문자열 or timestamp로 저장되어도 모두 조회
-    const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdated);
+    //const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdated);
+    const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdatedAt);
     const firebaseLastUpdated = firebaseLastUpdatedDate
       ? firebaseLastUpdatedDate.getTime()
       : 0;
     
-    //노션에서 제공하는 최종 편집 일시를 사용하지 않고 동기화 시간으로 관리하는 이유 : 노션에서 변경사항이 생겼을때 비교하는게 아니라 동기화 버튼을 클릭했을 경우의 시간과 비교하기 위함
+    /*
+    - 노션에서 제공하는 최종 편집 일시를 사용하지 않고 동기화 시간으로 관리하는 이유 : 노션에서 변경사항이 생겼을때 비교하는게 아니라 동기화 버튼을 클릭했을 경우의 시간과 비교하기 위함
+      + 노션 데이터
+    */
     const notionLastUpdated = notionUsers[userId]?.lastUpdated
       ? new Date(notionUsers[userId].lastUpdated).getTime()
       : 0;
 
     // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
-    if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
+    //if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
+    if (!user.lastUpdatedAt || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
       try {
         // 날짜 변환
         const createdAtIso = safeDateToIso(user.createdAt);
-        const lastLoginIso = safeDateToIso(user.lastLogin);
+        const lastLoginIso = safeDateToIso(user.lastLoginAt);
         const lastUpdatedIso = now;
         
         // 노션 페이지 데이터 구성
@@ -155,7 +161,7 @@ async syncUserAccounts() {
         // Firebase lastUpdated가 없는 경우에만 초기 설정
         if (!user.lastUpdated) {
           await db.collection("users").doc(userId).update({
-            lastUpdated: lastUpdatedIso,
+            lastUpdatedAt: lastUpdatedIso,
           });
         }
   
@@ -394,7 +400,7 @@ async syncAllUserAccounts() {
 
           // 날짜 처리
           const createdAtIso = safeDateToIso(user.createdAt);
-          const lastLoginIso = safeDateToIso(user.lastLogin);
+          const lastLoginIso = safeDateToIso(user.lastLoginAt);
           const lastUpdatedIso = now;
 
           // Notion 페이지 데이터 구성
@@ -1044,7 +1050,7 @@ async syncSelectedUsers() {
         updateData.createdAt = createdAtDate;
       }
       if (lastLoginDate) {
-        updateData.lastLogin = lastLoginDate;
+        updateData.lastLoginAt = lastLoginDate;
       }
 
       // 자격정지 필드 처리
@@ -1519,7 +1525,7 @@ async syncSelectedUsers() {
             updateData.createdAt = createdAtDate;
           }
           if (lastLoginDate) {
-            updateData.lastLogin = lastLoginDate;
+            updateData.lastLoginAt = lastLoginDate;
           }
 
           // 자격정지 필드 처리
@@ -1740,7 +1746,7 @@ async syncSingleUserToNotion(userId) {
 
     // 날짜 변환
     const createdAtIso = safeDateToIso(user.createdAt);
-    const lastLoginIso = safeDateToIso(user.lastLogin);
+    const lastLoginIso = safeDateToIso(user.lastLoginAt);
     const lastUpdatedIso = now;
 
     // 노션 페이지 데이터 구성
