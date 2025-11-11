@@ -1,6 +1,7 @@
 const { db, FieldValue } = require('../config/database');
 const FirestoreService = require('./firestoreService');
 const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
+const { toDate, getStartOfDayUTC, getStartOfNextDayUTC } = require('../utils/helpers');
 
 // 액션 키 → 타입 코드 매핑 (historyId 생성용)
 const ACTION_TYPE_MAP = {
@@ -18,7 +19,6 @@ const ACTION_TYPE_MAP = {
  */
 class RewardService {
   constructor() {
-    // Fail-fast: 필수 환경 변수 검증 (서비스 시작 시점에 실패)
     if (!process.env.NOTION_REWARD_POLICY_DB_ID) {
       const error = new Error('[REWARD SERVICE] NOTION_REWARD_POLICY_DB_ID 환경변수가 설정되지 않았습니다');
       error.code = 'INTERNAL_ERROR';
@@ -38,7 +38,7 @@ class RewardService {
 
   /**
    * Notion에서 특정 액션의 리워드 포인트 조회
-   * @param {string} actionKey - 액션 키 (예: "comment_create")
+   * @param {string} actionKey - 액션 키 (예: "comment")
    * @return {Promise<number>} 리워드 포인트 (정책이 없거나 비활성화면 0)
    */
   async getRewardByAction(actionKey) {
@@ -88,33 +88,49 @@ class RewardService {
   }
 
   /**
-   * 사용자 리워드 총량 업데이트 + 히스토리 추가
+   * 사용자 리워드 총량 업데이트 + 히스토리 추가 (범용 메서드)
    * @param {string} userId - 사용자 ID
    * @param {number} amount - 리워드 금액
    * @param {string} actionKey - 액션 키 (나중에 reason 필드로 사용 예정)
    * @param {string} historyId - 히스토리 문서 ID (중복 체크용)
-   * @return {Promise<void>}
+   * @param {Date|Timestamp|null} actionTimestamp - 액션 발생 시간 (null이면 FieldValue.serverTimestamp() 사용)
+   * @param {boolean} checkDuplicate - 중복 체크 여부 (기본: true, 중복 지급 방지)
+   * @return {Promise<{isDuplicate: boolean}>}
    */
-  async addRewardToUser(userId, amount, actionKey, historyId) {
+  async addRewardToUser(userId, amount, actionKey, historyId, actionTimestamp = null, checkDuplicate = true) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
+    let isDuplicate = false;
+
     await this.firestoreService.runTransaction(async (transaction) => {
-      // users/{userId}.rewards 증가
-      transaction.update(userRef, {
-        rewards: FieldValue.increment(amount),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      // 중복 체크 (옵션, race condition 방지)
+      if (checkDuplicate) {
+        const historyDoc = await transaction.get(historyRef);
+        if (historyDoc.exists) {
+          isDuplicate = true;
+          return; // 트랜잭션 중단
+        }
+      }
 
       // rewardsHistory에 기록 추가
       transaction.set(historyRef, {
         actionKey,
         amount,
         changeType: 'add',
-        createdAt: FieldValue.serverTimestamp(),
-        isProcessed: true,
+        // actionTimestamp가 있으면 사용 (액션 기반), 없으면 서버 시간 사용 (관리자 직접 지급)
+        createdAt: actionTimestamp || FieldValue.serverTimestamp(),
+        isProcessed: false,
+      });
+
+      // users/{userId}.rewards 증가
+      transaction.update(userRef, {
+        rewards: FieldValue.increment(amount),
+        updatedAt: FieldValue.serverTimestamp(),
       });
     });
+
+    return { isDuplicate };
   }
 
   /**
@@ -135,22 +151,50 @@ class RewardService {
         return { success: true, amount: 0, message: 'No reward for this action' };
       }
 
-      // 2. 댓글 작성 일일 제한 체크 (최대 5개)
+      // 2. 액션 시점 결정 (Firestore에서 직접 조회)
+      let actionTimestamp;
+      
+      // 댓글 작성: comments/{commentId}에서 createdAt 조회
+      if (actionKey === 'comment' && metadata.commentId) {
+        const commentDoc = await db.collection('comments')
+          .doc(metadata.commentId)
+          .get();
+        
+        if (commentDoc.exists) {
+          actionTimestamp = toDate(commentDoc.data().createdAt);
+        }
+      }
+      // 게시글 작성: communities/{communityId}/posts/{postId}에서 createdAt 조회
+      else if (metadata.postId && metadata.communityId) {
+        const postDoc = await db
+          .collection(`communities/${metadata.communityId}/posts`)
+          .doc(metadata.postId)
+          .get();
+        
+        if (postDoc.exists) {
+          actionTimestamp = toDate(postDoc.data().createdAt);
+        }
+      }
+      
+      // fallback: 조회 실패 시 현재 시간
+      if (!actionTimestamp) {
+        actionTimestamp = new Date();
+      }
+      
       if (actionKey === 'comment') {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        // UTC 기준 오늘/내일 00:00:00 계산 (actionTimestamp 기준)
+        const todayUTC = getStartOfDayUTC(actionTimestamp);
+        const tomorrowUTC = getStartOfNextDayUTC(actionTimestamp);
 
         const todayCommentRewards = await db
           .collection(`users/${userId}/rewardsHistory`)
           .where('actionKey', '==', 'comment')
-          .where('createdAt', '>=', today)
-          .where('createdAt', '<', tomorrow)
+          .where('createdAt', '>=', todayUTC) // createdAt로 조회 (액션 발생 시간)
+          .where('createdAt', '<', tomorrowUTC)
           .get();
 
         if (todayCommentRewards.size >= 5) {
-          console.log(`[REWARD LIMIT] 댓글 작성 일일 제한 도달: userId=${userId}, 오늘 ${todayCommentRewards.size}개`);
+          console.log(`[REWARD LIMIT] 댓글 작성 일일 제한 도달: userId=${userId}, 오늘 ${todayCommentRewards.size}개 (UTC 기준)`);
           return { success: true, amount: 0, message: 'Daily comment reward limit reached (5/day)' };
         }
       }
@@ -167,38 +211,16 @@ class RewardService {
       
       const historyId = `${typeCode}:${targetId}`;
 
-      const userRef = db.collection('users').doc(userId);
-      const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
+      // 4. addRewardToUser 호출 (범용 메서드 활용, 트랜잭션 내 중복 체크)
+      const { isDuplicate } = await this.addRewardToUser(
+        userId, 
+        rewardAmount, 
+        actionKey, 
+        historyId, 
+        actionTimestamp
+      );
 
-      // 4. Transaction 내에서 중복 체크 + 리워드 부여를 원자적으로 수행 (race condition 방지)
-      let isDuplicate = false;
-      
-      await this.firestoreService.runTransaction(async (transaction) => {
-        // 4-1. 히스토리 문서 존재 여부 확인
-        const historyDoc = await transaction.get(historyRef);
-        
-        if (historyDoc.exists) {
-          // 중복 부여 - transaction abort
-          isDuplicate = true;
-          return;
-        }
-
-        // 4-2. 중복이 아니면 히스토리 문서 생성 + 사용자 리워드 업데이트
-        transaction.set(historyRef, {
-          actionKey,
-          amount: rewardAmount,
-          changeType: 'add',
-          createdAt: FieldValue.serverTimestamp(),
-          isProcessed: true,
-        });
-
-        transaction.update(userRef, {
-          rewards: FieldValue.increment(rewardAmount),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-      });
-
-      // 5. 결과 반환
+      // 5. 중복 체크 결과 처리
       if (isDuplicate) {
         console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, historyId=${historyId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };

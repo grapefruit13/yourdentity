@@ -414,12 +414,19 @@ class NotificationService {
           const rewardPromises = userIds.map(async (userId) => {
             const historyId = `additional_point_${pageId}_${userId}`;
             try {
-              await this.rewardService.addRewardToUser(
+              const { isDuplicate } = await this.rewardService.addRewardToUser(
                 userId,
                 nadumAmount,
                 'additional_point',
-                historyId
+                historyId,
+                null  // actionTimestamp: 서버 시간 사용
               );
+              
+              if (isDuplicate) {
+                console.log(`[나다움 중복 지급 방지] userId=${userId}, pageId=${pageId}`);
+                return { userId, success: true, duplicate: true };
+              }
+              
               return { userId, success: true };
             } catch (error) {
               console.error(`[나다움 지급 실패] userId=${userId}:`, error.message);
