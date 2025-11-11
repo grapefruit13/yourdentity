@@ -14,6 +14,7 @@ import type * as faqsTypes from "@/types/generated/faqs-types";
 import type * as fcmTypes from "@/types/generated/fcm-types";
 import type * as filesTypes from "@/types/generated/files-types";
 import type * as gatheringsTypes from "@/types/generated/gatherings-types";
+import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
@@ -55,31 +56,15 @@ export const adminlogsKeys = {
 
 // Announcements Query Keys
 export const announcementsKeys = {
-  getNotionAnnouncements: (
-    request: announcementsTypes.TGETNotionAnnouncementsReq
-  ) =>
-    __buildKey("announcements", "getNotionAnnouncements", {
+  getAnnouncements: (request: announcementsTypes.TGETAnnouncementsReq) =>
+    __buildKey("announcements", "getAnnouncements", {
       path: {},
-      query: { limit: request.limit, cursor: request.cursor },
+      query: { pageSize: request.pageSize, cursor: request.cursor },
     }),
-  getNotionAnnouncementsSyncById: (
-    request: announcementsTypes.TGETNotionAnnouncementsSyncByIdReq
+  getAnnouncementsById: (
+    request: announcementsTypes.TGETAnnouncementsByIdReq
   ) =>
-    __buildKey("announcements", "getNotionAnnouncementsSyncById", {
-      path: { pageId: request.pageId },
-      query: {},
-    }),
-  getNotionAnnouncementsDeleteById: (
-    request: announcementsTypes.TGETNotionAnnouncementsDeleteByIdReq
-  ) =>
-    __buildKey("announcements", "getNotionAnnouncementsDeleteById", {
-      path: { pageId: request.pageId },
-      query: {},
-    }),
-  getNotionAnnouncementsById: (
-    request: announcementsTypes.TGETNotionAnnouncementsByIdReq
-  ) =>
-    __buildKey("announcements", "getNotionAnnouncementsById", {
+    __buildKey("announcements", "getAnnouncementsById", {
       path: { pageId: request.pageId },
       query: {},
     }),
@@ -111,7 +96,12 @@ export const communitiesKeys = {
   getCommunitiesPosts: (request: communitiesTypes.TGETCommunitiesPostsReq) =>
     __buildKey("communities", "getCommunitiesPosts", {
       path: {},
-      query: { page: request.page, size: request.size, filter: request.filter },
+      query: {
+        page: request.page,
+        size: request.size,
+        programType: request.programType,
+        programState: request.programState,
+      },
     }),
   getCommunitiesPostsByTwoIds: (
     request: communitiesTypes.TGETCommunitiesPostsByTwoIdsReq

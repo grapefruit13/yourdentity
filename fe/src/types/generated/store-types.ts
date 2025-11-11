@@ -118,6 +118,7 @@ export interface TPOSTStorePurchasesReq {
     recipientName?: string;
     recipientAddress?: string;
     recipientDetailAddress?: string;
+    recipientPhone?: string;
   };
 }
 
@@ -129,6 +130,7 @@ export type TPOSTStorePurchasesRes = {
   recipientName?: string;
   recipientAddress?: string;
   recipientDetailAddress?: string;
+  recipientPhone?: string;
   orderDate?: string;
   deliveryCompleted?: boolean;
 };
@@ -149,6 +151,7 @@ export type TGETStorePurchasesRes = {
     recipientName?: string;
     recipientAddress?: string;
     recipientDetailAddress?: string;
+    recipientPhone?: string;
     deliveryCompleted?: boolean;
     orderDate?: string;
     lastEditedTime?: string;

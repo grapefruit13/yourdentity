@@ -29,7 +29,8 @@ export type TGETCommunitiesRes = {
 export interface TGETCommunitiesPostsReq {
   page?: number;
   size?: number;
-  filter?: "routine" | "gathering" | "tmi";
+  programType?: "ROUTINE" | "GATHERING" | "TMI";
+  programState?: "ongoing" | "finished";
 }
 
 export type TGETCommunitiesPostsRes = {
@@ -54,12 +55,16 @@ export interface TPOSTCommunitiesPostsByIdReq {
     media?: string[];
     category?: string;
     scheduledDate?: string;
+    isReview?: boolean;
+    isPublic?: boolean;
   };
 }
 
 export type TPOSTCommunitiesPostsByIdRes = {
   id?: string;
   type?: string;
+  programType?: string;
+  isReview?: boolean;
   communityId?: string;
   author?: string;
   communityPath?: string;
@@ -70,7 +75,7 @@ export type TPOSTCommunitiesPostsByIdRes = {
   category?: string;
   scheduledDate?: string;
   isLocked?: boolean;
-  visibility?: string;
+  isPublic?: boolean;
   rewardGiven?: boolean;
   likesCount?: number;
   commentsCount?: number;
@@ -114,7 +119,7 @@ export type TPUTCommunitiesPostsByTwoIdsRes = {
   category?: string;
   scheduledDate?: string;
   isLocked?: boolean;
-  visibility?: string;
+  isPublic?: boolean;
   rewardGiven?: boolean;
   likesCount?: number;
   commentsCount?: number;

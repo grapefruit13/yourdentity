@@ -90,7 +90,8 @@ const PostDetailPage = () => {
         queryKey: communitiesKeys.getCommunitiesPosts({
           page: undefined,
           size: undefined,
-          filter: undefined,
+          programType: undefined,
+          programState: undefined,
         }),
       });
     },

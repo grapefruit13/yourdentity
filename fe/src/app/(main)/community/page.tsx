@@ -33,7 +33,8 @@ const Page = () => {
     request: {
       page: 0,
       size: COMMUNITY_POST_LIST_SIZE, // 일단 큰 값으로 설정 (페이지네이션은 향후 구현)
-      filter: undefined, // TODO: 필터 적용
+      programType: undefined, // TODO: 필터 적용
+      programState: undefined, // TODO: 필터 적용
     },
     select: (data) => {
       if (!data?.posts || !Array.isArray(data.posts)) return [];
