@@ -83,12 +83,13 @@ const router = express.Router();
  */
 
 
+
 /**
  * @swagger
  * /reportContent:
  *   post:
- *     summary: 게시글/댓글 신고 생성
- *     description: 게시글 또는 댓글을 신고합니다. Firebase와 Notion에 동시 저장됩니다.
+ *     summary: 게시글/댓글 신고 생성 (로그인 필요)
+ *     description: 로그인한 사용자가 게시글 또는 댓글을 신고합니다. 신고자 ID는 인증 토큰에서 자동으로 추출됩니다. Notion에 저장됩니다.
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -102,7 +103,6 @@ const router = express.Router();
  *               - targetType
  *               - targetId
  *               - targetUserId
- *               - reporterId
  *               - reportReason
  *             properties:
  *               targetType:
@@ -115,13 +115,9 @@ const router = express.Router();
  *                 description: 신고 대상 ID
  *                 example: "post_123"
  *               targetUserId:
- *                  type: string
- *                  description: 신고 대상 사용자 ID
- *                  example: "user1"
- *               reporterId:
- *                  type: string
- *                  description: 신고자
- *                  example: "user2"
+ *                 type: string
+ *                 description: 신고 대상 작성자 ID
+ *                 example: "user1"
  *               communityId:
  *                 type: string
  *                 nullable: true
@@ -131,6 +127,10 @@ const router = express.Router();
  *                 type: string
  *                 description: 신고 사유
  *                 example: "욕설"
+ *               reporterId:
+ *                 type: string
+ *                 description: 신고자 ID (선택사항, 인증 토큰의 사용자 ID가 우선 사용됨)
+ *                 example: "user2"
  *     responses:
  *       201:
  *         description: 신고 접수 성공
@@ -160,7 +160,7 @@ const router = express.Router();
  *                   example: 400
  *                 message:
  *                   type: string
- *                   example: "이미 신고한 콘텐츠입니다."
+ *                   example: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
  *       401:
  *         description: 인증 필요
  *         content:
@@ -173,7 +173,7 @@ const router = express.Router();
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: "인증이 필요합니다."
+ *                   example: "로그인이 필요합니다."
  *       404:
  *         description: 신고 대상을 찾을 수 없음
  *         content:
@@ -186,7 +186,7 @@ const router = express.Router();
  *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "해당 reporterId를 가진 사용자를 찾을 수 없습니다."
+ *                   example: "신고하려는 게시글을 찾을 수 없습니다."
  *       500:
  *         description: 서버 오류
  *         content:
@@ -201,9 +201,7 @@ const router = express.Router();
  *                   type: string
  *                   example: "서버 내부 오류가 발생했습니다."
  */
-
-// router.post("/", authGuard, reportContentController.createReport);
-router.post("/", reportContentController.createReport);
+router.post("/", authGuard, reportContentController.createReport);
 
 
 /**

@@ -59,7 +59,33 @@ async createReport(reportData) {
     // 4. Notion에 직접 저장
     const notionPage = await this.syncToNotion(notionReport);
 
-    // 5. 필요 시 Notion 결과 반환
+
+    // 5. 신고 카운트 증가
+    if (targetType === "comment") {
+      await db.collection("comments").doc(targetId).update({
+        reportsCount: FieldValue.increment(1),
+      });
+    } else if (targetType === "post") {
+      if (!communityId) {
+        const err = new Error("게시글 신고에는 communityId가 필요합니다.");
+        err.code = "MISSING_COMMUNITY_ID";
+        err.status = 400;
+        throw err;
+      }
+
+      await db
+        .collection("communities")
+        .doc(communityId)
+        .collection("posts")
+        .doc(targetId)
+        .update({
+          reportsCount: FieldValue.increment(1),
+        });
+    }
+
+
+
+    // 6. 필요 시 Notion 결과 반환
     return {
       ...notionReport,
       notionPageId: notionPage?.id || null,

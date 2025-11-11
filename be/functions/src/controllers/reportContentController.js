@@ -8,9 +8,11 @@ class ReportContentController {
      */
   async createReport(req, res, next) {
     try {
-      // TODO : 실제 환경에서 현제 userId를 받는 것에 제한이 있는경우 로그인된  토큰정보로 userId조회하는 방안 고려
-      // const { uid } = req.user; // authGuard에서 설정
-      // const uid = 'RpqG32COF2Q3UbpDGp6PEAgiqtui_5'; // 임시 (직접 할당)
+      const uid = req.user?.uid;
+      if (!uid) {
+        return res.error(401, "로그인이 필요합니다.");
+      }
+
       const {
         targetType, // 신고 대상 종류
         targetId, // 신고 대상
@@ -35,10 +37,6 @@ class ReportContentController {
         return res.error(404, "해당 reporterId를 가진 사용자를 찾을 수 없습니다.");
       }
 
-      // 사용자 이름(닉네임) 가져오기
-      // const userData = userDoc.data();
-      // const reporterName = userData.name || "알 수 없음"; //신고자
-
       const reportData = {
         targetType,
         targetId,
@@ -48,9 +46,8 @@ class ReportContentController {
         reportReason,
       };
 
-      const result = await reportContentService.createReport(reportData);
+      await reportContentService.createReport(reportData);
 
-      //res.created({ message: "신고가 접수되었습니다.", reportId: result.notionPageId });
       res.created({ message: "신고가 접수되었습니다."});
     } catch (error) {
       console.error("Create report error:", error);
