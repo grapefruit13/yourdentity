@@ -74,10 +74,6 @@ const Page = () => {
       enabled: shouldFetchCommented,
     });
 
-  if (isUserFetched && !hasNickname) {
-    return null;
-  }
-
   // API 응답을 PostCard props로 변환하는 헬퍼 함수
   const transformPostToCardProps = (
     post:
@@ -125,6 +121,10 @@ const Page = () => {
       .map(transformPostToCardProps)
       .filter((post): post is NonNullable<typeof post> => post !== null);
   }, [currentPostsData]);
+
+  if (isUserFetched && !hasNickname) {
+    return null;
+  }
 
   // 프로필 편집 버튼 핸들러
   const handleEditProfile = () => {
