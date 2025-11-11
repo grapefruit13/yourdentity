@@ -6,6 +6,8 @@ type TopBarStore = {
   setIsScrolled: (isScrolled: boolean) => void;
   title: string | null;
   setTitle: (title: string | null) => void;
+  leftSlot: ReactNode | null;
+  setLeftSlot: (leftSlot: ReactNode | null) => void;
   rightSlot: ReactNode | null;
   setRightSlot: (rightSlot: ReactNode | null) => void;
   reset: () => void;
@@ -19,7 +21,9 @@ export const useTopBarStore = create<TopBarStore>((set) => ({
   setIsScrolled: (isScrolled) => set({ isScrolled }),
   title: null,
   setTitle: (title) => set({ title }),
+  leftSlot: null,
+  setLeftSlot: (leftSlot) => set({ leftSlot }),
   rightSlot: null,
   setRightSlot: (rightSlot) => set({ rightSlot }),
-  reset: () => set({ title: null, rightSlot: null }),
+  reset: () => set({ title: null, leftSlot: null, rightSlot: null }),
 }));

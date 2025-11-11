@@ -23,6 +23,7 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
   const router = useRouter();
   const isScrolled = useTopBarStore((state) => state.isScrolled);
   const storeTitle = useTopBarStore((state) => state.title);
+  const storeLeftSlot = useTopBarStore((state) => state.leftSlot);
   const storeRightSlot = useTopBarStore((state) => state.rightSlot);
 
   const currentTitle =
@@ -95,8 +96,8 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
       }
     >
       {/* Left Slot (홈 페이지 로고 등): leftSlot 지정사항이 없을 때 기본 Back Button 표시 */}
-      {leftSlot || !showBackButton ? (
-        <div className="absolute left-4">{leftSlot}</div>
+      {leftSlot || storeLeftSlot || !showBackButton ? (
+        <div className="absolute left-4">{leftSlot || storeLeftSlot}</div>
       ) : (
         <button
           onClick={handleClick}
