@@ -209,11 +209,6 @@ class RewardService {
         }
       }
       
-      // fallback: 조회 실패 시 현재 시간
-      if (!actionTimestamp) {
-        actionTimestamp = new Date();
-      }
-      
       // 3. historyId 생성 (타입 코드 기반)
       const typeCode = ACTION_TYPE_MAP[actionKey] || 'REWARD';
       const targetId = metadata.commentId || metadata.postId || metadata.targetId;
