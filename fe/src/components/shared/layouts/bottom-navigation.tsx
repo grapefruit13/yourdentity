@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import Icon from "@/components/shared/ui/icon";
 import { BOTTOM_NAV_TABS } from "@/constants/shared/_bottom-nav-tabs";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { cn } from "@/utils/shared/cn";
 
 /**
