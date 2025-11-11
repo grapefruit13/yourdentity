@@ -130,4 +130,3 @@ const StoreDetailPage = () => {
 };
 
 export default StoreDetailPage;
-
