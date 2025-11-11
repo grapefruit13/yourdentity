@@ -6,6 +6,7 @@ import Image from "next/image";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
+import { CustomPageLink } from "@/components/shared/notion";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
@@ -71,7 +72,6 @@ const HomePage = () => {
           if (Array.isArray(attachmentInfo) && attachmentInfo[0] === "a") {
             const attachmentUrl = attachmentInfo[1];
 
-            // attachment:db4f2caa-d4a0-4e09-a1ab-9493230fc2f7:배경화면.png 형식에서 파일 ID 추출
             if (
               typeof attachmentUrl === "string" &&
               attachmentUrl.startsWith("attachment:")
@@ -328,6 +328,9 @@ const HomePage = () => {
                 recordMap={homeData}
                 fullPage={false}
                 darkMode={false}
+                components={{
+                  PageLink: CustomPageLink,
+                }}
               />
             )}
           </div>

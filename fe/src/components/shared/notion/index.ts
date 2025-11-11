@@ -5,3 +5,4 @@ export { CollectionItem } from "./CollectionItem";
 export { CollectionCarousel } from "./CollectionCarousel";
 export { CollectionGrid } from "./CollectionGrid";
 export { CollectionBanner } from "./CollectionBanner";
+export { CustomPageLink } from "./CustomPageLink";
