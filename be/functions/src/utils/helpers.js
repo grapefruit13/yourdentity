@@ -150,26 +150,38 @@ const toDate = (timestamp) => {
 
 /**
  * UTC 기준 오늘 00:00:00 계산
- * @param {Date} [date] - 기준 날짜 (선택, 없으면 서버 현재 시간 사용)
+ * @param {Date} date - 기준 날짜 (필수, 서버 타임스탬프 전달)
  * @return {Date} UTC 기준 오늘 00:00:00
+ * @throws {Error} date가 없거나 유효하지 않은 경우
  */
 const getStartOfDayUTC = (date) => {
-  const baseDate = date || new Date();
+  if (!date) {
+    throw new Error('date parameter is required (do not use client-side default time)');
+  }
+  
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    throw new Error('date must be a valid Date object');
+  }
   
   return new Date(Date.UTC(
-    baseDate.getUTCFullYear(),
-    baseDate.getUTCMonth(),
-    baseDate.getUTCDate(),
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
     0, 0, 0, 0
   ));
 };
 
 /**
  * UTC 기준 내일 00:00:00 계산
- * @param {Date} [date] - 기준 날짜 (선택, 없으면 서버 현재 시간 사용)
+ * @param {Date} date - 기준 날짜 (필수, 서버 타임스탬프 전달)
  * @return {Date} UTC 기준 내일 00:00:00
+ * @throws {Error} date가 없거나 유효하지 않은 경우
  */
 const getStartOfNextDayUTC = (date) => {
+  if (!date) {
+    throw new Error('date parameter is required (do not use client-side default time)');
+  }
+  
   const today = getStartOfDayUTC(date);
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
