@@ -679,10 +679,48 @@ class UserService {
 
       const communities = communitiesChunked.flat();
       
-      const postTypeMapping = {
-        "ROUTINE_CERT": { key: "routine", label: "한끗 루틴" },
-        "GATHERING_REVIEW": { key: "gathering", label: "월간 소모임" },
-        "TMI": { key: "tmi", label: "TMI" }
+      const PROGRAM_TYPE_ALIASES = {
+        ROUTINE: ["ROUTINE", "한끗루틴", "한끗 루틴", "루틴"],
+        GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
+        TMI: ["TMI", "티엠아이"],
+      };
+
+      const normalizeProgramType = (value) => {
+        if (!value || typeof value !== "string") {
+          return null;
+        }
+        const trimmed = value.trim();
+        const upper = trimmed.toUpperCase();
+
+        for (const [programType, aliases] of Object.entries(PROGRAM_TYPE_ALIASES)) {
+          if (aliases.some((alias) => {
+            if (typeof alias !== "string") return false;
+            const aliasTrimmed = alias.trim();
+            return aliasTrimmed === trimmed || aliasTrimmed.toUpperCase() === upper;
+          })) {
+            return programType;
+          }
+        }
+
+        return null;
+      };
+
+      const legacyPostTypeToProgramType = {
+        ROUTINE_CERT: "ROUTINE",
+        ROUTINE_REVIEW: "ROUTINE",
+        GATHERING_CERT: "GATHERING",
+        GATHERING_REVIEW: "GATHERING",
+        TMI_CERT: "TMI",
+        TMI_REVIEW: "TMI",
+        TMI: "TMI",
+        ROUTINE: "ROUTINE",
+        GATHERING: "GATHERING",
+      };
+
+      const programTypeMapping = {
+        ROUTINE: { key: "routine", label: "한끗 루틴" },
+        GATHERING: { key: "gathering", label: "월간 소모임" },
+        TMI: { key: "tmi", label: "TMI" },
       };
 
       const grouped = {
@@ -692,9 +730,13 @@ class UserService {
       };
 
       communities.forEach(community => {
-        const postType = community.postType;
-        if (postType && postTypeMapping[postType]) {
-          const typeInfo = postTypeMapping[postType];
+        let programType = normalizeProgramType(community.programType);
+        if (!programType && community.postType && legacyPostTypeToProgramType[community.postType]) {
+          programType = legacyPostTypeToProgramType[community.postType];
+        }
+
+        if (programType && programTypeMapping[programType]) {
+          const typeInfo = programTypeMapping[programType];
           grouped[typeInfo.key].items.push({
             id: community.id,
             name: community.name
