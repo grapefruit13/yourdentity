@@ -2240,6 +2240,20 @@ const options = {
               description: "모집 종료 날짜",
               example: "2024-02-29",
             },
+            orientationDate: {
+              type: "string",
+              format: "date",
+              nullable: true,
+              description: "오티 날짜",
+              example: "2024-03-05",
+            },
+            shareMeetingDate: {
+              type: "string",
+              format: "date",
+              nullable: true,
+              description: "공유회 날짜",
+              example: "2024-06-25",
+            },
             targetAudience: {
               type: "string",
               description: "참여 대상",

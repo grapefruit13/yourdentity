@@ -52,6 +52,8 @@ const NOTION_FIELDS = {
   END_DATE: "활동 종료 날짜",
   RECRUITMENT_START_DATE: "모집 시작 날짜",
   RECRUITMENT_END_DATE: "모집 종료 날짜",
+  ORIENTATION_DATE: "오티 날짜",
+  SHARE_MEETING_DATE: "공유회 날짜",
   TARGET_AUDIENCE: "참여 대상",
   THUMBNAIL: "썸네일",
   LINK_URL: "바로 보러 가기",
@@ -429,6 +431,8 @@ class ProgramService {
       participants: this.getParticipantsData(props[NOTION_FIELDS.PARTICIPANTS_NAME], props[NOTION_FIELDS.PARTICIPANTS_ID]),
       notes: getTextContent(props[NOTION_FIELDS.NOTES]),
       faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
+      orientationDate: getDateValue(props[NOTION_FIELDS.ORIENTATION_DATE]),
+      shareMeetingDate: getDateValue(props[NOTION_FIELDS.SHARE_MEETING_DATE]),
       createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
