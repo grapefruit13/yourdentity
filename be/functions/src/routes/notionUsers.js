@@ -11,7 +11,7 @@ const authGuard = require("../middleware/authGuard");
  *     summary: 회원 동기화
  *     description: |
  *       Firebase의 users 컬렉션에서 활동회원을 조회하여 Notion 데이터베이스와 동기화합니다.
- *       - Firebase의 lastUpdatedAt 필드와 Notion의 마지막 업데이트 시간을 비교하여 동기화가 필요한 사용자만 처리
+ *       - Firebase의 lastUpdated 필드와 Notion의 마지막 업데이트 시간을 비교하여 동기화가 필요한 사용자만 처리
  *       - 동기화된 사용자 수를 반환
  *     tags: [NotionUsers]
  *     responses:
