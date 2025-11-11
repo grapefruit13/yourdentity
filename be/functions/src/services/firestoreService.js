@@ -60,10 +60,15 @@ class FirestoreService {
       return null;
     }
 
+    const data = doc.data();
+    const createdAt = data.createdAt?.toDate
+      ? data.createdAt.toDate().toISOString()
+      : data.createdAt;
+
     return {
       id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate().toISOString(),
+      ...data,
+      createdAt,
     };
   }
 
