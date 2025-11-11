@@ -30,8 +30,17 @@ class UserController {
     try {
       const {uid} = req.user;
       
+      // 사용자 정보 조회 (lastLogin 확인용)
+      const user = await userService.getUserById(uid);
+      if (!user) {
+        const err = new Error("사용자를 찾을 수 없습니다");
+        err.code = "NOT_FOUND";
+        throw err;
+      }
+
       // 로그인 시점: 리워드 만료 검증 및 차감 (비동기, 실패해도 계속 진행)
-      rewardService.checkAndDeductExpiredRewards(uid)
+      // userData를 전달하여 lastLogin 기반 일괄 만료 처리 가능
+      rewardService.checkAndDeductExpiredRewards(uid, user)
         .then(result => {
           if (result.count > 0) {
             console.log(`[LOGIN] userId=${uid}, 만료된 리워드 ${result.count}건 차감 완료 (${result.totalDeducted}포인트)`);
@@ -41,13 +50,6 @@ class UserController {
           console.error(`[LOGIN] userId=${uid}, 리워드 만료 체크 실패:`, error.message);
         });
 
-      // 사용자 정보 조회
-      const user = await userService.getUserById(uid);
-      if (!user) {
-        const err = new Error("사용자를 찾을 수 없습니다");
-        err.code = "NOT_FOUND";
-        throw err;
-      }
       return res.success({user});
     } catch (error) {
       return next(error);
