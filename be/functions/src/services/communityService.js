@@ -10,6 +10,25 @@ const PROGRAM_TYPES = {
   TMI: "TMI",
 };
 
+const PROGRAM_TYPE_ALIASES = {
+  [PROGRAM_TYPES.ROUTINE]: [
+    "ROUTINE",
+    "한끗루틴",
+    "한끗 루틴",
+    "루틴",
+  ],
+  [PROGRAM_TYPES.GATHERING]: [
+    "GATHERING",
+    "월간 소모임",
+    "월간소모임",
+    "소모임",
+  ],
+  [PROGRAM_TYPES.TMI]: [
+    "TMI",
+    "티엠아이",
+  ],
+};
+
 const PROGRAM_STATES = {
   ONGOING: "ongoing",
   FINISHED: "finished",
@@ -68,8 +87,27 @@ class CommunityService {
     if (!value || typeof value !== "string") {
       return null;
     }
-    const upper = value.toUpperCase();
-    return PROGRAM_TYPES[upper] ? PROGRAM_TYPES[upper] : (Object.values(PROGRAM_TYPES).includes(upper) ? upper : null);
+    const trimmed = value.trim();
+    const upper = trimmed.toUpperCase();
+
+    for (const [programType, aliases] of Object.entries(PROGRAM_TYPE_ALIASES)) {
+      if (aliases.some((alias) => {
+        if (typeof alias !== "string") return false;
+        const aliasTrimmed = alias.trim();
+        return aliasTrimmed === trimmed || aliasTrimmed.toUpperCase() === upper;
+      })) {
+        return programType;
+      }
+    }
+
+    if (PROGRAM_TYPES[upper]) {
+      return PROGRAM_TYPES[upper];
+    }
+    if (Object.values(PROGRAM_TYPES).includes(trimmed)) {
+      return trimmed;
+    }
+
+    return null;
   }
 
   static mapLegacyPostTypeToProgramType(type) {

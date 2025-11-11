@@ -65,6 +65,40 @@ const NOTION_FIELDS = {
   NOTION_PAGE_TITLE: "상세페이지(노션)"
 };
 
+const PROGRAM_TYPE_ALIASES = {
+  ROUTINE: ["ROUTINE", "한끗루틴", "한끗 루틴", "루틴"],
+  GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
+  TMI: ["TMI", "티엠아이"],
+};
+
+const normalizeProgramTypeValue = (value) => {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  const upper = trimmed.toUpperCase();
+
+  for (const [programType, aliases] of Object.entries(PROGRAM_TYPE_ALIASES)) {
+    if (aliases.some((alias) => {
+      if (typeof alias !== "string") return false;
+      const aliasTrimmed = alias.trim();
+      return aliasTrimmed === trimmed || aliasTrimmed.toUpperCase() === upper;
+    })) {
+      return programType;
+    }
+  }
+
+  return upper;
+};
+
+const toDateOrNull = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 
 class ProgramService {
   constructor() {
@@ -1036,7 +1070,12 @@ class ProgramService {
   async createCommunityFromProgram(programId, program) {
     try {
       const communityData = {
-        id: programId
+        id: programId,
+        name: program?.programName || program?.title || null,
+        programType: normalizeProgramTypeValue(program?.programType) || null,
+        startDate: toDateOrNull(program?.startDate),
+        endDate: toDateOrNull(program?.endDate),
+        createdAt: FieldValue.serverTimestamp(),
       };
 
       // Community 생성
