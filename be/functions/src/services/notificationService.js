@@ -210,12 +210,12 @@ class NotificationService {
       const page = await this.notion.pages.retrieve({ page_id: pageId });
       const props = page.properties;
 
-      let expiredAt = null;
+      let expiresAt = null;
       const expirationDateValue = getDateValue(props[NOTION_FIELDS.EXPIRATION_DATE]);
       if (expirationDateValue) {
         const parsedExpiration = new Date(expirationDateValue);
         if (!Number.isNaN(parsedExpiration.getTime())) {
-          expiredAt = parsedExpiration;
+          expiresAt = parsedExpiration;
         }
       }
 
@@ -287,7 +287,7 @@ class NotificationService {
         userIds,
         pageId,
         nadumAmount,
-        expiredAt,
+        expiresAt,
       };
     } catch (error) {
       console.error("알림 데이터 추출 실패:", error.message);
@@ -410,7 +410,7 @@ class NotificationService {
     let paymentResult = null;
 
     try {
-      const { title, content, userIds, nadumAmount, expiredAt } = await this.getNotificationData(pageId);
+      const { title, content, userIds, nadumAmount, expiresAt } = await this.getNotificationData(pageId);
 
       if (!title || !content) {
         const error = new Error("알림 제목과 내용은 필수입니다.");
@@ -428,7 +428,7 @@ class NotificationService {
           const rewardPromises = userIds.map(async (userId) => {
             const historyId = `additional_point_${pageId}_${userId}`;
             try {
-              const rewardOptions = expiredAt ? { expiredAt } : undefined;
+              const rewardOptions = expiresAt ? { expiresAt } : undefined;
               const { isDuplicate } = await this.rewardService.addRewardToUser(
                 userId,
                 nadumAmount,
