@@ -187,12 +187,20 @@ class RewardService {
           .doc(metadata.commentId)
           .get();
         
-        if (commentDoc.exists) {
-          const createdAt = commentDoc.data().createdAt;
-          if (createdAt) {
-            actionTimestamp = toDate(createdAt);
-          }
+        if (!commentDoc.exists) {
+          const error = new Error('댓글 문서를 찾을 수 없습니다');
+          error.code = 'NOT_FOUND';
+          throw error;
         }
+        
+        const createdAt = commentDoc.data().createdAt;
+        if (!createdAt) {
+          const error = new Error('댓글 문서에 createdAt이 없습니다');
+          error.code = 'INTERNAL_ERROR';
+          throw error;
+        }
+        
+        actionTimestamp = toDate(createdAt);
       }
       // 게시글 작성: communities/{communityId}/posts/{postId}에서 createdAt 조회
       else if (metadata.postId && metadata.communityId) {
@@ -201,12 +209,27 @@ class RewardService {
           .doc(metadata.postId)
           .get();
         
-        if (postDoc.exists) {
-          const createdAt = postDoc.data().createdAt;
-          if (createdAt) {
-            actionTimestamp = toDate(createdAt);
-          }
+        if (!postDoc.exists) {
+          const error = new Error('게시글 문서를 찾을 수 없습니다');
+          error.code = 'NOT_FOUND';
+          throw error;
         }
+        
+        const createdAt = postDoc.data().createdAt;
+        if (!createdAt) {
+          const error = new Error('게시글 문서에 createdAt이 없습니다');
+          error.code = 'INTERNAL_ERROR';
+          throw error;
+        }
+        
+        actionTimestamp = toDate(createdAt);
+      }
+      
+      // 일일 제한이 적용되는 액션은 actionTimestamp 필수
+      if (actionKey === 'comment' && !actionTimestamp) {
+        const error = new Error('댓글 리워드는 액션 타임스탬프가 필요합니다');
+        error.code = 'INTERNAL_ERROR';
+        throw error;
       }
       
       // 3. historyId 생성 (타입 코드 기반)
