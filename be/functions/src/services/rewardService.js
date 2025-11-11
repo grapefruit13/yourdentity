@@ -136,6 +136,7 @@ class RewardService {
     actionTimestamp = null,
     checkDuplicate = true,
     reason = null,
+    options = {}
   ) {
     // 입력 검증
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
@@ -154,8 +155,6 @@ class RewardService {
       throw new Error('유효하지 않은 historyId입니다');
     }
 
-    options = {}
-  ) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
@@ -192,8 +191,6 @@ class RewardService {
       const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 적립';
       const createdAtValue = actionDate ? Timestamp.fromDate(actionDate) : FieldValue.serverTimestamp();
       
-      transaction.set(historyRef, {
-
       const historyData = {
         actionKey,
         amount,
