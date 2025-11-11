@@ -122,6 +122,42 @@ const formatDate = (date) => {
 };
 
 /**
+ * Firestore Timestamp를 Date 객체로 변환
+ * @param {Timestamp|Date|string} timestamp - Firestore Timestamp 또는 Date
+ * @return {Date} Date 객체
+ */
+const toDate = (timestamp) => {
+  if (!timestamp) return new Date();
+  return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+};
+
+/**
+ * UTC 기준 오늘 00:00:00 계산
+ * @param {Date} date - 기준 날짜 (기본값: 현재 시간)
+ * @return {Date} UTC 기준 오늘 00:00:00
+ */
+const getStartOfDayUTC = (date = new Date()) => {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    0, 0, 0, 0
+  ));
+};
+
+/**
+ * UTC 기준 내일 00:00:00 계산
+ * @param {Date} date - 기준 날짜 (기본값: 현재 시간)
+ * @return {Date} UTC 기준 내일 00:00:00
+ */
+const getStartOfNextDayUTC = (date = new Date()) => {
+  const today = getStartOfDayUTC(date);
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  return tomorrow;
+};
+
+/**
  * 배열을 청크로 분할
  * @param {array} array - 분할할 배열
  * @param {number} size - 청크 크기
@@ -211,8 +247,11 @@ module.exports = {
   generateId,
   nanoid,
 
-  // 포맷팅
+  // 날짜/시간
   formatDate,
+  toDate,
+  getStartOfDayUTC,
+  getStartOfNextDayUTC,
 
   // PII 보호
   maskPhoneNumber,
