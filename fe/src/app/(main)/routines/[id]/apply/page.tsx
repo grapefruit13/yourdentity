@@ -1,0 +1,1255 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import Image from "next/image";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  ActivityApplicationForm,
+  useActivityApplicationForm,
+} from "@/components/shared/activity-application-form";
+import {
+  ActivityPickerBottomSheet,
+  type PickerType,
+} from "@/components/shared/activity-application-form/ActivityPickerBottomSheet";
+import Input from "@/components/shared/input";
+import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
+import { Skeleton } from "@/components/ui/skeleton";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
+import {
+  useGetProgramsById,
+  usePostProgramsApplyById,
+} from "@/hooks/generated/programs-hooks";
+import { useGetUsersMe } from "@/hooks/generated/users-hooks";
+import { getCurrentUser } from "@/lib/auth";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
+import type { ProgramDetailResponse } from "@/types/generated/api-schema";
+import * as Schema from "@/types/generated/api-schema";
+import { cn } from "@/utils/shared/cn";
+import { formatDateRange } from "@/utils/shared/date";
+
+/**
+ * @description 활동 신청 단계 타입
+ */
+type ApplicationStep =
+  | "schedule-confirm"
+  | "nickname"
+  | "phone"
+  | "region"
+  | "situation"
+  | "source"
+  | "motivation"
+  | "review"
+  | "terms"
+  | "complete";
+
+/**
+ * @description 신청 폼 데이터 타입
+ */
+interface ApplicationFormData {
+  canAttendEvents: boolean;
+  nickname: string;
+  phoneNumber: string;
+  region: {
+    city: string;
+    district: string;
+  } | null;
+  currentSituation: string;
+  applicationSource: string;
+  applicationMotivation: string;
+  customMotivation: string;
+  agreedToTerms: boolean;
+}
+
+/**
+ * @description 이전 입력 필드를 읽기 전용으로 표시하는 헬퍼 컴포넌트
+ */
+const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
+  <div className="mb-4">
+    <label className="mb-2 block">
+      <Typography font="noto" variant="label1B" className="text-gray-700">
+        {label}
+      </Typography>
+    </label>
+    <Input type="text" value={value} readOnly className="bg-gray-100" />
+  </div>
+);
+
+/**
+ * @description 활동 신청 페이지
+ */
+const ProgramApplyPage = () => {
+  const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const programId = params.id as string;
+
+  // 유효한 스텝 목록
+  const validSteps: ApplicationStep[] = useMemo(
+    () => [
+      "schedule-confirm",
+      "nickname",
+      "phone",
+      "region",
+      "situation",
+      "source",
+      "motivation",
+      "review",
+      "terms",
+      "complete",
+    ],
+    []
+  );
+
+  // 쿼리스트링에서 현재 스텝 가져오기
+  const stepFromQuery = searchParams.get("step");
+  const initialStep: ApplicationStep = useMemo(
+    () =>
+      stepFromQuery && validSteps.includes(stepFromQuery as ApplicationStep)
+        ? (stepFromQuery as ApplicationStep)
+        : "schedule-confirm",
+    [stepFromQuery, validSteps]
+  );
+
+  // TopBar 제어
+  const setTitle = useTopBarStore((state) => state.setTitle);
+  const resetTopBar = useTopBarStore((state) => state.reset);
+
+  // 프로그램 상세 정보 조회
+  const { data: programDetailData, isLoading } = useGetProgramsById({
+    request: { programId },
+    select: (data) => {
+      if (!data || typeof data !== "object") {
+        return null;
+      }
+      const responseData = data as ProgramDetailResponse["data"];
+      return responseData?.program || null;
+    },
+  });
+
+  // 사용자 정보 조회
+  const { data: userData } = useGetUsersMe({
+    select: (data) => data?.user,
+  });
+
+  // localStorage 키
+  const STORAGE_KEY = `apply-form-${programId}`;
+
+  // 폼 데이터 초기화 (localStorage에서 복원)
+  const getInitialFormData = useCallback((): ApplicationFormData => {
+    if (typeof window === "undefined") {
+      return {
+        canAttendEvents: false,
+        nickname: "",
+        phoneNumber: "",
+        region: null,
+        currentSituation: "",
+        applicationSource: "",
+        applicationMotivation: "",
+        customMotivation: "",
+        agreedToTerms: false,
+      };
+    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          canAttendEvents: parsed.canAttendEvents || false,
+          nickname: parsed.nickname || "",
+          phoneNumber: parsed.phoneNumber || "",
+          region: parsed.region || null,
+          currentSituation: parsed.currentSituation || "",
+          applicationSource: parsed.applicationSource || "",
+          applicationMotivation: parsed.applicationMotivation || "",
+          customMotivation: parsed.customMotivation || "",
+          agreedToTerms: parsed.agreedToTerms || false,
+        };
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("폼 데이터 복원 실패:", error);
+    }
+    return {
+      canAttendEvents: false,
+      nickname: "",
+      phoneNumber: "",
+      region: null,
+      currentSituation: "",
+      applicationSource: "",
+      applicationMotivation: "",
+      customMotivation: "",
+      agreedToTerms: false,
+    };
+  }, [STORAGE_KEY]);
+
+  // 현재 단계
+  const [currentStep, setCurrentStep] = useState<ApplicationStep>(initialStep);
+
+  // 쿼리스트링 변경 시 currentStep 업데이트
+  useEffect(() => {
+    const stepFromQuery = searchParams.get("step");
+    if (
+      stepFromQuery &&
+      validSteps.includes(stepFromQuery as ApplicationStep)
+    ) {
+      setCurrentStep(stepFromQuery as ApplicationStep);
+    }
+  }, [searchParams, validSteps]);
+
+  // 폼 데이터 관리 (공통 hook 사용)
+  const formHook = useActivityApplicationForm(getInitialFormData());
+  const formData = formHook.formData;
+
+  // 폼 데이터 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("폼 데이터 저장 실패:", error);
+      }
+    }
+  }, [formData, STORAGE_KEY]);
+
+  // 스텝 변경 시 URL 업데이트
+  const updateStep = useCallback(
+    (step: ApplicationStep) => {
+      setCurrentStep(step);
+      router.push(`/routines/${programId}/apply?step=${step}`, {
+        scroll: false,
+      });
+    },
+    [router, programId]
+  );
+
+  // 필드별 에러 상태 관리
+  const [fieldErrors, setFieldErrors] = useState<{
+    nickname?: string;
+    phoneNumber?: string;
+    region?: string;
+    currentSituation?: string;
+    applicationSource?: string;
+    applicationMotivation?: string;
+  }>({});
+
+  // 신청하기 mutation
+  const applyMutation = usePostProgramsApplyById({
+    onSuccess: () => {
+      // localStorage 정리
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      updateStep("complete");
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error("신청 실패:", error);
+
+      // 에러 응답에서 필드별 에러 메시지 추출
+      const errorResponse =
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        error.response &&
+        typeof error.response === "object" &&
+        "data" in error.response
+          ? (error.response as {
+              data?: { message?: string; [key: string]: unknown };
+            })
+          : null;
+      const errorMessage =
+        errorResponse?.data?.message ||
+        (error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "");
+      const errorData = errorResponse?.data;
+
+      // 타입 가드 헬퍼 함수
+      const getStringValue = (value: unknown): string | undefined => {
+        return typeof value === "string" ? value : undefined;
+      };
+
+      // 필드별 에러 처리
+      const newFieldErrors: typeof fieldErrors = {};
+
+      // 닉네임 중복 체크
+      if (
+        errorMessage.includes("닉네임") ||
+        errorMessage.includes("nickname") ||
+        errorData?.nickname
+      ) {
+        newFieldErrors.nickname =
+          getStringValue(errorData?.nickname) || "이미 사용 중인 닉네임입니다.";
+        updateStep("nickname");
+      }
+      // 휴대폰 번호 에러
+      else if (
+        errorMessage.includes("휴대폰") ||
+        errorMessage.includes("phone") ||
+        errorData?.phoneNumber
+      ) {
+        newFieldErrors.phoneNumber =
+          getStringValue(errorData?.phoneNumber) ||
+          "올바른 휴대폰 번호를 입력해주세요.";
+        updateStep("phone");
+      }
+      // 지역 에러
+      else if (
+        errorMessage.includes("지역") ||
+        errorMessage.includes("region") ||
+        errorData?.region
+      ) {
+        newFieldErrors.region =
+          getStringValue(errorData?.region) || "지역을 선택해주세요.";
+        updateStep("region");
+      }
+      // 현재 상황 에러
+      else if (
+        errorMessage.includes("상황") ||
+        errorMessage.includes("situation") ||
+        errorData?.currentSituation
+      ) {
+        newFieldErrors.currentSituation =
+          getStringValue(errorData?.currentSituation) ||
+          "현재 상황을 선택해주세요.";
+        updateStep("situation");
+      }
+      // 참여 경로 에러
+      else if (
+        errorMessage.includes("경로") ||
+        errorMessage.includes("source") ||
+        errorData?.applicationSource
+      ) {
+        newFieldErrors.applicationSource =
+          getStringValue(errorData?.applicationSource) ||
+          "참여 경로를 선택해주세요.";
+        updateStep("source");
+      }
+      // 참여 동기 에러
+      else if (
+        errorMessage.includes("동기") ||
+        errorMessage.includes("motivation") ||
+        errorData?.applicationMotivation
+      ) {
+        newFieldErrors.applicationMotivation =
+          getStringValue(errorData?.applicationMotivation) ||
+          "참여 동기를 선택해주세요.";
+        updateStep("motivation");
+      }
+      // 일반 에러
+      else {
+        alert(
+          errorMessage || "신청 중 오류가 발생했습니다. 다시 시도해주세요."
+        );
+      }
+
+      setFieldErrors(newFieldErrors);
+      // 에러 발생 시 약관 동의 상태 초기화하여 다시 시도 가능하도록
+      formHook.updateFormData({ agreedToTerms: false });
+      setShowTermsSheet(false);
+    },
+  });
+
+  // 모달/바텀시트 상태 (hook에서 관리)
+  const {
+    showNicknameConfirm,
+    setShowNicknameConfirm,
+    showRegionPicker,
+    setShowRegionPicker,
+    showSituationPicker,
+    setShowSituationPicker,
+    showSourcePicker,
+    setShowSourcePicker,
+    showMotivationPicker,
+    setShowMotivationPicker,
+    showTermsSheet,
+    setShowTermsSheet,
+    selectedRegionCode,
+    setSelectedRegionCode,
+  } = formHook;
+
+  // 통합 바텀시트 타입 결정
+  const activePickerType = useMemo<PickerType | null>(() => {
+    if (showRegionPicker) return "region";
+    if (showSituationPicker) return "situation";
+    if (showSourcePicker) return "source";
+    if (showMotivationPicker) return "motivation";
+    if (showTermsSheet) return "terms";
+    return null;
+  }, [
+    showRegionPicker,
+    showSituationPicker,
+    showSourcePicker,
+    showMotivationPicker,
+    showTermsSheet,
+  ]);
+
+  // 통합 바텀시트 닫기 핸들러
+  const handlePickerClose = useCallback(() => {
+    switch (activePickerType) {
+      case "region":
+        setShowRegionPicker(false);
+        break;
+      case "situation":
+        setShowSituationPicker(false);
+        break;
+      case "source":
+        setShowSourcePicker(false);
+        break;
+      case "motivation":
+        setShowMotivationPicker(false);
+        break;
+      case "terms":
+        setShowTermsSheet(false);
+        break;
+    }
+  }, [
+    activePickerType,
+    setShowRegionPicker,
+    setShowSituationPicker,
+    setShowSourcePicker,
+    setShowMotivationPicker,
+    setShowTermsSheet,
+  ]);
+
+  // 이전 스텝으로 이동
+  const goToPreviousStep = useCallback(() => {
+    const stepOrderList: ApplicationStep[] = [
+      "schedule-confirm",
+      "nickname",
+      "phone",
+      "region",
+      "situation",
+      "source",
+      "motivation",
+      "review",
+      "terms",
+      "complete",
+    ];
+    const currentIndex = stepOrderList.indexOf(currentStep);
+    if (currentIndex > 0) {
+      const previousStep = stepOrderList[currentIndex - 1];
+      updateStep(previousStep);
+    }
+  }, [currentStep, updateStep]);
+
+  // 뒤로가기 핸들러 (브라우저/앱 스와이프)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // 신청하기 페이지 내에서만 뒤로가기 처리
+      if (window.location.pathname.includes("/apply")) {
+        event.preventDefault();
+        // 첫 번째 스텝이 아니면 이전 스텝으로 이동
+        if (currentStep !== "schedule-confirm") {
+          goToPreviousStep();
+        }
+        // 히스토리 조작으로 실제 뒤로가기 방지
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+
+    // 히스토리 스택에 현재 상태 추가
+    window.history.pushState(null, "", window.location.href);
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [goToPreviousStep, currentStep]);
+
+  // TopBar 설정 및 뒤로가기 커스텀
+  const setLeftSlot = useTopBarStore((state) => state.setLeftSlot);
+  useEffect(() => {
+    setTitle("신청하기");
+    // TopBar의 뒤로가기 버튼 커스텀 (첫 단계가 아닐 때만)
+    if (currentStep !== "schedule-confirm") {
+      const customLeftSlot = (
+        <button
+          onClick={goToPreviousStep}
+          className="hover:cursor-pointer"
+          aria-label="이전 단계"
+        >
+          <svg
+            className="h-6 w-6 text-gray-900"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+      );
+      setLeftSlot(customLeftSlot);
+    } else {
+      setLeftSlot(null);
+    }
+    return () => {
+      resetTopBar();
+    };
+  }, [setTitle, resetTopBar, goToPreviousStep, currentStep, setLeftSlot]);
+
+  // 일정 확인 완료
+  const handleScheduleConfirm = useCallback(() => {
+    formHook.updateFormData({ canAttendEvents: true });
+    updateStep("nickname");
+  }, [updateStep, formHook]);
+
+  // 닉네임 확인 모달 확인
+  const handleNicknameConfirm = useCallback(() => {
+    setShowNicknameConfirm(false);
+    updateStep("phone");
+  }, [updateStep, setShowNicknameConfirm]);
+
+  // 닉네임 다음 버튼 클릭
+  const handleNicknameNext = useCallback(() => {
+    if (formData.nickname.trim()) {
+      setShowNicknameConfirm(true);
+    }
+  }, [formData.nickname, setShowNicknameConfirm]);
+
+  // 휴대폰 번호 입력 완료 (자동 다음 단계 이동 포함)
+  const handlePhoneChangeWithAutoNext = useCallback(
+    (value: string) => {
+      // 숫자만 허용
+      const numbersOnly = value.replace(/[^0-9]/g, "");
+      formHook.handlePhoneChange(numbersOnly);
+      // 에러 초기화
+      if (fieldErrors.phoneNumber) {
+        setFieldErrors((prev) => ({ ...prev, phoneNumber: undefined }));
+      }
+      // 11자리 입력 시 자동 다음 단계 이동
+      if (numbersOnly.length === 11) {
+        updateStep("region");
+      }
+    },
+    [updateStep, formHook, fieldErrors.phoneNumber]
+  );
+
+  // 지역 선택 (자동 다음 단계 이동 포함)
+  const handleRegionSelectWithAutoNext = useCallback(
+    (city: string, district: string) => {
+      formHook.handleRegionSelect(city, district);
+      updateStep("situation");
+    },
+    [updateStep, formHook]
+  );
+
+  // 현재 상황 선택 (자동 다음 단계 이동 포함)
+  const handleSituationSelectWithAutoNext = useCallback(
+    (value: string) => {
+      formHook.handleSituationSelect(value);
+      updateStep("source");
+    },
+    [updateStep, formHook]
+  );
+
+  // 참여 경로 선택 (자동 다음 단계 이동 포함)
+  const handleSourceSelectWithAutoNext = useCallback(
+    (value: string) => {
+      formHook.handleSourceSelect(value);
+      updateStep("motivation");
+    },
+    [updateStep, formHook]
+  );
+
+  // 참여 동기 선택 (자동 다음 단계 이동 포함)
+  const handleMotivationSelectWithAutoNext = useCallback(
+    (value: string) => {
+      formHook.handleMotivationSelect(value);
+      if (value !== "직접 입력하기") {
+        updateStep("review");
+      }
+    },
+    [updateStep, formHook]
+  );
+
+  // 신청 정보 확인 후 다음
+  const handleReviewNext = useCallback(() => {
+    updateStep("terms");
+    setShowTermsSheet(true);
+  }, [updateStep]);
+
+  // 약관 동의
+  const handleTermsAgree = useCallback(() => {
+    formHook.updateFormData({ agreedToTerms: true });
+    setShowTermsSheet(false);
+    // 신청 API 호출
+    const currentUser = getCurrentUser();
+    const applicantId = currentUser?.uid || userData?.uid || "";
+
+    if (!applicantId) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
+    // TPOSTProgramsApplyByIdReq 타입에 맞춰 요청 body 구성
+    // BE에서는 실제로 더 많은 필드를 받지만, 타입 정의는 applicantId와 nickname만 있음
+    // 실제 BE 코드를 참고하여 모든 필드를 전송
+    // API 함수는 data.data ?? data로 처리하므로, data 객체 안에 모든 필드를 넣어야 함
+    applyMutation.mutate({
+      programId: programId,
+      data: {
+        applicantId,
+        nickname: formData.nickname,
+        // BE에서 실제로 받는 추가 필드들 (타입 정의는 업데이트되지 않았을 수 있음)
+        activityNickname: formData.nickname,
+        activityPhoneNumber: formData.phoneNumber,
+        region: formData.region
+          ? {
+              city: formData.region.city,
+              district: formData.region.district,
+            }
+          : undefined,
+        currentSituation: formData.currentSituation || undefined,
+        applicationSource: formData.applicationSource || undefined,
+        applicationMotivation:
+          formData.applicationMotivation === "직접 입력하기"
+            ? formData.customMotivation
+            : formData.applicationMotivation || undefined,
+        canAttendEvents: formData.canAttendEvents,
+      } as Schema.ProgramApplicationRequest & Record<string, unknown>, // BE에서 실제로 받는 추가 필드들 포함
+    });
+  }, [formData, programId, applyMutation, userData, formHook]);
+
+  // 신청 완료 후 확인
+  const handleComplete = useCallback(() => {
+    // 상세 페이지로 이동하고 히스토리 정리 (뒤로가기 방지)
+    router.replace(`/routines/${programId}`);
+  }, [router, programId]);
+
+  // 스텝 순서 정의
+  const stepOrder: ApplicationStep[] = useMemo(
+    () => [
+      "schedule-confirm",
+      "nickname",
+      "phone",
+      "region",
+      "situation",
+      "source",
+      "motivation",
+      "review",
+      "terms",
+      "complete",
+    ],
+    []
+  );
+
+  // 현재 스텝의 인덱스
+  const currentStepIndex = useMemo(
+    () => stepOrder.indexOf(currentStep),
+    [currentStep, stepOrder]
+  );
+
+  // 현재 스텝의 타이틀 가져오기 (stepIndex 기반)
+  const getStepTitle = useCallback(
+    (stepIndex: number, programNameValue: string): string => {
+      switch (stepIndex) {
+        case 1: // nickname
+          return `이번 [${programNameValue}]에서 사용할 닉네임을 알려주세요`;
+        case 2: // phone
+          return "휴대폰 번호를 알려주세요";
+        case 3: // region
+          return "어느 지역에 거주 중인가요?";
+        case 4: // situation
+          return "현재 어떤 상황인가요?";
+        case 5: // source
+          return `[${programNameValue}]을 어떻게 알게 되었나요?`;
+        case 6: // motivation
+          return `[${programNameValue}]에 왜 참여하고 싶은가요?`;
+        default:
+          return "";
+      }
+    },
+    []
+  );
+
+  // 하단 버튼 렌더링
+  const renderBottomButton = useCallback(() => {
+    const buttonBaseClass =
+      "w-full rounded-lg bg-pink-500 px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300";
+
+    switch (currentStep) {
+      case "schedule-confirm":
+        return (
+          <button onClick={handleScheduleConfirm} className={buttonBaseClass}>
+            <Typography font="noto" variant="body3R" className="text-white">
+              확인했습니다
+            </Typography>
+          </button>
+        );
+      case "nickname":
+        return (
+          <button
+            onClick={handleNicknameNext}
+            disabled={!formData.nickname.trim()}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              다음
+            </Typography>
+          </button>
+        );
+      case "phone":
+        const isPhoneValid =
+          formData.phoneNumber.replace(/-/g, "").length === 11;
+        return (
+          <button
+            onClick={() => isPhoneValid && updateStep("region")}
+            disabled={!isPhoneValid}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              다음
+            </Typography>
+          </button>
+        );
+      case "region":
+        return formData.region ? (
+          <button
+            onClick={() => updateStep("situation")}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              다음
+            </Typography>
+          </button>
+        ) : null;
+      case "situation":
+        return formData.currentSituation ? (
+          <button
+            onClick={() => updateStep("source")}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              다음
+            </Typography>
+          </button>
+        ) : null;
+      case "source":
+        return formData.applicationSource ? (
+          <button
+            onClick={() => updateStep("motivation")}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              다음
+            </Typography>
+          </button>
+        ) : null;
+      case "motivation":
+        const isMotivationValid =
+          formData.applicationMotivation === "직접 입력하기"
+            ? formData.customMotivation.trim().length >= 10
+            : !!formData.applicationMotivation;
+        return isMotivationValid ? (
+          <button
+            onClick={() => updateStep("review")}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              다음
+            </Typography>
+          </button>
+        ) : null;
+      case "review":
+        return (
+          <button
+            onClick={handleReviewNext}
+            disabled={applyMutation.isPending}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              {applyMutation.isPending ? "신청 중..." : "다음"}
+            </Typography>
+          </button>
+        );
+      case "complete":
+        return (
+          <button onClick={handleComplete} className={buttonBaseClass}>
+            <Typography font="noto" variant="body3R" className="text-white">
+              확인
+            </Typography>
+          </button>
+        );
+      default:
+        return null;
+    }
+  }, [
+    currentStep,
+    formData,
+    handleScheduleConfirm,
+    handleNicknameNext,
+    handleReviewNext,
+    updateStep,
+    applyMutation.isPending,
+  ]);
+
+  if (isLoading || !programDetailData) {
+    return (
+      <div className="min-h-screen bg-white pt-12">
+        <div className="mx-auto max-w-[470px] px-4">
+          {/* 프로그램 정보 카드 스켈레톤 */}
+          <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-[110px] w-[110px] shrink-0 rounded-lg" />
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            </div>
+          </div>
+          {/* 질문 스켈레톤 */}
+          <Skeleton className="mb-3 h-8 w-full" />
+          <Skeleton className="mb-6 h-4 w-full" />
+          {/* 버튼 스켈레톤 */}
+          <Skeleton className="h-12 w-full rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  const program = programDetailData;
+  const programName = program?.title || program?.programName || "활동";
+
+  return (
+    <div className="min-h-screen bg-white pt-12">
+      <div className="mx-auto max-w-[470px] pb-24">
+        {/* 일정 확인 단계 */}
+        {currentStep === "schedule-confirm" && (
+          <div>
+            {/* 프로그램 정보 카드 */}
+            <div className="rounded-lg border-b border-gray-200 p-4">
+              <div className="flex gap-4">
+                {/* 이미지 영역 */}
+                <div className="h-[110px] w-[110px] shrink-0 rounded-lg bg-gray-200" />
+                {/* 텍스트 영역 */}
+                <div className="flex flex-1 flex-col gap-1">
+                  <div className="mb-2 line-clamp-1">
+                    <Typography
+                      font="noto"
+                      variant="label1R"
+                      className="text-main-500 bg-main-100 mr-[11px] mb-1 inline-block rounded-[2px] p-1"
+                    >
+                      한끗루틴
+                    </Typography>
+                    <Typography
+                      font="noto"
+                      variant="heading3B"
+                      className="mb-1 text-gray-700"
+                    >
+                      {program.description || "-"}
+                    </Typography>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {program.startDate && program.endDate && (
+                      <Typography
+                        font="noto"
+                        variant="label1R"
+                        className="text-gray-950"
+                      >
+                        활동 기간:{" "}
+                        {formatDateRange(program.startDate, program.endDate)}
+                      </Typography>
+                    )}
+                    <Typography
+                      font="noto"
+                      variant="label1R"
+                      className="text-gray-950"
+                    >
+                      오티: 10월 14일 20시
+                    </Typography>
+                    <Typography
+                      font="noto"
+                      variant="label1R"
+                      className="text-gray-950"
+                    >
+                      공유회: 10월 28일 20시
+                    </Typography>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-5">
+              <Typography
+                as="h2"
+                font="noto"
+                variant="heading2B"
+                className="mb-3"
+              >
+                오티(10월 14일), 공유회(10월 28일) 20시 일정을 확인하셨나요?
+              </Typography>
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="mb-6 text-gray-600"
+              >
+                오티와 공유회 참석은 필수입니다. 참석 불가능한 경우 10월
+                한끗루틴 참여가 어렵습니다.
+              </Typography>
+            </div>
+          </div>
+        )}
+
+        {/* 통합된 폼 구조 (nickname ~ motivation 단계) */}
+        {currentStepIndex >= 1 && currentStepIndex <= 6 && program && (
+          <ActivityApplicationForm
+            currentStepIndex={currentStepIndex}
+            programName={programName}
+            formData={formData}
+            handlers={formHook}
+            getStepTitle={getStepTitle}
+            onPhoneChangeComplete={handlePhoneChangeWithAutoNext}
+          />
+        )}
+
+        {/* 신청 정보 확인 단계 */}
+        {(currentStep === "review" || currentStep === "terms") && (
+          <div className="p-5">
+            <div className="mb-6">
+              <Typography
+                as="h2"
+                font="noto"
+                variant="heading2B"
+                className="mb-4"
+              >
+                신청 정보를 확인해주세요
+              </Typography>
+              <div className="space-y-7 rounded-lg border border-gray-200 bg-white p-4">
+                {/* 참여 동기 */}
+                <div>
+                  <Typography
+                    font="noto"
+                    variant="label1B"
+                    className="mb-3 text-gray-700"
+                  >
+                    참여 동기
+                  </Typography>
+                  <button
+                    onClick={() => updateStep("motivation")}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                  >
+                    <Typography
+                      font="noto"
+                      variant="body2R"
+                      className={cn(
+                        formData.applicationMotivation
+                          ? "text-gray-900"
+                          : "text-gray-400"
+                      )}
+                    >
+                      {formData.applicationMotivation === "직접 입력하기"
+                        ? formData.customMotivation || "직접 입력하기"
+                        : formData.applicationMotivation ||
+                          "참여 동기를 선택해주세요"}
+                    </Typography>
+                  </button>
+                  {formData.applicationMotivation === "직접 입력하기" && (
+                    <div className="mt-2">
+                      <textarea
+                        value={formData.customMotivation}
+                        onChange={(e) =>
+                          formHook.handleCustomMotivationChange(e.target.value)
+                        }
+                        placeholder="참여 동기를 입력하세요"
+                        maxLength={200}
+                        rows={4}
+                        className={cn(
+                          "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-base font-normal shadow-xs focus:outline-3",
+                          formData.customMotivation.length >= 10 &&
+                            "border-pink-500"
+                        )}
+                      />
+                      <Typography
+                        font="noto"
+                        variant="caption1R"
+                        className="mt-1 text-right text-gray-400"
+                      >
+                        {formData.customMotivation.length}/200
+                      </Typography>
+                    </div>
+                  )}
+                </div>
+
+                {/* 참여 경로 */}
+                <div>
+                  <Typography
+                    font="noto"
+                    variant="label1B"
+                    className="mb-3 text-gray-700"
+                  >
+                    참여 경로
+                  </Typography>
+                  <button
+                    onClick={() => updateStep("source")}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                  >
+                    <Typography
+                      font="noto"
+                      variant="body2R"
+                      className={cn(
+                        formData.applicationSource
+                          ? "text-gray-900"
+                          : "text-gray-400"
+                      )}
+                    >
+                      {formData.applicationSource || "참여 경로를 선택해주세요"}
+                    </Typography>
+                  </button>
+                </div>
+
+                {/* 현재 상황 */}
+                <div>
+                  <Typography
+                    font="noto"
+                    variant="label1B"
+                    className="mb-3 text-gray-700"
+                  >
+                    현재 상황
+                  </Typography>
+                  <button
+                    onClick={() => updateStep("situation")}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                  >
+                    <Typography
+                      font="noto"
+                      variant="body2R"
+                      className={cn(
+                        formData.currentSituation
+                          ? "text-gray-900"
+                          : "text-gray-400"
+                      )}
+                    >
+                      {formData.currentSituation || "현재 상황을 선택해주세요"}
+                    </Typography>
+                  </button>
+                </div>
+
+                {/* 거주 지역 */}
+                {formData.region && (
+                  <div>
+                    <Typography
+                      font="noto"
+                      variant="label1B"
+                      className="mb-3 text-gray-700"
+                    >
+                      거주 지역
+                    </Typography>
+                    <button
+                      onClick={() => updateStep("region")}
+                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                    >
+                      <Typography
+                        font="noto"
+                        variant="body2R"
+                        className="text-gray-900"
+                      >
+                        {formData.region.city} {formData.region.district}
+                      </Typography>
+                    </button>
+                  </div>
+                )}
+
+                {/* 휴대폰 번호 */}
+                <div>
+                  <Typography
+                    font="noto"
+                    variant="label1B"
+                    className="mb-3 text-gray-700"
+                  >
+                    휴대폰 번호
+                  </Typography>
+                  <div className="relative">
+                    <Input
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={(e) => {
+                        // 숫자만 입력 허용
+                        const value = e.target.value.replace(/[^0-9]/g, "");
+                        formHook.handlePhoneChange(value);
+                        // 에러 초기화
+                        if (fieldErrors.phoneNumber) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            phoneNumber: undefined,
+                          }));
+                        }
+                      }}
+                      placeholder="01012345678"
+                      maxLength={11}
+                      className={cn(
+                        formData.phoneNumber && "border-pink-500",
+                        fieldErrors.phoneNumber && "border-red-500"
+                      )}
+                    />
+                    {formData.phoneNumber && (
+                      <button
+                        onClick={() => formHook.handlePhoneChange("")}
+                        className="absolute top-1/2 right-3 -translate-y-1/2"
+                      >
+                        <svg
+                          className="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {fieldErrors.phoneNumber && (
+                    <Typography
+                      font="noto"
+                      variant="caption1R"
+                      className="mt-1 text-red-500"
+                    >
+                      {fieldErrors.phoneNumber}
+                    </Typography>
+                  )}
+                </div>
+
+                {/* 닉네임 */}
+                <div>
+                  <Typography
+                    font="noto"
+                    variant="label1B"
+                    className="mb-1 text-gray-700"
+                  >
+                    닉네임
+                  </Typography>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={formData.nickname}
+                      onChange={(e) => {
+                        formHook.handleNicknameChange(e.target.value);
+                        // 에러 초기화
+                        if (fieldErrors.nickname) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            nickname: undefined,
+                          }));
+                        }
+                      }}
+                      placeholder="닉네임을 입력하세요"
+                      className={cn(
+                        "pr-10",
+                        formData.nickname && "border-pink-500",
+                        fieldErrors.nickname && "border-red-500"
+                      )}
+                    />
+                    {formData.nickname && (
+                      <button
+                        onClick={() => formHook.handleNicknameChange("")}
+                        className="absolute top-1/2 right-3 -translate-y-1/2"
+                      >
+                        <svg
+                          className="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {fieldErrors.nickname && (
+                    <Typography
+                      font="noto"
+                      variant="caption1R"
+                      className="mt-1 text-red-500"
+                    >
+                      {fieldErrors.nickname}
+                    </Typography>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 신청 완료 단계 */}
+        {currentStep === "complete" && (
+          <div className="p-5">
+            <div className="flex min-h-[60vh] flex-col items-center">
+              <div className="mt-[164px] mb-[22px] flex h-[120px] w-[120px] items-center justify-center">
+                <Image
+                  src={IMAGE_URL.ICON.checkComplete.url}
+                  alt={IMAGE_URL.ICON.checkComplete.alt}
+                  width={100}
+                  height={100}
+                  unoptimized
+                />
+              </div>
+              <Typography
+                as="h2"
+                font="noto"
+                variant="heading2B"
+                className="mb-4"
+              >
+                신청이 완료되었어요
+              </Typography>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 하단 고정 버튼 영역 */}
+      <div className="fixed right-0 bottom-[72px] left-0 z-40 mx-auto max-w-[470px] px-4 py-4">
+        {renderBottomButton()}
+      </div>
+
+      {/* 닉네임 확인 모달 */}
+      <Modal
+        isOpen={showNicknameConfirm}
+        title="닉네임 설정 안내"
+        description={`닉네임을 [${formData.nickname}](으)로 설정합니다. 신청 이후 활동 닉네임은 변경 불가합니다.`}
+        confirmText="확인"
+        cancelText="취소"
+        onConfirm={handleNicknameConfirm}
+        onClose={() => setShowNicknameConfirm(false)}
+      />
+
+      {/* 통합 바텀시트 */}
+      <ActivityPickerBottomSheet
+        pickerType={activePickerType}
+        isOpen={activePickerType !== null}
+        onClose={handlePickerClose}
+        formData={formData}
+        onRegionSelect={handleRegionSelectWithAutoNext}
+        onSituationSelect={handleSituationSelectWithAutoNext}
+        onSourceSelect={handleSourceSelectWithAutoNext}
+        onMotivationSelect={handleMotivationSelectWithAutoNext}
+        onTermsAgree={handleTermsAgree}
+        onTermsCheckChange={(checked) =>
+          formHook.updateFormData({ agreedToTerms: checked })
+        }
+        selectedRegionCode={selectedRegionCode}
+        onRegionCodeSelect={setSelectedRegionCode}
+      />
+    </div>
+  );
+};
+
+export default ProgramApplyPage;
