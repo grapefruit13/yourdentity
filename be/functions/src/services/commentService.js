@@ -12,6 +12,21 @@ class CommentService {
   
   static MAX_PARENT_COMMENTS_FOR_REPLIES = 10; 
   static MAX_NOTIFICATION_TEXT_LENGTH = 10;
+  static PROGRAM_TYPES = {
+    ROUTINE: "ROUTINE",
+    GATHERING: "GATHERING",
+    TMI: "TMI",
+  };
+
+  static normalizeProgramType(value) {
+    if (!value || typeof value !== "string") {
+      return null;
+    }
+    const upper = value.trim().toUpperCase();
+    return Object.prototype.hasOwnProperty.call(CommentService.PROGRAM_TYPES, upper)
+      ? CommentService.PROGRAM_TYPES[upper]
+      : upper;
+  }
 
   constructor() {
     this.firestoreService = new FirestoreService("comments");
@@ -87,18 +102,40 @@ class CommentService {
 
       let author = "익명";
       try {
-        const members = await this.firestoreService.getCollectionWhere(
-          `communities/${communityId}/members`,
-          "userId",
-          "==",
-          userId
-        );
-        const memberData = members && members[0];
-        if (memberData) {
-          if (community && community.postType === "TMI") {
-            author = memberData.name || "익명";
-          } else {
+        const programType =
+          CommentService.normalizeProgramType(
+            post.programType || community?.programType || post.type,
+          ) || null;
+        const isPrivatePost = post.isPublic === false;
+
+        if (isPrivatePost) {
+          const members = await this.firestoreService.getCollectionWhere(
+            `communities/${communityId}/members`,
+            "userId",
+            "==",
+            userId
+          );
+          const memberData = members && members[0];
+
+          if (programType === CommentService.PROGRAM_TYPES.TMI) {
+            const userProfile = await this.firestoreService.getDocument("users", userId);
+            author =
+              userProfile?.name ||
+              memberData?.nickname ||
+              "익명";
+          } else if (memberData) {
             author = memberData.nickname || "익명";
+          }
+        } else {
+          const nicknames = await this.firestoreService.getCollectionWhere(
+            "nicknames",
+            "uid",
+            "==",
+            userId
+          );
+          const nicknameDoc = nicknames && nicknames[0];
+          if (nicknameDoc) {
+            author = nicknameDoc.id || nicknameDoc.nickname || "익명";
           }
         }
       } catch (memberError) {
