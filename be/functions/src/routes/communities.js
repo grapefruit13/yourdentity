@@ -3,6 +3,7 @@ const router = express.Router();
 const communityController = require("../controllers/communityController");
 const authGuard = require("../middleware/authGuard");
 const optionalAuth = require("../middleware/optionalAuth");
+const rewardHandler = require("../middleware/rewardHandler");
 
 /**
  * @swagger
@@ -554,7 +555,7 @@ router.get("/posts", optionalAuth,communityController.getAllCommunityPosts);
  *       500:
  *         description: 서버 오류
  */
-router.post("/:communityId/posts", authGuard, communityController.createPost);
+router.post("/:communityId/posts", authGuard, rewardHandler, communityController.createPost);
 
 // 커뮤니티 게시글 상세 조회
 /**

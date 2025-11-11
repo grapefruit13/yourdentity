@@ -129,47 +129,8 @@ class CommunityController {
 
       const result = await communityService.createPost(communityId, userId, postData);
 
-      // 리워드 부여 (게시글 타입별)
-      if (result.type === 'ROUTINE_CERT') {
-        // 루틴 인증글
-        await req.grantReward('routine_post', {
-          postId: result.id,
-          communityId,
-        });
-      } else if (result.type === 'ROUTINE_REVIEW') {
-        // 루틴 후기글
-        await req.grantReward('routine_review', {
-          postId: result.id,
-          communityId,
-        });
-      } else if (result.type === 'GATHERING_REVIEW') {
-        // 소모임 후기글 - 이미지 포함 여부 체크
-        // 1차: media 배열 우선 (가장 신뢰할 수 있는 방법)
-        let hasImage = Array.isArray(result.media) && result.media.length > 0;
-        
-        // 2차 fallback: content에서 img 태그 검사 (엄격한 패턴)
-        if (!hasImage && result.content) {
-          // code block 제거 (```...``` 형태)
-          const contentWithoutCodeBlocks = result.content.replace(/```[\s\S]*?```/g, '');
-          // img 태그 패턴 매칭 (대소문자 무관, 공백 허용)
-          hasImage = /<\s*img\b/i.test(contentWithoutCodeBlocks);
-        }
-        
-        const actionKey = hasImage 
-          ? 'gathering_review_media' 
-          : 'gathering_review_text';
-        
-        await req.grantReward(actionKey, {
-          postId: result.id,
-          communityId,
-        });
-      } else if (result.type === 'TMI_REVIEW' || result.type === 'TMI') {
-        // TMI 프로젝트 후기글 (TMI_REVIEW 또는 TMI 타입 호환)
-        await req.grantReward('tmi_review', {
-          postId: result.id,
-          communityId,
-        });
-      }
+      // 리워드 부여
+      await req.grantPostReward(result);
 
       return res.created(result);
     } catch (error) {

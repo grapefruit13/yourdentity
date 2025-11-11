@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const commentController = require("../controllers/commentController");
 const authGuard = require("../middleware/authGuard");
+const rewardHandler = require("../middleware/rewardHandler");
 
 /**
  * @swagger
@@ -352,6 +353,7 @@ router.get(
 router.post(
     "/communities/:communityId/posts/:postId",
     authGuard,
+    rewardHandler,
     commentController.createComment,
 );
 
