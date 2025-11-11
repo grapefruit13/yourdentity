@@ -83,13 +83,12 @@ const router = express.Router();
  */
 
 
-
 /**
  * @swagger
  * /reportContent:
  *   post:
  *     summary: 게시글/댓글 신고 생성 (로그인 필요)
- *     description: 로그인한 사용자가 게시글 또는 댓글을 신고합니다. 신고자 ID는 인증 토큰에서 자동으로 추출됩니다. Notion에 저장됩니다.
+ *     description: 로그인한 사용자가 게시글 또는 댓글을 신고합니다. reporterId는 인증 토큰에서 자동으로 추출되어 사용됩니다.
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -127,10 +126,6 @@ const router = express.Router();
  *                 type: string
  *                 description: 신고 사유
  *                 example: "욕설"
- *               reporterId:
- *                 type: string
- *                 description: 신고자 ID (선택사항, 인증 토큰의 사용자 ID가 우선 사용됨)
- *                 example: "user2"
  *     responses:
  *       201:
  *         description: 신고 접수 성공
@@ -186,7 +181,7 @@ const router = express.Router();
  *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "신고하려는 게시글을 찾을 수 없습니다."
+ *                   example: "로그인 사용자 정보를 찾을 수 없습니다."
  *       500:
  *         description: 서버 오류
  *         content:

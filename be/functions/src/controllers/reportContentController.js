@@ -17,32 +17,32 @@ class ReportContentController {
         targetType, // 신고 대상 종류
         targetId, // 신고 대상
         targetUserId, // 신고 대상 작성자
-        reporterId, // 신고자ID
         communityId, // 커뮤니티ID
         reportReason, // 신고 사유
       } = req.body;
 
       // 요청 데이터 검증
-      if (!targetType || !targetId || !reportReason || !targetUserId || !reporterId) {
-        return res.error(400, "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reporterId, reportReason)");
+      if (!targetType || !targetId || !reportReason || !targetUserId) {
+        return res.error(400, "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)");
       }
 
       if (!["post", "comment"].includes(targetType)) {
         return res.error(400, "targetType은 'post' 또는 'comment'여야 합니다.");
       }
 
-      // Firestore에서 유저 존재 여부 확인
-      const userDoc = await db.collection("users").doc(reporterId).get();
-      if (!userDoc.exists) {
-        return res.error(404, "해당 reporterId를 가진 사용자를 찾을 수 없습니다.");
-      }
+       // Firestore에서 인증된 사용자 존재 여부 확인
+       const userDoc = await db.collection("users").doc(uid).get();
+       if (!userDoc.exists) {
+         return res.error(404, "로그인 사용자 정보를 찾을 수 없습니다.");
+       }
 
       const reportData = {
         targetType,
         targetId,
         targetUserId,
         communityId: communityId || null,
-        reporterId,
+        //reporterId,
+        reporterId: uid,
         reportReason,
       };
 
