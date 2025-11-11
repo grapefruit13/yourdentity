@@ -216,17 +216,15 @@ class RewardService {
       
       // 댓글 작성: comments/{commentId}에서 createdAt 조회
       if (actionKey === 'comment' && metadata.commentId) {
-        const commentDoc = await db.collection('comments')
-          .doc(metadata.commentId)
-          .get();
+        const commentDoc = await this.firestoreService.getDocument('comments', metadata.commentId);
         
-        if (!commentDoc.exists) {
+        if (!commentDoc) {
           const error = new Error('댓글 문서를 찾을 수 없습니다');
           error.code = 'NOT_FOUND';
           throw error;
         }
         
-        const createdAt = commentDoc.data().createdAt;
+        const createdAt = commentDoc.createdAt;
         if (!createdAt) {
           const error = new Error('댓글 문서에 createdAt이 없습니다');
           error.code = 'INTERNAL_ERROR';
@@ -237,18 +235,18 @@ class RewardService {
       }
       // 게시글 작성: communities/{communityId}/posts/{postId}에서 createdAt 조회
       else if (metadata.postId && metadata.communityId) {
-        const postDoc = await db
-          .collection(`communities/${metadata.communityId}/posts`)
-          .doc(metadata.postId)
-          .get();
+        const postDoc = await this.firestoreService.getDocument(
+          `communities/${metadata.communityId}/posts`,
+          metadata.postId
+        );
         
-        if (!postDoc.exists) {
+        if (!postDoc) {
           const error = new Error('게시글 문서를 찾을 수 없습니다');
           error.code = 'NOT_FOUND';
           throw error;
         }
         
-        const createdAt = postDoc.data().createdAt;
+        const createdAt = postDoc.createdAt;
         if (!createdAt) {
           const error = new Error('게시글 문서에 createdAt이 없습니다');
           error.code = 'INTERNAL_ERROR';
