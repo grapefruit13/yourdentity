@@ -19,7 +19,7 @@ class CommentController {
       const result = await commentService.createComment(communityId, postId, userId, commentData);
 
       // 리워드 부여 (댓글 작성)
-      await req.grantReward('comment_create', {
+      await req.grantReward('comment', {
         commentId: result.id,
         postId,
         communityId,

@@ -128,6 +128,10 @@ class CommunityController {
       const postData = req.body;
 
       const result = await communityService.createPost(communityId, userId, postData);
+
+      // 리워드 부여
+      await req.grantPostReward(result);
+
       return res.created(result);
     } catch (error) {
       return next(error);

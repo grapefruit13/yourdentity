@@ -105,7 +105,9 @@ const nanoid = (length = 21) => {
 };
 
 /**
- * 날짜 포맷팅
+ * 날짜 포맷팅 (UTC 기준)
+ * - 서버 로직의 일관성과 안정성을 위해 UTC 기준으로 동작
+ * - 환경(로컬/프로덕션)에 관계없이 동일한 결과 보장
  * @param {Date|string} date - 날짜
  * @return {string} 포맷된 날짜 (YYYY-MM-DD)
  * @throws {Error} 유효하지 않은 날짜인 경우
@@ -115,10 +117,75 @@ const formatDate = (date) => {
   if (isNaN(d.getTime())) {
     throw new Error("유효하지 않은 날짜입니다");
   }
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+/**
+ * Firestore Timestamp를 Date 객체로 변환
+ * @param {Timestamp|Date|string} timestamp - Firestore Timestamp 또는 Date
+ * @return {Date} Date 객체
+ * @throws {Error} timestamp가 없거나 유효하지 않은 경우
+ */
+const toDate = (timestamp) => {
+  if (!timestamp) {
+    throw new Error('timestamp is required (do not use client-side default time)');
+  }
+  
+  // Firestore Timestamp 객체인 경우
+  if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  
+  // Date 객체 또는 문자열인 경우
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) {
+    throw new Error('Invalid timestamp value');
+  }
+  
+  return date;
+};
+
+/**
+ * UTC 기준 오늘 00:00:00 계산
+ * @param {Date} date - 기준 날짜 (필수, 서버 타임스탬프 전달)
+ * @return {Date} UTC 기준 오늘 00:00:00
+ * @throws {Error} date가 없거나 유효하지 않은 경우
+ */
+const getStartOfDayUTC = (date) => {
+  if (!date) {
+    throw new Error('date parameter is required (do not use client-side default time)');
+  }
+  
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    throw new Error('date must be a valid Date object');
+  }
+  
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    0, 0, 0, 0
+  ));
+};
+
+/**
+ * UTC 기준 내일 00:00:00 계산
+ * @param {Date} date - 기준 날짜 (필수, 서버 타임스탬프 전달)
+ * @return {Date} UTC 기준 내일 00:00:00
+ * @throws {Error} date가 없거나 유효하지 않은 경우
+ */
+const getStartOfNextDayUTC = (date) => {
+  if (!date) {
+    throw new Error('date parameter is required (do not use client-side default time)');
+  }
+  
+  const today = getStartOfDayUTC(date);
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  return tomorrow;
 };
 
 /**
@@ -211,8 +278,11 @@ module.exports = {
   generateId,
   nanoid,
 
-  // 포맷팅
+  // 날짜/시간
   formatDate,
+  toDate,
+  getStartOfDayUTC,
+  getStartOfNextDayUTC,
 
   // PII 보호
   maskPhoneNumber,

@@ -114,19 +114,9 @@
     },
     {
       "collectionGroup": "rewardsHistory",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "changeType", "order": "ASCENDING" },
-        { "fieldPath": "metadata.isSplitRemainder", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "rewardsHistory",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "changeType", "order": "ASCENDING" },
-        { "fieldPath": "isProcessed", "order": "ASCENDING" },
+        { "fieldPath": "actionKey", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     }

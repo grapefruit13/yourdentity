@@ -48,7 +48,9 @@ echo ""
 
 # Step 1: ID 토큰 발급
 echo -e "${YELLOW}[1/5] ID 토큰 발급 중...${NC}"
-cd /Users/hyerin/TechforImpact/yourdentity/be/functions
+# 스크립트 위치 기반 상대 경로로 functions 디렉토리 이동 (이식성 향상)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/../.."
 TOKEN_OUTPUT=$(PRODUCTION=true node src/scripts/getIdToken.js "$TEST_USER_ID" 2>&1)
 echo "$TOKEN_OUTPUT"
 
@@ -63,21 +65,39 @@ fi
 echo -e "${GREEN}✅ ID 토큰 발급 완료${NC}"
 echo ""
 
-# Step 2: 사용자 초기 리워드 확인
-echo -e "${YELLOW}[2/5] 사용자 초기 리워드 확인 중...${NC}"
-INITIAL_RESPONSE=$(curl -s -X GET "$BASE_URL/users/$TEST_USER_ID" \
-  -H "Authorization: Bearer $ID_TOKEN")
+# Step 2: 사용자 문서 생성 대기 (Auth Trigger)
+echo -e "${YELLOW}[2/5] 사용자 문서 생성 대기 중...${NC}"
+USER_READY=false
 
-echo "$INITIAL_RESPONSE" | jq '.' 2>/dev/null || echo "$INITIAL_RESPONSE"
-INITIAL_REWARDS=$(echo "$INITIAL_RESPONSE" | jq -r '.data.rewards // 0' 2>/dev/null || echo "0")
-echo -e "${BLUE}초기 리워드: $INITIAL_REWARDS${NC}"
+for i in {1..10}; do
+  INITIAL_RESPONSE=$(curl -s -X GET "$BASE_URL/users/$TEST_USER_ID" \
+    -H "Authorization: Bearer $ID_TOKEN")
+  
+  STATUS=$(echo "$INITIAL_RESPONSE" | jq -r '.status // 0' 2>/dev/null)
+  
+  if [ "$STATUS" -eq 200 ]; then
+    echo -e "${GREEN}✅ 사용자 문서 준비 완료 (${i}회 시도, ${i}초)${NC}"
+    USER_READY=true
+    INITIAL_REWARDS=$(echo "$INITIAL_RESPONSE" | jq -r '.data.rewards // 0' 2>/dev/null || echo "0")
+    echo -e "${BLUE}초기 리워드: $INITIAL_REWARDS${NC}"
+    break
+  fi
+  
+  [ $i -lt 10 ] && sleep 1
+done
+
+if [ "$USER_READY" = false ]; then
+  echo -e "${RED}❌ 사용자 문서 생성 실패 (10초 대기 완료)${NC}"
+  echo "$INITIAL_RESPONSE"
+  exit 1
+fi
 echo ""
 
 # Step 3: 댓글 작성 (리워드 부여)
 echo -e "${YELLOW}[3/5] 댓글 작성 중 (리워드 자동 부여)...${NC}"
 COMMENT_DATA="{\"content\": \"리워드 테스트 댓글 - $(date +%Y-%m-%d\ %H:%M:%S)\"}"
 
-COMMENT_RESPONSE=$(curl -s -X POST "$BASE_URL/communities/$COMMUNITY_ID/posts/$POST_ID/comments" \
+COMMENT_RESPONSE=$(curl -s -X POST "$BASE_URL/comments/communities/$COMMUNITY_ID/posts/$POST_ID" \
   -H "Authorization: Bearer $ID_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$COMMENT_DATA")
@@ -95,9 +115,29 @@ fi
 echo -e "${GREEN}✅ 댓글 작성 완료 (ID: $COMMENT_ID)${NC}"
 echo ""
 
-# Step 4: 리워드 부여 대기 (비동기 처리)
-echo -e "${YELLOW}[4/5] 리워드 부여 처리 대기 중 (3초)...${NC}"
-sleep 3
+# Step 4: 리워드 적용 확인 (재시도 패턴)
+echo -e "${YELLOW}[4/5] 리워드 적용 확인 중...${NC}"
+FINAL_REWARDS=0
+RETRY_SUCCESS=false
+
+for i in {1..5}; do
+  CURRENT_RESPONSE=$(curl -s -X GET "$BASE_URL/users/$TEST_USER_ID" \
+    -H "Authorization: Bearer $ID_TOKEN")
+  CURRENT_REWARDS=$(echo "$CURRENT_RESPONSE" | jq -r '.data.rewards // 0' 2>/dev/null || echo "0")
+  
+  if [ "$CURRENT_REWARDS" -gt "$INITIAL_REWARDS" ]; then
+    echo -e "${GREEN}✅ 리워드 적용 확인 (${i}회 시도, $((i))초)${NC}"
+    FINAL_REWARDS=$CURRENT_REWARDS
+    RETRY_SUCCESS=true
+    break
+  fi
+  
+  [ $i -lt 5 ] && sleep 1
+done
+
+if [ "$RETRY_SUCCESS" = false ]; then
+  echo -e "${YELLOW}⚠️  리워드가 아직 적용되지 않았습니다 (5초 대기 완료)${NC}"
+fi
 echo ""
 
 # Step 5: 사용자 최종 리워드 확인
@@ -127,7 +167,7 @@ if [ "$REWARD_DIFF" -gt 0 ]; then
 else
   echo -e "${RED}❌ 리워드 부여 실패${NC}"
   echo -e "${YELLOW}   가능한 원인:${NC}"
-  echo -e "   - Notion DB에 'comment_create' 정책이 없거나 비활성화됨"
+  echo -e "   - Notion DB에 'comment' 정책이 없거나 비활성화됨"
   echo -e "   - 환경변수 NOTION_REWARD_POLICY_DB_ID가 잘못 설정됨"
   echo -e "   - 중복 방지로 인해 이미 부여된 리워드"
 fi
