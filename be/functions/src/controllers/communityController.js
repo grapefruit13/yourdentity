@@ -147,7 +147,8 @@ class CommunityController {
   async getPostById(req, res, next) {
     try {
       const {communityId, postId} = req.params;
-      const post = await communityService.getPostById(communityId, postId);
+      const viewerId = req.user?.uid || null;
+      const post = await communityService.getPostById(communityId, postId, viewerId);
       return res.success(post);
     } catch (error) {
       return next(error);

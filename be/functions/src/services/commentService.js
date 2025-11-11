@@ -241,7 +241,7 @@ class CommentService {
    * @param {Object} options - 조회 옵션
    * @return {Promise<Object>} 댓글 목록
    */
-  async getComments(communityId, postId, options = {}) {
+  async getComments(communityId, postId, options = {}, viewerId = null) {
     try {
       const {page = 0, size = 10} = options;
 
@@ -274,6 +274,8 @@ class CommentService {
 
       const commentsWithReplies = [];
 
+      let likedCommentIds = new Set();
+
       if (paginatedParentComments.length > 0) {
         const parentIds = paginatedParentComments.map(comment => comment.id);
         
@@ -298,6 +300,14 @@ class CommentService {
           repliesByParentId[reply.parentId].push(reply);
         });
 
+        if (viewerId) {
+          const replyIds = allReplies.map(reply => reply.id);
+          const collectedIds = [...parentIds, ...replyIds].filter(Boolean);
+          if (collectedIds.length > 0) {
+            likedCommentIds = await this.getUserLikedCommentIds(collectedIds, viewerId);
+          }
+        }
+
         for (const comment of paginatedParentComments) {
           const replies = repliesByParentId[comment.id] || [];
          
@@ -311,7 +321,13 @@ class CommentService {
             .slice(0, 50)
             .map(reply => {
               const { isDeleted, media, userId: _userId, ...replyWithoutDeleted } = reply;
-              return replyWithoutDeleted;
+              const replyResult = {
+                ...replyWithoutDeleted,
+              };
+              if (viewerId) {
+                replyResult.isLiked = likedCommentIds.has(reply.id);
+              }
+              return replyResult;
             });
 
           const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
@@ -321,6 +337,9 @@ class CommentService {
             replies: sortedReplies,
             repliesCount: replies.length, 
           };
+          if (viewerId) {
+            processedComment.isLiked = likedCommentIds.has(comment.id);
+          }
 
           commentsWithReplies.push(processedComment);
         }
@@ -345,6 +364,50 @@ class CommentService {
         throw error;
       }
       throw new Error("Failed to get comments");
+    }
+  }
+
+  async getUserLikedCommentIds(commentIds, userId) {
+    if (!userId || !Array.isArray(commentIds) || commentIds.length === 0) {
+      return new Set();
+    }
+
+    const uniqueIds = Array.from(new Set(commentIds.filter(Boolean)));
+    if (uniqueIds.length === 0) {
+      return new Set();
+    }
+
+    try {
+      const chunks = [];
+      for (let i = 0; i < uniqueIds.length; i += 10) {
+        chunks.push(uniqueIds.slice(i, i + 10));
+      }
+
+      const snapshots = await Promise.all(
+        chunks.map((chunk) =>
+          this.firestoreService.db
+            .collection("likes")
+            .where("userId", "==", userId)
+            .where("type", "==", "COMMENT")
+            .where("targetId", "in", chunk)
+            .get()
+        )
+      );
+
+      const likedIds = new Set();
+      snapshots.forEach((snapshot) => {
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data?.targetId) {
+            likedIds.add(data.targetId);
+          }
+        });
+      });
+
+      return likedIds;
+    } catch (error) {
+      console.warn("[CommentService] 사용자 댓글 좋아요 조회 실패:", error.message);
+      return new Set();
     }
   }
 
@@ -513,14 +576,18 @@ class CommentService {
           throw error;
         }
 
-        const likeRef = this.firestoreService.db
-          .collection("likes")
-          .doc(`COMMENT:${commentId}:${userId}`);
-        const likeDoc = await transaction.get(likeRef);
+        const likesCollection = this.firestoreService.db.collection("likes");
+        const likeQuery = likesCollection
+          .where("type", "==", "COMMENT")
+          .where("targetId", "==", commentId)
+          .where("userId", "==", userId)
+          .limit(1);
+        const likeSnapshot = await transaction.get(likeQuery);
+        const existingLikeDoc = likeSnapshot.empty ? null : likeSnapshot.docs[0];
         let isLiked = false;
 
-        if (likeDoc.exists) {
-          transaction.delete(likeRef);
+        if (existingLikeDoc) {
+          transaction.delete(existingLikeDoc.ref);
           isLiked = false;
 
           transaction.update(commentRef, {
@@ -528,7 +595,8 @@ class CommentService {
             updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
-          transaction.set(likeRef, {
+          const newLikeRef = likesCollection.doc();
+          transaction.set(newLikeRef, {
             type: "COMMENT",
             targetId: commentId,
             userId,

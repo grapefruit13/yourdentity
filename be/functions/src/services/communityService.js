@@ -714,7 +714,15 @@ class CommunityService {
         return processed;
       };
 
-      const processedPosts = paginatedPosts.map(processPost);
+      let processedPosts = paginatedPosts.map(processPost);
+
+      if (viewerId) {
+        const likedPostIds = await this.getUserLikedTargetIds("POST", processedPosts.map(post => post.id), viewerId);
+        processedPosts = processedPosts.map((post) => ({
+          ...post,
+          isLiked: likedPostIds.has(post.id),
+        }));
+      }
 
       return {
         content: processedPosts,
@@ -1119,7 +1127,7 @@ class CommunityService {
    * @param {string} postId - 게시글 ID
    * @return {Promise<Object>} 게시글 상세 정보
    */
-  async getPostById(communityId, postId) {
+  async getPostById(communityId, postId, viewerId = null) {
     try {
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
       const post = await postsService.getById(postId);
@@ -1151,7 +1159,7 @@ class CommunityService {
           ? post.isReview
           : CommunityService.resolveIsReviewFromLegacyType(post.type);
       
-      return {
+      const response = {
         ...postWithoutAuthorId,
         programType: resolvedProgramType,
         isReview: resolvedIsReview,
@@ -1167,12 +1175,82 @@ class CommunityService {
           name: community.name,
         } : null,
       };
+
+      if (viewerId) {
+        const liked = await this.hasUserLikedTarget("POST", postId, viewerId);
+        response.isLiked = liked;
+      }
+
+      return response;
     } catch (error) {
       console.error("[COMMUNITY] 게시글 상세 조회 실패:", error.message);
       if (error.code === "NOT_FOUND") {
         throw error;
       }
       throw new Error("게시글 조회에 실패했습니다");
+    }
+  }
+
+  async getUserLikedTargetIds(type, targetIds, userId) {
+    if (!userId || !Array.isArray(targetIds) || targetIds.length === 0) {
+      return new Set();
+    }
+
+    const uniqueIds = Array.from(new Set(targetIds.filter(Boolean)));
+    if (uniqueIds.length === 0) {
+      return new Set();
+    }
+
+    try {
+      const chunks = [];
+      for (let i = 0; i < uniqueIds.length; i += 10) {
+        chunks.push(uniqueIds.slice(i, i + 10));
+      }
+
+      const snapshots = await Promise.all(chunks.map((chunk) =>
+        this.firestoreService.db
+          .collection("likes")
+          .where("userId", "==", userId)
+          .where("type", "==", type)
+          .where("targetId", "in", chunk)
+          .get()
+      ));
+
+      const likedIds = new Set();
+      snapshots.forEach((snapshot) => {
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data?.targetId) {
+            likedIds.add(data.targetId);
+          }
+        });
+      });
+
+      return likedIds;
+    } catch (error) {
+      console.warn("[CommunityService] 사용자 좋아요 조회 실패:", error.message);
+      return new Set();
+    }
+  }
+
+  async hasUserLikedTarget(type, targetId, userId) {
+    if (!userId || !targetId) {
+      return false;
+    }
+
+    try {
+      const snapshot = await this.firestoreService.db
+        .collection("likes")
+        .where("userId", "==", userId)
+        .where("type", "==", type)
+        .where("targetId", "==", targetId)
+        .limit(1)
+        .get();
+
+      return !snapshot.empty;
+    } catch (error) {
+      console.warn("[CommunityService] 좋아요 여부 확인 실패:", error.message);
+      return false;
     }
   }
 
@@ -1428,15 +1506,18 @@ class CommunityService {
           throw error;
         }
 
-        // 결정적 문서 ID로 중복 생성 방지
-        const likeRef = this.firestoreService.db
-          .collection("likes")
-          .doc(`POST:${postId}:${userId}`);
-        const likeDoc = await transaction.get(likeRef);
+        const likesCollection = this.firestoreService.db.collection("likes");
+        const likeQuery = likesCollection
+          .where("type", "==", "POST")
+          .where("targetId", "==", postId)
+          .where("userId", "==", userId)
+          .limit(1);
+        const likeSnapshot = await transaction.get(likeQuery);
+        const existingLikeDoc = likeSnapshot.empty ? null : likeSnapshot.docs[0];
         let isLiked = false;
 
-        if (likeDoc.exists) {
-          transaction.delete(likeRef);
+        if (existingLikeDoc) {
+          transaction.delete(existingLikeDoc.ref);
           isLiked = false;
 
           transaction.update(postRef, {
@@ -1450,7 +1531,8 @@ class CommunityService {
             .doc(postId);
           transaction.delete(likedPostRef);
         } else {
-          transaction.set(likeRef, {
+          const newLikeRef = likesCollection.doc();
+          transaction.set(newLikeRef, {
             type: "POST",
             targetId: postId,
             userId,

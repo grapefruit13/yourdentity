@@ -602,7 +602,7 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *       500:
  *         description: 서버 오류
  */
-router.get("/:communityId/posts/:postId", communityController.getPostById);
+router.get("/:communityId/posts/:postId", optionalAuth, communityController.getPostById);
 
 // 커뮤니티 게시글 수정
 /**
@@ -908,8 +908,8 @@ router.delete("/:communityId/posts/:postId", authGuard, communityController.dele
  *                       example: "Z0brK3uiqrVBf4mWNCtRgXDzIbtP"
  *                     isLiked:
  *                       type: boolean
- *                       description: 좋아요 여부
- *                       example: true
+ *                       nullable: true
+ *                       description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  *                     likesCount:
  *                       type: integer
  *                       description: 좋아요 수

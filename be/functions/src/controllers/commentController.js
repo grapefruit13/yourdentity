@@ -43,7 +43,8 @@ class CommentController {
       const page = parseInt(req.query.page, 10) || 0;
       const size = Math.min(parseInt(req.query.size, 10) || 10, 10); 
 
-      const result = await commentService.getComments(communityId, postId, {page, size});
+      const viewerId = req.user?.uid || null;
+      const result = await commentService.getComments(communityId, postId, {page, size}, viewerId);
       
       // data 객체 안에 comments 배열과 pagination 객체 분리
       const responseData = {
