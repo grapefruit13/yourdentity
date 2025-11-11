@@ -23,14 +23,13 @@ class UserController {
 
   /**
    * 본인 정보 조회
-   * 로그인 시점에 리워드 만료 검증 및 차감 처리
-   * (lastLogin은 syncKakaoProfile에서 업데이트됨)
+   * (lastLoginAt은 카카오 로그인 시 syncKakaoProfile에서 업데이트됨)
    */
   async getMe(req, res, next) {
     try {
       const {uid} = req.user;
       
-      // 사용자 정보 조회 (lastLogin 확인용)
+      // 사용자 정보 조회
       const user = await userService.getUserById(uid);
       if (!user) {
         const err = new Error("사용자를 찾을 수 없습니다");

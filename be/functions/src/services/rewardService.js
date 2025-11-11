@@ -407,6 +407,7 @@ class RewardService {
       const snapshot = await rewardsHistoryRef
         .where('changeType', '==', 'add')
         .where('isProcessed', '==', false)
+        .limit(100) // 한 번에 처리할 최대 개수 제한
         .get();
 
       if (snapshot.empty) {
@@ -461,19 +462,21 @@ class RewardService {
 
         const userData = userDoc.data();
         const currentRewards = typeof userData.rewards === 'number' ? userData.rewards : 0;
-        const newRewards = Math.max(0, currentRewards - totalDeducted); // 음수 방지
 
-        // 사용자 rewards 차감 (데이터 일관성 보장)
-        if (totalDeducted > 0) {
+        // 차감할 금액이 현재 리워드보다 많으면 경고 로그
+        if (totalDeducted > currentRewards) {
+          console.warn(`[REWARD EXPIRY] userId=${userId}, 차감할 금액(${totalDeducted})이 현재 리워드(${currentRewards})보다 많습니다. 0으로 설정됩니다.`);
+          // 모든 리워드 차감
           transaction.update(userRef, {
-            rewards: newRewards,
+            rewards: 0,
             updatedAt: FieldValue.serverTimestamp(),
           });
-
-          // 실제 차감량과 계산된 차감량이 다를 경우 로그
-          if (newRewards !== currentRewards - totalDeducted) {
-            console.warn(`[REWARD EXPIRY] userId=${userId}, rewards가 음수가 될 뻔했으나 0으로 조정됨. 원래: ${currentRewards}, 차감: ${totalDeducted}, 결과: ${newRewards}`);
-          }
+        } else if (totalDeducted > 0) {
+          // 정상 차감 (FieldValue.increment 사용으로 동시성 문제 방지)
+          transaction.update(userRef, {
+            rewards: FieldValue.increment(-totalDeducted),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
         }
 
         // 각 만료된 히스토리 항목 처리
