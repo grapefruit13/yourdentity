@@ -621,7 +621,7 @@ const WritePageContent = () => {
   return (
     <form className="flex flex-col pt-12" onSubmit={handleSubmit(onSubmit)}>
       {/* 선택된 프로그램 정보 표시 */}
-      <div className="flex flex-col gap-4 bg-gray-100 p-5 pt-2 pb-4">
+      <div className="flex flex-col gap-4 bg-gray-100 p-5 py-3">
         {selectedCommunityName && (
           <div className="flex border-collapse flex-col gap-1 rounded-lg border border-gray-200 bg-white">
             {/* 글 카테고리 정보 */}
