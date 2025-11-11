@@ -76,3 +76,20 @@ export const formatDateRange = (
   const endDay = String(end.getDate()).padStart(2, "0");
   return `${startMonth}.${startDay} ~ ${endMonth}.${endDay}`;
 };
+
+/**
+ * 현재 날짜/시간을 포맷팅하여 반환
+ * @param suffix - 날짜/시간 뒤에 붙일 접미사 (기본값: " 수정 중")
+ * @returns 포맷된 날짜/시간 문자열 (예: "2024.01.01(월) 12:00 수정 중")
+ */
+export const getCurrentDateTime = (suffix = " 수정 중"): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const dayName = dayNames[now.getDay()];
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day}(${dayName}) ${hours}:${minutes}${suffix}`;
+};
