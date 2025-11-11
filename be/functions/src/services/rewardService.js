@@ -161,6 +161,40 @@ class RewardService {
   }
 
   /**
+   * 게시글 타입에 따른 리워드 부여 (비즈니스 로직)
+   * @param {string} userId - 사용자 ID
+   * @param {Object} post - 게시글 객체 ({ id, type, media, content, communityId })
+   * @return {Promise<Object>} 부여 결과
+   * @throws {Error} 에러 발생 시 (middleware에서 처리)
+   */
+  async grantPostReward(userId, post) {
+    const { id: postId, type, media, content, communityId } = post;
+    
+    // 리워드 대상 게시글 타입별 처리
+    if (type === 'ROUTINE_CERT') {
+      return await this.grantActionReward(userId, 'routine_post', { postId, communityId });
+    } else if (type === 'ROUTINE_REVIEW') {
+      return await this.grantActionReward(userId, 'routine_review', { postId, communityId });
+    } else if (type === 'GATHERING_REVIEW') {
+      // 이미지 포함 여부 체크
+      let hasImage = Array.isArray(media) && media.length > 0;
+      
+      if (!hasImage && content) {
+        const contentWithoutCodeBlocks = content.replace(/```[\s\S]*?```/g, '');
+        hasImage = /<\s*img\b/i.test(contentWithoutCodeBlocks);
+      }
+      
+      const actionKey = hasImage ? 'gathering_review_media' : 'gathering_review_text';
+      return await this.grantActionReward(userId, actionKey, { postId, communityId });
+    } else if (type === 'TMI_REVIEW' || type === 'TMI') {
+      return await this.grantActionReward(userId, 'tmi_review', { postId, communityId });
+    }
+    
+    // 리워드 대상이 아닌 타입
+    return { success: true, amount: 0, message: 'No reward for this post type' };
+  }
+
+  /**
    * Action 기반 리워드 부여 (Notion DB 조회)
    * Race condition 방지를 위해 중복 체크와 리워드 부여를 단일 transaction으로 처리
    * @param {string} userId - 사용자 ID
@@ -174,7 +208,6 @@ class RewardService {
       const rewardAmount = await this.getRewardByAction(actionKey);
 
       if (rewardAmount <= 0) {
-        console.log(`[REWARD] 액션 "${actionKey}"는 리워드가 없습니다 (0 포인트)`);
         return { success: true, amount: 0, message: 'No reward for this action' };
       }
 
@@ -255,11 +288,8 @@ class RewardService {
 
       // 5. 중복 체크 결과 처리
       if (isDuplicate) {
-        console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, historyId=${historyId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };
       }
-
-      console.log(`[REWARD SUCCESS] userId=${userId}, action=${actionKey}, amount=${rewardAmount}, historyId=${historyId}`);
 
       return {
         success: true,
@@ -267,18 +297,6 @@ class RewardService {
         message: `Granted ${rewardAmount} rewards for ${actionKey}`,
       };
     } catch (error) {
-      if (error.code === 'DAILY_LIMIT_EXCEEDED') {
-        console.log(`[REWARD LIMIT] 댓글 작성 일일 제한 도달: userId=${userId}, action=${actionKey} (UTC 기준 5/day)`);
-        throw error; // 프론트에서 사용자에게 알림 표시
-      }
-
-      // 시스템 에러
-      console.error('[REWARD ERROR] grantActionReward:', error.message, {
-        userId,
-        actionKey,
-        metadata,
-      });
-      
       // error.code가 없으면 적절한 코드 설정 (Service 에러 가이드라인 준수)
       if (!error.code) {
         error.code = 'INTERNAL_ERROR';
