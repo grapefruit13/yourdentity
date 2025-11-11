@@ -29,6 +29,7 @@
   --color-gray-200: #e5e7eb;
   --color-gray-400: #99a1af;
   --color-gray-700: #374151;
+  --color-gray-950: #030712;
   /* tailwind의 slate300 사용 */
   --color-gray-300: oklch(92.9% 0.013 255.508);
   /* tailwind의 slate400 사용 */
