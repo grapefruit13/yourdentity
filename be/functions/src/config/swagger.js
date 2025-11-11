@@ -1290,10 +1290,10 @@ const options = {
               description: "잠금 여부",
               example: false,
             },
-            visibility: {
-              type: "string",
-              description: "공개 범위",
-              example: "public",
+            isPublic: {
+              type: "boolean",
+              description: "공개 여부",
+              example: true,
             },
             likesCount: {
               type: "integer",
@@ -1364,10 +1364,10 @@ const options = {
               description: "잠금 여부",
               example: false,
             },
-            visibility: {
-              type: "string",
-              description: "공개 범위",
-              example: "public",
+            isPublic: {
+              type: "boolean",
+              description: "공개 여부",
+              example: true,
             },
             likesCount: {
               type: "integer",
@@ -1787,11 +1787,10 @@ const options = {
               description: "잠금 여부",
               example: false,
             },
-            visibility: {
-              type: "string",
-              enum: ["public", "private", "hidden"],
-              description: "공개 범위",
-              example: "public",
+            isPublic: {
+              type: "boolean",
+              description: "공개 여부",
+              example: true,
             },
             rewardGiven: {
               type: "boolean",

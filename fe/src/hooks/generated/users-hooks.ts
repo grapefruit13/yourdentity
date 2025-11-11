@@ -13,6 +13,32 @@ import * as Api from "@/api/generated/users-api";
 import { usersKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/users-types";
 
+export const usePostUsersTestCreate = <
+  TContext = unknown,
+  TVariables = Types.TPOSTUsersTestCreateReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postUsersTestCreate>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postUsersTestCreate>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postUsersTestCreate(variables as Types.TPOSTUsersTestCreateReq),
+    ...options,
+  });
+};
+
 export const usePatchUsersMeOnboarding = <
   TContext = unknown,
   TVariables = Types.TPATCHUsersMeOnboardingReq,

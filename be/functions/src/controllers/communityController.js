@@ -38,21 +38,67 @@ class CommunityController {
    */
   async getAllCommunityPosts(req, res, next) {
     try {
-      const {
-        type,
-        filter,  // filter 파라미터 추가
-      } = req.query;
+      const {programType, programTypes, programState} = req.query;
       const page = parseInt(req.query.page, 10) || 0;
       const size = parseInt(req.query.size, 10) || 10;
 
-      // filter 파라미터를 type으로 매핑 (하위 호환성)
-      const finalType = type || filter;
+      const collectProgramTypes = (value) => {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+          return value
+            .flatMap((item) =>
+              typeof item === "string" ? item.split(",") : [],
+            )
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+        if (typeof value === "string") {
+          return value
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+        return [];
+      };
 
-      const result = await communityService.getAllCommunityPosts({
-        type: finalType,
-        page,
-        size,
-      });
+      const requestedProgramTypes = Array.from(
+        new Set([
+          ...collectProgramTypes(programTypes),
+          ...collectProgramTypes(programType),
+        ]),
+      );
+
+      const normalizeProgramState = (value) => {
+        if (!value) {
+          return null;
+        }
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            return null;
+          }
+          return normalizeProgramState(value[0]);
+        }
+        if (typeof value !== "string") {
+          return null;
+        }
+        const lower = value.toLowerCase();
+        if (lower === "ongoing" || lower === "finished") {
+          return lower;
+        }
+        return null;
+      };
+
+      const normalizedProgramState = normalizeProgramState(programState);
+
+      const result = await communityService.getAllCommunityPosts(
+        {
+          programTypes: requestedProgramTypes,
+          programState: normalizedProgramState,
+          page,
+          size,
+        },
+        req.user?.uid || null,
+      );
 
       // data 객체 안에 posts 배열과 pagination 객체 분리
       const responseData = {

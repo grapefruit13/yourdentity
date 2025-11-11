@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Typography } from "@/components/shared/typography";
 
 interface DeleteAccountModalProps {
@@ -8,6 +8,8 @@ interface DeleteAccountModalProps {
   isOpen: boolean;
   /** 로딩 상태 (탈퇴 진행 중) */
   isLoading: boolean;
+  /** 사용자 닉네임 (입력 비교용) */
+  nickname: string | null | undefined;
   /** 확인 버튼 클릭 핸들러 */
   onConfirm: () => void;
   /** 닫기 핸들러 (취소/오버레이/ESC) */
@@ -23,10 +25,21 @@ interface DeleteAccountModalProps {
 const DeleteAccountModal = ({
   isOpen,
   isLoading,
+  nickname,
   onConfirm,
   onClose,
 }: DeleteAccountModalProps) => {
   const previousOverflow = useRef<string>("");
+  const [userName, setUserName] = useState("");
+  const [nameError, setNameError] = useState("");
+
+  // 모달이 닫힐 때 입력값 초기화
+  useEffect(() => {
+    if (!isOpen) {
+      setUserName("");
+      setNameError("");
+    }
+  }, [isOpen]);
 
   // Body 스크롤 방지 (모달 열릴 때)
   useEffect(() => {
@@ -85,25 +98,60 @@ const DeleteAccountModal = ({
           variant="heading2B"
           className="mb-4 text-left text-black"
         >
-          정말 탈퇴하시겠습니까?
+          탈퇴할까요?
         </Typography>
 
         {/* 경고 문구 */}
-        <div className="mb-6 rounded-lg bg-red-50 p-4">
-          <Typography
-            as="p"
-            font="noto"
-            variant="body2M"
-            className="text-center text-red-600"
-          >
-            탈퇴 후에는 개인정보가 모두 삭제되어
-            <br />
-            복구가 불가능합니다.
-          </Typography>
+        <Typography
+          as="p"
+          font="noto"
+          variant="body2R"
+          className="mb-4 text-gray-700"
+        >
+          계정 정보는 모두 삭제되며 이는 다시 가입하더라도 복구되지 않습니다.
+        </Typography>
+
+        {/* 이름 입력 필드 */}
+        <div className="mb-4 flex flex-col gap-2">
+          <input
+            id="userName"
+            name="userName"
+            type="text"
+            value={userName}
+            onChange={(e) => {
+              const value = e.target.value;
+              setUserName(value);
+
+              // 실시간 닉네임 검증
+              if (
+                nickname &&
+                value.trim() !== "" &&
+                value.trim() !== nickname
+              ) {
+                setNameError("사용 중인 닉네임과 다릅니다.");
+              } else {
+                setNameError("");
+              }
+            }}
+            placeholder="사용중인 닉네임을 입력하세요"
+            disabled={isLoading}
+            className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm shadow-sm focus:border-gray-300 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50"
+          />
+          {nameError && (
+            <div className="flex items-center gap-2">
+              <Typography
+                font="noto"
+                variant="label1R"
+                className="text-red-500"
+              >
+                {nameError}
+              </Typography>
+            </div>
+          )}
         </div>
 
         {/* 버튼 영역: 취소 / 확인 */}
-        <div className="mt-2 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             onClick={() => {
               if (isLoading) return;
@@ -119,12 +167,18 @@ const DeleteAccountModal = ({
           </button>
           <button
             onClick={onConfirm}
-            disabled={isLoading}
-            className="rounded-xl bg-red-600 px-4 py-3 transition-colors hover:bg-red-700 focus:outline-none focus-visible:outline-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:bg-gray-300"
-            aria-label={isLoading ? "탈퇴 진행 중..." : "탈퇴하기"}
+            disabled={
+              isLoading ||
+              !userName.trim() ||
+              nameError !== "" ||
+              !nickname ||
+              userName.trim() !== nickname
+            }
+            className="bg-primary-pink hover:bg-primary-pink/80 rounded-xl px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            aria-label={isLoading ? "탈퇴 진행 중..." : "탈퇴"}
           >
             <Typography font="noto" variant="body2M" className="text-white">
-              {isLoading ? "탈퇴 진행 중..." : "탈퇴하기"}
+              {isLoading ? "탈퇴 진행 중..." : "탈퇴"}
             </Typography>
           </button>
         </div>

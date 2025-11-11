@@ -147,7 +147,7 @@ const Modal = ({
         {children && <div className="mb-6">{children}</div>}
 
         {/* 버튼들 */}
-        <div className="flex gap-3">
+        <div className="mt-6 flex gap-3">
           {/* 취소 버튼 */}
           <button
             onClick={handleClose}

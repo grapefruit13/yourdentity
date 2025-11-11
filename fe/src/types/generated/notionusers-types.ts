@@ -10,3 +10,7 @@ export type TGETNotionUsersSyncActiveRes = string;
 export type TGETNotionUsersSyncFullRes = string;
 
 export type TGETNotionUsersSyncPenaltyRes = string;
+
+export type TGETNotionUsersSyncSelectedRes = string;
+
+export type TGETNotionUsersSyncAllUsersRollbackRes = string;

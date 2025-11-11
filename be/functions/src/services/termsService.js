@@ -108,7 +108,7 @@ class TermsService {
     }
 
     const termsJson = await termsRes.json();
-    const allowedTerms = termsJson.allowed_service_terms || [];
+    const allowedTerms = termsJson.service_terms || [];
     
     let serviceVersion = null;
     let privacyVersion = null;

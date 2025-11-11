@@ -21,10 +21,14 @@
   --color-main-800: #b40055;
   --color-main-900: #99024f;
 
+  /* pink */
+  --color-primary-pink: #ff006c;
+
   /* gray */
   --color-gray-100: #f3f4f6;
   --color-gray-200: #e5e7eb;
   --color-gray-400: #99a1af;
+  --color-gray-700: #374151;
   /* tailwind의 slate300 사용 */
   --color-gray-300: oklch(92.9% 0.013 255.508);
   /* tailwind의 slate400 사용 */
@@ -75,4 +79,10 @@
 .prose img:not([src]),
 .prose img[src=""] {
   display: none;
+}
+
+/* react-notion-x 폰트 오버라이드 (Windows Chrome 호환성) */
+/* react-notion-x의 모든 요소에 Noto Sans 강제 적용 */
+.notion {
+  --notion-font: var(--font-noto-sans-kr), system-ui, sans-serif;
 }

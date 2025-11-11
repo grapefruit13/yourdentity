@@ -31,6 +31,7 @@ import {
   isElementEmpty,
   setCursorPosition,
   normalizeUrl,
+  elementToHtml,
 } from "@/utils/shared/text-editor";
 import { Button } from "../ui/button";
 import Icon from "../ui/icon";
@@ -314,7 +315,13 @@ const TextEditor = ({
         }
       });
 
-      onContentChange(contentRef.current.innerHTML);
+      // innerHTML 대신 직접 HTML 문자열을 구성하여 속성 보존
+      let html = "";
+      contentRef.current.childNodes.forEach((child) => {
+        html += elementToHtml(child);
+      });
+
+      onContentChange(html);
     }
     checkPlaceholder(contentRef.current);
   };
@@ -557,14 +564,80 @@ const TextEditor = ({
   };
 
   /**
+   * 색상이 적용된 span 요소 생성
+   * @param color - 적용할 색상 코드 (HEX 형식)
+   * @param content - span 내부에 넣을 내용 (선택사항)
+   * @returns 색상이 적용된 span 요소
+   */
+  const createColoredSpan = (color: string, content?: DocumentFragment) => {
+    const span = document.createElement("span");
+    span.style.color = color;
+    if (content) {
+      span.appendChild(content);
+    } else {
+      span.textContent = "\u200B"; // zero-width space
+    }
+    return span;
+  };
+
+  /**
+   * 커서를 특정 요소 뒤로 이동
+   * @param element - 커서를 이동할 기준 요소
+   */
+  const moveCursorAfter = (element: HTMLElement) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const range = document.createRange();
+    range.setStartAfter(element);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  /**
+   * 커서를 특정 요소 내부로 이동
+   * @param element - 커서를 이동할 요소
+   */
+  const moveCursorInside = (element: HTMLElement) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  /**
    * 텍스트 색상 변경
    * @param color - 적용할 색상 코드 (HEX 형식)
    */
   const handleColorChange = (color: string) => {
+    if (activeEditor === "title") return;
+
     setSelectedColor(color);
     pendingSelectedColorRef.current = color;
     setShowColorPicker(false);
-    executeCommand("foreColor", color);
+
+    const editorRef = getActiveEditorRef();
+    editorRef.current?.focus();
+    restoreSelection();
+
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    const span = range.collapsed
+      ? createColoredSpan(color)
+      : createColoredSpan(color, range.extractContents());
+
+    range.insertNode(span);
+    (range.collapsed ? moveCursorInside : moveCursorAfter)(span);
+
+    handleEditorInput();
+    setTimeout(updateEditorState, 0);
   };
 
   /**
@@ -600,6 +673,34 @@ const TextEditor = ({
     setShowHeadingMenu(!showHeadingMenu);
   };
 
+  /**
+   * 헤딩 스타일이 적용된 span 요소 생성
+   * @param level - 헤딩 레벨 (1, 2, 3, 4)
+   * @param content - span 내부에 넣을 내용 (선택사항)
+   * @returns 헤딩 스타일이 적용된 span 요소
+   */
+  const createHeadingSpan = (
+    level: 1 | 2 | 3 | 4,
+    content?: DocumentFragment
+  ) => {
+    const span = document.createElement("span");
+    const className = HEADING_CLASS_MAP[level];
+
+    // className과 data-heading 속성을 직접 설정 (두 가지 방법 모두 사용)
+    span.className = className;
+    span.setAttribute("class", className); // 명시적으로 setAttribute도 사용
+    span.dataset.heading = String(level);
+    span.setAttribute("data-heading", String(level)); // 명시적으로 setAttribute도 사용
+
+    if (content) {
+      span.appendChild(content);
+    } else {
+      span.textContent = "\u200B"; // zero-width space
+    }
+
+    return span;
+  };
+
   const handleHeadingChange = (level: 1 | 2 | 3 | 4) => {
     if (activeEditor === "title") {
       setShowHeadingMenu(false);
@@ -617,36 +718,17 @@ const TextEditor = ({
     }
 
     const range = selection.getRangeAt(0);
-    const className = HEADING_CLASS_MAP[level];
+    const span = range.collapsed
+      ? createHeadingSpan(level)
+      : createHeadingSpan(level, range.extractContents());
 
-    if (!range.collapsed) {
-      // 선택 영역 래핑 (내부 마크업 보존)
-      const fragment = range.extractContents();
-      const span = document.createElement("span");
-      span.setAttribute("class", className);
-      span.setAttribute("data-heading", String(level));
-      span.appendChild(fragment);
-      range.insertNode(span);
+    range.insertNode(span);
 
-      // 커서를 span 뒤로 이동 (삽입 노드 기준 결정적 위치)
-      const after = document.createRange();
-      after.setStartAfter(span);
-      after.setEndAfter(span);
-      selection.removeAllRanges();
-      selection.addRange(after);
+    // 커서 이동
+    if (range.collapsed) {
+      moveCursorInside(span);
     } else {
-      // 커서만 있을 때 비어있는 span 삽입 후 내부로 커서 이동
-      const span = document.createElement("span");
-      span.setAttribute("class", className);
-      span.setAttribute("data-heading", String(level));
-      span.textContent = "\u200B"; // zero-width space
-      range.insertNode(span);
-
-      const inside = document.createRange();
-      inside.selectNodeContents(span);
-      inside.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(inside);
+      moveCursorAfter(span);
     }
 
     setIsHeadingActive(true);
