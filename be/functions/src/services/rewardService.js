@@ -95,17 +95,17 @@ class RewardService {
    * @param {string} historyId - 히스토리 문서 ID (중복 체크용)
    * @param {Date|Timestamp|null} actionTimestamp - 액션 발생 시간 (null이면 FieldValue.serverTimestamp() 사용)
    * @param {boolean} checkDuplicate - 중복 체크 여부 (기본: true, 중복 지급 방지)
-   * @return {Promise<{isDuplicate: boolean, isDailyLimitExceeded: boolean}>}
+   * @return {Promise<{isDuplicate: boolean}>}
+   * @throws {Error} DAILY_LIMIT_EXCEEDED - 일일 제한 초과 시
    */
   async addRewardToUser(userId, amount, actionKey, historyId, actionTimestamp = null, checkDuplicate = true) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
     let isDuplicate = false;
-    let isDailyLimitExceeded = false;
 
     await this.firestoreService.runTransaction(async (transaction) => {
-      // 일일 제한 체크 (actionTimestamp가 있고, actionKey가 comment인 경우)
+      // 댓글 일일 제한 체크 (actionTimestamp가 있고, actionKey가 comment인 경우)
       if (actionTimestamp && actionKey === 'comment') {
         const dateKey = formatDate(actionTimestamp);
         const counterRef = db.collection(`users/${userId}/dailyRewardCounters`).doc(dateKey);
@@ -114,12 +114,13 @@ class RewardService {
         const currentCount = counterDoc.exists ? (counterDoc.data()[actionKey] || 0) : 0;
         
         if (currentCount >= 5) {
-          isDailyLimitExceeded = true;
-          return; // 트랜잭션 중단
+          const error = new Error('Daily comment reward limit reached (5/day)');
+          error.code = 'DAILY_LIMIT_EXCEEDED';
+          throw error;
         }
       }
 
-      // 중복 체크 (옵션, race condition 방지)
+      // 중복 체크 (개별 리워드 중복 방지)
       if (checkDuplicate) {
         const historyDoc = await transaction.get(historyRef);
         if (historyDoc.exists) {
@@ -156,7 +157,7 @@ class RewardService {
       }
     });
 
-    return { isDuplicate, isDailyLimitExceeded };
+    return { isDuplicate };
   }
 
   /**
@@ -220,7 +221,7 @@ class RewardService {
       const historyId = `${typeCode}-${targetId}`;
 
       // 4. addRewardToUser 호출 (범용 메서드 활용, 트랜잭션 내 중복 체크 + 일일 제한 체크)
-      const { isDuplicate, isDailyLimitExceeded } = await this.addRewardToUser(
+      const { isDuplicate } = await this.addRewardToUser(
         userId, 
         rewardAmount, 
         actionKey, 
@@ -228,13 +229,7 @@ class RewardService {
         actionTimestamp
       );
 
-      // 5. 일일 제한 체크 결과 처리
-      if (isDailyLimitExceeded) {
-        console.log(`[REWARD LIMIT] 댓글 작성 일일 제한 도달: userId=${userId}, action=${actionKey} (UTC 기준 5/day)`);
-        return { success: true, amount: 0, message: 'Daily comment reward limit reached (5/day)' };
-      }
-
-      // 6. 중복 체크 결과 처리
+      // 5. 중복 체크 결과 처리
       if (isDuplicate) {
         console.log(`[REWARD DUPLICATE] 이미 부여된 리워드입니다: userId=${userId}, action=${actionKey}, historyId=${historyId}`);
         return { success: true, amount: 0, message: 'Reward already granted' };
@@ -248,6 +243,12 @@ class RewardService {
         message: `Granted ${rewardAmount} rewards for ${actionKey}`,
       };
     } catch (error) {
+      if (error.code === 'DAILY_LIMIT_EXCEEDED') {
+        console.log(`[REWARD LIMIT] 댓글 작성 일일 제한 도달: userId=${userId}, action=${actionKey} (UTC 기준 5/day)`);
+        throw error; // 프론트에서 사용자에게 알림 표시
+      }
+
+      // 시스템 에러
       console.error('[REWARD ERROR] grantActionReward:', error.message, {
         userId,
         actionKey,
