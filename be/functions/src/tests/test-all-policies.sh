@@ -1,21 +1,21 @@
 #!/bin/bash
 
-# 모든 리워드 정책 확인 테스트
+###############################################################################
+# 전체 리워드 정책 확인 테스트
 # Usage: ./test-all-policies.sh
+###############################################################################
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FUNCTIONS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📋 전체 리워드 정책 확인"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FUNCTIONS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-
 cd "$FUNCTIONS_DIR"
 
-# 모든 정책 조회
+# Inline Node.js로 Notion 정책 조회
 node -e "
 require('dotenv').config();
 const RewardService = require('./src/services/rewardService');
@@ -31,42 +31,35 @@ const policies = [
 
 (async () => {
   try {
-    const service = new RewardService();
+    const rewardService = new RewardService();
     
     console.log('🔍 Notion 정책 조회 중...\n');
     
-    let allSuccess = true;
+    let allPassed = true;
     
     for (const policy of policies) {
-      const reward = await service.getRewardByAction(policy.key);
+      const reward = await rewardService.getRewardByAction(policy.key);
       
-      const status = reward > 0 ? '✅' : '❌';
-      const message = reward > 0 
-        ? \`\${reward} 포인트\` 
-        : '정책 없음 또는 적용 전';
-      
-      console.log(\`  \${status} \${policy.name} (key: \${policy.key}): \${message}\`);
-      
-      if (reward === 0) {
-        allSuccess = false;
+      if (reward > 0) {
+        console.log(\`  ✅ \${policy.name} (key: \${policy.key}): \${reward} 포인트\`);
+      } else {
+        console.log(\`  ❌ \${policy.name} (key: \${policy.key}): 정책 없음 또는 비활성화\`);
+        allPassed = false;
       }
     }
     
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
-    if (allSuccess) {
-      console.log('✅ 모든 정책이 정상 설정되어 있습니다!');
+    if (allPassed) {
+      console.log('✅ 모든 정책이 정상 설정되어 있습니다!\n');
+      process.exit(0);
     } else {
-      console.log('⚠️  일부 정책이 누락되었거나 적용 전 상태입니다.');
-      console.log('   Notion DB에서 다음을 확인해주세요:');
-      console.log('   1. 사용자 행동 필드에 정확한 텍스트 입력');
-      console.log('   2. 정책 적용 상태 = \"적용 완료\"');
-      console.log('   3. 나다움 필드에 숫자 값 입력');
+      console.log('❌ 일부 정책이 누락되거나 비활성화되어 있습니다.\n');
+      process.exit(1);
     }
     
-    process.exit(allSuccess ? 0 : 1);
-  } catch (err) {
-    console.error('❌ 오류:', err.message);
+  } catch (error) {
+    console.error('❌ 오류:', error.message);
     process.exit(1);
   }
 })();
@@ -74,13 +67,11 @@ const policies = [
 
 EXIT_CODE=$?
 
-echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
 if [ $EXIT_CODE -eq 0 ]; then
   echo "✅ 전체 정책 확인 성공"
 else
-  echo "❌ 일부 정책 누락 또는 설정 오류"
+  echo "❌ 전체 정책 확인 실패 (exit code: $EXIT_CODE)"
 fi
 
 exit $EXIT_CODE
