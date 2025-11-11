@@ -378,19 +378,30 @@ class CommentService {
     }
 
     try {
-      const targetIdSet = new Set(uniqueIds);
-      const snapshot = await this.firestoreService.db
-        .collection("likes")
-        .where("userId", "==", userId)
-        .where("type", "==", "COMMENT")
-        .get();
+      const chunks = [];
+      for (let i = 0; i < uniqueIds.length; i += 10) {
+        chunks.push(uniqueIds.slice(i, i + 10));
+      }
+
+      const snapshots = await Promise.all(
+        chunks.map((chunk) =>
+          this.firestoreService.db
+            .collection("likes")
+            .where("userId", "==", userId)
+            .where("type", "==", "COMMENT")
+            .where("targetId", "in", chunk)
+            .get()
+        )
+      );
 
       const likedIds = new Set();
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data?.targetId && targetIdSet.has(data.targetId)) {
-          likedIds.add(data.targetId);
-        }
+      snapshots.forEach((snapshot) => {
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data?.targetId) {
+            likedIds.add(data.targetId);
+          }
+        });
       });
 
       return likedIds;
