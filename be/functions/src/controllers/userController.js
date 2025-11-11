@@ -39,8 +39,7 @@ class UserController {
       }
 
       // 로그인 시점: 리워드 만료 검증 및 차감 (비동기, 실패해도 계속 진행)
-      // userData를 전달하여 lastLogin 기반 일괄 만료 처리 가능
-      rewardService.checkAndDeductExpiredRewards(uid, user)
+      rewardService.checkAndDeductExpiredRewards(uid)
         .then(result => {
           if (result.count > 0) {
             console.log(`[LOGIN] userId=${uid}, 만료된 리워드 ${result.count}건 차감 완료 (${result.totalDeducted}포인트)`);
