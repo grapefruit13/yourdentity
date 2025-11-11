@@ -1,7 +1,9 @@
-const { db, FieldValue } = require('../config/database');
+const { db, FieldValue, Timestamp } = require('../config/database');
 const FirestoreService = require('./firestoreService');
 const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
 const { toDate, formatDate } = require('../utils/helpers');
+
+const DEFAULT_EXPIRY_DAYS = 120;
 
 // 액션 키 → 타입 코드 매핑 (historyId 생성용)
 const ACTION_TYPE_MAP = {
@@ -107,10 +109,20 @@ class RewardService {
    * @param {Date|Timestamp|null} actionTimestamp - 액션 발생 시간 (null이면 FieldValue.serverTimestamp() 사용)
    * @param {boolean} checkDuplicate - 중복 체크 여부 (기본: true, 중복 지급 방지)
    * @param {string|null} reason - 리워드 사유 (null이면 ACTION_REASON_MAP에서 자동 생성)
+   * @param {Object} [options] - 추가 옵션 (예: { expiresAt })
    * @return {Promise<{isDuplicate: boolean}>}
    * @throws {Error} DAILY_LIMIT_EXCEEDED - 일일 제한 초과 시
    */
-  async addRewardToUser(userId, amount, actionKey, historyId, actionTimestamp = null, checkDuplicate = true, reason = null) {
+  async addRewardToUser(
+    userId,
+    amount,
+    actionKey,
+    historyId,
+    actionTimestamp = null,
+    checkDuplicate = true,
+    reason = null,
+    options = {}
+  ) {
     const userRef = db.collection('users').doc(userId);
     const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
 
@@ -143,15 +155,49 @@ class RewardService {
 
       // rewardsHistory에 기록 추가
       const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 적립';
-      
-      transaction.set(historyRef, {
+
+      const historyData = {
+        actionKey,
         amount,
         changeType: 'add',
         reason: rewardReason,
         // actionTimestamp가 있으면 사용 (액션 기반), 없으면 서버 시간 사용 (관리자 직접 지급)
         createdAt: actionTimestamp || FieldValue.serverTimestamp(),
         isProcessed: false,
-      });
+      };
+
+      let expiresAtTimestamp = null;
+      const requestedExpiry = options?.expiresAt;
+
+      if (requestedExpiry instanceof Timestamp) {
+        expiresAtTimestamp = requestedExpiry;
+      } else if (requestedExpiry instanceof Date) {
+        expiresAtTimestamp = Timestamp.fromDate(requestedExpiry);
+      } else if (typeof requestedExpiry === 'string') {
+        const parsedExpiry = new Date(requestedExpiry);
+        if (!Number.isNaN(parsedExpiry.getTime())) {
+          expiresAtTimestamp = Timestamp.fromDate(parsedExpiry);
+        }
+      }
+
+      if (!expiresAtTimestamp) {
+        let baseDate;
+        if (actionTimestamp instanceof Timestamp) {
+          baseDate = actionTimestamp.toDate();
+        } else if (actionTimestamp instanceof Date) {
+          baseDate = actionTimestamp;
+        } else {
+          baseDate = Timestamp.now().toDate();
+        }
+
+        const expiryDate = new Date(baseDate);
+        expiryDate.setDate(expiryDate.getDate() + DEFAULT_EXPIRY_DAYS);
+        expiresAtTimestamp = Timestamp.fromDate(expiryDate);
+      }
+
+      historyData.expiresAt = expiresAtTimestamp;
+
+      transaction.set(historyRef, historyData);
 
       // users/{userId}.rewards 증가
       transaction.update(userRef, {
