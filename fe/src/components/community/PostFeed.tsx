@@ -3,12 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  CommunityPost,
-  CommunityPostListItem,
-} from "@/types/generated/api-schema";
+import { CommunityPostListItem } from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
+import { isValidImageUrl } from "@/utils/shared/url";
 
 interface PostFeedProps {
   posts: CommunityPostListItem[];
@@ -181,12 +179,13 @@ const PostFeed = ({
             <div className="mb-3 flex flex-col items-end justify-between">
               {/* 썸네일 이미지 - 우상단 */}
               <div className="flex justify-end">
-                {post.preview?.thumbnail?.url && (
-                  <PostThumbnail
-                    src={post.preview.thumbnail.url}
-                    alt={post.title || ""}
-                  />
-                )}
+                {post.preview?.thumbnail?.url &&
+                  isValidImageUrl(post.preview.thumbnail.url) && (
+                    <PostThumbnail
+                      src={post.preview.thumbnail.url}
+                      alt={post.title || ""}
+                    />
+                  )}
               </div>
               {/* 액션 아이콘들 - 우하단 고정 */}
               <div className="flex gap-4">

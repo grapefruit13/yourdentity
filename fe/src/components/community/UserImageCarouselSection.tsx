@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isValidImageUrl } from "@/utils/shared/url";
 
 interface UserImage {
   id: string;
@@ -50,17 +51,21 @@ const UserImageItem = ({ src, user }: { src: string; user: string }) => {
 const UserImageCarouselSection = ({
   images,
 }: UserImageCarouselSectionProps) => {
+  const validImages = Array.isArray(images)
+    ? images.filter((img) => isValidImageUrl(img.image))
+    : [];
+
   return (
     <div className="mb-6">
-      {images ? (
+      {validImages.length > 0 ? (
         <>
           <h3 className="mb-3 text-sm font-semibold text-gray-900">
             이런 후기도 있어요! 👀
           </h3>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {images.map((imageData) => (
+            {validImages.map((imageData, index) => (
               <UserImageItem
-                key={imageData.id}
+                key={imageData.id || `user-image-${index}`}
                 src={imageData.image}
                 user={imageData.user}
               />
