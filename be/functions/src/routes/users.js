@@ -90,7 +90,7 @@ const router = express.Router();
  *         bio:
  *           type: string
  *           example: 안녕하세요!
- *         lastLogin:
+ *         lastLoginAt:
  *           type: string
  *           format: date-time
  *           example: 2024-01-01T00:00:00Z
@@ -98,7 +98,7 @@ const router = express.Router();
  *           type: string
  *           format: date-time
  *           example: 2024-01-01T00:00:00Z
- *         updatedAt:
+ *         lastUpdatedAt:
  *           type: string
  *           format: date-time
  *           example: 2024-01-01T00:00:00Z
