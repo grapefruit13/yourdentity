@@ -243,9 +243,91 @@ class UserService {
   }
 
   /**
+   * 카카오 API 호출 (타임아웃 10초, 실패 시 자동 재시도)
+   * @param {string} url - API URL
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @param {number} maxRetries - 총 시도 횟수 (기본 2회)
+   * @private
+   */
+  async _fetchKakaoAPI(url, accessToken, maxRetries = 2) {
+    const timeout = 10000; // 10초 타임아웃
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        console.log(`[UserService] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${url}`);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        // 성공
+        if (response.ok) {
+          console.log(`[UserService] 카카오 API 성공 (${attempt}번째 시도)`);
+          return response;
+        }
+
+        // 401/403은 토큰 활성화 지연 가능성 → 재시도
+        if ((response.status === 401 || response.status === 403) && attempt < maxRetries) {
+          const retryDelay = 1500; // 1.5초
+          console.warn(`[UserService] 카카오 API ${response.status} (토큰 활성화 대기 중), ${retryDelay}ms 후 재시도...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+
+        // 그 외 에러는 즉시 throw
+        const text = await response.text();
+        console.error(`[UserService] 카카오 API 실패: ${response.status}`, text);
+        const e = new Error(`카카오 사용자 정보 조회 실패 (${response.status})`);
+        e.code = "KAKAO_USERINFO_FAILED";
+        throw e;
+
+      } catch (fetchError) {
+        // 타임아웃
+        if (fetchError.name === "AbortError") {
+          if (attempt < maxRetries) {
+            console.warn(`[UserService] 카카오 API 타임아웃 (10초), 재시도 ${attempt}/${maxRetries}...`);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            continue;
+          }
+          const e = new Error("카카오 서버 응답 시간 초과 (10초)");
+          e.code = "KAKAO_API_TIMEOUT";
+          throw e;
+        }
+
+        // 이미 우리가 만든 에러면 그대로 throw
+        if (fetchError.code === "KAKAO_USERINFO_FAILED") {
+          throw fetchError;
+        }
+
+        // 네트워크 에러 등
+        if (attempt < maxRetries) {
+          console.warn(`[UserService] 카카오 API 네트워크 에러, 재시도 ${attempt}/${maxRetries}:`, fetchError.message);
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          continue;
+        }
+
+        console.error(`[UserService] 카카오 API 호출 실패 (모든 재시도 소진):`, fetchError);
+        const e = new Error("카카오 API 호출 실패: 네트워크 오류");
+        e.code = "KAKAO_USERINFO_FAILED";
+        throw e;
+      }
+    }
+  }
+
+  /**
    * 카카오 OIDC userinfo + 서비스 약관 동기화
-   * @param {string} uid
-   * @param {string} accessToken
+   * @param {string} uid - 사용자 ID
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @return {Promise<{success:boolean}>}
    */
   async syncKakaoProfile(uid, accessToken) {
     console.log(`[UserService] 카카오 프로필 동기화 시작 (uid: ${uid})`);
@@ -266,22 +348,9 @@ class UserService {
         picture: customClaims.kakaoPicture || "",
       };
     } else {
-      // 실제 환경: 카카오 API 호출
+      // 실제 환경: 카카오 API 호출 (타임아웃 + 재시도)
       const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
-      const userinfoRes = await fetch(userinfoUrl, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!userinfoRes.ok) {
-        const text = await userinfoRes.text();
-        const e = new Error(`KAKAO_USERINFO_FAILED: ${userinfoRes.status} ${text}`);
-        e.code = "KAKAO_USERINFO_FAILED";
-        throw e;
-      }
-
+      const userinfoRes = await this._fetchKakaoAPI(userinfoUrl, accessToken);
       userinfoJson = await userinfoRes.json();
     }
 
@@ -326,10 +395,15 @@ class UserService {
     // 저장은 정규화된 국내형으로
     const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
-    // 2. 서비스 약관 동의 내역 조회
+    // 2. 서비스 약관 동의 내역 조회 (실패해도 계속 진행)
     console.log(`[UserService] 약관 동기화 호출`);
-    await this.termsService.syncFromKakao(uid, accessToken);
-    console.log(`[UserService] 약관 동기화 완료`);
+    try {
+      await this.termsService.syncFromKakao(uid, accessToken);
+      console.log(`[UserService] 약관 동기화 성공`);
+    } catch (termsError) {
+      console.warn(`[UserService] 약관 동기화 실패 (기본값으로 계속 진행):`, termsError.message);
+      // 약관 동기화 실패해도 사용자 기본 정보는 저장
+    }
 
     // 3. Firestore 업데이트 준비
     const update = {
