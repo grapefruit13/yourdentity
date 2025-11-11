@@ -17,6 +17,8 @@ import {
   MAX_FILES,
   WRITE_MESSAGES,
 } from "@/constants/community/_write-constants";
+import { LINK_URL } from "@/constants/shared/_link-url";
+import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
@@ -112,6 +114,12 @@ const WritePageContent = () => {
   const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
+
+  // 인증 체크: 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+  // returnTo를 명시하지 않으면 현재 경로 + 쿼리 파라미터가 자동으로 사용됨
+  const { isReady, user } = useRequireAuth({
+    redirectTo: LINK_URL.LOGIN,
+  });
 
   // 쿼리 파라미터에서 프로그램 정보 가져오기
   const selectedCommunityId =
@@ -604,10 +612,16 @@ const WritePageContent = () => {
     return `${year}.${month}.${day}(${dayName}) ${hours}:${minutes} 작성 중`;
   };
 
+  // Auth 초기화 대기 중이거나 미인증 사용자는 렌더링하지 않음
+  // (useRequireAuth가 자동으로 리다이렉트 처리)
+  if (!isReady || !user) {
+    return null;
+  }
+
   return (
     <form className="flex flex-col pt-12" onSubmit={handleSubmit(onSubmit)}>
       {/* 선택된 프로그램 정보 표시 */}
-      <div className="flex flex-col gap-4 bg-gray-100 p-5 pt-2 pb-4">
+      <div className="flex flex-col gap-4 bg-gray-100 p-5 py-3">
         {selectedCommunityName && (
           <div className="flex border-collapse flex-col gap-1 rounded-lg border border-gray-200 bg-white">
             {/* 글 카테고리 정보 */}

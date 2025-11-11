@@ -1,6 +1,6 @@
 const { Client } = require('@notionhq/client');
 const fcmHelper = require('../utils/fcmHelper');
-const { getRelationValues, getTitleValue, getTextContent, getSelectValue, getNumberValue } = require('../utils/notionHelper');
+const { getRelationValues, getTitleValue, getTextContent, getSelectValue, getNumberValue, getDateValue } = require('../utils/notionHelper');
 const FirestoreService = require('./firestoreService');
 const RewardService = require('./rewardService');
 
@@ -27,6 +27,7 @@ const NOTION_FIELDS = {
   USER_ID: '사용자ID',
   LAST_PAYMENT_DATE: '가장 최근에 지급한 일시',
   PAYMENT_RESULT: '지급 결과',
+  EXPIRATION_DATE: '만료 기한',
 };
 
 // 상황별 알림 내용 템플릿 필드명 상수
@@ -209,6 +210,15 @@ class NotificationService {
       const page = await this.notion.pages.retrieve({ page_id: pageId });
       const props = page.properties;
 
+      let expiresAt = null;
+      const expirationDateValue = getDateValue(props[NOTION_FIELDS.EXPIRATION_DATE]);
+      if (expirationDateValue) {
+        const parsedExpiration = new Date(expirationDateValue);
+        if (!Number.isNaN(parsedExpiration.getTime())) {
+          expiresAt = parsedExpiration;
+        }
+      }
+
       let title = getTitleValue(props[NOTION_FIELDS.TITLE]);
       if (!title) {
         title = getTextContent(props[NOTION_FIELDS.TITLE]) || 
@@ -277,6 +287,7 @@ class NotificationService {
         userIds,
         pageId,
         nadumAmount,
+        expiresAt,
       };
     } catch (error) {
       console.error("알림 데이터 추출 실패:", error.message);
@@ -399,7 +410,7 @@ class NotificationService {
     let paymentResult = null;
 
     try {
-      const { title, content, userIds, nadumAmount } = await this.getNotificationData(pageId);
+      const { title, content, userIds, nadumAmount, expiresAt } = await this.getNotificationData(pageId);
 
       if (!title || !content) {
         const error = new Error("알림 제목과 내용은 필수입니다.");
@@ -417,12 +428,16 @@ class NotificationService {
           const rewardPromises = userIds.map(async (userId) => {
             const historyId = `additional_point_${pageId}_${userId}`;
             try {
+              const rewardOptions = expiresAt ? { expiresAt } : undefined;
               const { isDuplicate } = await this.rewardService.addRewardToUser(
                 userId,
                 nadumAmount,
                 'additional_point',
                 historyId,
-                null  // actionTimestamp: 서버 시간 사용
+                null,  // actionTimestamp: 서버 시간 사용
+                true,
+                null,
+                rewardOptions
               );
               
               if (isDuplicate) {
