@@ -60,27 +60,38 @@ async createReport(reportData) {
     const notionPage = await this.syncToNotion(notionReport);
 
 
-    // 5. 신고 카운트 증가
-    if (targetType === "comment") {
-      await db.collection("comments").doc(targetId).update({
-        reportsCount: FieldValue.increment(1),
-      });
-    } else if (targetType === "post") {
-      if (!communityId) {
-        const err = new Error("게시글 신고에는 communityId가 필요합니다.");
-        err.code = "MISSING_COMMUNITY_ID";
-        err.status = 400;
-        throw err;
-      }
-
-      await db
-        .collection("communities")
-        .doc(communityId)
-        .collection("posts")
-        .doc(targetId)
-        .update({
+     // 5. 신고 카운트 증가
+     try {
+      if (targetType === "comment") {
+        await db.collection("comments").doc(targetId).update({
           reportsCount: FieldValue.increment(1),
         });
+      } else if (targetType === "post") {
+        if (!communityId) {
+          const err = new Error("게시글 신고에는 communityId가 필요합니다.");
+          err.code = "MISSING_COMMUNITY_ID";
+          err.status = 400;
+          throw err;
+        }
+
+        await db
+          .collection("communities")
+          .doc(communityId)
+          .collection("posts")
+          .doc(targetId)
+          .update({
+            reportsCount: FieldValue.increment(1),
+          });
+      }
+    } catch (countUpdateError) {
+      // 신고 카운트 증가 실패 시 에러 처리
+      const error = new Error(
+        `신고 카운트 증가 실패: ${countUpdateError.message || "알 수 없는 오류"}`
+      );
+      error.code = "REPORT_COUNT_UPDATE_FAILED";
+      error.status = 500;
+      error.originalError = countUpdateError;
+      throw error;
     }
 
 
