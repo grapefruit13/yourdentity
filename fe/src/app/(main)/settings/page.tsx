@@ -169,6 +169,7 @@ const SettingsPage = () => {
       text: "로그아웃",
       iconUrl: IMAGE_URL.ICON.settings.arrowRightFromLine.url,
       onClick: handleLogout,
+      showArrow: true,
     },
     {
       text: "유스-잇 떠나기",
