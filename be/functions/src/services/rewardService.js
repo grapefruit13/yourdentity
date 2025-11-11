@@ -115,7 +115,6 @@ class RewardService {
 
   /**
    * 사용자 리워드 총량 업데이트 + 히스토리 추가 (범용 메서드)
-   * expiredAt은 다른 담당자가 추가 예정이므로 여기서는 생성하지 않음
    * @param {string} userId - 사용자 ID
    * @param {number} amount - 리워드 금액
    * @param {string} actionKey - 액션 키
@@ -185,7 +184,6 @@ class RewardService {
       }
 
       // rewardsHistory에 기록 추가
-      // expiredAt은 다른 담당자가 추가 예정
       const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 적립';
       const createdAtValue = actionDate ? Timestamp.fromDate(actionDate) : FieldValue.serverTimestamp();
       
@@ -389,7 +387,7 @@ class RewardService {
   /**
    * 리워드 유효기간 검증 및 차감
    * 로그인 시점에 호출하여 만료된 리워드를 차감 처리
-   * expiredAt 필드가 있는 경우만 처리 (없으면 스킵)
+   * expiresAt 필드가 있는 경우만 처리 (없으면 스킵)
    * @param {string} userId - 사용자 ID
    * @return {Promise<Object>} 차감 결과 { totalDeducted, count }
    */
@@ -418,31 +416,31 @@ class RewardService {
       const expiredHistories = [];
       let totalDeducted = 0;
 
-      // 만료된 항목 필터링 (expiredAt 필드 기반)
+      // 만료된 항목 필터링 (expiresAt 필드 기반)
       for (const doc of snapshot.docs) {
         const data = doc.data();
         
-        // expiredAt이 없으면 스킵 (다른 담당자가 추가할 때까지 대기)
-        if (!data || !data.expiredAt) {
+        // expiresAt이 없으면 스킵 (다른 담당자가 추가할 때까지 대기)
+        if (!data || !data.expiresAt) {
           continue;
         }
 
-        let expiredAt;
+        let expiresAt;
         try {
-          expiredAt = toDate(data.expiredAt);
+          expiresAt = toDate(data.expiresAt);
         } catch (parseError) {
-          console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}의 expiredAt 파싱 실패:`, parseError.message);
+          console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}의 expiresAt 파싱 실패:`, parseError.message);
           continue;
         }
 
         const amount = typeof data.amount === 'number' ? data.amount : 0;
 
         // 만료 여부 확인
-        if (expiredAt <= nowDate) {
+        if (expiresAt <= nowDate) {
           expiredHistories.push({
             id: doc.id,
             amount,
-            expiredAt,
+            expiresAt,
             createdAt: data.createdAt,
           });
           totalDeducted += amount;
