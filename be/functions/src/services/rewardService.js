@@ -188,7 +188,10 @@ class RewardService {
           .get();
         
         if (commentDoc.exists) {
-          actionTimestamp = toDate(commentDoc.data().createdAt);
+          const createdAt = commentDoc.data().createdAt;
+          if (createdAt) {
+            actionTimestamp = toDate(createdAt);
+          }
         }
       }
       // 게시글 작성: communities/{communityId}/posts/{postId}에서 createdAt 조회
@@ -199,7 +202,10 @@ class RewardService {
           .get();
         
         if (postDoc.exists) {
-          actionTimestamp = toDate(postDoc.data().createdAt);
+          const createdAt = postDoc.data().createdAt;
+          if (createdAt) {
+            actionTimestamp = toDate(createdAt);
+          }
         }
       }
       

@@ -132,8 +132,16 @@ class CommunityController {
       // 리워드 부여 (게시글 타입별)
       if (result.type === 'GATHERING_REVIEW') {
         // 소모임 후기글 - 이미지 포함 여부 체크
-        const hasImage = result.content?.includes('<img') || 
-                         (Array.isArray(result.media) && result.media.length > 0);
+        // 1차: media 배열 우선 (가장 신뢰할 수 있는 방법)
+        let hasImage = Array.isArray(result.media) && result.media.length > 0;
+        
+        // 2차 fallback: content에서 img 태그 검사 (엄격한 패턴)
+        if (!hasImage && result.content) {
+          // code block 제거 (```...``` 형태)
+          const contentWithoutCodeBlocks = result.content.replace(/```[\s\S]*?```/g, '');
+          // img 태그 패턴 매칭 (대소문자 무관, 공백 허용)
+          hasImage = /<\s*img\b/i.test(contentWithoutCodeBlocks);
+        }
         
         const actionKey = hasImage 
           ? 'gathering_review_media' 

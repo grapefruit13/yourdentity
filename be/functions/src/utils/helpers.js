@@ -127,32 +127,49 @@ const formatDate = (date) => {
  * Firestore Timestamp를 Date 객체로 변환
  * @param {Timestamp|Date|string} timestamp - Firestore Timestamp 또는 Date
  * @return {Date} Date 객체
+ * @throws {Error} timestamp가 없거나 유효하지 않은 경우
  */
 const toDate = (timestamp) => {
-  if (!timestamp) return new Date();
-  return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  if (!timestamp) {
+    throw new Error('timestamp is required (do not use client-side default time)');
+  }
+  
+  // Firestore Timestamp 객체인 경우
+  if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  
+  // Date 객체 또는 문자열인 경우
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) {
+    throw new Error('Invalid timestamp value');
+  }
+  
+  return date;
 };
 
 /**
  * UTC 기준 오늘 00:00:00 계산
- * @param {Date} date - 기준 날짜 (기본값: 현재 시간)
+ * @param {Date} [date] - 기준 날짜 (선택, 없으면 서버 현재 시간 사용)
  * @return {Date} UTC 기준 오늘 00:00:00
  */
-const getStartOfDayUTC = (date = new Date()) => {
+const getStartOfDayUTC = (date) => {
+  const baseDate = date || new Date();
+  
   return new Date(Date.UTC(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate(),
+    baseDate.getUTCFullYear(),
+    baseDate.getUTCMonth(),
+    baseDate.getUTCDate(),
     0, 0, 0, 0
   ));
 };
 
 /**
  * UTC 기준 내일 00:00:00 계산
- * @param {Date} date - 기준 날짜 (기본값: 현재 시간)
+ * @param {Date} [date] - 기준 날짜 (선택, 없으면 서버 현재 시간 사용)
  * @return {Date} UTC 기준 내일 00:00:00
  */
-const getStartOfNextDayUTC = (date = new Date()) => {
+const getStartOfNextDayUTC = (date) => {
   const today = getStartOfDayUTC(date);
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
