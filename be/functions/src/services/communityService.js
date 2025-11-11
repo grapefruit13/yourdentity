@@ -1159,6 +1159,8 @@ class CommunityService {
           ? post.isReview
           : CommunityService.resolveIsReviewFromLegacyType(post.type);
       
+      const isAuthor = Boolean(viewerId && viewerId === authorId);
+
       const response = {
         ...postWithoutAuthorId,
         programType: resolvedProgramType,
@@ -1174,11 +1176,14 @@ class CommunityService {
           id: communityId,
           name: community.name,
         } : null,
+        isAuthor,
       };
 
       if (viewerId) {
         const liked = await this.hasUserLikedTarget("POST", postId, viewerId);
         response.isLiked = liked;
+      } else {
+        response.isLiked = false;
       }
 
       return response;
