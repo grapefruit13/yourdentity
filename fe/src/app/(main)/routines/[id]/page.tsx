@@ -148,7 +148,7 @@ const RoutineDetailPage = () => {
   const { data: notionRecordMap } = useQuery<ExtendedRecordMap, Error>({
     queryKey: ["notion-program-blocks", programId],
     queryFn: async () => {
-      const response = await fetch(`/api/notion/programs/${programId}/blocks`);
+      const response = await fetch(`/api/notion/${programId}/blocks`);
       if (!response.ok) {
         throw new Error(`Notion API 요청 실패: ${response.statusText}`);
       }

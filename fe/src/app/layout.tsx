@@ -9,9 +9,12 @@ import { cn } from "@/utils/shared/cn";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700", "900"],
+  weight: ["300", "400", "500", "600", "700", "900"],
   variable: "--font-noto-sans-kr",
   display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+  fallback: ["system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -254,10 +257,10 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={notoSansKr.variable}>
       <body
         className={cn(
-          notoSansKr.variable,
+          notoSansKr.className,
           "mx-auto flex h-screen w-full max-w-[472px] flex-col min-[470px]:border-x min-[470px]:border-gray-200"
         )}
       >

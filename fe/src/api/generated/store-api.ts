@@ -67,3 +67,16 @@ export const postStoreQnaLikeById = (
 export const deleteStoreQnaById = (request: Types.TDELETEStoreQnaByIdReq) => {
   return del<any>(`/store/qna/${request.qnaId}`);
 };
+
+export const postStorePurchases = (request: Types.TPOSTStorePurchasesReq) => {
+  return post<Types.TPOSTStorePurchasesRes>(
+    `/store/purchases`,
+    request.data ?? request
+  );
+};
+
+export const getStorePurchases = (request: Types.TGETStorePurchasesReq) => {
+  return get<Types.TGETStorePurchasesRes>(`/store/purchases`, {
+    params: request,
+  });
+};

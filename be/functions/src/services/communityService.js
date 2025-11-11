@@ -4,6 +4,67 @@ const fcmHelper = require("../utils/fcmHelper");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
 
+const PROGRAM_TYPES = {
+  ROUTINE: "ROUTINE",
+  GATHERING: "GATHERING",
+  TMI: "TMI",
+};
+
+const PROGRAM_TYPE_ALIASES = {
+  [PROGRAM_TYPES.ROUTINE]: [
+    "ROUTINE",
+    "한끗루틴",
+    "한끗 루틴",
+    "루틴",
+  ],
+  [PROGRAM_TYPES.GATHERING]: [
+    "GATHERING",
+    "월간 소모임",
+    "월간소모임",
+    "소모임",
+  ],
+  [PROGRAM_TYPES.TMI]: [
+    "TMI",
+    "티엠아이",
+  ],
+};
+
+const PROGRAM_STATES = {
+  ONGOING: "ongoing",
+  FINISHED: "finished",
+};
+
+const PROGRAM_TYPE_TO_POST_TYPE = {
+  [PROGRAM_TYPES.ROUTINE]: {
+    cert: "ROUTINE_CERT",
+    review: "ROUTINE_REVIEW",
+  },
+  [PROGRAM_TYPES.GATHERING]: {
+    cert: "GATHERING_CERT",
+    review: "GATHERING_REVIEW",
+  },
+  [PROGRAM_TYPES.TMI]: {
+    cert: "TMI_CERT",
+    review: "TMI_REVIEW",
+  },
+};
+
+const LEGACY_POST_TYPE_TO_PROGRAM_TYPE = {
+  ROUTINE_CERT: PROGRAM_TYPES.ROUTINE,
+  ROUTINE_REVIEW: PROGRAM_TYPES.ROUTINE,
+  GATHERING_CERT: PROGRAM_TYPES.GATHERING,
+  GATHERING_REVIEW: PROGRAM_TYPES.GATHERING,
+  TMI_CERT: PROGRAM_TYPES.TMI,
+  TMI_REVIEW: PROGRAM_TYPES.TMI,
+  TMI: PROGRAM_TYPES.TMI,
+};
+
+const CERTIFICATION_COUNT_TYPES = new Set([
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert,
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.GATHERING].cert,
+  PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.TMI].cert,
+]);
+
 // 멤버 역할 상수
 const MEMBER_ROLES = {
   MEMBER: 'member',
@@ -22,12 +83,211 @@ class CommunityService {
     this.firestoreService = new FirestoreService("communities");
   }
 
+  static normalizeProgramType(value) {
+    if (!value || typeof value !== "string") {
+      return null;
+    }
+    const trimmed = value.trim();
+    const upper = trimmed.toUpperCase();
+
+    for (const [programType, aliases] of Object.entries(PROGRAM_TYPE_ALIASES)) {
+      if (aliases.some((alias) => {
+        if (typeof alias !== "string") return false;
+        const aliasTrimmed = alias.trim();
+        return aliasTrimmed === trimmed || aliasTrimmed.toUpperCase() === upper;
+      })) {
+        return programType;
+      }
+    }
+
+    if (PROGRAM_TYPES[upper]) {
+      return PROGRAM_TYPES[upper];
+    }
+    if (Object.values(PROGRAM_TYPES).includes(trimmed)) {
+      return trimmed;
+    }
+
+    return null;
+  }
+
+  static mapLegacyPostTypeToProgramType(type) {
+    if (!type || typeof type !== "string") {
+      return null;
+    }
+    const upper = type.toUpperCase();
+    return LEGACY_POST_TYPE_TO_PROGRAM_TYPE[upper] || null;
+  }
+
+  static resolveIsReviewFromLegacyType(type) {
+    if (!type || typeof type !== "string") {
+      return null;
+    }
+    const upper = type.toUpperCase();
+    if (upper.endsWith("_REVIEW")) {
+      return true;
+    }
+    if (upper.endsWith("_CERT")) {
+      return false;
+    }
+    return null;
+  }
+
+  static resolvePostType(programType, isReview) {
+    const normalizedProgramType = CommunityService.normalizeProgramType(programType);
+    if (!normalizedProgramType) {
+      return null;
+    }
+    const mapping = PROGRAM_TYPE_TO_POST_TYPE[normalizedProgramType];
+    if (!mapping) {
+      return null;
+    }
+    return isReview ? mapping.review : mapping.cert;
+  }
+
+  static normalizeProgramTypeList(values) {
+    if (!values) {
+      return [];
+    }
+    const rawValues = Array.isArray(values) ? values : [values];
+    const normalized = [];
+    rawValues.forEach((rawValue) => {
+      if (typeof rawValue !== "string") {
+        return;
+      }
+      rawValue
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .forEach((token) => {
+          const normalizedToken = CommunityService.normalizeProgramType(token);
+          if (normalizedToken) {
+            normalized.push(normalizedToken);
+          }
+        });
+    });
+    return Array.from(new Set(normalized));
+  }
+
+  static toDate(value) {
+    if (!value) {
+      return null;
+    }
+    if (typeof value.toDate === "function") {
+      try {
+        return value.toDate();
+      } catch (error) {
+        return null;
+      }
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  static resolveProgramState(community) {
+    if (!community) {
+      return null;
+    }
+    const now = new Date();
+    const startDate = CommunityService.toDate(community.startDate);
+    const endDate = CommunityService.toDate(community.endDate);
+
+    const hasStarted = !startDate || startDate <= now;
+    const notEnded = !endDate || endDate >= now;
+
+    if (hasStarted && notEnded) {
+      return PROGRAM_STATES.ONGOING;
+    }
+
+    if (endDate && endDate < now) {
+      return PROGRAM_STATES.FINISHED;
+    }
+
+    return null;
+  }
+
   getUserService() {
     if (!this._userService) {
       const UserService = require("./userService");
       this._userService = new UserService();
     }
     return this._userService;
+  }
+
+  /**
+   * 사용자가 참여 중인 커뮤니티 ID 목록 조회
+   * @param {string} userId
+   * @return {Promise<Set<string>>}
+   */
+  async getUserCommunityIds(userId) {
+    if (!userId) {
+      return new Set();
+    }
+
+    try {
+      const membershipIds = new Set();
+      const membershipService = this.firestoreService;
+      const pageSize = 100;
+      let currentPage = 0;
+      let hasMore = true;
+      let fallbackUsed = false;
+
+      while (hasMore) {
+        try {
+          const result = await membershipService.getCollectionGroup("members", {
+            where: [{field: "userId", operator: "==", value: userId}],
+            page: currentPage,
+            size: pageSize,
+            orderBy: "joinedAt",
+            orderDirection: "desc",
+          });
+
+          (result.content || []).forEach((member) => {
+            if (member?.communityId) {
+              membershipIds.add(member.communityId);
+            }
+          });
+
+          hasMore = result.pageable?.hasNext || false;
+          currentPage += 1;
+
+          if (currentPage >= 10) {
+            break;
+          }
+        } catch (error) {
+          if (!fallbackUsed &&
+            (error.code === 9 ||
+              (typeof error.message === "string" && (
+                error.message.includes("FAILED_PRECONDITION") ||
+                error.message.includes("AggregateQuery")
+              )))) {
+            fallbackUsed = true;
+            const fallbackResult = await membershipService.getCollectionGroupWithoutCount("members", {
+              where: [{field: "userId", operator: "==", value: userId}],
+              size: 1000,
+              orderBy: "joinedAt",
+              orderDirection: "desc",
+            });
+            (fallbackResult.content || []).forEach((member) => {
+              if (member?.communityId) {
+                membershipIds.add(member.communityId);
+              }
+            });
+            console.warn("[COMMUNITY][getUserCommunityIds] collectionGroupWithoutCount 대체 경로 사용", {
+              userId,
+              fetchedCount: fallbackResult.content?.length || 0,
+              totalCollected: membershipIds.size,
+            });
+            break;
+          }
+          throw error;
+        }
+      }
+
+      return membershipIds;
+    } catch (error) {
+      console.error("[COMMUNITY] 사용자 커뮤니티 조회 실패:", error.message);
+      return new Set();
+    }
   }
 
   /**
@@ -46,10 +306,10 @@ class CommunityService {
         name: community.name,
         type: community.type,
         channel: community.channel,
-        postType: community.postType,
+        programType: CommunityService.normalizeProgramType(community.programType),
       };
     } catch (error) {
-      console.error("Get community mapping error:", error.message);
+      console.error("[COMMUNITY] 커뮤니티 매핑 정보 조회 실패:", error.message);
       throw new Error("커뮤니티 매핑 정보 조회에 실패했습니다");
     }
   }
@@ -86,7 +346,7 @@ class CommunityService {
         pagination: result.pageable || {},
       };
     } catch (error) {
-      console.error("Get communities error:", error.message);
+      console.error("[COMMUNITY] 커뮤니티 목록 조회 실패:", error.message);
       throw new Error("커뮤니티 목록 조회에 실패했습니다");
     }
   }
@@ -140,11 +400,15 @@ class CommunityService {
         const heightMatch = imgTag.match(/height=["']?(\d+)["']?/i);
         const blurHashMatch = imgTag.match(/data-blurhash=["']([^"']+)["']/i);
 
+        const width = widthMatch ? parseInt(widthMatch[1], 10) : null;
+        const height = heightMatch ? parseInt(heightMatch[1], 10) : null;
+        const blurHash = blurHashMatch ? blurHashMatch[1] : null;
+
         thumbnail = {
           url: srcMatch ? srcMatch[1] : imgMatch[1],
-          width: widthMatch ? parseInt(widthMatch[1]) : undefined,
-          height: heightMatch ? parseInt(heightMatch[1]) : undefined,
-          blurHash: blurHashMatch ? blurHashMatch[1] : undefined,
+          width,
+          height,
+          blurHash,
         };
       }
     } else {
@@ -168,9 +432,9 @@ class CommunityService {
 
       thumbnail = firstImage ? {
         url: firstImage.url || firstImage.src,
-        blurHash: firstImage.blurHash,
-        width: firstImage.width,
-        height: firstImage.height,
+        blurHash: firstImage.blurHash || null,
+        width: typeof firstImage.width === "number" ? firstImage.width : (firstImage.width ? Number(firstImage.width) : null),
+        height: typeof firstImage.height === "number" ? firstImage.height : (firstImage.height ? Number(firstImage.height) : null),
       } : null;
     }
 
@@ -180,187 +444,293 @@ class CommunityService {
     };
   }
 
-  async getAllCommunityPosts(options = {}) {
+  async getAllCommunityPosts(options = {}, viewerId = null) {
     try {
       const {
-        type,
+        programTypes: programTypesOption,
+        programType: programTypeOption,
+        programState: programStateOption,
         page = 0,
         size = 10,
         orderBy = "createdAt",
         orderDirection = "desc",
       } = options;
 
-      const postTypeMapping = {
-        routine: "ROUTINE_CERT",
-        gathering: "GATHERING_REVIEW",
-        tmi: "TMI",
-      };
+      const requestedProgramTypes = [
+        ...CommunityService.normalizeProgramTypeList(programTypesOption),
+        ...CommunityService.normalizeProgramTypeList(programTypeOption),
+      ];
 
-      let allPosts = [];
-      const communityMap = {};
+      const normalizedProgramTypes = Array.from(new Set(requestedProgramTypes));
 
-      // whereConditions 생성 헬퍼 함수
-      const buildWhereConditions = () => {
-        const conditions = [];
-        if (type && postTypeMapping[type]) {
-          conditions.push({ field: "type", operator: "==", value: postTypeMapping[type] });
-        }
-        return conditions;
-      };
-
-      // Collection Group 사용
-      try {
-        const postsService = new FirestoreService();
-        const postsResult = await postsService.getCollectionGroup("posts", {
-          page,
-          size,
-          orderBy,
-          orderDirection,
-          where: buildWhereConditions(),
-        });
-
-        const communities = await this.firestoreService.getCollection("communities");
-        communities.forEach(community => {
-          communityMap[community.id] = community;
-        });
-
-        allPosts = (postsResult.content || []).map(post => ({
-          ...post,
-          community: communityMap[post.communityId] ? {
-            id: post.communityId,
-            name: communityMap[post.communityId].name,
-          } : null,
-        }));
-
-        const processPost = (post) => {
-          const { authorId: _, ...postWithoutAuthorId } = post;
-          const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
-          const processedPost = {
-            ...postWithoutAuthorId,
-            createdAt: createdAtDate?.toISOString?.() || post.createdAt,
-            updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
-            scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
-            timeAgo: createdAtDate ? this.getTimeAgo(new Date(createdAtDate)) : "",
-            communityPath: `communities/${post.communityId}`,
-            rewardGiven: post.rewardGiven || false,
-            reportsCount: post.reportsCount || 0,
-            viewCount: post.viewCount || 0,
-          };
-
-          // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
-          processedPost.preview = post.preview || this.createPreview(post);
-          delete processedPost.content;
-          delete processedPost.media;
-
-          delete processedPost.communityId;
-          return processedPost;
-        };
-
-        return {
-          content: allPosts.map(processPost),
-          pagination: postsResult.pageable || {},
-        };
-      } catch (collectionGroupError) {
-        if (collectionGroupError.code === 9) {
-        } else {
-          throw collectionGroupError;
-        }
+      let normalizedProgramState =
+        typeof programStateOption === "string"
+          ? programStateOption.toLowerCase()
+          : null;
+      if (
+        normalizedProgramState &&
+        ![PROGRAM_STATES.ONGOING, PROGRAM_STATES.FINISHED].includes(
+          normalizedProgramState,
+        )
+      ) {
+        normalizedProgramState = null;
       }
 
-      if (Object.keys(communityMap).length === 0) {
-        const communities = await this.firestoreService.getCollection("communities");
-        if (communities.length === 0) {
-          return {
-            content: [],
-            pagination: {
-              pageNumber: 0,
-              pageSize: size,
-              totalElements: 0,
-              totalPages: 0,
-              hasNext: false,
-              hasPrevious: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
-        }
-        communities.forEach(community => {
-          communityMap[community.id] = community;
+      if (normalizedProgramTypes.length > 10) {
+        const error = new Error("programType 필터는 최대 10개까지 지정할 수 있습니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const whereConditions = [];
+      if (normalizedProgramTypes.length === 1) {
+        whereConditions.push({
+          field: "programType",
+          operator: "==",
+          value: normalizedProgramTypes[0],
+        });
+      } else if (normalizedProgramTypes.length > 1) {
+        whereConditions.push({
+          field: "programType",
+          operator: "in",
+          value: normalizedProgramTypes,
         });
       }
 
-      const postPromises = Object.values(communityMap).map(async (community) => {
+      const communityCache = new Map();
+
+      const loadCommunities = async (communityIds = []) => {
+        if (!communityIds || communityIds.length === 0) {
+          return;
+        }
+        const uniqueIds = Array.from(
+          new Set(communityIds.filter((id) => id && !communityCache.has(id))),
+        );
+        if (uniqueIds.length === 0) {
+          return;
+        }
+
+        const chunks = [];
+        for (let i = 0; i < uniqueIds.length; i += 10) {
+          chunks.push(uniqueIds.slice(i, i + 10));
+        }
+
+        const communityResults = await Promise.all(
+          chunks.map((chunk) =>
+            this.firestoreService.getCollectionWhereIn("communities", "id", chunk),
+          ),
+        );
+        communityResults
+          .flat()
+          .filter((community) => community?.id)
+          .forEach((community) => {
+            communityCache.set(community.id, community);
+          });
+      };
+
+      const matchesFilter = (post, community) => {
+        const postProgramType =
+          CommunityService.normalizeProgramType(post.programType) ||
+          CommunityService.mapLegacyPostTypeToProgramType(post.type);
+
+        const matchesProgramType =
+          normalizedProgramTypes.length === 0 ||
+          (postProgramType && normalizedProgramTypes.includes(postProgramType));
+
+        if (!matchesProgramType) {
+          return false;
+        }
+
+        if (!normalizedProgramState) {
+          return true;
+        }
+
+        if (!community) {
+          return false;
+        }
+
+        const communityState = CommunityService.resolveProgramState(community);
+        if (!communityState) {
+          return false;
+        }
+
+        if (normalizedProgramState === PROGRAM_STATES.ONGOING) {
+          return communityState === PROGRAM_STATES.ONGOING;
+        }
+
+        if (normalizedProgramState === PROGRAM_STATES.FINISHED) {
+          return communityState === PROGRAM_STATES.FINISHED;
+        }
+
+        return false;
+      };
+
+      const membershipIds = await this.getUserCommunityIds(viewerId);
+
+      const resolveIsPublic = (post) => {
+        if (typeof post.isPublic === "boolean") {
+          return post.isPublic;
+        }
+        return true;
+      };
+      const canViewPost = (post) => {
+        if (resolveIsPublic(post)) return true;
+        if (!viewerId) return false;
+        if (!post.communityId) return false;
+        const allowed = membershipIds.has(post.communityId);
+        return allowed;
+      };
+
+      const postsService = new FirestoreService();
+      const batchSize = Math.max(size, 50);
+      let rawPage = 0;
+      let hasMore = true;
+
+      const startIndex = page * size;
+      const targetEndIndex = (page + 1) * size;
+      let accessibleCount = 0;
+      let hasNextAccessible = false;
+      const pagePosts = [];
+
+      while (hasMore && !hasNextAccessible) {
+        let result;
         try {
-          const postsService = new FirestoreService(`communities/${community.id}/posts`);
-          const whereConditions = buildWhereConditions();
-          
-          const postsResult = await postsService.getWithPagination({
-            page,
-            size,
-            orderBy: "createdAt",
-            orderDirection: "desc",
+          result = await postsService.getCollectionGroup("posts", {
+            page: rawPage,
+            size: batchSize,
+            orderBy,
+            orderDirection,
             where: whereConditions,
           });
-          
-          const postsArray = postsResult.content || [];
-          
-          return postsArray.map(post => ({
-            ...post,
-            communityId: community.id,
-            community: { id: community.id, name: community.name },
-          }));
-        } catch (error) {
-          return [];
+        } catch (firestoreError) {
+          if (firestoreError.code === 9 || firestoreError.code === "FAILED_PRECONDITION") {
+            console.error("[COMMUNITY] posts collectionGroup 인덱스 부족, fallback 쿼리 사용", {
+              whereConditions,
+              orderBy,
+              orderDirection,
+              errorMessage: firestoreError.message,
+            });
+            result = await postsService.getCollectionGroupWithoutCount("posts", {
+              size: batchSize,
+              orderBy,
+              orderDirection,
+              where: whereConditions,
+            });
+          } else {
+            throw firestoreError;
+          }
         }
-      });
 
-      const postsArrays = await Promise.all(postPromises);
-      allPosts = postsArrays.flat();
+        const rawPosts = result.content || [];
+        if (rawPosts.length === 0) {
+          break;
+        }
 
-      // post 처리 헬퍼 함수
+        const communityIdsInBatch = rawPosts
+          .map((post) => post.communityId)
+          .filter(Boolean);
+        await loadCommunities(communityIdsInBatch);
+
+        for (const post of rawPosts) {
+          const community =
+            post.communityId && communityCache.has(post.communityId)
+              ? communityCache.get(post.communityId)
+              : null;
+          if (canViewPost(post) && matchesFilter(post, community)) {
+            accessibleCount += 1;
+
+            if (accessibleCount > startIndex && pagePosts.length < size) {
+              pagePosts.push(post);
+            }
+
+            if (accessibleCount >= targetEndIndex + 1) {
+              hasNextAccessible = true;
+              break;
+            }
+          }
+        }
+
+        hasMore = result.pageable?.hasNext || false;
+        rawPage += 1;
+
+        if (!hasMore || hasNextAccessible) {
+          break;
+        }
+      }
+
+      const totalElements = hasNextAccessible
+        ? startIndex + pagePosts.length + 1
+        : accessibleCount;
+      const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
+      const hasNextPage = hasNextAccessible || page < totalPages - 1;
+      const paginatedPosts = pagePosts;
+
+      const communityIds = [...new Set(paginatedPosts.map(post => post.communityId).filter(Boolean))];
+      const communityMap = {};
+      if (communityIds.length > 0) {
+        await loadCommunities(communityIds);
+        communityIds.forEach((communityId) => {
+          if (communityCache.has(communityId)) {
+            communityMap[communityId] = communityCache.get(communityId);
+          }
+        });
+      }
+
       const processPost = (post) => {
-        const { authorId: _, ...postWithoutAuthorId } = post;
-        const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
-        const processedPost = {
-          ...postWithoutAuthorId,
+        const {authorId: _ignored, content: _content, media: _media, communityId, ...rest} = post;
+        const createdAtDate = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
+        const updatedAtDate = post.updatedAt?.toDate?.() || (post.updatedAt ? new Date(post.updatedAt) : null);
+        const scheduledDate = post.scheduledDate?.toDate?.() || (post.scheduledDate ? new Date(post.scheduledDate) : null);
+        const resolvedProgramType =
+          CommunityService.normalizeProgramType(rest.programType) ||
+          CommunityService.mapLegacyPostTypeToProgramType(post.type);
+        const resolvedIsReview =
+          typeof rest.isReview === "boolean"
+            ? rest.isReview
+            : CommunityService.resolveIsReviewFromLegacyType(post.type);
+
+        const processed = {
+          id: post.id,
+          ...rest,
           createdAt: createdAtDate?.toISOString?.() || post.createdAt,
-          updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
-          scheduledDate: post.scheduledDate?.toDate?.()?.toISOString?.() || post.scheduledDate,
-          timeAgo: createdAtDate ? this.getTimeAgo(new Date(createdAtDate)) : "",
-          communityPath: `communities/${post.communityId}`,
+          updatedAt: updatedAtDate?.toISOString?.() || post.updatedAt,
+          scheduledDate: scheduledDate?.toISOString?.() || post.scheduledDate,
+          timeAgo: createdAtDate ? this.getTimeAgo(createdAtDate) : "",
+          communityPath: communityId ? `communities/${communityId}` : null,
           rewardGiven: post.rewardGiven || false,
           reportsCount: post.reportsCount || 0,
           viewCount: post.viewCount || 0,
+          community: communityId && communityMap[communityId] ? {
+            id: communityId,
+            name: communityMap[communityId].name,
+          } : null,
         };
+        processed.programType = resolvedProgramType;
+        processed.isReview = resolvedIsReview;
 
-        // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
-        processedPost.preview = post.preview || this.createPreview(post);
-        delete processedPost.content;
-        delete processedPost.media;
+        processed.preview = post.preview || this.createPreview(post);
+        processed.isPublic = resolveIsPublic(post);
 
-        delete processedPost.communityId;
-        return processedPost;
+        return processed;
       };
 
-      const processedPosts = allPosts.map(processPost);
-      const totalElements = allPosts.length;
-      const totalPages = Math.ceil(totalElements / size);
+      const processedPosts = paginatedPosts.map(processPost);
 
       return {
         content: processedPosts,
         pagination: {
           pageNumber: page,
           pageSize: size,
-          totalElements: totalElements,
-          totalPages: totalPages,
-          hasNext: page < totalPages - 1,
+          totalElements,
+          totalPages,
+          hasNext: hasNextPage,
           hasPrevious: page > 0,
           isFirst: page === 0,
-          isLast: page >= totalPages - 1,
+          isLast: totalPages === 0 ? true : !hasNextPage,
         },
       };
     } catch (error) {
-      console.error("Get all community posts error:", error.message);
+      console.error("[COMMUNITY] 전체 게시글 조회 실패:", error.message);
       throw new Error("커뮤니티 게시글 조회에 실패했습니다");
     }
   }
@@ -406,7 +776,7 @@ class CommunityService {
           } : null,
         };
       } catch (error) {
-        console.error(`Error fetching post ${postId}:`, error.message);
+        console.error(`[COMMUNITY] 게시글 조회 실패 (${postId}):`, error.message);
         return null;
       }
     });
@@ -436,6 +806,20 @@ class CommunityService {
       delete processedPost.media;
       delete processedPost.communityId;
 
+      processedPost.programType =
+        CommunityService.normalizeProgramType(post.programType) ||
+        CommunityService.mapLegacyPostTypeToProgramType(post.type) ||
+        processedPost.programType ||
+        null;
+
+      const resolvedIsReview =
+        typeof post.isReview === "boolean"
+          ? post.isReview
+          : CommunityService.resolveIsReviewFromLegacyType(post.type);
+      if (resolvedIsReview !== null) {
+        processedPost.isReview = resolvedIsReview;
+      }
+
       return processedPost;
     };
 
@@ -452,25 +836,33 @@ class CommunityService {
    */
   async createPost(communityId, userId, postData) {
     try {
+      console.log("[COMMUNITY][createPost] 요청 수신", {
+        communityId,
+        userId,
+        hasPostData: !!postData,
+      });
+
       const {
-        title, 
-        content, 
-        media: postMedia = [], 
-        type, 
-        channel, 
+        title,
+        content,
+        media: postMedia = [],
+        type,
+        channel,
         category,
-        scheduledDate
+        scheduledDate,
+        isPublic: requestIsPublic,
+        isReview: requestIsReview,
       } = postData;
       
-      const visibility = "PUBLIC";
-
       if (!title || typeof title !== "string" || title.trim().length === 0) {
+        console.warn("[COMMUNITY][createPost] 제목 누락", { communityId, userId });
         const error = new Error("제목은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        console.warn("[COMMUNITY][createPost] 내용 누락", { communityId, userId });
         const error = new Error("게시글 내용은 필수입니다.");
         error.code = "BAD_REQUEST";
         throw error;
@@ -478,27 +870,55 @@ class CommunityService {
 
       const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
       if (textWithoutTags.length === 0) {
+        console.warn("[COMMUNITY][createPost] 텍스트만 추출 시 빈 문자열", { communityId, userId });
         const error = new Error("게시글에 텍스트 내용이 필요합니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
+      console.log("[COMMUNITY][createPost] 원본 콘텐츠 검증 통과", {
+        communityId,
+        userId,
+        originalLength: content.length,
+      });
+
       const sanitizedContent = sanitizeContent(content);
 
       const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
       if (sanitizedText.length === 0) {
+        console.warn("[COMMUNITY][createPost] sanitize 이후 빈 문자열", { communityId, userId });
         const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
         error.code = "BAD_REQUEST";
         throw error;
       }
 
+      console.log("[COMMUNITY][createPost] sanitize 완료", {
+        communityId,
+        userId,
+        sanitizedLength: sanitizedContent.length,
+      });
+
       // 파일 검증 (게시글 생성 전)
       let validatedFiles = [];
       if (postMedia && Array.isArray(postMedia) && postMedia.length > 0) {
+        console.log("[COMMUNITY][createPost] 미디어 검증 시작", {
+          communityId,
+          userId,
+          mediaCount: postMedia.length,
+        });
         try {
           validatedFiles = await fileService.validateFilesForPost(postMedia, userId);
+          console.log("[COMMUNITY][createPost] 미디어 검증 성공", {
+            communityId,
+            userId,
+            validatedCount: validatedFiles.length,
+          });
         } catch (fileError) {
-          console.error("파일 검증 실패:", fileError);
+          console.error("[COMMUNITY][createPost] 파일 검증 실패", {
+            communityId,
+            userId,
+            error: fileError.message,
+          });
           // 파일 검증 실패 시 게시글 생성 안 함
           throw fileError;
         }
@@ -506,8 +926,50 @@ class CommunityService {
 
       const community = await this.firestoreService.getDocument("communities", communityId);
       if (!community) {
+        console.warn("[COMMUNITY][createPost] 커뮤니티 없음", { communityId, userId });
         const error = new Error("Community not found");
         error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      console.log("[COMMUNITY][createPost] 커뮤니티 조회 성공", {
+        communityId,
+        userId,
+        communityName: community.name,
+      });
+
+      const resolvedProgramType =
+        CommunityService.normalizeProgramType(community.programType);
+
+      if (!resolvedProgramType) {
+        const error = new Error("community.programType 값이 필요합니다.");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      let resolvedIsReview = null;
+      if (Object.prototype.hasOwnProperty.call(postData, "isReview")) {
+        if (typeof requestIsReview !== "boolean") {
+          const error = new Error("isReview 값은 boolean 타입이어야 합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+        resolvedIsReview = requestIsReview;
+      }
+
+      if (resolvedIsReview === null) {
+        const inferredFromType =
+          CommunityService.resolveIsReviewFromLegacyType(type);
+        resolvedIsReview = inferredFromType !== null ? inferredFromType : false;
+      }
+
+      const resolvedType = CommunityService.resolvePostType(
+        resolvedProgramType,
+        resolvedIsReview,
+      );
+      if (!resolvedType) {
+        const error = new Error("게시글 타입을 결정할 수 없습니다.");
+        error.code = "BAD_REQUEST";
         throw error;
       }
 
@@ -521,14 +983,18 @@ class CommunityService {
         );
         const memberData = members && members[0];
         if (memberData) {
-          if (community.postType === "TMI") {
+          if (resolvedProgramType === PROGRAM_TYPES.TMI) {
             author = memberData.name || "익명";
           } else {
             author = memberData.nickname || "익명";
           }
         }
       } catch (memberError) {
-        console.warn("Failed to get member info:", memberError.message);
+        console.warn("[COMMUNITY][createPost] 멤버 정보 조회 실패", {
+          communityId,
+          userId,
+          error: memberError.message,
+        });
       }
 
       const postsService = new FirestoreService(`communities/${communityId}/posts`);
@@ -539,6 +1005,16 @@ class CommunityService {
         media: postMedia,
       });
       
+      let isPublic = true;
+      if (Object.prototype.hasOwnProperty.call(postData, "isPublic")) {
+        if (typeof requestIsPublic !== "boolean") {
+          const error = new Error("isPublic 값은 boolean 타입이어야 합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
+        isPublic = requestIsPublic;
+      }
+
       const newPost = {
         communityId,
         authorId: userId,
@@ -547,12 +1023,14 @@ class CommunityService {
         content: sanitizedContent,
         media: postMedia,
         preview,
-        type: type || community.postType || "GENERAL",
+        type: resolvedType,
+        programType: resolvedProgramType,
+        isReview: resolvedIsReview,
         channel: channel || community.channel || "general",
         category: category || null,
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
-        visibility,
         isLocked: false,
+        isPublic,
         rewardGiven: false,
         likesCount: 0,
         commentsCount: 0,
@@ -563,6 +1041,11 @@ class CommunityService {
       };
 
       const result = await this.firestoreService.runTransaction(async (transaction) => {
+        console.log("[COMMUNITY][createPost] Firestore 트랜잭션 시작", {
+          communityId,
+          userId,
+          hasValidatedFiles: validatedFiles.length > 0,
+        });
 
         const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc();
         transaction.set(postRef, newPost);
@@ -581,8 +1064,7 @@ class CommunityService {
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
 
-        // certificationPosts 카운트 증가 (해당 타입인 경우만)
-        if (newPost.type === "ROUTINE_CERT" || newPost.type === "GATHERING_REVIEW" || newPost.type === "TMI") {
+        if (CERTIFICATION_COUNT_TYPES.has(newPost.type)) {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
           transaction.update(userRef, {
             certificationPosts: FieldValue.increment(1),
@@ -590,9 +1072,21 @@ class CommunityService {
           });
         }
         
+        console.log("[COMMUNITY][createPost] 트랜잭션 내 작업 완료", {
+          communityId,
+          userId,
+          postId: postRef.id,
+        });
+
         return { postId: postRef.id };
       });
       const postId = result.postId;
+
+      console.log("[COMMUNITY][createPost] 게시글 생성 완료", {
+        communityId,
+        userId,
+        postId,
+      });
 
       const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, preview: _preview, ...restNewPost} = newPost;
       
@@ -607,7 +1101,11 @@ class CommunityService {
         },
       };
     } catch (error) {
-      console.error("Create post error:", error.message);
+      console.error("[COMMUNITY][createPost] 게시글 생성 에러", {
+        communityId,
+        userId,
+        error: error.message,
+      });
       if (error.code === "NOT_FOUND") {
         throw error;
       }
@@ -645,9 +1143,18 @@ class CommunityService {
       const community = await this.firestoreService.getDocument("communities", communityId);
 
       const {authorId, ...postWithoutAuthorId} = post;
+      const resolvedProgramType =
+        CommunityService.normalizeProgramType(post.programType) ||
+        CommunityService.mapLegacyPostTypeToProgramType(post.type);
+      const resolvedIsReview =
+        typeof post.isReview === "boolean"
+          ? post.isReview
+          : CommunityService.resolveIsReviewFromLegacyType(post.type);
       
       return {
         ...postWithoutAuthorId,
+        programType: resolvedProgramType,
+        isReview: resolvedIsReview,
         viewCount: newViewCount,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
@@ -661,7 +1168,7 @@ class CommunityService {
         } : null,
       };
     } catch (error) {
-      console.error("Get post by ID error:", error.message);
+      console.error("[COMMUNITY] 게시글 상세 조회 실패:", error.message);
       if (error.code === "NOT_FOUND") {
         throw error;
       }
@@ -692,6 +1199,14 @@ class CommunityService {
         const error = new Error("게시글 수정 권한이 없습니다");
         error.code = "FORBIDDEN";
         throw error;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updateData, "isPublic")) {
+        if (typeof updateData.isPublic !== "boolean") {
+          const error = new Error("isPublic 값은 boolean 타입이어야 합니다.");
+          error.code = "BAD_REQUEST";
+          throw error;
+        }
       }
 
       if (Object.prototype.hasOwnProperty.call(updateData, "content")) {
@@ -816,7 +1331,7 @@ class CommunityService {
         } : null,
       };
     } catch (error) {
-      console.error("Update post error:", error.message);
+      console.error("[COMMUNITY] 게시글 수정 실패:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
@@ -867,7 +1382,7 @@ class CommunityService {
           .doc(postId);
         await authoredPostRef.delete();
       } catch (error) {
-        console.error("authoredPosts 삭제 실패:", error);
+        console.error("[COMMUNITY] authoredPosts 문서 삭제 실패:", error);
       }
 
       if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
@@ -882,7 +1397,7 @@ class CommunityService {
         }
       }
     } catch (error) {
-      console.error("Delete post error:", error.message);
+      console.error("[COMMUNITY] 게시글 삭제 실패:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
         throw error;
       }
@@ -994,7 +1509,7 @@ class CommunityService {
 
       return result;
     } catch (error) {
-      console.error("Toggle post like error:", error.message);
+      console.error("[COMMUNITY] 게시글 좋아요 토글 실패:", error.message);
       if (error.code === "NOT_FOUND") {
         throw error;
       }

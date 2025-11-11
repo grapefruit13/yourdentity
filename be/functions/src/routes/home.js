@@ -16,9 +16,10 @@ const homeController = require("../controllers/homeController");
  *     summary: 홈 화면 데이터 조회
  *     description: |
  *       노션에서 관리되는 홈 화면 데이터를 운영 배포일자 기준으로 가장 최신 항목을 조회합니다.
- *       - 운영 배포일자가 설정된 항목만 조회됩니다.
+ *       - 운영 배포일자(date 타입)가 설정된 항목만 조회됩니다.
  *       - 가장 최신 배포일자를 가진 1개 항목을 반환합니다.
  *       - 페이지 내부의 블록 콘텐츠(텍스트, 이미지, 링크 등)를 포함합니다.
+ *       - Notion data_source를 통해 조회됩니다.
  *     tags: [Home]
  *     responses:
  *       200:
@@ -72,17 +73,18 @@ const homeController = require("../controllers/homeController");
  *                       example: []
  *                     activityReview:
  *                       type: boolean
- *                       description: 활동후기 표시 여부
+ *                       description: "활동후기 여부 (Notion DB 필드: 활동후기 여부)"
  *                       example: true
  *                     nadaumExhibition:
  *                       type: boolean
- *                       description: 나다움전시 표시 여부
+ *                       description: "나다움전시 여부 (Notion DB 필드: 나다움전시 여부)"
  *                       example: false
  *                     deployDate:
  *                       type: string
  *                       format: date
- *                       description: 운영 배포일자 (가장 최신 배포일자 기준으로 조회됨)
+ *                       description: 운영 배포일자 (date 타입, 가장 최신 배포일자 기준으로 조회됨)
  *                       example: "2025-10-30"
+ *                       nullable: true
  *                     content:
  *                       type: array
  *                       description: 페이지 내부 블록 콘텐츠 (빈 paragraph 포함)

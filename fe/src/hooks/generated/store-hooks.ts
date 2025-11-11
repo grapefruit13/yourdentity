@@ -212,3 +212,48 @@ export const useDeleteStoreQnaById = <
     ...options,
   });
 };
+
+export const usePostStorePurchases = <
+  TContext = unknown,
+  TVariables = Types.TPOSTStorePurchasesReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postStorePurchases>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postStorePurchases>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postStorePurchases(variables as Types.TPOSTStorePurchasesReq),
+    ...options,
+  });
+};
+
+export const useGetStorePurchases = <TData = Types.TGETStorePurchasesRes>(
+  options: {
+    request: Types.TGETStorePurchasesReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETStorePurchasesRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETStorePurchasesRes, Error, TData>({
+    queryKey: storeKeys.getStorePurchases(request),
+    queryFn: async () => {
+      const response = await Api.getStorePurchases(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};

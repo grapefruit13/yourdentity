@@ -5,6 +5,23 @@
 
 import type * as Schema from "./api-schema";
 
+export interface TPOSTUsersTestCreateReq {
+  data: {
+    count: number;
+  };
+}
+
+export type TPOSTUsersTestCreateRes = {
+  message?: string;
+  created?: number;
+  failed?: number;
+  users?: {
+    uid?: string;
+    email?: string;
+    displayName?: string;
+  }[];
+};
+
 export interface TPATCHUsersMeOnboardingReq {
   data: {
     nickname: string;

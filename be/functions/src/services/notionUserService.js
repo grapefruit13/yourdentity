@@ -91,10 +91,13 @@ async syncUserAccounts() {
           },
           "사용자ID": { rich_text: [{ text: { content: userId } }] },
           "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-          "상태": user.status
-            ? { select: { name: user.status } }
-            : { select: { name: "데이터 없음" } },
-          //"역할": { select: { name: user.role || "user" } },
+          "상태": {
+            select: {
+              name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+                ? "탈퇴" 
+                : "가입"
+            }
+          },
           "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
           "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
           "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
@@ -300,7 +303,25 @@ async getNotionUsers(databaseId) {
       }),
     });
 
+    // HTTP 응답 상태 확인
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[Notion API Error] Status: ${res.status}, Response: ${errorText}`);
+      const err = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+      err.code = "INTERNAL_ERROR";
+      throw err;
+    }
+
     const data = await res.json();
+
+    // Notion API 에러 응답 확인
+    if (data.error) {
+      console.error(`[Notion API Error]`, data.error);
+      const err = new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+      err.code = "INTERNAL_ERROR";
+      throw err;
+    }
+
     results = results.concat(data.results);
     hasMore = data.has_more;
     startCursor = data.next_cursor;
@@ -390,10 +411,13 @@ async syncAllUserAccounts() {
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            "상태": user.status
-               ? { select: { name: user.status } }
-               : { select: { name: "데이터 없음" } },
-            //"역할": { select: { name: user.role || "user" } }, 
+            "상태": {
+              select: {
+                name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+                  ? "탈퇴" 
+                  : "가입"
+              }
+            },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
@@ -966,19 +990,6 @@ async syncSelectedUsers() {
         profileImageUrl = file.external?.url || file.file?.url || "";
       }
 
-      // 상태 매핑 (노션: "pending" | "active" | "suspended" -> Firebase 동일)
-      const statusSelect = props["상태"]?.select?.name;
-      let status = undefined;
-      if (statusSelect) {
-        if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
-          status = statusSelect;
-        } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
-          // 한글 매핑
-          status = statusSelect === "대기" ? "pending" : 
-                   statusSelect === "활동" ? "active" : "suspended";
-        }
-      }
-
       const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
       const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
                         (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
@@ -1022,7 +1033,6 @@ async syncSelectedUsers() {
       if (nickname) updateData.nickname = nickname;
       if (name) updateData.name = name;
       if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-      if (status) updateData.status = status;
       if (phoneNumber) updateData.phoneNumber = phoneNumber;
       if (birthDate) updateData.birthDate = birthDate;
       if (email) updateData.email = email;
@@ -1215,9 +1225,16 @@ async syncSelectedUsers() {
                 backupProperties[key] = { title: value.title || [] };
               } else if (value.type === "rich_text") {
                 backupProperties[key] = { rich_text: value.rich_text || [] };
-              } else if (value.type === "select") {
-                backupProperties[key] = value.select ? { select: value.select } : { select: null };
-              } else if (value.type === "date") {
+              } 
+              else if (value.type === "select") {
+                // select 필드는 name만 사용 (id는 제외)
+                if (value.select && value.select.name) {
+                  backupProperties[key] = { select: { name: value.select.name } };
+                } else {
+                  backupProperties[key] = { select: null };
+                }
+              } 
+              else if (value.type === "date") {
                 backupProperties[key] = value.date ? { date: value.date } : { date: null };
               } else if (value.type === "number") {
                 backupProperties[key] = { number: value.number ?? null };
@@ -1447,18 +1464,6 @@ async syncSelectedUsers() {
             profileImageUrl = file.external?.url || file.file?.url || "";
           }
 
-          // 상태 매핑
-          const statusSelect = props["상태"]?.select?.name;
-          let status = undefined;
-          if (statusSelect) {
-            if (statusSelect === "pending" || statusSelect === "active" || statusSelect === "suspended") {
-              status = statusSelect;
-            } else if (statusSelect === "대기" || statusSelect === "활동" || statusSelect === "정지") {
-              status = statusSelect === "대기" ? "pending" : 
-                       statusSelect === "활동" ? "active" : "suspended";
-            }
-          }
-
           const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
           const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
                             (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
@@ -1503,7 +1508,6 @@ async syncSelectedUsers() {
           if (nickname) updateData.nickname = nickname;
           if (name) updateData.name = name;
           if (profileImageUrl) updateData.profileImageUrl = profileImageUrl;
-          if (status) updateData.status = status;
           if (phoneNumber) updateData.phoneNumber = phoneNumber;
           if (birthDate) updateData.birthDate = birthDate;
           if (email) updateData.email = email;
@@ -1753,9 +1757,13 @@ async syncSingleUserToNotion(userId) {
       },
       "사용자ID": { rich_text: [{ text: { content: userId } }] },
       "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-      "상태": user.status
-        ? { select: { name: user.status } }
-        : { select: { name: "데이터 없음" } },
+      "상태": {
+        select: {
+          name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+            ? "탈퇴" 
+            : "가입"
+        }
+      },
       "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
       "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
       "이메일": { rich_text: [{ text: { content: user.email || "" } }] },

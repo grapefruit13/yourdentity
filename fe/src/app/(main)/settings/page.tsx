@@ -10,6 +10,7 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
 import { useLogout } from "@/hooks/auth/useLogout";
+import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { debug } from "@/utils/shared/debugger";
 
 /**
@@ -26,6 +27,13 @@ const SettingsPage = () => {
   const { mutate: logoutMutate } = useLogout();
   const { mutate: deleteAccountMutate, isPending: isDeleting } =
     useDeleteAccount();
+
+  // 사용자 정보 가져오기
+  const { data: userData } = useGetUsersMe({
+    select: (data) => {
+      return data?.user;
+    },
+  });
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true);
@@ -189,6 +197,7 @@ const SettingsPage = () => {
       <DeleteAccountModal
         isOpen={isDeleteAccountModalOpen}
         isLoading={isDeleting}
+        nickname={userData?.nickname}
         onConfirm={handleDeleteAccountConfirm}
         onClose={() => {
           if (isDeleting) return;

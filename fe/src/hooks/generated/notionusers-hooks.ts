@@ -66,3 +66,39 @@ export const useGetNotionusersSyncPenalty = <
     ...options,
   });
 };
+
+export const useGetNotionusersSyncSelected = <
+  TData = Types.TGETNotionUsersSyncSelectedRes,
+>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETNotionUsersSyncSelectedRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETNotionUsersSyncSelectedRes, Error, TData>({
+    queryKey: notionusersKeys.getNotionusersSyncSelected,
+    queryFn: async () => {
+      const response = await Api.getNotionusersSyncSelected();
+      return response.data;
+    },
+    ...options,
+  });
+};
+
+export const useGetNotionusersSyncAllUsersRollback = <
+  TData = Types.TGETNotionUsersSyncAllUsersRollbackRes,
+>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETNotionUsersSyncAllUsersRollbackRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETNotionUsersSyncAllUsersRollbackRes, Error, TData>({
+    queryKey: notionusersKeys.getNotionusersSyncAllUsersRollback,
+    queryFn: async () => {
+      const response = await Api.getNotionusersSyncAllUsersRollback();
+      return response.data;
+    },
+    ...options,
+  });
+};

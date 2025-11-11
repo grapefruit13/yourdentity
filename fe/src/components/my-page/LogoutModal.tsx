@@ -15,7 +15,7 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }: LogoutModalProps) => {
   return (
     <Modal
       isOpen={isOpen}
-      title="로그아웃 하시겠습니까?"
+      title="로그아웃 할까요?"
       confirmText="확인"
       cancelText="취소"
       onConfirm={onConfirm}

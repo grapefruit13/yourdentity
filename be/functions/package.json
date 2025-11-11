@@ -21,6 +21,7 @@
   "dependencies": {
     "@google-cloud/functions-framework": "^4.0.0",
     "@notionhq/client": "^5.1.0",
+    "notion-client": "7.7.1",
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

@@ -1,11 +1,4 @@
 const { Client } = require('@notionhq/client');
-const { 
-  getTitleValue,
-  getFileUrls,
-  getCheckboxValue,
-  getDateValue,
-  formatNotionBlocks,
-} = require('../utils/notionHelper');
 
 // 상수 정의
 const QUERY_PAGE_SIZE = 1; // 홈 화면은 최신 1개만 조회
@@ -13,8 +6,8 @@ const QUERY_PAGE_SIZE = 1; // 홈 화면은 최신 1개만 조회
 const NOTION_FIELDS = {
   NAME: "이름",
   BACKGROUND_IMAGE: "배경화면",
-  ACTIVITY_REVIEW: "활동후기",
-  NADAUM_EXHIBITION: "나다움전시",
+  ACTIVITY_REVIEW: "활동후기 여부",
+  NADAUM_EXHIBITION: "나다움전시 여부",
   DEPLOY_DATE: "운영 배포일자",
 };
 
@@ -68,6 +61,7 @@ class HomeService {
       throw error;
     }
 
+    // @notionhq/client (공식 API - 데이터베이스 쿼리용)
     this.notion = new Client({
       auth: NOTION_API_KEY,
       notionVersion: NOTION_VERSION,
@@ -77,8 +71,9 @@ class HomeService {
   }
 
   /**
-   * 홈 화면 데이터 조회 (운영 배포일자 기준 가장 최신 페이지 1개)
-   * @returns {Promise<Object>} 홈 화면 데이터 (id, name, backgroundImage, content 등)
+   * 홈 화면 데이터 조회 (운영 배포일자 기준 오늘 이하의 가장 가까운 과거 배포 버전)
+   * react-notion-x를 위한 recordMap 형식 반환
+   * @returns {Promise<Object>} recordMap 형식의 홈 화면 데이터
    * @throws {Error} HOME_NOT_FOUND - 배포된 홈 화면이 없는 경우
    * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
    * @throws {Error} RATE_LIMITED - API 요청 한도 초과
@@ -88,13 +83,27 @@ class HomeService {
       // Lazy initialization
       this.initNotionClient();
 
+      // 오늘 날짜를 ISO 형식으로 변환 (YYYY-MM-DD)
+      const today = new Date();
+      const todayISO = today.toISOString().split('T')[0];
+
       const queryBody = {
         page_size: QUERY_PAGE_SIZE,
         filter: {
-          property: NOTION_FIELDS.DEPLOY_DATE,
-          date: {
-            is_not_empty: true
-          }
+          and: [
+            {
+              property: NOTION_FIELDS.DEPLOY_DATE,
+              date: {
+                is_not_empty: true
+              }
+            },
+            {
+              property: NOTION_FIELDS.DEPLOY_DATE,
+              date: {
+                on_or_before: todayISO
+              }
+            }
+          ]
         },
         sorts: [
           {
@@ -104,6 +113,7 @@ class HomeService {
         ]
       };
 
+      // @notionhq/client로 페이지 ID 찾기
       const data = await this.notion.dataSources.query({
         data_source_id: this.homeDataSource,
         ...queryBody
@@ -116,10 +126,18 @@ class HomeService {
         throw error;
       }
 
+      // 필터링 및 정렬 후 가장 최신 페이지 1개
       const page = data.results[0];
-      const blocks = await this.getPageBlocks(page.id);
+      const pageId = page.id;
 
-      return this.formatHomeData(page, blocks);
+      // notion-client로 react-notion-x용 recordMap 가져오기 (ES Module이므로 dynamic import 사용)
+      const { NotionAPI } = await import('notion-client');
+      const notionClient = new NotionAPI({
+        authToken: process.env.NOTION_API_KEY,
+      });
+      const recordMap = await notionClient.getPage(pageId);
+
+      return recordMap;
 
     } catch (error) {
       return this.handleError(error);
@@ -166,68 +184,6 @@ class HomeService {
     throw serviceError;
   }
 
-  /**
-   * 페이지 블록 내용 조회 (페이지네이션 처리)
-   * @param {string} pageId - 페이지 ID
-   * @returns {Promise<Array>} 포맷팅된 블록 배열 (실패 시 빈 배열)
-   * @private
-   */
-  async getPageBlocks(pageId) {
-    try {
-      let cursor;
-      const allBlocks = [];
-      
-      // Notion API는 한 번에 최대 100개만 반환하므로 페이지네이션 처리
-      do {
-        const response = await this.notion.blocks.children.list({
-          block_id: pageId,
-          start_cursor: cursor,
-        });
-        
-        allBlocks.push(...response.results);
-        cursor = response.has_more ? response.next_cursor : undefined;
-      } while (cursor);
-
-      return formatNotionBlocks(allBlocks);
-    } catch (error) {
-      // 블록 조회 실패 시 빈 배열 반환 (메인 데이터는 유지)
-      return [];
-    }
-  }
-
-  /**
-   * 홈 화면 데이터 포맷팅
-   * @param {Object} page - Notion 페이지 객체
-   * @param {Array} [blocks=[]] - 페이지 블록 내용
-   * @returns {Object} 포맷팅된 홈 화면 데이터
-   * @property {string} id - 페이지 ID
-   * @property {string} name - 홈 화면 이름
-   * @property {Array} backgroundImage - 배경 이미지 목록
-   * @property {boolean} activityReview - 활동후기 표시 여부
-   * @property {boolean} nadaumExhibition - 나다움전시 표시 여부
-   * @property {string} deployDate - 운영 배포일자
-   * @property {Array} content - 페이지 블록 내용
-   * @property {string} createdAt - 생성 일시
-   * @property {string} updatedAt - 수정 일시
-   * @property {string} url - 노션 페이지 URL
-   * @private
-   */
-  formatHomeData(page, blocks = []) {
-    const props = page.properties;
-    
-    return {
-      id: page.id,
-      name: getTitleValue(props[NOTION_FIELDS.NAME]),
-      backgroundImage: getFileUrls(props[NOTION_FIELDS.BACKGROUND_IMAGE]),
-      activityReview: getCheckboxValue(props[NOTION_FIELDS.ACTIVITY_REVIEW]),
-      nadaumExhibition: getCheckboxValue(props[NOTION_FIELDS.NADAUM_EXHIBITION]),
-      deployDate: getDateValue(props[NOTION_FIELDS.DEPLOY_DATE]),
-      content: blocks,
-      createdAt: page.created_time,
-      updatedAt: page.last_edited_time,
-      url: page.url
-    };
-  }
 }
 
 module.exports = new HomeService();

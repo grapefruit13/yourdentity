@@ -17,3 +17,15 @@ export const getNotionusersSyncFull = () => {
 export const getNotionusersSyncPenalty = () => {
   return get<Types.TGETNotionUsersSyncPenaltyRes>(`/notionUsers/sync/penalty`);
 };
+
+export const getNotionusersSyncSelected = () => {
+  return get<Types.TGETNotionUsersSyncSelectedRes>(
+    `/notionUsers/sync/selected`
+  );
+};
+
+export const getNotionusersSyncAllUsersRollback = () => {
+  return get<Types.TGETNotionUsersSyncAllUsersRollbackRes>(
+    `/notionUsers/sync/allUsersRollback`
+  );
+};
