@@ -56,6 +56,11 @@ class RewardService {
    */
   async getRewardByAction(actionKey) {
     try {
+      if (!actionKey || typeof actionKey !== 'string') {
+        console.warn('[REWARD] 유효하지 않은 actionKey:', actionKey);
+        return 0;
+      }
+
       // Notion REST API로 직접 호출 (기존 notionUserService 패턴)
       const response = await fetch(`https://api.notion.com/v1/databases/${this.rewardPolicyDB}/query`, {
         method: 'POST',
@@ -74,14 +79,24 @@ class RewardService {
         }),
       });
 
+      if (!response.ok) {
+        console.error(`[REWARD] Notion API 호출 실패: ${response.status} ${response.statusText}`);
+        return 0;
+      }
+
       const data = await response.json();
 
-      if (!data.results || data.results.length === 0) {
+      if (!data || !data.results || data.results.length === 0) {
         console.warn(`[REWARD] 액션 "${actionKey}"에 대한 리워드 정책이 없습니다`);
         return 0;
       }
 
       const page = data.results[0];
+      if (!page || !page.properties) {
+        console.warn(`[REWARD] 액션 "${actionKey}"의 페이지 데이터가 유효하지 않습니다`);
+        return 0;
+      }
+
       const props = page.properties;
 
       // status 체크 ('적용 완료'인 경우만 리워드 부여)
@@ -93,7 +108,7 @@ class RewardService {
 
       // Rewards 포인트 가져오기
       const rewards = getNumberValue(props['나다움']) || 0;
-      return rewards;
+      return Math.max(0, rewards); // 음수 방지
     } catch (error) {
       console.error('[REWARD ERROR] getRewardByAction:', error.message);
       return 0;
@@ -121,6 +136,24 @@ class RewardService {
     actionTimestamp = null,
     checkDuplicate = true,
     reason = null,
+  ) {
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+
+    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+      throw new Error('유효하지 않은 amount입니다. 양수여야 합니다');
+    }
+
+    if (!actionKey || typeof actionKey !== 'string' || actionKey.trim().length === 0) {
+      throw new Error('유효하지 않은 actionKey입니다');
+    }
+
+    if (!historyId || typeof historyId !== 'string' || historyId.trim().length === 0) {
+      throw new Error('유효하지 않은 historyId입니다');
+    }
+
     options = {}
   ) {
     const userRef = db.collection('users').doc(userId);
@@ -130,8 +163,10 @@ class RewardService {
 
     await this.firestoreService.runTransaction(async (transaction) => {
       // 댓글 일일 제한 체크 (actionTimestamp가 있고, actionKey가 comment인 경우)
-      if (actionTimestamp && actionKey === 'comment') {
-        const dateKey = formatDate(actionTimestamp);
+      const actionDate = actionTimestamp ? toDate(actionTimestamp) : null;
+
+      if (actionDate && actionKey === 'comment') {
+        const dateKey = formatDate(actionDate);
         const counterRef = db.collection(`users/${userId}/dailyRewardCounters`).doc(dateKey);
         const counterDoc = await transaction.get(counterRef);
         
@@ -155,14 +190,16 @@ class RewardService {
 
       // rewardsHistory에 기록 추가
       const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 적립';
+      const createdAtValue = actionDate ? Timestamp.fromDate(actionDate) : FieldValue.serverTimestamp();
+      
+      transaction.set(historyRef, {
 
       const historyData = {
         actionKey,
         amount,
         changeType: 'add',
         reason: rewardReason,
-        // actionTimestamp가 있으면 사용 (액션 기반), 없으면 서버 시간 사용 (관리자 직접 지급)
-        createdAt: actionTimestamp || FieldValue.serverTimestamp(),
+        createdAt: createdAtValue,
         isProcessed: false,
       };
 
@@ -206,8 +243,8 @@ class RewardService {
       });
 
       // 일일 카운터 증가 (actionTimestamp가 있고, actionKey가 comment인 경우)
-      if (actionTimestamp && actionKey === 'comment') {
-        const dateKey = formatDate(actionTimestamp);
+      if (actionDate && actionKey === 'comment') {
+        const dateKey = formatDate(actionDate);
         const counterRef = db.collection(`users/${userId}/dailyRewardCounters`).doc(dateKey);
         
         transaction.set(counterRef, {
@@ -258,11 +295,20 @@ class RewardService {
    * Action 기반 리워드 부여 (Notion DB 조회)
    * Race condition 방지를 위해 중복 체크와 리워드 부여를 단일 transaction으로 처리
    * @param {string} userId - 사용자 ID
-   * @param {string} actionKey - 액션 키 (예: "comment_create")
+   * @param {string} actionKey - 액션 키 (예: "comment")
    * @param {Object} metadata - 추가 정보 (postId, commentId 등)
    * @return {Promise<Object>} 부여 결과
    */
   async grantActionReward(userId, actionKey, metadata = {}) {
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+
+    if (!actionKey || typeof actionKey !== 'string' || actionKey.trim().length === 0) {
+      throw new Error('유효하지 않은 actionKey입니다');
+    }
+
     try {
       // 1. Notion에서 리워드 포인트 조회
       const rewardAmount = await this.getRewardByAction(actionKey);
@@ -354,6 +400,8 @@ class RewardService {
         return { success: true, amount: 0, message: 'Reward already granted' };
       }
 
+      console.log(`[REWARD SUCCESS] userId=${userId}, action=${actionKey}, amount=${rewardAmount}, targetId=${targetId}`);
+
       return {
         success: true,
         amount: rewardAmount,
@@ -365,10 +413,157 @@ class RewardService {
         error.code = 'INTERNAL_ERROR';
       }
       
+      console.error('[REWARD ERROR] grantActionReward:', error.message, {
+        userId,
+        actionKey,
+        metadata,
+        stack: error.stack,
+      });
+      
       throw error;
+    }
+  }
+
+  /**
+   * 리워드 유효기간 검증 및 차감
+   * 로그인 시점에 호출하여 만료된 리워드를 차감 처리
+   * expiresAt 필드가 있는 경우만 처리 (없으면 스킵)
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>} 차감 결과 { totalDeducted, count }
+   */
+  async checkAndDeductExpiredRewards(userId) {
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      console.error('[REWARD EXPIRY] 유효하지 않은 userId:', userId);
+      return { totalDeducted: 0, count: 0, error: 'Invalid userId' };
+    }
+
+    try {
+      const now = Timestamp.now();
+      const nowDate = now.toDate();
+      const rewardsHistoryRef = db.collection(`users/${userId}/rewardsHistory`);
+      const userRef = db.collection('users').doc(userId);
+
+      let totalDeducted = 0;
+      let expiredCount = 0;
+
+      // 트랜잭션으로 일괄 처리 (조회도 트랜잭션 내부에서 수행하여 중복 차감 방지)
+      await this.firestoreService.runTransaction(async (transaction) => {
+        // 트랜잭션 내에서 만료 대상 조회 (동시성 문제 방지)
+        const snapshot = await transaction.get(rewardsHistoryRef
+          .where('changeType', '==', 'add')
+          .where('isProcessed', '==', false)
+          .limit(100)); // 한 번에 처리할 최대 개수 제한
+
+        if (snapshot.empty) {
+          return;
+        }
+
+        const expiredHistories = [];
+        let deductAmount = 0;
+
+        // 만료된 항목 필터링 (expiresAt 필드 기반)
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          
+          // expiresAt이 없으면 스킵 (다른 담당자가 추가할 때까지 대기)
+          if (!data || !data.expiresAt) {
+            continue;
+          }
+
+          let expiresAt;
+          try {
+            expiresAt = toDate(data.expiresAt);
+          } catch (parseError) {
+            console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}의 expiresAt 파싱 실패:`, parseError.message);
+            continue;
+          }
+
+          const amount = typeof data.amount === 'number' ? data.amount : 0;
+
+          // 만료 여부 확인
+          if (expiresAt <= nowDate) {
+            expiredHistories.push({
+              id: doc.id,
+              amount,
+              expiresAt,
+              createdAt: data.createdAt,
+            });
+            deductAmount += amount;
+          }
+        }
+
+        if (expiredHistories.length === 0) {
+          return;
+        }
+
+        totalDeducted = deductAmount;
+        expiredCount = expiredHistories.length;
+        // 사용자 문서 읽기 (데이터 일관성 검증)
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) {
+          throw new Error(`사용자 ${userId}를 찾을 수 없습니다.`);
+        }
+
+        const userData = userDoc.data();
+        const currentRewards = typeof userData.rewards === 'number' ? userData.rewards : 0;
+
+        // 차감할 금액이 현재 리워드보다 많으면 경고 로그
+        if (totalDeducted > currentRewards) {
+          console.warn(`[REWARD EXPIRY] userId=${userId}, 차감할 금액(${totalDeducted})이 현재 리워드(${currentRewards})보다 많습니다. 0으로 설정됩니다.`);
+          // 모든 리워드 차감
+          transaction.update(userRef, {
+            rewards: 0,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else if (totalDeducted > 0) {
+          // 정상 차감 (FieldValue.increment 사용으로 동시성 문제 방지)
+          transaction.update(userRef, {
+            rewards: FieldValue.increment(-totalDeducted),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 각 만료된 히스토리 항목 처리
+        for (const history of expiredHistories) {
+          const historyRef = rewardsHistoryRef.doc(history.id);
+
+          // isProcessed를 true로 변경
+          transaction.update(historyRef, {
+            isProcessed: true,
+          });
+
+          // 차감 히스토리 추가
+          const deductHistoryRef = rewardsHistoryRef.doc();
+          transaction.set(deductHistoryRef, {
+            amount: history.amount,
+            changeType: 'deduct',
+            reason: '리워드 만료',
+            isProcessed: true,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+        }
+      });
+
+      console.log(`[REWARD EXPIRY] userId=${userId}, 만료된 리워드 ${expiredCount}건, 총 ${totalDeducted}포인트 차감`);
+
+      return {
+        totalDeducted,
+        count: expiredCount,
+      };
+    } catch (error) {
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
+      console.error('[REWARD EXPIRY ERROR] checkAndDeductExpiredRewards:', error.message, {
+        userId,
+        stack: error.stack,
+      });
+      // 에러가 발생해도 로그인 프로세스는 계속 진행되도록 에러를 throw하지 않음
+      // 대신 로그만 남기고 빈 결과 반환
+      return { totalDeducted: 0, count: 0, error: error.message };
     }
   }
 }
 
 module.exports = RewardService;
-

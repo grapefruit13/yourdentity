@@ -338,6 +338,7 @@ class UserService {
       gender,
       phoneNumber: normalizedPhone,
       profileImageUrl,
+      lastLoginAt: FieldValue.serverTimestamp(),
       lastUpdatedAt: FieldValue.serverTimestamp(),
     };
 
@@ -349,7 +350,6 @@ class UserService {
         authType: AUTH_TYPES.SNS,
         snsProvider: SNS_PROVIDERS.KAKAO,
         createdAt: FieldValue.serverTimestamp(),
-        lastLoginAt: FieldValue.serverTimestamp(),
         ...update,
       }, uid);
     } else {
