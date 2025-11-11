@@ -6,10 +6,10 @@ const { toDate, formatDate } = require('../utils/helpers');
 // 액션 키 → 타입 코드 매핑 (historyId 생성용)
 const ACTION_TYPE_MAP = {
   'comment': 'COMMENT',
-  'routine_post': 'ROUTINE:POST',
-  'routine_review': 'ROUTINE:REVIEW',
-  'gathering_review_text': 'GR:TEXT',
-  'gathering_review_media': 'GR:MEDIA',
+  'routine_post': 'ROUTINE-POST',
+  'routine_review': 'ROUTINE-REVIEW',
+  'gathering_review_text': 'GATHERING-TEXT',
+  'gathering_review_media': 'GATHERING-MEDIA',
   'tmi_review': 'TMI',
 };
 
@@ -217,7 +217,7 @@ class RewardService {
         throw error;
       }
       
-      const historyId = `${typeCode}:${targetId}`;
+      const historyId = `${typeCode}-${targetId}`;
 
       // 4. addRewardToUser 호출 (범용 메서드 활용, 트랜잭션 내 중복 체크 + 일일 제한 체크)
       const { isDuplicate, isDailyLimitExceeded } = await this.addRewardToUser(
