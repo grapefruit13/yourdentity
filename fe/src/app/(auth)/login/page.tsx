@@ -27,7 +27,12 @@ const LoginPageContent = () => {
   const { registerFCMToken } = useFCM();
 
   // 로그인 후 돌아갈 경로 (next 쿼리 파라미터)
-  const returnTo = searchParams.get("next") || null;
+  const rawNext = searchParams.get("next") || null;
+  // /community/write로 가는 것은 막고 /community로 변경
+  // (글쓰기는 바텀시트에서 카테고리를 선택하고 가야 함)
+  const returnTo = rawNext?.startsWith(LINK_URL.COMMUNITY_WRITE)
+    ? LINK_URL.COMMUNITY
+    : rawNext;
 
   const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile({
     retry: 1, // 실패 시 1회 재시도
