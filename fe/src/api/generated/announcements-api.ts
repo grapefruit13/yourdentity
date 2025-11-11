@@ -6,34 +6,14 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/announcements-types";
 
-export const getNotionAnnouncements = (
-  request: Types.TGETNotionAnnouncementsReq
-) => {
-  return get<Types.TGETNotionAnnouncementsRes>(`/notion/announcements`, {
-    params: request,
-  });
+export const getAnnouncements = (request: Types.TGETAnnouncementsReq) => {
+  return get<Types.TGETAnnouncementsRes>(`/announcements`, { params: request });
 };
 
-export const getNotionAnnouncementsSyncById = (
-  request: Types.TGETNotionAnnouncementsSyncByIdReq
+export const getAnnouncementsById = (
+  request: Types.TGETAnnouncementsByIdReq
 ) => {
-  return get<Types.TGETNotionAnnouncementsSyncByIdRes>(
-    `/notion/announcements/${request.pageId}/sync`
-  );
-};
-
-export const getNotionAnnouncementsDeleteById = (
-  request: Types.TGETNotionAnnouncementsDeleteByIdReq
-) => {
-  return get<Types.TGETNotionAnnouncementsDeleteByIdRes>(
-    `/notion/announcements/${request.pageId}/delete`
-  );
-};
-
-export const getNotionAnnouncementsById = (
-  request: Types.TGETNotionAnnouncementsByIdReq
-) => {
-  return get<Types.TGETNotionAnnouncementsByIdRes>(
-    `/notion/announcements/${request.pageId}`
+  return get<Types.TGETAnnouncementsByIdRes>(
+    `/announcements/${request.pageId}`
   );
 };

@@ -13,84 +13,38 @@ import * as Api from "@/api/generated/announcements-api";
 import { announcementsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/announcements-types";
 
-export const useGetNotionAnnouncements = <
-  TData = Types.TGETNotionAnnouncementsRes,
->(
+export const useGetAnnouncements = <TData = Types.TGETAnnouncementsRes>(
   options: {
-    request: Types.TGETNotionAnnouncementsReq;
+    request: Types.TGETAnnouncementsReq;
   } & Omit<
-    UseQueryOptions<Types.TGETNotionAnnouncementsRes, Error, TData>,
+    UseQueryOptions<Types.TGETAnnouncementsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETNotionAnnouncementsRes, Error, TData>({
-    queryKey: announcementsKeys.getNotionAnnouncements(request),
+  return useQuery<Types.TGETAnnouncementsRes, Error, TData>({
+    queryKey: announcementsKeys.getAnnouncements(request),
     queryFn: async () => {
-      const response = await Api.getNotionAnnouncements(request);
+      const response = await Api.getAnnouncements(request);
       return response.data;
     },
     ...queryOptions,
   });
 };
 
-export const useGetNotionAnnouncementsSyncById = <
-  TData = Types.TGETNotionAnnouncementsSyncByIdRes,
->(
+export const useGetAnnouncementsById = <TData = Types.TGETAnnouncementsByIdRes>(
   options: {
-    request: Types.TGETNotionAnnouncementsSyncByIdReq;
+    request: Types.TGETAnnouncementsByIdReq;
   } & Omit<
-    UseQueryOptions<Types.TGETNotionAnnouncementsSyncByIdRes, Error, TData>,
+    UseQueryOptions<Types.TGETAnnouncementsByIdRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETNotionAnnouncementsSyncByIdRes, Error, TData>({
-    queryKey: announcementsKeys.getNotionAnnouncementsSyncById(request),
+  return useQuery<Types.TGETAnnouncementsByIdRes, Error, TData>({
+    queryKey: announcementsKeys.getAnnouncementsById(request),
     queryFn: async () => {
-      const response = await Api.getNotionAnnouncementsSyncById(request);
-      return response.data;
-    },
-    ...queryOptions,
-  });
-};
-
-export const useGetNotionAnnouncementsDeleteById = <
-  TData = Types.TGETNotionAnnouncementsDeleteByIdRes,
->(
-  options: {
-    request: Types.TGETNotionAnnouncementsDeleteByIdReq;
-  } & Omit<
-    UseQueryOptions<Types.TGETNotionAnnouncementsDeleteByIdRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETNotionAnnouncementsDeleteByIdRes, Error, TData>({
-    queryKey: announcementsKeys.getNotionAnnouncementsDeleteById(request),
-    queryFn: async () => {
-      const response = await Api.getNotionAnnouncementsDeleteById(request);
-      return response.data;
-    },
-    ...queryOptions,
-  });
-};
-
-export const useGetNotionAnnouncementsById = <
-  TData = Types.TGETNotionAnnouncementsByIdRes,
->(
-  options: {
-    request: Types.TGETNotionAnnouncementsByIdReq;
-  } & Omit<
-    UseQueryOptions<Types.TGETNotionAnnouncementsByIdRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETNotionAnnouncementsByIdRes, Error, TData>({
-    queryKey: announcementsKeys.getNotionAnnouncementsById(request),
-    queryFn: async () => {
-      const response = await Api.getNotionAnnouncementsById(request);
+      const response = await Api.getAnnouncementsById(request);
       return response.data;
     },
     ...queryOptions,

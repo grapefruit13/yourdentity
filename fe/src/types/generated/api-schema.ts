@@ -52,13 +52,13 @@ export interface User {
   pushTermsAgreed?: boolean;
   termsAgreedAt?: string;
   createdAt?: string;
-  lastLogin?: string;
+  lastLoginAt?: string;
+  lastUpdatedAt?: string;
   nickname?: string;
   gender?: string;
   birthDate?: string;
   status?: "pending" | "active" | "suspended";
   bio?: string;
-  updatedAt?: string;
 }
 
 export interface Mission {
@@ -298,8 +298,9 @@ export interface CommunityPostListItem {
   tags?: string[];
   scheduledDate?: string;
   isLocked?: boolean;
-  visibility?: string;
+  isPublic?: boolean;
   likesCount?: number;
+  isLiked?: boolean;
   commentsCount?: number;
   createdAt?: string;
   timeAgo?: string;
@@ -314,8 +315,9 @@ export interface CommunityPost {
   media?: Record<string, any>[];
   channel?: string;
   isLocked?: boolean;
-  visibility?: string;
+  isPublic?: boolean;
   likesCount?: number;
+  isLiked?: boolean;
   commentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -332,6 +334,7 @@ export interface CommunityPost {
     name?: string;
   };
   authorId?: string;
+  visibility?: string;
 }
 
 export interface Comment {
@@ -422,7 +425,7 @@ export interface Community {
   createdBy?: string;
   linkedChat?: string;
   channel?: string;
-  postType?: "ROUTINE_CERT" | "GATHERING_REVIEW" | "TMI";
+  programType?: "ROUTINE" | "GATHERING" | "TMI";
   updatedAt?: string;
 }
 
@@ -435,10 +438,11 @@ export interface Post {
   content?: Schema.ContentItem[];
   channel?: string;
   isLocked?: boolean;
-  visibility?: "public" | "private" | "hidden";
+  isPublic?: boolean;
   rewardGiven?: boolean;
   reactionsCount?: number;
   likesCount?: number;
+  isLiked?: boolean;
   commentsCount?: number;
   reportsCount?: number;
   createdAt?: string;
@@ -550,6 +554,8 @@ export interface Program {
   endDate?: string;
   recruitmentStartDate?: string;
   recruitmentEndDate?: string;
+  orientationDate?: string;
+  shareMeetingDate?: string;
   targetAudience?: string;
   thumbnail?: {
     name?: string;

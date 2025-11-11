@@ -24,6 +24,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     depth?: number;
     isLocked?: boolean;
     likesCount?: number;
+    isLiked?: boolean;
     repliesCount?: number;
     createdAt?: string;
     updatedAt?: string;
@@ -60,6 +61,7 @@ export type TPOSTCommentsCommunitiesPostsByTwoIdsRes = {
   depth?: number;
   isLocked?: boolean;
   likesCount?: number;
+  isLiked?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -81,6 +83,7 @@ export type TPUTCommentsByIdRes = {
   depth?: number;
   isLocked?: boolean;
   likesCount?: number;
+  isLiked?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
