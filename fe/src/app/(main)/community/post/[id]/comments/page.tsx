@@ -337,7 +337,10 @@ const CommentsPage = () => {
                 onCancelReply={handleCancelReply}
                 onCommentSubmit={handleCommentSubmit}
                 commentInput={
-                  replyingTo?.commentId === comment.id ||
+                  // 원댓글에 대한 답글인 경우 (isReply가 false이거나 undefined)
+                  (replyingTo?.commentId === comment.id &&
+                    !replyingTo?.isReply) ||
+                  // 답글에 대한 답글인 경우 (해당 댓글의 답글 목록에 있는 경우)
                   (replyingTo?.isReply &&
                     comment.replies?.some(
                       (r) => (r.id || r.commentId) === replyingTo.commentId
@@ -346,8 +349,10 @@ const CommentsPage = () => {
                     : ""
                 }
                 onCommentInputChange={(value) => {
+                  // 원댓글에 대한 답글이거나, 답글에 대한 답글인 경우에만 입력값 업데이트
                   if (
-                    replyingTo?.commentId === comment.id ||
+                    (replyingTo?.commentId === comment.id &&
+                      !replyingTo?.isReply) ||
                     (replyingTo?.isReply &&
                       comment.replies?.some(
                         (r) => (r.id || r.commentId) === replyingTo.commentId
@@ -367,8 +372,8 @@ const CommentsPage = () => {
           </div>
         )}
 
-        {/* 하단 댓글 작성칸 - 항상 표시 (답글과 무관) */}
-        {!editingCommentId && (
+        {/* 하단 댓글 작성칸 - 원댓글에 대한 답글일 때만 표시 (답글에 대한 답글일 때는 숨김) */}
+        {!editingCommentId && (!replyingTo || !replyingTo.isReply) && (
           <div className="fixed right-0 bottom-20 left-0 z-30 border-t border-gray-100 bg-white px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
               <div className="h-6 w-6 rounded-full bg-gray-300"></div>

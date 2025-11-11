@@ -372,65 +372,8 @@ const CommentItem = ({
             </>
           )}
 
-          {/* 답글 작성 입력칸 */}
-          {isReplying && (
-            <div className="mt-3 space-y-2">
-              <div className="mb-2 flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-gray-300"></div>
-                <Typography
-                  font="noto"
-                  variant="body2M"
-                  className="text-gray-800"
-                >
-                  @ {replyingTo?.author} {currentUserNickname}
-                </Typography>
-              </div>
-              <form onSubmit={handleReplySubmit} className="relative">
-                <textarea
-                  value={commentInput}
-                  onChange={(e) => onCommentInputChange(e.target.value)}
-                  placeholder="서로 배려하는 댓글을 남겨요:)"
-                  className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
-                  rows={
-                    commentInput.trim()
-                      ? Math.min(commentInput.split("\n").length + 1, 5)
-                      : 1
-                  }
-                />
-                <div className="absolute right-2 bottom-2 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={onCancelReply}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    <Typography font="noto" variant="body2R">
-                      취소
-                    </Typography>
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!commentInput.trim()}
-                    className={cn(
-                      "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                      commentInput.trim()
-                        ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
-                        : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
-                    )}
-                  >
-                    <Typography
-                      font="noto"
-                      variant="body2M"
-                      className={
-                        commentInput.trim() ? "text-white" : "text-gray-400"
-                      }
-                    >
-                      등록
-                    </Typography>
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+          {/* 답글 작성 입력칸 - 원댓글에 대한 답글은 하단 입력창에만 표시되므로 CommentItem 내부에서는 표시하지 않음 */}
+          {/* 원댓글에 대한 답글은 하단 입력창에서 처리되므로 여기서는 답글에 대한 답글만 처리 */}
         </div>
       </div>
 
@@ -441,6 +384,13 @@ const CommentItem = ({
             visibleReplies.map((reply) => {
               const replyId = reply.id || reply.commentId || "";
               const replyAuthor = reply.author || "익명";
+              // 답글에 대한 답글 입력창 표시 여부
+              // 원댓글에 대한 답글 입력창(isReplying)이 활성화되어 있을 때는 답글 목록 안에 입력창이 나타나지 않도록
+              const isReplyingToThisReply =
+                replyingTo?.commentId === replyId &&
+                replyingTo?.isReply === true &&
+                !isReplying; // 원댓글에 대한 답글 입력창이 활성화되어 있지 않을 때만
+
               return (
                 <div key={replyId} className="flex gap-3">
                   <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
@@ -535,80 +485,79 @@ const CommentItem = ({
                       </button>
                     </div>
                     {/* 답글에 대한 답글 입력창 - isReply가 true이고 해당 답글 ID와 일치할 때만 표시 */}
-                    {replyingTo?.commentId === replyId &&
-                      replyingTo?.isReply === true && (
-                        <div className="mt-3 space-y-2">
-                          <div className="mb-2 flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-full bg-gray-300"></div>
-                            <Typography
-                              font="noto"
-                              variant="body2M"
-                              className="text-gray-800"
-                            >
-                              @ {replyingTo?.author} {currentUserNickname}
-                            </Typography>
-                          </div>
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              if (commentInput.trim()) {
-                                onCommentSubmit(e);
-                              }
-                            }}
-                            className="relative"
+                    {isReplyingToThisReply && (
+                      <div className="mt-3 space-y-2">
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-gray-300"></div>
+                          <Typography
+                            font="noto"
+                            variant="body2M"
+                            className="text-gray-800"
                           >
-                            <textarea
-                              value={commentInput}
-                              onChange={(e) =>
-                                onCommentInputChange(e.target.value)
-                              }
-                              placeholder="서로 배려하는 댓글을 남겨요:)"
-                              className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
-                              rows={
-                                commentInput.trim()
-                                  ? Math.min(
-                                      commentInput.split("\n").length + 1,
-                                      5
-                                    )
-                                  : 1
-                              }
-                            />
-                            <div className="absolute right-2 bottom-2 flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={onCancelReply}
-                                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                              >
-                                <Typography font="noto" variant="body2R">
-                                  취소
-                                </Typography>
-                              </button>
-                              <button
-                                type="submit"
-                                disabled={!commentInput.trim()}
-                                className={cn(
-                                  "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                                  commentInput.trim()
-                                    ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
-                                    : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
-                                )}
-                              >
-                                <Typography
-                                  font="noto"
-                                  variant="body2M"
-                                  className={
-                                    commentInput.trim()
-                                      ? "text-white"
-                                      : "text-gray-400"
-                                  }
-                                >
-                                  등록
-                                </Typography>
-                              </button>
-                            </div>
-                          </form>
+                            @ {replyingTo?.author} {currentUserNickname}
+                          </Typography>
                         </div>
-                      )}
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (commentInput.trim()) {
+                              onCommentSubmit(e);
+                            }
+                          }}
+                          className="relative"
+                        >
+                          <textarea
+                            value={commentInput}
+                            onChange={(e) =>
+                              onCommentInputChange(e.target.value)
+                            }
+                            placeholder="서로 배려하는 댓글을 남겨요:)"
+                            className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
+                            rows={
+                              commentInput.trim()
+                                ? Math.min(
+                                    commentInput.split("\n").length + 1,
+                                    5
+                                  )
+                                : 1
+                            }
+                          />
+                          <div className="absolute right-2 bottom-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={onCancelReply}
+                              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                            >
+                              <Typography font="noto" variant="body2R">
+                                취소
+                              </Typography>
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={!commentInput.trim()}
+                              className={cn(
+                                "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
+                                commentInput.trim()
+                                  ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
+                                  : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
+                              )}
+                            >
+                              <Typography
+                                font="noto"
+                                variant="body2M"
+                                className={
+                                  commentInput.trim()
+                                    ? "text-white"
+                                    : "text-gray-400"
+                                }
+                              >
+                                등록
+                              </Typography>
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
