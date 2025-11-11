@@ -182,9 +182,10 @@ const HomePage = () => {
       const img = new window.Image();
       img.onload = () => {
         if (!active) return;
-        const screenWidth = window.innerWidth;
+        const containerMaxWidth = 470;
+        const actualWidth = Math.min(window.innerWidth, containerMaxWidth);
         const imageAspectRatio = img.height / img.width;
-        const containerHeight = screenWidth * imageAspectRatio;
+        const containerHeight = actualWidth * imageAspectRatio;
         heights[index] = containerHeight;
         loadedCount++;
 
@@ -258,7 +259,7 @@ const HomePage = () => {
   }, [totalBackgroundHeight, contentHeight, defaultHeight]);
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative w-full">
       {/* 배경 이미지 레이어 - 콘텐츠 높이에 맞춰 스크롤 가능 */}
       {backgroundImages.length > 0 && (
         <div
