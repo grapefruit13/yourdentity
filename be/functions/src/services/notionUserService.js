@@ -161,7 +161,6 @@ async syncUserAccounts() {
         // Firebase lastUpdated가 없는 경우에만 초기 설정
         if (!user.lastUpdated) {
           await db.collection("users").doc(userId).update({
-            //lastUpdated: lastUpdatedIso,
             lastUpdatedAt: lastUpdatedIso,
           });
         }
