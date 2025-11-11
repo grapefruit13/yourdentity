@@ -747,13 +747,13 @@ const RoutineDetailPage = () => {
       )}
 
       {/* 하단 고정 버튼 */}
-      <div className="sticky bottom-0 z-20 border-t border-gray-200 bg-white p-4">
+      <div className="sticky bottom-0 z-20 bg-transparent p-4">
         <Link
           href={`/routines/${programId}/apply`}
-          className="block w-full rounded-lg bg-pink-500 px-4 py-3 text-center text-white"
+          className="bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white"
         >
           <Typography font="noto" variant="body3R" className="text-white">
-            참여하기 →
+            신청하기
           </Typography>
         </Link>
       </div>

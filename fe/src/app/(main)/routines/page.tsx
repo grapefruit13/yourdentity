@@ -163,13 +163,13 @@ const RoutinesPage = () => {
                           </Typography>
                         </div>
                       </div>
-                      <button className="w-full rounded bg-pink-500 px-4 py-2 text-white">
+                      <button className="bg-main-600 w-full rounded px-4 py-2 text-white">
                         <Typography
                           font="noto"
                           variant="body2B"
                           className="text-white"
                         >
-                          참여하기 →
+                          신청하기
                         </Typography>
                       </button>
                     </div>

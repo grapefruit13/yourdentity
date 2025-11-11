@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
+import { Checkbox } from "@/components/ui/checkbox";
 import { KOREAN_REGIONS } from "@/constants/shared/korean-regions";
 import { cn } from "@/utils/shared/cn";
 import type { ActivityApplicationFormData } from "./types";
@@ -38,6 +39,8 @@ interface ActivityPickerBottomSheetProps {
   onTermsAgree?: () => void;
   /** 약관 동의 상태 변경 */
   onTermsCheckChange?: (checked: boolean) => void;
+  /** 약관 동의 로딩 상태 */
+  isTermsAgreeLoading?: boolean;
   /** 선택된 지역 코드 (region picker용) */
   selectedRegionCode?: string | null;
   /** 지역 코드 선택 핸들러 (region picker용) */
@@ -59,6 +62,7 @@ export const ActivityPickerBottomSheet = ({
   onMotivationSelect,
   onTermsAgree,
   onTermsCheckChange,
+  isTermsAgreeLoading = false,
   selectedRegionCode,
   onRegionCodeSelect,
 }: ActivityPickerBottomSheetProps) => {
@@ -266,41 +270,38 @@ export const ActivityPickerBottomSheet = ({
   const renderTermsContent = () => (
     <>
       <div className="mb-6">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={formData.agreedToTerms}
-            onChange={(e) => onTermsCheckChange?.(e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-pink-500 focus:ring-pink-500"
-          />
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={formData.agreedToTerms}
+              onCheckedChange={(checked) =>
+                onTermsCheckChange?.(checked === true)
+              }
+              className="data-[state=checked]:border-pink-500 data-[state=checked]:bg-pink-500 data-[state=checked]:text-white"
+            />
             <Typography font="noto" variant="body2R">
               개인정보 제3자 제공 동의
             </Typography>
-            <a
-              href="https://www.naver.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-pink-500 underline"
-            >
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="text-pink-500"
-              >
-                보기
-              </Typography>
-            </a>
-          </div>
-        </label>
+          </label>
+          <a
+            href="https://www.notion.so/youthvoice/2a845f524cd080d6ab97dd121d47e24b?source=copy_link#2a845f524cd080d0b276ca0f1769bdd5"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-pink-500 underline"
+          >
+            <Typography font="noto" variant="body2R" className="text-pink-500">
+              보기
+            </Typography>
+          </a>
+        </div>
       </div>
       <button
         onClick={onTermsAgree}
-        disabled={!formData.agreedToTerms}
-        className="w-full rounded-lg bg-pink-500 px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300"
+        disabled={!formData.agreedToTerms || isTermsAgreeLoading}
+        className="bg-primary-pink w-full rounded-lg px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300"
       >
         <Typography font="noto" variant="body2M" className="text-white">
-          동의하기
+          {isTermsAgreeLoading ? "신청 중..." : "동의하기"}
         </Typography>
       </button>
     </>

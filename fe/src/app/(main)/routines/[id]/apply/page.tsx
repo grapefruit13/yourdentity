@@ -242,6 +242,7 @@ const ProgramApplyPage = () => {
         localStorage.removeItem(STORAGE_KEY);
       }
       updateStep("complete");
+      setShowTermsSheet(false);
     },
     onError: (error: unknown) => {
       // eslint-disable-next-line no-console
@@ -416,6 +417,12 @@ const ProgramApplyPage = () => {
 
   // 이전 스텝으로 이동
   const goToPreviousStep = useCallback(() => {
+    // 신청 완료 페이지나 신청 정보 확인 페이지에서는 상세페이지로 이동
+    if (currentStep === "complete" || currentStep === "review") {
+      router.push(`/routines/${programId}`);
+      return;
+    }
+
     const stepOrderList: ApplicationStep[] = [
       "schedule-confirm",
       "nickname",
@@ -433,67 +440,82 @@ const ProgramApplyPage = () => {
       const previousStep = stepOrderList[currentIndex - 1];
       updateStep(previousStep);
     }
-  }, [currentStep, updateStep]);
+  }, [currentStep, updateStep, router, programId]);
 
   // 뒤로가기 핸들러 (브라우저/앱 스와이프)
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = () => {
       // 신청하기 페이지 내에서만 뒤로가기 처리
       if (window.location.pathname.includes("/apply")) {
-        event.preventDefault();
-        // 첫 번째 스텝이 아니면 이전 스텝으로 이동
-        if (currentStep !== "schedule-confirm") {
-          goToPreviousStep();
+        // 첫 번째 스텝이면 상세페이지로 이동 (히스토리 조작 없이 자연스럽게)
+        if (currentStep === "schedule-confirm") {
+          router.replace(`/routines/${programId}`);
+          return;
         }
-        // 히스토리 조작으로 실제 뒤로가기 방지
+        // 다른 스텝에서는 이전 스텝으로 이동
+        goToPreviousStep();
+        // 히스토리 조작으로 실제 뒤로가기 방지 (이전 스텝으로 이동한 후)
         window.history.pushState(null, "", window.location.href);
       }
     };
 
-    // 히스토리 스택에 현재 상태 추가
-    window.history.pushState(null, "", window.location.href);
+    // 첫 번째 스텝이 아닐 때만 히스토리 조작
+    if (currentStep !== "schedule-confirm") {
+      window.history.pushState(null, "", window.location.href);
+    }
 
     window.addEventListener("popstate", handlePopState);
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [goToPreviousStep, currentStep]);
+  }, [goToPreviousStep, currentStep, router, programId]);
 
   // TopBar 설정 및 뒤로가기 커스텀
   const setLeftSlot = useTopBarStore((state) => state.setLeftSlot);
   useEffect(() => {
     setTitle("신청하기");
-    // TopBar의 뒤로가기 버튼 커스텀 (첫 단계가 아닐 때만)
-    if (currentStep !== "schedule-confirm") {
-      const customLeftSlot = (
-        <button
-          onClick={goToPreviousStep}
-          className="hover:cursor-pointer"
-          aria-label="이전 단계"
+    // TopBar의 뒤로가기 버튼 커스텀
+    const customLeftSlot = (
+      <button
+        onClick={() => {
+          // 첫 단계에서는 상세페이지로 이동
+          if (currentStep === "schedule-confirm") {
+            router.push(`/routines/${programId}`);
+          } else {
+            goToPreviousStep();
+          }
+        }}
+        className="hover:cursor-pointer"
+        aria-label="이전 단계"
+      >
+        <svg
+          className="h-6 w-6 text-gray-900"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg
-            className="h-6 w-6 text-gray-900"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
-      );
-      setLeftSlot(customLeftSlot);
-    } else {
-      setLeftSlot(null);
-    }
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+      </button>
+    );
+    setLeftSlot(customLeftSlot);
     return () => {
       resetTopBar();
     };
-  }, [setTitle, resetTopBar, goToPreviousStep, currentStep, setLeftSlot]);
+  }, [
+    setTitle,
+    resetTopBar,
+    goToPreviousStep,
+    currentStep,
+    setLeftSlot,
+    router,
+    programId,
+  ]);
 
   // 일정 확인 완료
   const handleScheduleConfirm = useCallback(() => {
@@ -579,7 +601,6 @@ const ProgramApplyPage = () => {
   // 약관 동의
   const handleTermsAgree = useCallback(() => {
     formHook.updateFormData({ agreedToTerms: true });
-    setShowTermsSheet(false);
     // 신청 API 호출
     const currentUser = getCurrentUser();
     const applicantId = currentUser?.uid || userData?.uid || "";
@@ -673,7 +694,7 @@ const ProgramApplyPage = () => {
   // 하단 버튼 렌더링
   const renderBottomButton = useCallback(() => {
     const buttonBaseClass =
-      "w-full rounded-lg bg-pink-500 px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300";
+      "w-full rounded-lg bg-main-600 px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300";
 
     switch (currentStep) {
       case "schedule-confirm":
@@ -770,6 +791,18 @@ const ProgramApplyPage = () => {
             </Typography>
           </button>
         );
+      case "terms":
+        // 바텀시트가 열려있을 때도 버튼 표시 (바텀시트를 닫을 수 있도록)
+        return (
+          <button
+            onClick={() => setShowTermsSheet(true)}
+            className={buttonBaseClass}
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              약관 동의하기
+            </Typography>
+          </button>
+        );
       case "complete":
         return (
           <button onClick={handleComplete} className={buttonBaseClass}>
@@ -789,6 +822,7 @@ const ProgramApplyPage = () => {
     handleReviewNext,
     updateStep,
     applyMutation.isPending,
+    setShowTermsSheet,
   ]);
 
   if (isLoading || !programDetailData) {
@@ -924,19 +958,19 @@ const ProgramApplyPage = () => {
               >
                 신청 정보를 확인해주세요
               </Typography>
-              <div className="space-y-7 rounded-lg border border-gray-200 bg-white p-4">
+              <div className="space-y-4">
                 {/* 참여 동기 */}
                 <div>
                   <Typography
                     font="noto"
                     variant="label1B"
-                    className="mb-3 text-gray-700"
+                    className="text-gray-700"
                   >
                     참여 동기
                   </Typography>
                   <button
                     onClick={() => updateStep("motivation")}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                    className="mt-3 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
                   >
                     <Typography
                       font="noto"
@@ -985,13 +1019,13 @@ const ProgramApplyPage = () => {
                   <Typography
                     font="noto"
                     variant="label1B"
-                    className="mb-3 text-gray-700"
+                    className="text-gray-700"
                   >
                     참여 경로
                   </Typography>
                   <button
                     onClick={() => updateStep("source")}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                    className="mt-3 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
                   >
                     <Typography
                       font="noto"
@@ -1012,13 +1046,13 @@ const ProgramApplyPage = () => {
                   <Typography
                     font="noto"
                     variant="label1B"
-                    className="mb-3 text-gray-700"
+                    className="text-gray-700"
                   >
                     현재 상황
                   </Typography>
                   <button
                     onClick={() => updateStep("situation")}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                    className="mt-3 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
                   >
                     <Typography
                       font="noto"
@@ -1040,13 +1074,13 @@ const ProgramApplyPage = () => {
                     <Typography
                       font="noto"
                       variant="label1B"
-                      className="mb-3 text-gray-700"
+                      className="text-gray-700"
                     >
                       거주 지역
                     </Typography>
                     <button
                       onClick={() => updateStep("region")}
-                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
+                      className="mt-3 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
                     >
                       <Typography
                         font="noto"
@@ -1064,11 +1098,11 @@ const ProgramApplyPage = () => {
                   <Typography
                     font="noto"
                     variant="label1B"
-                    className="mb-3 text-gray-700"
+                    className="text-gray-700"
                   >
                     휴대폰 번호
                   </Typography>
-                  <div className="relative">
+                  <div className="relative mt-3">
                     <Input
                       type="tel"
                       value={formData.phoneNumber}
@@ -1087,7 +1121,6 @@ const ProgramApplyPage = () => {
                       placeholder="01012345678"
                       maxLength={11}
                       className={cn(
-                        formData.phoneNumber && "border-pink-500",
                         fieldErrors.phoneNumber && "border-red-500"
                       )}
                     />
@@ -1128,11 +1161,11 @@ const ProgramApplyPage = () => {
                   <Typography
                     font="noto"
                     variant="label1B"
-                    className="mb-1 text-gray-700"
+                    className="text-gray-700"
                   >
                     닉네임
                   </Typography>
-                  <div className="relative">
+                  <div className="relative mt-3">
                     <Input
                       type="text"
                       value={formData.nickname}
@@ -1149,7 +1182,6 @@ const ProgramApplyPage = () => {
                       placeholder="닉네임을 입력하세요"
                       className={cn(
                         "pr-10",
-                        formData.nickname && "border-pink-500",
                         fieldErrors.nickname && "border-red-500"
                       )}
                     />
@@ -1245,6 +1277,7 @@ const ProgramApplyPage = () => {
         onTermsCheckChange={(checked) =>
           formHook.updateFormData({ agreedToTerms: checked })
         }
+        isTermsAgreeLoading={applyMutation.isPending}
         selectedRegionCode={selectedRegionCode}
         onRegionCodeSelect={setSelectedRegionCode}
       />
