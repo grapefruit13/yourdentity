@@ -6,6 +6,12 @@ export interface TextEditorProps {
   className?: string;
   minHeight?: number;
   /**
+   * 초기 제목/내용 HTML
+   * - 수정 페이지 등에서 기본값 렌더링 용도로 사용
+   */
+  initialTitleHtml?: string;
+  initialContentHtml?: string;
+  /**
    * 이미지 선택 시, 업로드는 하지 않고 clientId를 발급/등록해 반환합니다.
    * 에디터는 받은 clientId를 img의 data-client-id 속성에 넣어 둡니다.
    * 실제 업로드는 제출 시 한 번에 수행하고, 그 응답의 fileUrl을 매칭시켜 src로 교체합니다.
