@@ -19,4 +19,5 @@ export const LINK_URL = {
   MY_PAGE_EDIT: "/my-page/edit",
   SETTINGS: "/settings",
   PERSONAL_INFO: "/settings/personal-info",
+  ANNOUNCEMENTS: "/announcements",
 } as const;

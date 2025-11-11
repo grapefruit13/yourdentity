@@ -1,50 +1,104 @@
 "use client";
 
 import Link from "next/link";
-import { MOCK_ANNOUNCEMENTS } from "@/constants/shared/announcements-mock";
+import { Typography } from "@/components/shared/typography";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useGetAnnouncements } from "@/hooks/generated/announcements-hooks";
+import { getTimeAgo } from "@/utils/shared/date";
 
 /**
  * @description 공지사항 목록 페이지
- * TODO: Notion에서 데이터 가져오기
  */
 const AnnouncementsPage = () => {
-  const pinnedAnnouncements = MOCK_ANNOUNCEMENTS.filter(
-    (item) => item.isPinned
-  );
-  const regularAnnouncements = MOCK_ANNOUNCEMENTS.filter(
-    (item) => !item.isPinned
-  );
+  const { data, isLoading, error } = useGetAnnouncements({
+    request: {
+      pageSize: 50,
+    },
+    select: (data) => {
+      if (!data?.announcements) return { pinned: [], regular: [] };
+
+      const pinned = data.announcements.filter((item) => item.pinned);
+      const regular = data.announcements.filter((item) => !item.pinned);
+
+      return { pinned, regular };
+    },
+  });
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="mt-12 min-h-screen bg-white p-4">
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="rounded-lg border border-gray-200 bg-white p-4"
+            >
+              <div className="mb-2">
+                <Skeleton className="h-6 w-3/4" />
+              </div>
+              <div className="mb-3 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white p-4">
+        <Typography font="noto" variant="body2R" className="text-gray-500">
+          공지사항을 불러오는 중 오류가 발생했습니다.
+        </Typography>
+      </div>
+    );
+  }
+
+  const pinnedAnnouncements = data?.pinned || [];
+  const regularAnnouncements = data?.regular || [];
 
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="mt-12 min-h-screen bg-white p-4">
       {/* 고정된 공지 */}
       {pinnedAnnouncements.length > 0 && (
         <div className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-gray-600">
-            📌 중요 공지
-          </h2>
           <div className="space-y-3">
             {pinnedAnnouncements.map((announcement) => (
               <Link
                 key={announcement.id}
                 href={`/announcements/${announcement.id}`}
-                className="block rounded-lg border-2 border-yellow-200 bg-yellow-50 p-4 hover:bg-yellow-100"
+                className="block rounded-lg border-2 border-yellow-200 bg-yellow-50 p-4 transition-colors hover:bg-yellow-100"
               >
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">
-                    {announcement.title}
-                  </h3>
-                  <span className="text-xs text-gray-500">
-                    👁️ {announcement.views}
-                  </span>
+                <div className="mb-2">
+                  <Typography
+                    as="h3"
+                    font="noto"
+                    variant="heading3B"
+                    className="text-gray-900"
+                  >
+                    {announcement.title || "-"}
+                  </Typography>
                 </div>
-                <p className="mb-2 text-sm text-gray-600">
-                  {announcement.description}
-                </p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{announcement.author}</span>
-                  <span>{announcement.createdAt}</span>
-                </div>
+                {announcement.createdAt && (
+                  <div className="mb-3">
+                    <Typography
+                      font="noto"
+                      variant="caption1R"
+                      className="text-gray-500"
+                    >
+                      {getTimeAgo(announcement.createdAt)}
+                    </Typography>
+                  </div>
+                )}
               </Link>
             ))}
           </div>
@@ -53,27 +107,43 @@ const AnnouncementsPage = () => {
 
       {/* 일반 공지 */}
       <div className="space-y-3">
-        {regularAnnouncements.map((announcement) => (
-          <Link
-            key={announcement.id}
-            href={`/announcements/${announcement.id}`}
-            className="block rounded-lg border border-gray-200 p-4 hover:bg-gray-50"
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{announcement.title}</h3>
-              <span className="text-xs text-gray-500">
-                👁️ {announcement.views}
-              </span>
-            </div>
-            <p className="mb-2 text-sm text-gray-600">
-              {announcement.description}
-            </p>
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{announcement.author}</span>
-              <span>{announcement.createdAt}</span>
-            </div>
-          </Link>
-        ))}
+        {regularAnnouncements.length > 0 ? (
+          regularAnnouncements.map((announcement) => (
+            <Link
+              key={announcement.id}
+              href={`/announcements/${announcement.id}`}
+              className="block rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50"
+            >
+              <div className="mb-2">
+                <Typography
+                  as="h3"
+                  font="noto"
+                  variant="heading3B"
+                  className="text-gray-900"
+                >
+                  {announcement.title || "-"}
+                </Typography>
+              </div>
+              {announcement.createdAt && (
+                <div>
+                  <Typography
+                    font="noto"
+                    variant="caption1R"
+                    className="text-gray-500"
+                  >
+                    {getTimeAgo(announcement.createdAt)}
+                  </Typography>
+                </div>
+              )}
+            </Link>
+          ))
+        ) : (
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <Typography font="noto" variant="body2R" className="text-gray-500">
+              등록된 공지사항이 없습니다.
+            </Typography>
+          </div>
+        )}
       </div>
     </div>
   );
