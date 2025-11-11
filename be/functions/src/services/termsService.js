@@ -1,6 +1,8 @@
 const {FieldValue, Timestamp} = require("firebase-admin/firestore");
 const {admin} = require("../config/database");
 const {TERMS_VERSIONS, TERMS_TAGS} = require("../constants/termsConstants");
+const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
+const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const FirestoreService = require("./firestoreService");
 
 /**
@@ -84,73 +86,21 @@ class TermsService {
   }
 
   /**
-   * 카카오 약관 API 호출 (타임아웃 10초, 실패 시 자동 재시도)
+   * 카카오 약관 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
    * @param {string} accessToken - 카카오 액세스 토큰
-   * @param {number} maxRetries - 총 시도 횟수 (기본 2회)
+   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
    * @private
    */
-  async _fetchKakaoTerms(accessToken, maxRetries = 2) {
+  async _fetchKakaoTerms(accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {
     const termsUrl = "https://kapi.kakao.com/v2/user/service_terms";
-    const timeout = 10000; // 10초 타임아웃
     
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        console.log(`[TermsService] 카카오 약관 API 호출 시도 ${attempt}/${maxRetries}`);
-
-        const response = await fetch(termsUrl, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // 성공
-        if (response.ok) {
-          console.log(`[TermsService] 카카오 약관 API 성공 (${attempt}번째 시도)`);
-          return response;
-        }
-
-        // 401/403은 토큰 활성화 지연 가능성 → 재시도
-        if ((response.status === 401 || response.status === 403) && attempt < maxRetries) {
-          const retryDelay = 1500;
-          console.warn(`[TermsService] 카카오 약관 API ${response.status}, ${retryDelay}ms 후 재시도...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-          continue;
-        }
-
-        // 그 외 에러는 기본값 반환 (약관 실패해도 가입 진행)
-        console.warn(`[TermsService] 약관 조회 실패: ${response.status} (기본값 반환)`);
-        return null;
-
-      } catch (fetchError) {
-        // 타임아웃
-        if (fetchError.name === "AbortError") {
-          if (attempt < maxRetries) {
-            console.warn(`[TermsService] 약관 API 타임아웃, 재시도 ${attempt}/${maxRetries}...`);
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            continue;
-          }
-          console.warn(`[TermsService] 약관 API 타임아웃 (모든 재시도 소진, 기본값 반환)`);
-          return null;
-        }
-
-        // 네트워크 에러 등
-        if (attempt < maxRetries) {
-          console.warn(`[TermsService] 약관 API 네트워크 에러, 재시도 ${attempt}/${maxRetries}:`, fetchError.message);
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          continue;
-        }
-
-        console.warn(`[TermsService] 약관 API 호출 실패 (모든 재시도 소진, 기본값 반환):`, fetchError.message);
-        return null;
-      }
-    }
+    return fetchKakaoAPI(termsUrl, accessToken, {
+      maxRetries,
+      retryDelay: KAKAO_API_RETRY_DELAY,
+      timeout: KAKAO_API_TIMEOUT,
+      throwOnError: true,
+      serviceName: "TermsService",
+    });
   }
 
   /**
@@ -159,18 +109,6 @@ class TermsService {
    */
   async fetchKakaoTerms(accessToken) {
     const termsRes = await this._fetchKakaoTerms(accessToken);
-
-    // API 호출 실패 시 기본값 반환
-    if (!termsRes) {
-      return {
-        serviceVersion: null,
-        privacyVersion: null,
-        age14Agreed: false,
-        pushAgreed: false,
-        termsAgreedAt: null
-      };
-    }
-
     const termsJson = await termsRes.json();
     const allowedTerms = termsJson.service_terms || [];
     

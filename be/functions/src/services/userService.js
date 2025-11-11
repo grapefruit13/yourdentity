@@ -5,6 +5,8 @@ const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
 const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
+const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
+const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 
 /**
@@ -243,84 +245,20 @@ class UserService {
   }
 
   /**
-   * 카카오 API 호출 (타임아웃 10초, 실패 시 자동 재시도)
+   * 카카오 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
    * @param {string} url - API URL
    * @param {string} accessToken - 카카오 액세스 토큰
-   * @param {number} maxRetries - 총 시도 횟수 (기본 2회)
+   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
    * @private
    */
-  async _fetchKakaoAPI(url, accessToken, maxRetries = 2) {
-    const timeout = 10000; // 10초 타임아웃
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        console.log(`[UserService] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${url}`);
-
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // 성공
-        if (response.ok) {
-          console.log(`[UserService] 카카오 API 성공 (${attempt}번째 시도)`);
-          return response;
-        }
-
-        // 401/403은 토큰 활성화 지연 가능성 → 재시도
-        if ((response.status === 401 || response.status === 403) && attempt < maxRetries) {
-          const retryDelay = 1500; // 1.5초
-          console.warn(`[UserService] 카카오 API ${response.status} (토큰 활성화 대기 중), ${retryDelay}ms 후 재시도...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-          continue;
-        }
-
-        // 그 외 에러는 즉시 throw
-        const text = await response.text();
-        console.error(`[UserService] 카카오 API 실패: ${response.status}`, text);
-        const e = new Error(`카카오 사용자 정보 조회 실패 (${response.status})`);
-        e.code = "KAKAO_USERINFO_FAILED";
-        throw e;
-
-      } catch (fetchError) {
-        // 타임아웃
-        if (fetchError.name === "AbortError") {
-          if (attempt < maxRetries) {
-            console.warn(`[UserService] 카카오 API 타임아웃 (10초), 재시도 ${attempt}/${maxRetries}...`);
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            continue;
-          }
-          const e = new Error("카카오 서버 응답 시간 초과 (10초)");
-          e.code = "KAKAO_API_TIMEOUT";
-          throw e;
-        }
-
-        // 이미 우리가 만든 에러면 그대로 throw
-        if (fetchError.code === "KAKAO_USERINFO_FAILED") {
-          throw fetchError;
-        }
-
-        // 네트워크 에러 등
-        if (attempt < maxRetries) {
-          console.warn(`[UserService] 카카오 API 네트워크 에러, 재시도 ${attempt}/${maxRetries}:`, fetchError.message);
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          continue;
-        }
-
-        console.error(`[UserService] 카카오 API 호출 실패 (모든 재시도 소진):`, fetchError);
-        const e = new Error("카카오 API 호출 실패: 네트워크 오류");
-        e.code = "KAKAO_USERINFO_FAILED";
-        throw e;
-      }
-    }
+  async _fetchKakaoAPI(url, accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {
+    return fetchKakaoAPI(url, accessToken, {
+      maxRetries,
+      retryDelay: KAKAO_API_RETRY_DELAY,
+      timeout: KAKAO_API_TIMEOUT,
+      throwOnError: true, // 실패 시 에러 throw
+      serviceName: "UserService",
+    });
   }
 
   /**
