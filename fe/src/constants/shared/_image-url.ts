@@ -95,6 +95,10 @@ const ICON = {
       alt: "오른쪽 화살표",
     },
   },
+  checkComplete: {
+    url: "/icons/check-complete.svg",
+    alt: "신청 완료",
+  },
 };
 
 const IMG = {
