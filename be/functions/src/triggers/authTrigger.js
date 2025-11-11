@@ -77,8 +77,8 @@ exports.createUserDocument = functions
 
           // 타임스탬프
           createdAt: FieldValue.serverTimestamp(),
-          lastLogin: FieldValue.serverTimestamp(),
-          lastUpdated: FieldValue.serverTimestamp(),
+          lastLoginAt: FieldValue.serverTimestamp(),
+          lastUpdatedAt: FieldValue.serverTimestamp(),
         };
 
         // Firestore 문서 생성
@@ -155,7 +155,7 @@ exports.deleteUserDocument = functions
             bio: null,
             birthDate: maskedBirthDate,
             deletedAt: FieldValue.serverTimestamp(),
-            lastUpdated: FieldValue.serverTimestamp(),
+            lastUpdatedAt: FieldValue.serverTimestamp(),
           };
 
           await userRef.update(anonymized);

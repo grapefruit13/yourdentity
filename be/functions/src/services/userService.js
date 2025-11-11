@@ -349,7 +349,7 @@ class UserService {
         authType: AUTH_TYPES.SNS,
         snsProvider: SNS_PROVIDERS.KAKAO,
         createdAt: FieldValue.serverTimestamp(),
-        lastLogin: FieldValue.serverTimestamp(),
+        lastLoginAt: FieldValue.serverTimestamp(),
         ...update,
       }, uid);
     } else {

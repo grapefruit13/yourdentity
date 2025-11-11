@@ -920,7 +920,7 @@ class StoreService {
     if (userRef) {
       transaction.update(userRef, {
         rewards: FieldValue.increment(-totalPoints),
-        lastUpdated: FieldValue.serverTimestamp(),
+        lastUpdatedAt: FieldValue.serverTimestamp(),
       });
     }
   }
@@ -961,7 +961,7 @@ class StoreService {
         console.warn(`[StoreService] 차감 이력을 찾을 수 없습니다. 단순 포인트 복구만 수행: ${productName}`);
         transaction.update(userRef, {
           rewards: FieldValue.increment(totalPoints),
-          lastUpdated: FieldValue.serverTimestamp(),
+          lastUpdatedAt: FieldValue.serverTimestamp(),
         });
         return;
       }
@@ -976,7 +976,7 @@ class StoreService {
         // createdAt이 없어도 포인트만 복구
         transaction.update(userRef, {
           rewards: FieldValue.increment(totalPoints),
-          lastUpdated: FieldValue.serverTimestamp(),
+          lastUpdatedAt: FieldValue.serverTimestamp(),
         });
         return;
       }
@@ -1074,7 +1074,7 @@ class StoreService {
       // 5. users rewards 복구
       transaction.update(userRef, {
         rewards: FieldValue.increment(totalPoints),
-        lastUpdated: FieldValue.serverTimestamp(),
+        lastUpdatedAt: FieldValue.serverTimestamp(),
       });
 
       console.log(`[StoreService] 포인트 복구 완료: ${totalPoints}, 복구된 이력: ${restoredAmount}, 삭제된 splitRemainder: ${splitRemainderDocIds.size}`);

@@ -74,7 +74,7 @@ async syncUserAccounts() {
       try {
         // 날짜 변환
         const createdAtIso = safeDateToIso(user.createdAt);
-        const lastLoginIso = safeDateToIso(user.lastLogin);
+        const lastLoginAtIso = safeDateToIso(user.lastLoginAt);
         const lastUpdatedIso = now;
         
         // 노션 페이지 데이터 구성
@@ -104,7 +104,7 @@ async syncUserAccounts() {
           "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
           "가입 방법": { select: { name: user.authType || "email" } },
           "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-          "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+          "최근 앱 활동 일시": lastLoginAtIso ? { date: { start: lastLoginAtIso } } : undefined,
           "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
           "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
           "성별": { 
@@ -394,7 +394,7 @@ async syncAllUserAccounts() {
 
           // 날짜 처리
           const createdAtIso = safeDateToIso(user.createdAt);
-          const lastLoginIso = safeDateToIso(user.lastLogin);
+          const lastLoginAtIso = safeDateToIso(user.lastLoginAt);
           const lastUpdatedIso = now;
 
           // Notion 페이지 데이터 구성
@@ -424,7 +424,7 @@ async syncAllUserAccounts() {
             "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "가입 방법": { select: { name: user.authType || "email" } },
             "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-            "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+            "최근 앱 활동 일시": lastLoginAtIso ? { date: { start: lastLoginAtIso } } : undefined,
             "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
             "성별": { 
@@ -997,7 +997,7 @@ async syncSelectedUsers() {
 
       // 날짜 필드 추출
       const createdAtDate = props["가입완료 일시"]?.date?.start || null;
-      const lastLoginDate = props["최근 앱 활동 일시"]?.date?.start || 
+      const lastLoginAtDate = props["최근 앱 활동 일시"]?.date?.start || 
                            props["앱 첫 로그인"]?.date?.start || null;
 
       // 가입 방법 매핑
@@ -1043,8 +1043,8 @@ async syncSelectedUsers() {
       if (createdAtDate) {
         updateData.createdAt = createdAtDate;
       }
-      if (lastLoginDate) {
-        updateData.lastLogin = lastLoginDate;
+      if (lastLoginAtDate) {
+        updateData.lastLoginAt = lastLoginAtDate;
       }
 
       // 자격정지 필드 처리
@@ -1471,7 +1471,7 @@ async syncSelectedUsers() {
 
           // 날짜 필드 추출
           const createdAtDate = props["가입완료 일시"]?.date?.start || null;
-          const lastLoginDate = props["최근 앱 활동 일시"]?.date?.start || 
+          const lastLoginAtDate = props["최근 앱 활동 일시"]?.date?.start || 
                                props["앱 첫 로그인"]?.date?.start || null;
 
           // 가입 방법 매핑
@@ -1518,8 +1518,8 @@ async syncSelectedUsers() {
           if (createdAtDate) {
             updateData.createdAt = createdAtDate;
           }
-          if (lastLoginDate) {
-            updateData.lastLogin = lastLoginDate;
+          if (lastLoginAtDate) {
+            updateData.lastLoginAt = lastLoginAtDate;
           }
 
           // 자격정지 필드 처리
@@ -1740,7 +1740,7 @@ async syncSingleUserToNotion(userId) {
 
     // 날짜 변환
     const createdAtIso = safeDateToIso(user.createdAt);
-    const lastLoginIso = safeDateToIso(user.lastLogin);
+    const lastLoginAtIso = safeDateToIso(user.lastLoginAt);
     const lastUpdatedIso = now;
 
     // 노션 페이지 데이터 구성
@@ -1770,7 +1770,7 @@ async syncSingleUserToNotion(userId) {
       "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
       "가입 방법": { select: { name: user.authType || "email" } },
       "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-      "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+      "최근 앱 활동 일시": lastLoginAtIso ? { date: { start: lastLoginAtIso } } : undefined,
       "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
       "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
       "성별": { 

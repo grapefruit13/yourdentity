@@ -234,10 +234,15 @@ const options = {
               format: "date-time",
               description: "계정 생성 시간",
             },
-            lastLogin: {
+            lastLoginAt: {
               type: "string",
               format: "date-time",
               description: "마지막 로그인 시간",
+            },
+            lastUpdatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "사용자 정보가 변경된 시간 (노션 동기화 기준)",
             },
           },
         },
