@@ -105,7 +105,9 @@ const nanoid = (length = 21) => {
 };
 
 /**
- * 날짜 포맷팅
+ * 날짜 포맷팅 (UTC 기준)
+ * - 서버 로직의 일관성과 안정성을 위해 UTC 기준으로 동작
+ * - 환경(로컬/프로덕션)에 관계없이 동일한 결과 보장
  * @param {Date|string} date - 날짜
  * @return {string} 포맷된 날짜 (YYYY-MM-DD)
  * @throws {Error} 유효하지 않은 날짜인 경우
@@ -115,9 +117,9 @@ const formatDate = (date) => {
   if (isNaN(d.getTime())) {
     throw new Error("유효하지 않은 날짜입니다");
   }
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
