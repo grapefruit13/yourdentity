@@ -10,7 +10,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FUNCTIONS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-cd "$FUNCTIONS_DIR"
+cd "$FUNCTIONS_DIR" || {
+  echo "Error: Failed to change directory to $FUNCTIONS_DIR"
+  exit 1
+}
 
 # Inline Node.js 스크립트로 테스트 실행
 node -e "

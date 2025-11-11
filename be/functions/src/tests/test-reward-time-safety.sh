@@ -24,7 +24,10 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR" || {
+  echo "Error: Failed to change directory to $SCRIPT_DIR"
+  exit 1
+}
 
 ALL_PASSED=true
 

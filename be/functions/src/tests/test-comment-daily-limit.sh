@@ -37,7 +37,10 @@ echo ""
 # Step 1: 사용자 생성
 echo -e "${YELLOW}[1/3] 테스트 사용자 생성 중...${NC}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/../.."
+cd "$SCRIPT_DIR/../.." || {
+  echo "Error: Failed to change directory to $SCRIPT_DIR/../.."
+  exit 1
+}
 
 TOKEN_OUTPUT=$(PRODUCTION=true node src/scripts/getIdToken.js "$TEST_USER_ID" 2>&1)
 ID_TOKEN=$(echo "$TOKEN_OUTPUT" | grep -A 1 "⏬ ID_TOKEN" | tail -n 1 | xargs)
