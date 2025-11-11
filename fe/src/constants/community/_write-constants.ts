@@ -28,6 +28,8 @@ export const POST_EDIT_CONSTANTS = {
   POST_NOT_FOUND: "게시글 정보를 찾을 수 없습니다.",
   UPDATE_SUCCESS: "게시물이 수정되었습니다.",
   UPDATE_FAILED: "수정에 실패했습니다:",
+  DELETE_SUCCESS: "게시물이 삭제되었습니다.",
+  DELETE_FAILED: "게시글 삭제에 실패했습니다.",
 } as const;
 
 /**

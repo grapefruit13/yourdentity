@@ -6,11 +6,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import ShareModal from "@/components/community/ShareModal";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { POST_EDIT_CONSTANTS } from "@/constants/community/_write-constants";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import {
   useGetCommunitiesPostsByTwoIds,
   usePostCommunitiesPostsLikeByTwoIds,
+  useDeleteCommunitiesPostsByTwoIds,
 } from "@/hooks/generated/communities-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
@@ -32,6 +35,7 @@ const PostDetailPage = () => {
 
   const queryClient = useQueryClient();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [currentOrigin, setCurrentOrigin] = useState<string>("");
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
@@ -78,9 +82,8 @@ const PostDetailPage = () => {
     };
 
     // 삭제 클릭
-    // TODO: 삭제 확인 다이얼로그 및 실제 삭제 로직 연동
     const handleDeleteClick = () => {
-      alert("삭제 기능은 추후 연결됩니다.");
+      setIsDeleteModalOpen(true);
     };
 
     setRightSlot(
@@ -92,6 +95,46 @@ const PostDetailPage = () => {
     );
   }, [setRightSlot, communityId, postId, router, isAuthor]);
 
+  /**
+   * 게시글 삭제 핸들러
+   */
+  const handleDeleteConfirm = async () => {
+    if (!postId || !communityId) return;
+
+    try {
+      await deletePostAsync({
+        communityId,
+        postId,
+      });
+
+      // 쿼리 무효화 (목록 및 상세 조회)
+      queryClient.invalidateQueries({
+        queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
+          communityId,
+          postId,
+        }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: communitiesKeys.getCommunitiesPosts({
+          page: undefined,
+          size: undefined,
+          programType: undefined,
+          programState: undefined,
+        }),
+      });
+
+      // 성공 메시지 표시
+      alert(POST_EDIT_CONSTANTS.DELETE_SUCCESS);
+
+      // 커뮤니티 목록으로 이동
+      router.replace("/community");
+    } catch (error) {
+      debug.error("게시글 삭제 실패:", error);
+    } finally {
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   // 좋아요 상태 확인 (페이지 로드 시)
   useEffect(() => {
     if (postId) {
@@ -100,6 +143,10 @@ const PostDetailPage = () => {
       setIsLiked(likedPosts[postId] || false);
     }
   }, [postId, postData]);
+
+  // 삭제 mutation
+  const { mutateAsync: deletePostAsync, isPending: isDeleting } =
+    useDeleteCommunitiesPostsByTwoIds();
 
   // 좋아요 mutation
   const { mutateAsync: toggleLikeAsync } = usePostCommunitiesPostsLikeByTwoIds({
@@ -343,6 +390,19 @@ const PostDetailPage = () => {
         onClose={() => setIsShareModalOpen(false)}
         postTitle={post?.title}
         postUrl={`${currentOrigin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`}
+      />
+
+      {/* 삭제 확인 모달 */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        title="게시글을 삭제할까요?"
+        description="삭제한 게시글은 복구할 수 없어요."
+        cancelText="취소"
+        confirmText={isDeleting ? "삭제 중..." : "삭제"}
+        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        confirmDisabled={isDeleting}
+        variant="danger"
       />
     </div>
   );
