@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
@@ -17,13 +17,17 @@ import { signInWithKakao } from "@/lib/auth";
 import { debug } from "@/utils/shared/debugger";
 
 /**
- * @description 로그인 페이지 (카카오/이메일)
+ * @description 로그인 페이지 콘텐츠 (useSearchParams 사용)
  */
-const LoginPage = () => {
+const LoginPageContent = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { registerFCMToken } = useFCM();
+
+  // 로그인 후 돌아갈 경로 (next 쿼리 파라미터)
+  const returnTo = searchParams.get("next") || null;
 
   const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile({
     retry: 1, // 실패 시 1회 재시도
@@ -35,6 +39,32 @@ const LoginPage = () => {
       return data?.user;
     },
   });
+
+  /**
+   * @description FCM 토큰 등록 (실패해도 로그인은 계속 진행)
+   */
+  const registerFCMTokenSafely = async () => {
+    try {
+      await registerFCMToken();
+    } catch (fcmError) {
+      debug.error("FCM 토큰 저장 실패:", fcmError);
+      // FCM 토큰 저장 실패해도 로그인은 계속 진행
+    }
+  };
+
+  /**
+   * @description 로그인 성공 후 라우팅 처리
+   * @param hasNickname - 닉네임 존재 여부
+   */
+  const handlePostLoginRouting = (hasNickname: boolean) => {
+    if (hasNickname) {
+      // 닉네임이 있으면 next 파라미터가 있으면 해당 경로로, 없으면 홈으로
+      router.replace(returnTo || LINK_URL.HOME);
+    } else {
+      // 온보딩이 필요한 경우 next 파라미터 무시하고 온보딩 페이지로
+      router.replace(LINK_URL.MY_PAGE_EDIT);
+    }
+  };
 
   /**
    * @description 카카오 로그인
@@ -78,6 +108,7 @@ const LoginPage = () => {
           });
           // 성공 시, 프로필 편집(온보딩)페이지로 이동
           debug.log("카카오 프로필 동기화 성공");
+          // 신규 회원은 항상 온보딩 페이지로 (next 파라미터 무시)
           router.replace(LINK_URL.MY_PAGE_EDIT);
         } catch (error) {
           // 모든 시도 실패 시 (React Query가 자동으로 1회 재시도한 후 실패)
@@ -89,12 +120,7 @@ const LoginPage = () => {
         }
 
         // 2-2. FCM 토큰 등록 (실패해도 계속 진행)
-        try {
-          await registerFCMToken();
-        } catch (fcmError) {
-          debug.error("FCM 토큰 저장 실패:", fcmError);
-          // FCM 토큰 저장 실패해도 로그인은 계속 진행
-        }
+        await registerFCMTokenSafely();
       }
 
       // 3. 기존 사용자 처리
@@ -105,20 +131,11 @@ const LoginPage = () => {
           const hasNickname = !!userData?.nickname;
 
           // 3-2. FCM 토큰 등록 (실패해도 계속 진행)
-          try {
-            await registerFCMToken();
-          } catch (fcmError) {
-            debug.error("FCM 토큰 저장 실패:", fcmError);
-            // FCM 토큰 저장 실패해도 로그인은 계속 진행
-          }
+          await registerFCMTokenSafely();
 
           // 3-3. 닉네임 여부에 따라 라우팅
           setIsLoading(false);
-          if (hasNickname) {
-            router.replace(LINK_URL.HOME);
-          } else {
-            router.replace(LINK_URL.MY_PAGE_EDIT);
-          }
+          handlePostLoginRouting(hasNickname);
         } catch (error) {
           debug.error("사용자 정보 조회 실패:", error);
           setIsLoading(false);
@@ -160,21 +177,6 @@ const LoginPage = () => {
               {isLoading ? "카카오로 접속 중..." : "카카오로 시작하기"}
             </Typography>
           </ButtonBase>
-
-          {/* <Link
-            href={LINK_URL.EMAIL_LOGIN}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-3"
-          >
-            <Image
-              src={IMAGE_URL.ICON.login.email.url}
-              alt={IMAGE_URL.ICON.login.email.alt}
-              width={18}
-              height={18}
-            />
-            <Typography font="noto" variant="body2B" className="text-gray-900">
-              이메일로 시작하기
-            </Typography>
-          </Link> */}
         </div>
         {errorMessage && (
           <div className="mt-3 text-center">
@@ -197,6 +199,17 @@ const LoginPage = () => {
         </div>
       </div>
     </main>
+  );
+};
+
+/**
+ * @description 로그인 페이지 (Suspense로 감싸기)
+ */
+const LoginPage = () => {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
   );
 };
 
