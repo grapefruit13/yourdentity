@@ -109,7 +109,7 @@ class RewardService {
    * @param {Date|Timestamp|null} actionTimestamp - 액션 발생 시간 (null이면 FieldValue.serverTimestamp() 사용)
    * @param {boolean} checkDuplicate - 중복 체크 여부 (기본: true, 중복 지급 방지)
    * @param {string|null} reason - 리워드 사유 (null이면 ACTION_REASON_MAP에서 자동 생성)
-   * @param {Object} [options] - 추가 옵션 (예: { expiresAt })
+   * @param {Object} [options] - 추가 옵션 (예: { expiredAt })
    * @return {Promise<{isDuplicate: boolean}>}
    * @throws {Error} DAILY_LIMIT_EXCEEDED - 일일 제한 초과 시
    */
@@ -166,21 +166,21 @@ class RewardService {
         isProcessed: false,
       };
 
-      let expiresAtTimestamp = null;
-      const requestedExpiry = options?.expiresAt;
+      let expiredAtTimestamp = null;
+      const requestedExpiry = options?.expiredAt ?? options?.expiresAt;
 
       if (requestedExpiry instanceof Timestamp) {
-        expiresAtTimestamp = requestedExpiry;
+        expiredAtTimestamp = requestedExpiry;
       } else if (requestedExpiry instanceof Date) {
-        expiresAtTimestamp = Timestamp.fromDate(requestedExpiry);
+        expiredAtTimestamp = Timestamp.fromDate(requestedExpiry);
       } else if (typeof requestedExpiry === 'string') {
         const parsedExpiry = new Date(requestedExpiry);
         if (!Number.isNaN(parsedExpiry.getTime())) {
-          expiresAtTimestamp = Timestamp.fromDate(parsedExpiry);
+          expiredAtTimestamp = Timestamp.fromDate(parsedExpiry);
         }
       }
 
-      if (!expiresAtTimestamp) {
+      if (!expiredAtTimestamp) {
         let baseDate;
         if (actionTimestamp instanceof Timestamp) {
           baseDate = actionTimestamp.toDate();
@@ -192,10 +192,10 @@ class RewardService {
 
         const expiryDate = new Date(baseDate);
         expiryDate.setDate(expiryDate.getDate() + DEFAULT_EXPIRY_DAYS);
-        expiresAtTimestamp = Timestamp.fromDate(expiryDate);
+        expiredAtTimestamp = Timestamp.fromDate(expiryDate);
       }
 
-      historyData.expiresAt = expiresAtTimestamp;
+      historyData.expiredAt = expiredAtTimestamp;
 
       transaction.set(historyRef, historyData);
 
