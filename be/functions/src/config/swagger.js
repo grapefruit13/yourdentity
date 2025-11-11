@@ -1300,6 +1300,11 @@ const options = {
               description: "좋아요 수",
               example: 0,
             },
+            isLiked: {
+              type: "boolean",
+              nullable: true,
+              description: "사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)",
+            },
             commentsCount: {
               type: "integer",
               description: "댓글 수",
@@ -1373,6 +1378,11 @@ const options = {
               type: "integer",
               description: "좋아요 수",
               example: 10,
+            },
+            isLiked: {
+              type: "boolean",
+              nullable: true,
+              description: "사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)",
             },
             commentsCount: {
               type: "integer",
@@ -1806,6 +1816,11 @@ const options = {
               type: "number",
               description: "좋아요 수",
               example: 0,
+            },
+            isLiked: {
+              type: "boolean",
+              nullable: true,
+              description: "사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)",
             },
             commentsCount: {
               type: "number",

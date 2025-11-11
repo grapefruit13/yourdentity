@@ -3,6 +3,7 @@ const router = express.Router();
 const commentController = require("../controllers/commentController");
 const authGuard = require("../middleware/authGuard");
 const rewardHandler = require("../middleware/rewardHandler");
+const optionalAuth = require("../middleware/optionalAuth");
 
 /**
  * @swagger
@@ -151,6 +152,10 @@ const rewardHandler = require("../middleware/rewardHandler");
  *                             type: number
  *                             description: 좋아요 수
  *                             example: 0
+ *                           isLiked:
+ *                             type: boolean
+ *                             nullable: true
+ *                             description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  *                           repliesCount:
  *                             type: number
  *                             description: 대댓글 수
@@ -204,6 +209,7 @@ const rewardHandler = require("../middleware/rewardHandler");
  */
 router.get(
     "/communities/:communityId/posts/:postId",
+    optionalAuth,
     commentController.getComments,
 );
 
@@ -300,6 +306,10 @@ router.get(
  *                       type: number
  *                       description: 좋아요 수
  *                       example: 0
+ *                     isLiked:
+ *                       type: boolean
+ *                       nullable: true
+ *                       description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  *                     createdAt:
  *                       type: string
  *                       format: date-time
@@ -438,6 +448,10 @@ router.post(
  *                       type: number
  *                       description: 좋아요 수
  *                       example: 0
+ *                     isLiked:
+ *                       type: boolean
+ *                       nullable: true
+ *                       description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  *                     createdAt:
  *                       type: string
  *                       format: date-time
