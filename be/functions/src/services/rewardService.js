@@ -444,56 +444,61 @@ class RewardService {
       const rewardsHistoryRef = db.collection(`users/${userId}/rewardsHistory`);
       const userRef = db.collection('users').doc(userId);
 
-      const snapshot = await rewardsHistoryRef
-        .where('changeType', '==', 'add')
-        .where('isProcessed', '==', false)
-        .limit(100) // 한 번에 처리할 최대 개수 제한
-        .get();
-
-      if (snapshot.empty) {
-        return { totalDeducted: 0, count: 0 };
-      }
-
-      const expiredHistories = [];
       let totalDeducted = 0;
+      let expiredCount = 0;
 
-      // 만료된 항목 필터링 (expiresAt 필드 기반)
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
-        
-        // expiresAt이 없으면 스킵 (다른 담당자가 추가할 때까지 대기)
-        if (!data || !data.expiresAt) {
-          continue;
-        }
-
-        let expiresAt;
-        try {
-          expiresAt = toDate(data.expiresAt);
-        } catch (parseError) {
-          console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}의 expiresAt 파싱 실패:`, parseError.message);
-          continue;
-        }
-
-        const amount = typeof data.amount === 'number' ? data.amount : 0;
-
-        // 만료 여부 확인
-        if (expiresAt <= nowDate) {
-          expiredHistories.push({
-            id: doc.id,
-            amount,
-            expiresAt,
-            createdAt: data.createdAt,
-          });
-          totalDeducted += amount;
-        }
-      }
-
-      if (expiredHistories.length === 0) {
-        return { totalDeducted: 0, count: 0 };
-      }
-
-      // 트랜잭션으로 일괄 처리
+      // 트랜잭션으로 일괄 처리 (조회도 트랜잭션 내부에서 수행하여 중복 차감 방지)
       await this.firestoreService.runTransaction(async (transaction) => {
+        // 트랜잭션 내에서 만료 대상 조회 (동시성 문제 방지)
+        const snapshot = await transaction.get(rewardsHistoryRef
+          .where('changeType', '==', 'add')
+          .where('isProcessed', '==', false)
+          .limit(100)); // 한 번에 처리할 최대 개수 제한
+
+        if (snapshot.empty) {
+          return;
+        }
+
+        const expiredHistories = [];
+        let deductAmount = 0;
+
+        // 만료된 항목 필터링 (expiresAt 필드 기반)
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          
+          // expiresAt이 없으면 스킵 (다른 담당자가 추가할 때까지 대기)
+          if (!data || !data.expiresAt) {
+            continue;
+          }
+
+          let expiresAt;
+          try {
+            expiresAt = toDate(data.expiresAt);
+          } catch (parseError) {
+            console.warn(`[REWARD EXPIRY] rewardsHistory/${doc.id}의 expiresAt 파싱 실패:`, parseError.message);
+            continue;
+          }
+
+          const amount = typeof data.amount === 'number' ? data.amount : 0;
+
+          // 만료 여부 확인
+          if (expiresAt <= nowDate) {
+            expiredHistories.push({
+              id: doc.id,
+              amount,
+              expiresAt,
+              createdAt: data.createdAt,
+            });
+            deductAmount += amount;
+          }
+        }
+
+        if (expiredHistories.length === 0) {
+          return;
+        }
+
+        totalDeducted = deductAmount;
+        expiredCount = expiredHistories.length;
         // 사용자 문서 읽기 (데이터 일관성 검증)
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
@@ -540,13 +545,16 @@ class RewardService {
         }
       });
 
-      console.log(`[REWARD EXPIRY] userId=${userId}, 만료된 리워드 ${expiredHistories.length}건, 총 ${totalDeducted}포인트 차감`);
+      console.log(`[REWARD EXPIRY] userId=${userId}, 만료된 리워드 ${expiredCount}건, 총 ${totalDeducted}포인트 차감`);
 
       return {
         totalDeducted,
-        count: expiredHistories.length,
+        count: expiredCount,
       };
     } catch (error) {
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
       console.error('[REWARD EXPIRY ERROR] checkAndDeductExpiredRewards:', error.message, {
         userId,
         stack: error.stack,
