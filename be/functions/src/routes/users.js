@@ -98,7 +98,7 @@ const router = express.Router();
  *           type: string
  *           format: date-time
  *           example: 2024-01-01T00:00:00Z
- *         updatedAt:
+ *         lastUpdatedAt:
  *           type: string
  *           format: date-time
  *           example: 2024-01-01T00:00:00Z

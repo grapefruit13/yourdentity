@@ -113,7 +113,7 @@ class UserService {
     // 5) 온보딩 완료 처리
     const userUpdate = {
       ...update,
-      updatedAt: FieldValue.serverTimestamp(),
+      lastUpdatedAt: FieldValue.serverTimestamp(),
     };
 
     if (newProfileImagePath) {
@@ -213,7 +213,7 @@ class UserService {
     try {
       const updatePayload = {
         ...updateData,
-        updatedAt: FieldValue.serverTimestamp(),
+        lastUpdatedAt: FieldValue.serverTimestamp(),
       };
 
       return await this.firestoreService.update(uid, updatePayload);
@@ -338,7 +338,7 @@ class UserService {
       gender,
       phoneNumber: normalizedPhone,
       profileImageUrl,
-      updatedAt: FieldValue.serverTimestamp(),
+      lastUpdatedAt: FieldValue.serverTimestamp(),
     };
 
     // 4. 문서 존재 여부 확인 후 upsert
