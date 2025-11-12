@@ -1406,6 +1406,12 @@ const options = {
               description: "수정일",
               example: "2024-01-01T00:00:00.000Z",
             },
+            profileImageUrl: {
+              type: "string",
+              nullable: true,
+              description: "작성자 프로필 이미지 URL",
+              example: "https://example.com/profile.jpg",
+            },
           },
         },
         Comment: {
