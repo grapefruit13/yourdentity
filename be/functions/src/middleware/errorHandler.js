@@ -120,6 +120,11 @@ const errorHandler = (err, req, res, next) => {
       if (!err.message) errorMessage = "카카오 사용자 정보 조회에 실패했습니다";
       break;
 
+    case "KAKAO_API_TIMEOUT":
+      httpStatus = 504;
+      if (!err.message) errorMessage = "카카오 서버 응답 시간 초과";
+      break;
+
     case "REQUIRED_FIELDS_MISSING":
       httpStatus = 400;
       if (!err.message) errorMessage = "필수 입력 항목이 누락되었습니다";

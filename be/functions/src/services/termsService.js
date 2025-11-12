@@ -1,6 +1,8 @@
 const {FieldValue, Timestamp} = require("firebase-admin/firestore");
 const {admin} = require("../config/database");
 const {TERMS_VERSIONS, TERMS_TAGS} = require("../constants/termsConstants");
+const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
+const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const FirestoreService = require("./firestoreService");
 
 /**
@@ -84,31 +86,37 @@ class TermsService {
   }
 
   /**
+   * 카카오 약관 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
+   * @private
+   */
+  async _fetchKakaoTerms(accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {
+    const termsUrl = "https://kapi.kakao.com/v2/user/service_terms";
+    
+    return fetchKakaoAPI(termsUrl, accessToken, {
+      maxRetries,
+      retryDelay: KAKAO_API_RETRY_DELAY,
+      timeout: KAKAO_API_TIMEOUT,
+      throwOnError: true,
+      serviceName: "TermsService",
+    });
+  }
+
+  /**
    * 실제 카카오 API에서 약관 정보 조회
    * @param {string} accessToken
    */
   async fetchKakaoTerms(accessToken) {
-    const termsUrl = "https://kapi.kakao.com/v2/user/service_terms";
-    const termsRes = await fetch(termsUrl, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!termsRes.ok) {
-      console.warn(`[TermsService] 약관 조회 실패: ${termsRes.status}`);
-      return {
-        serviceVersion: null,
-        privacyVersion: null,
-        age14Version: null,
-        pushAgreed: false,
-        termsAgreedAt: null
-      };
-    }
-
+    const termsRes = await this._fetchKakaoTerms(accessToken);
     const termsJson = await termsRes.json();
     const allowedTerms = termsJson.service_terms || [];
+    
+    // 카카오 API 응답 구조 확인용 로그 (디버깅)
+    console.log(`[TermsService] 카카오 약관 API 응답 - 약관 개수: ${allowedTerms.length}`);
+    if (allowedTerms.length > 0) {
+      console.log('[TermsService] 첫 번째 약관 구조:', JSON.stringify(allowedTerms[0]));
+    }
     
     let serviceVersion = null;
     let privacyVersion = null;

@@ -5,6 +5,8 @@ const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
 const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
+const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
+const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 
 /**
@@ -243,9 +245,27 @@ class UserService {
   }
 
   /**
+   * 카카오 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
+   * @param {string} url - API URL
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
+   * @private
+   */
+  async _fetchKakaoAPI(url, accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {
+    return fetchKakaoAPI(url, accessToken, {
+      maxRetries,
+      retryDelay: KAKAO_API_RETRY_DELAY,
+      timeout: KAKAO_API_TIMEOUT,
+      throwOnError: true, // 실패 시 에러 throw
+      serviceName: "UserService",
+    });
+  }
+
+  /**
    * 카카오 OIDC userinfo + 서비스 약관 동기화
-   * @param {string} uid
-   * @param {string} accessToken
+   * @param {string} uid - 사용자 ID
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @return {Promise<{success:boolean}>}
    */
   async syncKakaoProfile(uid, accessToken) {
     console.log(`[UserService] 카카오 프로필 동기화 시작 (uid: ${uid})`);
@@ -266,22 +286,9 @@ class UserService {
         picture: customClaims.kakaoPicture || "",
       };
     } else {
-      // 실제 환경: 카카오 API 호출
+      // 실제 환경: 카카오 API 호출 (타임아웃 + 재시도)
       const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
-      const userinfoRes = await fetch(userinfoUrl, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!userinfoRes.ok) {
-        const text = await userinfoRes.text();
-        const e = new Error(`KAKAO_USERINFO_FAILED: ${userinfoRes.status} ${text}`);
-        e.code = "KAKAO_USERINFO_FAILED";
-        throw e;
-      }
-
+      const userinfoRes = await this._fetchKakaoAPI(userinfoUrl, accessToken);
       userinfoJson = await userinfoRes.json();
     }
 
@@ -326,10 +333,15 @@ class UserService {
     // 저장은 정규화된 국내형으로
     const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
-    // 2. 서비스 약관 동의 내역 조회
+    // 2. 서비스 약관 동의 내역 조회 (실패해도 계속 진행)
     console.log(`[UserService] 약관 동기화 호출`);
-    await this.termsService.syncFromKakao(uid, accessToken);
-    console.log(`[UserService] 약관 동기화 완료`);
+    try {
+      await this.termsService.syncFromKakao(uid, accessToken);
+      console.log(`[UserService] 약관 동기화 성공`);
+    } catch (termsError) {
+      console.warn(`[UserService] 약관 동기화 실패 (기본값으로 계속 진행):`, termsError.message);
+      // 약관 동기화 실패해도 사용자 기본 정보는 저장
+    }
 
     // 3. Firestore 업데이트 준비
     const update = {
