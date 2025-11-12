@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { ExtendedRecordMap } from "notion-types";
 import "react-notion-x/src/styles.css";
-import { CustomPageLink } from "@/components/shared/notion";
+import { CustomPageLink, CustomImage } from "@/components/shared/notion";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useMounted } from "@/hooks/shared/useMounted";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -338,7 +338,9 @@ const HomePage = () => {
                 recordMap={homeData}
                 fullPage={false}
                 darkMode={false}
+                forceCustomImages
                 components={{
+                  Image: CustomImage,
                   PageLink: CustomPageLink,
                 }}
               />

@@ -6,3 +6,4 @@ export { CollectionCarousel } from "./CollectionCarousel";
 export { CollectionGrid } from "./CollectionGrid";
 export { CollectionBanner } from "./CollectionBanner";
 export { CustomPageLink } from "./CustomPageLink";
+export { CustomImage } from "./CustomImage";
