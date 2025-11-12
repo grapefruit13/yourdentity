@@ -37,7 +37,10 @@ const ERROR_CODES = {
   NOTION_API_ERROR: 'NOTION_API_ERROR',
   PROGRAM_NOT_FOUND: 'PROGRAM_NOT_FOUND',
   INVALID_PAGE_SIZE: 'INVALID_PAGE_SIZE',
-  SEARCH_ERROR: 'SEARCH_ERROR'
+  SEARCH_ERROR: 'SEARCH_ERROR',
+  NICKNAME_DUPLICATE: 'NICKNAME_DUPLICATE',
+  DUPLICATE_APPLICATION: 'DUPLICATE_APPLICATION',
+  NOT_FOUND: 'NOT_FOUND'
 };
 
 // Notion 필드명 상수
@@ -65,7 +68,9 @@ const NOTION_FIELDS = {
   FAQ: "FAQ",
   LAST_EDITED_TIME: "최근 수정 날짜",
   NOTION_PAGE_TITLE: "상세페이지(노션)",
-  LEADER_USER_ID: "리더 사용자ID"
+  LEADER_USER_ID: "리더 사용자ID",
+  LEADER_USER_NICKNAME: "리더 사용자 별명",
+  LEADER_USER_REAL_NAME: "리더 사용자 실명"
 };
 
 const PROGRAM_TYPE_ALIASES = {
@@ -100,6 +105,39 @@ const toDateOrNull = (value) => {
   }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/**
+ * Notion 페이지 ID를 Firestore 문서 ID로 정규화
+ * Notion 페이지 ID는 항상 하이픈이 포함된 UUID 형식이므로, 하이픈이 없으면 추가
+ * 
+ * @param {string} programId - 프로그램 ID (하이픈 포함/미포함 가능)
+ * @returns {string|null} 정규화된 프로그램 ID (하이픈 포함), null이면 null 반환
+ * 
+ * @example
+ * normalizeProgramIdForFirestore("2a445f52-4cd0-806e-b643-000b98ebe4ed")
+ * // => "2a445f52-4cd0-806e-b643-000b98ebe4ed" (그대로 반환)
+ * 
+ * normalizeProgramIdForFirestore("2a445f524cd08089bab3e5268ab5a1bd")
+ * // => "2a445f52-4cd0-8089-bab3-e5268ab5a1bd" (하이픈 추가)
+ */
+const normalizeProgramIdForFirestore = (programId) => {
+  if (!programId) return null;
+  
+  // 이미 하이픈이 있으면 그대로 반환
+  if (programId.includes('-')) {
+    return programId;
+  }
+  
+  // 하이픈이 없으면 UUID 형식으로 변환 (32자 → 8-4-4-4-12)
+  // Notion 페이지 ID는 32자리 hex 문자열이므로 UUID 형식으로 변환
+  // 예: 2a445f524cd08089bab3e5268ab5a1bd → 2a445f52-4cd0-8089-bab3-e5268ab5a1bd
+  if (programId.length === 32) {
+    return `${programId.slice(0, 8)}-${programId.slice(8, 12)}-${programId.slice(12, 16)}-${programId.slice(16, 20)}-${programId.slice(20)}`;
+  }
+  
+  // 길이가 맞지 않으면 그대로 반환 (이미 정규화된 형태이거나 다른 형식일 수 있음)
+  return programId;
 };
 
 
@@ -412,9 +450,14 @@ class ProgramService {
   formatProgramData(page, includeDetails = false) {
     const props = page.properties;
     
-    // 리더 사용자ID 추출 (relation 타입, 첫 번째 값만 사용)
-    const leaderRelation = getRelationValues(props[NOTION_FIELDS.LEADER_USER_ID]);
-    const leaderUserId = leaderRelation?.relations?.[0]?.id || null;
+    // 리더 사용자 정보 추출 (rollup 타입)
+    // 리더 사용자 별명: rollup에서 첫 번째 항목의 name 추출
+    const leaderNicknameRollup = getRollupValues(props[NOTION_FIELDS.LEADER_USER_NICKNAME]);
+    const leaderNickname = leaderNicknameRollup?.value?.[0]?.name || null;
+    
+    // 리더 사용자 실명: rollup에서 첫 번째 항목의 name 추출
+    const leaderRealNameRollup = getRollupValues(props[NOTION_FIELDS.LEADER_USER_REAL_NAME]);
+    const leaderRealName = leaderRealNameRollup?.value?.[0]?.name || null;
     
     const baseData = {
       id: page.id,
@@ -438,7 +481,8 @@ class ProgramService {
       faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
       orientationDate: getDateValue(props[NOTION_FIELDS.ORIENTATION_DATE]),
       shareMeetingDate: getDateValue(props[NOTION_FIELDS.SHARE_MEETING_DATE]),
-      leaderUserId: leaderUserId,
+      leaderNickname: leaderNickname,
+      leaderRealName: leaderRealName,
       createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
@@ -630,51 +674,49 @@ class ProgramService {
         throw error;
       }
 
-      // 2. Community 존재 확인 및 생성
-      let community = await this.communityService.getCommunityMapping(programId);
+      // 2. Community 존재 확인 및 생성 (Firestore용 ID로 정규화)
+      const normalizedProgramId = normalizeProgramIdForFirestore(programId);
+      let community = await this.communityService.getCommunityMapping(normalizedProgramId);
       if (!community) {
         // Community가 없으면 프로그램 정보로 생성
-        community = await this.createCommunityFromProgram(programId, program);
+        community = await this.createCommunityFromProgram(normalizedProgramId, program);
       }
 
-      // 3. 닉네임 중복 체크 (CommunityService 활용)
-      const isNicknameAvailable = await this.communityService.checkNicknameAvailability(programId, nickname);
+      // 3. 닉네임 중복 체크
+      const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
       if (!isNicknameAvailable) {
         const error = new Error("이미 사용 중인 닉네임입니다");
-        error.code = "NICKNAME_DUPLICATE";
+        error.code = ERROR_CODES.NICKNAME_DUPLICATE;
         error.statusCode = 409;
         throw error;
       }
 
-      // 4. CommunityService를 통해 멤버 추가 (Firestore에 저장)
+      // 4. Notion 프로그램신청자DB에 저장
+      const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
+
+      // 5. 멤버 추가 (Firestore)
       let memberResult;
       try {
-        memberResult = await this.communityService.addMemberToCommunity(programId, applicantId, nickname);
+        memberResult = await this.communityService.addMemberToCommunity(
+          normalizedProgramId, 
+          applicantId, 
+          nickname,
+          { applicantsPageId }
+        );
       } catch (memberError) {
         if (memberError.code === 'CONFLICT') {
-          const duplicateError = new Error('이미 신청한 프로그램입니다.');
-          duplicateError.code = 'DUPLICATE_APPLICATION';
+          const duplicateError = new Error('같은 프로그램은 또 신청할 수 없습니다.');
+          duplicateError.code = ERROR_CODES.DUPLICATE_APPLICATION;
           duplicateError.statusCode = 409;
           throw duplicateError;
         }
-        throw memberError;
-      }
-
-      // 5. Notion 프로그램신청자DB에 저장
-      let notionPageId = null;
-      try {
-        notionPageId = await this.saveToNotionApplication(programId, applicationData, program);
-        
-        // 6. Notion 저장 성공 시, Firestore member에 notionPageId 업데이트
-        if (notionPageId) {
-          await this.firestoreService.updateDocument(
-            `communities/${programId}/members`,
-            applicantId,
-            { notionPageId }
-          );
+        if (memberError.code === ERROR_CODES.NICKNAME_DUPLICATE) {
+          const error = new Error("이미 사용 중인 닉네임입니다");
+          error.code = ERROR_CODES.NICKNAME_DUPLICATE;
+          error.statusCode = 409;
+          throw error;
         }
-      } catch (notionError) {
-        console.warn('[ProgramService] Notion 저장 실패, Firestore만 유지:', notionError.message);
+        throw memberError;
       }
 
       return {
@@ -683,14 +725,14 @@ class ProgramService {
         applicantId,
         nickname,
         appliedAt: new Date().toISOString(),
-        notionPageId
+        applicantsPageId
       };
 
     } catch (error) {
       console.error('[ProgramService] 프로그램 신청 오류:', error.message);
       
-      // 이미 정의된 에러는 그대로 전달
-      if (error.code === 'NICKNAME_DUPLICATE' || 
+      if (error.code === ERROR_CODES.NICKNAME_DUPLICATE || 
+          error.code === ERROR_CODES.DUPLICATE_APPLICATION ||
           error.code === ERROR_CODES.PROGRAM_NOT_FOUND) {
         throw error;
       }
@@ -948,43 +990,24 @@ class ProgramService {
    */
   async approveApplication(programId, applicationId) {
     try {
-      // applicationId는 실제로 applicantId (userId)와 같음
-      // addMemberToCommunity에서 문서 ID로 userId를 사용하기 때문
+      const normalizedProgramId = normalizeProgramIdForFirestore(programId);
       console.log(`[ProgramService] 승인 요청 - programId: ${programId}, applicationId: ${applicationId}`);
       
-      // 1. Firestore member 데이터 조회
       const member = await this.firestoreService.getDocument(
-        `communities/${programId}/members`,
+        `communities/${normalizedProgramId}/members`,
         applicationId
       );
 
       if (!member) {
         console.error(`[ProgramService] 멤버를 찾을 수 없음 - programId: ${programId}, applicationId: ${applicationId}`);
-        // 디버깅: 해당 커뮤니티의 모든 멤버 조회
-        try {
-          const membersService = new FirestoreService(`communities/${programId}/members`);
-          const allMembers = await membersService.getAll();
-          console.log(`[ProgramService] 해당 커뮤니티의 전체 멤버 수: ${allMembers?.length || 0}`);
-          if (allMembers && allMembers.length > 0) {
-            const memberIds = allMembers.map(m => {
-              // Firestore 문서는 id 필드가 별도로 있거나, 문서 ID를 직접 사용
-              return m.id || m.userId || 'unknown';
-            });
-            console.log(`[ProgramService] 멤버 ID 목록: ${memberIds.join(', ')}`);
-          }
-        } catch (debugError) {
-          console.warn(`[ProgramService] 디버깅 정보 조회 실패: ${debugError.message}`);
-        }
-        
         const error = new Error('신청 정보를 찾을 수 없습니다.');
-        error.code = 'NOT_FOUND';
+        error.code = ERROR_CODES.NOT_FOUND;
         error.statusCode = 404;
         throw error;
       }
 
-      // 2. Firestore member의 status를 'approved'로 업데이트
       await this.firestoreService.updateDocument(
-        `communities/${programId}/members`,
+        `communities/${normalizedProgramId}/members`,
         applicationId,
         {
           status: 'approved',
@@ -992,11 +1015,10 @@ class ProgramService {
         }
       );
 
-      // 3. Notion 페이지의 승인여부 select 업데이트
-      if (member.notionPageId) {
+      if (member.applicantsPageId) {
         try {
           await this.notion.pages.update({
-            page_id: member.notionPageId,
+            page_id: member.applicantsPageId,
             properties: {
               '승인여부': {
                 select: {
@@ -1019,8 +1041,7 @@ class ProgramService {
     } catch (error) {
       console.error('[ProgramService] 신청 승인 오류:', error.message);
       
-      // 이미 정의된 에러는 그대로 전달
-      if (error.code === 'NOT_FOUND') {
+      if (error.code === ERROR_CODES.NOT_FOUND) {
         throw error;
       }
       
@@ -1039,22 +1060,24 @@ class ProgramService {
    */
   async rejectApplication(programId, applicationId) {
     try {
-      // 1. Firestore member 데이터 조회
+      const normalizedProgramId = normalizeProgramIdForFirestore(programId);
+      console.log(`[ProgramService] 거절 요청 - programId: ${programId}, applicationId: ${applicationId}`);
+      
       const member = await this.firestoreService.getDocument(
-        `communities/${programId}/members`,
+        `communities/${normalizedProgramId}/members`,
         applicationId
       );
 
       if (!member) {
+        console.error(`[ProgramService] 멤버를 찾을 수 없음 - programId: ${programId}, applicationId: ${applicationId}`);
         const error = new Error('신청 정보를 찾을 수 없습니다.');
-        error.code = 'NOT_FOUND';
+        error.code = ERROR_CODES.NOT_FOUND;
         error.statusCode = 404;
         throw error;
       }
 
-      // 2. Firestore member의 status를 'rejected'로 업데이트
       await this.firestoreService.updateDocument(
-        `communities/${programId}/members`,
+        `communities/${normalizedProgramId}/members`,
         applicationId,
         {
           status: 'rejected',
@@ -1062,11 +1085,10 @@ class ProgramService {
         }
       );
 
-      // 3. Notion 페이지의 승인여부 select 업데이트
-      if (member.notionPageId) {
+      if (member.applicantsPageId) {
         try {
           await this.notion.pages.update({
-            page_id: member.notionPageId,
+            page_id: member.applicantsPageId,
             properties: {
               '승인여부': {
                 select: {

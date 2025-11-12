@@ -297,8 +297,8 @@ router.get('/:programId', programController.getProgramById);
  *                   type: string
  *                   description: 중복 신청 유형에 따른 메시지
  *                   examples:
- *                     SAME_NICKNAME_SAME_PERSON:
- *                       value: "이미 신청한 프로그램입니다."
+ *                     DUPLICATE_APPLICATION:
+ *                       value: "같은 프로그램은 또 신청할 수 없습니다."
  *                     NICKNAME_ALREADY_TAKEN:
  *                       value: "중복된 닉네임입니다."
  *                     SAME_EMAIL:

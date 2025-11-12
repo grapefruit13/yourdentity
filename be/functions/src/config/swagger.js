@@ -2391,6 +2391,18 @@ const options = {
               description: "상세페이지(노션) 제목",
               example: "청년 리더십 프로그램 상세 안내",
             },
+            leaderNickname: {
+              type: "string",
+              nullable: true,
+              description: "리더 사용자 별명",
+              example: "홍길동",
+            },
+            leaderRealName: {
+              type: "string",
+              nullable: true,
+              description: "리더 사용자 실명",
+              example: "홍길동",
+            },
           },
         },
         ProgramDetail: {
