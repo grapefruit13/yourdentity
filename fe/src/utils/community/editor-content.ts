@@ -136,6 +136,39 @@ export const extractImagePathsFromContent = (content: string): string[] => {
 };
 
 /**
+ * content HTML에서 앵커 href에서 filePath 추출
+ * @param content - HTML 콘텐츠
+ * @returns filePath 배열
+ */
+export const extractFilePathsFromContent = (content: string): string[] => {
+  if (!content) return [];
+
+  const container = document.createElement("div");
+  container.innerHTML = content;
+
+  const anchors = container.querySelectorAll<HTMLAnchorElement>("a");
+  const paths: string[] = [];
+
+  anchors.forEach((anchor) => {
+    const href = anchor.getAttribute("href");
+    if (!href) return;
+
+    // data-file-id가 있으면 새로 추가된 파일 (아직 업로드 전)
+    if (anchor.hasAttribute("data-file-id")) {
+      return;
+    }
+
+    // href에서 filePath 추출
+    const filePath = extractFilePathFromUrl(href);
+    if (filePath) {
+      paths.push(filePath);
+    }
+  });
+
+  return paths;
+};
+
+/**
  * URL에서 filePath 추출
  * @param url - 이미지 URL
  * @returns filePath 또는 null
