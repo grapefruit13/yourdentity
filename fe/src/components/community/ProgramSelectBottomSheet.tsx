@@ -38,14 +38,27 @@ const ProgramSelectBottomSheet = ({
     {
       type: "routine",
       label: "한끗 루틴",
-      items: communitiesData?.routine?.items || [],
+      items:
+        communitiesData?.routine?.items?.filter(
+          (item) => (item as { status?: string }).status === "approved"
+        ) || [],
     },
     {
       type: "gathering",
       label: "월간 소모임",
-      items: communitiesData?.gathering?.items || [],
+      items:
+        communitiesData?.gathering?.items?.filter(
+          (item) => (item as { status?: string }).status === "approved"
+        ) || [],
     },
-    { type: "tmi", label: "TMI", items: communitiesData?.tmi?.items || [] },
+    {
+      type: "tmi",
+      label: "TMI",
+      items:
+        communitiesData?.tmi?.items?.filter(
+          (item) => (item as { status?: string }).status === "approved"
+        ) || [],
+    },
   ].filter((group) => group.items.length > 0); // 아이템이 있는 그룹만 표시
 
   /**

@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
+import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type {
   ProgramDetailResponse,
@@ -172,6 +173,42 @@ const RoutineDetailPage = () => {
       return responseData?.programs?.filter((p) => p.id !== programId) || [];
     },
   });
+
+  // 내가 참여 중인 커뮤니티 조회 (신청 상태 확인용)
+  const { data: participatingCommunitiesData } =
+    useGetUsersMeParticipatingCommunities();
+
+  // 현재 프로그램의 신청 상태 확인
+  const isApplicationApproved = (() => {
+    if (!participatingCommunitiesData || !programDetailData) return false;
+
+    const programType = programDetailData.programType?.toLowerCase();
+    let targetGroup:
+      | { items?: Array<{ id?: string; status?: string }> }
+      | undefined;
+
+    switch (programType) {
+      case "routine":
+        targetGroup = participatingCommunitiesData.routine;
+        break;
+      case "gathering":
+        targetGroup = participatingCommunitiesData.gathering;
+        break;
+      case "tmi":
+        targetGroup = participatingCommunitiesData.tmi;
+        break;
+      default:
+        return false;
+    }
+
+    if (!targetGroup?.items) return false;
+
+    const foundItem = targetGroup.items.find(
+      (item) => item.id === programId
+    ) as { status?: string } | undefined;
+
+    return foundItem?.status === "approved";
+  })();
 
   // 탭에 해당하는 섹션으로 스크롤하는 함수
   const scrollToTabSection = useCallback(
@@ -746,14 +783,25 @@ const RoutineDetailPage = () => {
 
       {/* 하단 고정 버튼 */}
       <div className="sticky bottom-0 z-20 bg-transparent p-4">
-        <Link
-          href={`/routines/${programId}/apply`}
-          className="bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white"
-        >
-          <Typography font="noto" variant="body3R" className="text-white">
-            신청하기
-          </Typography>
-        </Link>
+        {isApplicationApproved ? (
+          <button
+            disabled
+            className="block w-full cursor-not-allowed rounded-lg bg-gray-300 px-4 py-3 text-center"
+          >
+            <Typography font="noto" variant="body3R" className="text-gray-600">
+              신청완료
+            </Typography>
+          </button>
+        ) : (
+          <Link
+            href={`/routines/${programId}/apply`}
+            className="bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white"
+          >
+            <Typography font="noto" variant="body3R" className="text-white">
+              신청하기
+            </Typography>
+          </Link>
+        )}
       </div>
     </div>
   );
