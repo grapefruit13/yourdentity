@@ -39,6 +39,7 @@ const PostDetailPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [currentOrigin, setCurrentOrigin] = useState<string>("");
+  const [imageLoadError, setImageLoadError] = useState(false);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
 
   // 클라이언트 사이드에서만 origin 가져오기
@@ -63,6 +64,11 @@ const PostDetailPage = () => {
 
   // postData를 Schema.CommunityPost 타입으로 변환
   const post = postData as Schema.CommunityPost;
+
+  // postData 변경 시 이미지 에러 상태 리셋
+  useEffect(() => {
+    setImageLoadError(false);
+  }, [postData]);
 
   // 작성자 여부 확인 (API 응답에서 isAuthor 필드 사용)
   // TODO: CommunityPost 타입에 isAuthor 필드가 추가되면 타입 단언 제거
@@ -295,11 +301,16 @@ const PostDetailPage = () => {
 
         {/* 프로필 섹션 */}
         <div className="mb-6 flex items-center">
-          {post?.profileImageUrl ? (
-            <img src={post?.profileImageUrl} alt={post?.author} className="" />
+          {post?.profileImageUrl && !imageLoadError ? (
+            <img
+              src={post.profileImageUrl}
+              alt={post?.author || "프로필 이미지"}
+              className="mr-3 h-8 w-8 rounded-full object-cover"
+              onError={() => setImageLoadError(true)}
+            />
           ) : (
             <User
-              className="text-main-600 h-8 w-8 rounded-full"
+              className="text-main-600 mr-3 h-8 w-8 rounded-full"
               strokeWidth={1.5}
             />
           )}
