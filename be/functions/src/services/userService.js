@@ -103,15 +103,10 @@ class UserService {
       }
     }
 
-    // 5) 닉네임 설정 (이미지 검증 성공 후 저장)
+    // 5) 닉네임 설정 및 사용자 문서 업데이트를 단일 트랜잭션으로 처리
     const nickname = update.nickname;
     const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
 
-    if (setNickname) {
-      await this.nicknameService.setNickname(nickname, uid, existing.nickname);
-    }
-
-    // 6) 온보딩 완료 처리
     const userUpdate = {
       ...update,
       lastUpdatedAt: FieldValue.serverTimestamp(),
@@ -125,8 +120,29 @@ class UserService {
       userUpdate.profileImageUrl = newProfileImageUrl;
     }
 
-    // 사용자 문서 업데이트
-    await this.firestoreService.update(uid, userUpdate);
+    // 트랜잭션으로 닉네임 + 사용자 업데이트 원자적 처리
+    await db.runTransaction(async (transaction) => {
+      // 닉네임 중복 체크 및 설정
+      if (setNickname) {
+        const lower = nickname.toLowerCase();
+        const nickRef = db.collection("nicknames").doc(lower);
+        const nickDoc = await transaction.get(nickRef);
+        
+        // 이미 존재하고 다른 사용자가 사용 중인 경우
+        if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
+          const e = new Error("NICKNAME_TAKEN");
+          e.code = "NICKNAME_TAKEN";
+          throw e;
+        }
+        
+        // 닉네임 설정 (트랜잭션 내)
+        this.nicknameService.setNickname(transaction, nickname, uid, existing.nickname);
+      }
+      
+      // 사용자 문서 업데이트 (트랜잭션 내)
+      const userRef = db.collection("users").doc(uid);
+      transaction.update(userRef, userUpdate);
+    });
 
     if (newProfileImagePath && previousProfilePath && previousProfilePath !== newProfileImagePath) {
       try {
