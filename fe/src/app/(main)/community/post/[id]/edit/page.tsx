@@ -35,7 +35,11 @@ import {
   extractImagePathsFromContent,
   extractFilePathsFromContent,
 } from "@/utils/community/editor-content";
-import { deleteFilesByPath } from "@/utils/community/file-utils";
+import {
+  dedupeFiles,
+  rollbackUploadedFiles,
+  isHandledError,
+} from "@/utils/community/file-utils";
 import { isFilePathMatching } from "@/utils/community/post-edit-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
 import { getCurrentDateTime } from "@/utils/shared/date";
@@ -87,6 +91,7 @@ const EditPageContent = () => {
   );
 
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+  const setTitle = useTopBarStore((state) => state.setTitle);
 
   // 상세 데이터에서 초기값 구성
   const post = postData as Schema.CommunityPost | undefined;
@@ -136,18 +141,6 @@ const EditPageContent = () => {
   useEffect(() => {
     fileQueueRef.current = fileQueue;
   }, [fileQueue]);
-
-  /**
-   * 파일 중복 제거
-   */
-  const dedupeFiles = (files: File[]) => {
-    const map = new Map<string, File>();
-    files.forEach((f) => {
-      const key = `${f.name}-${f.size}-${f.lastModified}`;
-      if (!map.has(key)) map.set(key, f);
-    });
-    return Array.from(map.values());
-  };
 
   /**
    * 이미지 선택 시 clientId를 발급/등록하고 반환
@@ -336,40 +329,14 @@ const EditPageContent = () => {
     return { filePaths: uploadedFilePaths, content: contentWithUrls };
   };
 
-  /**
-   * 업로드된 파일들 롤백 삭제
-   */
-  const rollbackUploadedFiles = async (
-    imagePaths: string[],
-    filePaths: string[]
-  ) => {
-    const filesToDelete = [...imagePaths, ...filePaths];
-    if (filesToDelete.length === 0) return;
-
-    debug.log("게시글 수정 실패, 파일 삭제 시작:", filesToDelete);
-    try {
-      await deleteFilesByPath(filesToDelete);
-      debug.log("파일 삭제 완료");
-    } catch (deleteError) {
-      debug.error("파일 삭제 중 에러:", deleteError);
-    }
-  };
-
-  /**
-   * 에러가 이미 처리된 경우인지 확인
-   */
-  const isHandledError = (error: unknown): boolean => {
-    if (!(error instanceof Error)) return false;
-    return (
-      error.message === ERROR_MESSAGES.IMAGE_UPLOAD_FAILED ||
-      error.message === ERROR_MESSAGES.IMAGE_URL_REPLACE_FAILED
-    );
-  };
-
   // 완료 버튼
   const hasTitle = (watch("title") || "").trim();
   const hasContent = extractTextFromHtml(watch("content") || "").length > 0;
   const isSubmitDisabled = isPending || !hasTitle || !hasContent;
+
+  // 뒤로가기 인터셉트를 위한 상태
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
+  const allowLeaveCountRef = useRef(0);
 
   /**
    * media 배열 구성
@@ -449,7 +416,11 @@ const EditPageContent = () => {
 
     // 에러 발생 시 업로드된 파일들 롤백
     if (uploadedImagePaths.length > 0 || uploadedFilePaths.length > 0) {
-      await rollbackUploadedFiles(uploadedImagePaths, uploadedFilePaths);
+      await rollbackUploadedFiles(
+        uploadedImagePaths,
+        uploadedFilePaths,
+        "게시글 수정 실패"
+      );
     }
 
     // 에러가 이미 처리된 경우는 다시 alert하지 않음
@@ -570,8 +541,12 @@ const EditPageContent = () => {
     }
   };
 
-  // TopBar 우측 완료 버튼
+  // TopBar 타이틀 및 우측 완료 버튼 설정
   useEffect(() => {
+    // 탑바 타이틀 설정
+    setTitle("게시글 수정");
+
+    // 탑바 완료 버튼 설정
     setRightSlot(
       <ButtonBase
         type="submit"
@@ -585,7 +560,34 @@ const EditPageContent = () => {
       </ButtonBase>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setRightSlot, isSubmitDisabled, handleSubmit]);
+  }, [setTitle, setRightSlot, isSubmitDisabled, handleSubmit]);
+
+  // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
+  useEffect(() => {
+    const pushBlockState = () => {
+      try {
+        history.pushState(null, "", window.location.href);
+      } catch {}
+    };
+
+    const handlePopState = () => {
+      if (allowLeaveCountRef.current > 0) {
+        // 허용해야 하는 pop이 남아있으면 소모하고 그대로 진행
+        allowLeaveCountRef.current -= 1;
+        return;
+      }
+      setIsLeaveConfirmOpen(true);
+      // 네비게이션 취소를 위해 현재 히스토리로 다시 푸시
+      pushBlockState();
+    };
+
+    // 최초 진입 시 한 단계 쌓아 두어 back을 가로챔
+    pushBlockState();
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   // Auth 초기화 대기 또는 미인증 시 렌더 생략
   if (!isReady || !user) {
@@ -678,15 +680,17 @@ const EditPageContent = () => {
         }
       />
 
-      {/* 뒤로가기 컨펌 모달 (UI 유지용, 바로 목록 이동 처리) */}
+      {/* 뒤로가기 컨펌 모달 */}
       <Modal
-        isOpen={false}
+        isOpen={isLeaveConfirmOpen}
         title="그만둘까요?"
         description="작성 중인 내용이 사라져요."
         cancelText="계속하기"
         confirmText="그만두기"
-        onClose={() => {}}
+        onClose={() => setIsLeaveConfirmOpen(false)}
         onConfirm={() => {
+          setIsLeaveConfirmOpen(false);
+          // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
           router.replace(`/community`);
         }}
         variant="primary"
