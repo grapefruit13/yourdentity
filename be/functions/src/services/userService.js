@@ -593,33 +593,41 @@ class UserService {
   }
 
   /**
-   * 내가 참여 중인 커뮤니티 조회 (postType별 그룹화)
+   * 내가 참여한 커뮤니티 조회를 status 기준으로 필터링
    * @param {string} userId - 사용자 ID
+   * @param {"ongoing"|"completed"} status - 조회 상태
    * @return {Promise<Object>} postType별로 그룹화된 커뮤니티 목록
    */
-  async getMyParticipatingCommunities(userId) {
+  async getMyCommunities(userId, status = "ongoing") {
     try {
-     
       const tempService = new FirestoreService("temp");
-      
+
       let allMembers = [];
       let currentPage = 0;
       const pageSize = 100;
       let hasMore = true;
 
+      const memberWhereConditions = [
+        {field: "userId", operator: "==", value: userId},
+        {field: "status", operator: "==", value: "approved"},
+      ];
+
       while (hasMore) {
         try {
           const pageResult = await tempService.getCollectionGroup("members", {
-            where: [
-              { field: "userId", operator: "==", value: userId }
-            ],
+            where: memberWhereConditions,
             size: pageSize,
             page: currentPage,
             orderBy: "joinedAt",
             orderDirection: "desc"
           });
 
-          allMembers = allMembers.concat(pageResult.content || []);
+          const approvedMembers = (pageResult.content || []).filter((member) => {
+            const status = typeof member.status === "string" ? member.status.trim().toLowerCase() : null;
+            return status === "approved";
+          });
+
+          allMembers = allMembers.concat(approvedMembers);
           hasMore = pageResult.pageable?.hasNext || false;
           currentPage++;
 
@@ -627,18 +635,18 @@ class UserService {
             break;
           }
         } catch (error) {
-          
           if (error.code === 9 || error.message.includes("FAILED_PRECONDITION") || error.message.includes("AggregateQuery")) {
-
             const fallbackResult = await tempService.getCollectionGroupWithoutCount("members", {
-              where: [
-                { field: "userId", operator: "==", value: userId }
-              ],
-              size: 1000, 
+              where: memberWhereConditions,
+              size: 1000,
               orderBy: "joinedAt",
               orderDirection: "desc"
             });
-            allMembers = fallbackResult.content || [];
+            const approvedMembers = (fallbackResult.content || []).filter((member) => {
+              const status = typeof member.status === "string" ? member.status.trim().toLowerCase() : null;
+              return status === "approved";
+            });
+            allMembers = approvedMembers;
             hasMore = false;
           } else {
             throw error;
@@ -647,23 +655,20 @@ class UserService {
         }
       }
 
-      const membersResult = {
-        content: allMembers,
-        pageable: {}
-      };
-
       const communityIds = [...new Set(
-        membersResult.content
+        allMembers
           .map(member => member.communityId)
-          .filter(id => id) 
+          .filter(id => id)
       )];
 
+      const emptyGrouped = () => ({
+        "routine": {label: "한끗 루틴", items: []},
+        "gathering": {label: "월간 소모임", items: []},
+        "tmi": {label: "TMI", items: []}
+      });
+
       if (communityIds.length === 0) {
-        return {
-          "routine": { "label": "한끗 루틴", "items": [] },
-          "gathering": { "label": "월간 소모임", "items": [] },
-          "tmi": { "label": "TMI", "items": [] }
-        };
+        return emptyGrouped();
       }
 
       const chunkedIds = [];
@@ -678,7 +683,7 @@ class UserService {
       );
 
       const communities = communitiesChunked.flat();
-      
+
       const PROGRAM_TYPE_ALIASES = {
         ROUTINE: ["ROUTINE", "한끗루틴", "한끗 루틴", "루틴"],
         GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
@@ -718,18 +723,47 @@ class UserService {
       };
 
       const programTypeMapping = {
-        ROUTINE: { key: "routine", label: "한끗 루틴" },
-        GATHERING: { key: "gathering", label: "월간 소모임" },
-        TMI: { key: "tmi", label: "TMI" },
+        ROUTINE: {key: "routine", label: "한끗 루틴"},
+        GATHERING: {key: "gathering", label: "월간 소모임"},
+        TMI: {key: "tmi", label: "TMI"},
       };
 
-      const grouped = {
-        "routine": { "label": "한끗 루틴", "items": [] },
-        "gathering": { "label": "월간 소모임", "items": [] },
-        "tmi": { "label": "TMI", "items": [] }
+      const toDate = (value) => {
+        if (!value) return null;
+        if (typeof value.toDate === "function") {
+          try {
+            return value.toDate();
+          } catch (_) {
+            return null;
+          }
+        }
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
       };
 
-      communities.forEach(community => {
+      const now = new Date();
+
+      const filteredCommunities = communities.filter((community) => {
+        const startDate = toDate(community.startDate);
+        const endDate = toDate(community.endDate);
+
+        if (status === "completed") {
+          return !!endDate && endDate < now;
+        }
+
+        // default ongoing
+        if (endDate && endDate < now) {
+          return false;
+        }
+        if (startDate && startDate > now) {
+          return false;
+        }
+        return true;
+      });
+
+      const grouped = emptyGrouped();
+
+      filteredCommunities.forEach(community => {
         let programType = normalizeProgramType(community.programType);
         if (!programType && community.postType && legacyPostTypeToProgramType[community.postType]) {
           programType = legacyPostTypeToProgramType[community.postType];
@@ -754,6 +788,24 @@ class UserService {
       e.code = "INTERNAL_ERROR";
       throw e;
     }
+  }
+
+  /**
+   * 내가 참여 중인 커뮤니티 조회 (진행 중)
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>}
+   */
+  async getMyParticipatingCommunities(userId) {
+    return this.getMyCommunities(userId, "ongoing");
+  }
+
+  /**
+   * 내가 완료한 커뮤니티 조회 (종료)
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>}
+   */
+  async getMyCompletedCommunities(userId) {
+    return this.getMyCommunities(userId, "completed");
   }
 }
 
