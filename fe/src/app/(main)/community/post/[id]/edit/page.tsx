@@ -390,6 +390,9 @@ const EditPageContent = () => {
       }),
     });
 
+    // 뒤로가기 인터셉트 해제 (replace와 실제 back 위해)
+    allowLeaveCountRef.current = 2;
+
     // 상세 페이지로 이동
     router.replace(`/community/post/${postId}?communityId=${communityId}`);
   };
@@ -422,6 +425,9 @@ const EditPageContent = () => {
         "게시글 수정 실패"
       );
     }
+
+    // 에러 발생 시 뒤로가기 인터셉트 리셋 (취소/롤백)
+    allowLeaveCountRef.current = 0;
 
     // 에러가 이미 처리된 경우는 다시 alert하지 않음
     if (isHandledError(error)) {
@@ -690,6 +696,8 @@ const EditPageContent = () => {
         onClose={() => setIsLeaveConfirmOpen(false)}
         onConfirm={() => {
           setIsLeaveConfirmOpen(false);
+          // 뒤로가기 인터셉트 해제 (replace와 실제 back 위해)
+          allowLeaveCountRef.current = 2;
           // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
           router.replace(`/community`);
         }}
