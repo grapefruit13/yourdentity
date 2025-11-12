@@ -113,7 +113,7 @@ const Page = () => {
 
   // 게시글 클릭 핸들러
   const handlePostClick = (postId: string, communityId: string) => {
-    router.push(`community/post/${postId}?communityId=${communityId}`);
+    router.push(`/community/post/${postId}?communityId=${communityId}`);
   };
 
   return (
