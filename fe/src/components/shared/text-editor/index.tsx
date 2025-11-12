@@ -43,6 +43,8 @@ import { ToolbarButton } from "./toolbar-button";
 const TextEditor = ({
   className,
   minHeight = TEXT_EDITOR.DEFAULT_MIN_HEIGHT,
+  initialTitleHtml,
+  initialContentHtml,
   onImageUpload,
   onFileUpload,
   onTitleChange,
@@ -1123,6 +1125,36 @@ const TextEditor = ({
     checkPlaceholder(titleRef.current);
     checkPlaceholder(contentRef.current);
   }, []);
+
+  /**
+   * 외부에서 전달된 초기 콘텐츠를 ref에 반영
+   * - 최초 마운트 이후 값이 바뀌어도 반영되도록 의존성 포함
+   */
+  useEffect(() => {
+    if (typeof initialTitleHtml === "string" && titleRef.current) {
+      titleRef.current.innerHTML = initialTitleHtml || "";
+      // 외부 값 반영 후 폼 동기화
+      if (onTitleChange) onTitleChange(titleRef.current.innerHTML);
+      checkPlaceholder(titleRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTitleHtml]);
+
+  useEffect(() => {
+    if (typeof initialContentHtml === "string" && contentRef.current) {
+      contentRef.current.innerHTML = initialContentHtml || "";
+      // 외부 값 반영 후 폼 동기화
+      if (onContentChange) {
+        let html = "";
+        contentRef.current.childNodes.forEach((child) => {
+          html += elementToHtml(child);
+        });
+        onContentChange(html);
+      }
+      checkPlaceholder(contentRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialContentHtml]);
 
   useGlobalClickOutside(
     showColorPicker || showHeadingMenu || showLinkPopover,

@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import ShareModal from "@/components/community/ShareModal";
+import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { POST_EDIT_CONSTANTS } from "@/constants/community/_write-constants";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import {
   useGetCommunitiesPostsByTwoIds,
   usePostCommunitiesPostsLikeByTwoIds,
+  useDeleteCommunitiesPostsByTwoIds,
 } from "@/hooks/generated/communities-hooks";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
@@ -29,11 +34,18 @@ const PostDetailPage = () => {
   const communityId = searchParams.get("communityId") || "";
 
   const queryClient = useQueryClient();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [currentOrigin, setCurrentOrigin] = useState<string>("");
+  const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+
+  // 클라이언트 사이드에서만 origin 가져오기
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentOrigin(window.location.origin);
+    }
+  }, []);
 
   // API 연동 - useGetCommunitiesPostsByTwoIds 사용 (communityId와 postId 모두 필요)
   const {
@@ -51,6 +63,78 @@ const PostDetailPage = () => {
   // postData를 Schema.CommunityPost 타입으로 변환
   const post = postData as Schema.CommunityPost;
 
+  // 작성자 여부 확인 (API 응답에서 isAuthor 필드 사용)
+  // TODO: CommunityPost 타입에 isAuthor 필드가 추가되면 타입 단언 제거
+  const isAuthor =
+    (post as Schema.CommunityPost & { isAuthor?: boolean })?.isAuthor ?? false;
+
+  // 탑바 커스텀
+  useEffect(() => {
+    // 공유 클릭
+    const handleShareClick = () => {
+      setIsShareModalOpen(true);
+    };
+
+    // 수정 클릭
+    const handleEditClick = () => {
+      if (!postId || !communityId) return;
+      router.push(`/community/post/${postId}/edit?communityId=${communityId}`);
+    };
+
+    // 삭제 클릭
+    const handleDeleteClick = () => {
+      setIsDeleteModalOpen(true);
+    };
+
+    setRightSlot(
+      <KebabMenu
+        onShare={handleShareClick}
+        onEdit={isAuthor ? handleEditClick : undefined}
+        onDelete={isAuthor ? handleDeleteClick : undefined}
+      />
+    );
+  }, [setRightSlot, communityId, postId, router, isAuthor]);
+
+  /**
+   * 게시글 삭제 핸들러
+   */
+  const handleDeleteConfirm = async () => {
+    if (!postId || !communityId) return;
+
+    try {
+      await deletePostAsync({
+        communityId,
+        postId,
+      });
+
+      // 쿼리 무효화 (목록 및 상세 조회)
+      queryClient.invalidateQueries({
+        queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
+          communityId,
+          postId,
+        }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: communitiesKeys.getCommunitiesPosts({
+          page: undefined,
+          size: undefined,
+          programType: undefined,
+          programState: undefined,
+        }),
+      });
+
+      // 성공 메시지 표시
+      alert(POST_EDIT_CONSTANTS.DELETE_SUCCESS);
+
+      // 커뮤니티 목록으로 이동
+      router.replace("/community");
+    } catch (error) {
+      debug.error("게시글 삭제 실패:", error);
+    } finally {
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   // 좋아요 상태 확인 (페이지 로드 시)
   useEffect(() => {
     if (postId) {
@@ -59,6 +143,10 @@ const PostDetailPage = () => {
       setIsLiked(likedPosts[postId] || false);
     }
   }, [postId, postData]);
+
+  // 삭제 mutation
+  const { mutateAsync: deletePostAsync, isPending: isDeleting } =
+    useDeleteCommunitiesPostsByTwoIds();
 
   // 좋아요 mutation
   const { mutateAsync: toggleLikeAsync } = usePostCommunitiesPostsLikeByTwoIds({
@@ -96,56 +184,6 @@ const PostDetailPage = () => {
       });
     },
   });
-
-  // 메뉴 외부 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
-
-    if (isMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMenuOpen]);
-
-  // 뒤로가기 핸들러
-  const handleBack = () => {
-    router.back();
-  };
-
-  // 메뉴 아이템 클릭 핸들러
-  const handleMenuAction = (action: string) => {
-    debug.log(`${action} 클릭됨`);
-    setIsMenuOpen(false);
-
-    // 향후 각 액션에 따른 로직 구현
-    switch (action) {
-      case "수정":
-        // 수정 로직
-        break;
-      case "상단 고정":
-        // 상단 고정 로직
-        break;
-      case "삭제":
-        // 삭제 로직
-        break;
-      case "신고":
-        // 신고 로직
-        break;
-      case "게시글 복사":
-        // 복사 로직
-        break;
-      case "게시글 이동":
-        // 이동 로직
-        break;
-    }
-  };
 
   // 좋아요 핸들러
   const handleLike = async () => {
@@ -232,162 +270,7 @@ const PostDetailPage = () => {
   }
 
   return (
-    <div className="bg-white">
-      {/* 헤더 */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-        >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          <span className="text-sm font-medium">뒤로</span>
-        </button>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsShareModalOpen(true)}
-            className={cn(
-              "p-1 text-gray-600 transition-colors hover:text-gray-800"
-            )}
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
-              />
-            </svg>
-          </button>
-          <button
-            onClick={() => setIsBookmarked(!isBookmarked)}
-            className={cn(
-              "p-1 text-gray-600 transition-colors hover:text-gray-800"
-            )}
-          >
-            <svg
-              className={cn(
-                "h-5 w-5 transition-colors",
-                isBookmarked
-                  ? "fill-yellow-500 text-yellow-500"
-                  : "text-gray-600"
-              )}
-              fill={isBookmarked ? "currentColor" : "none"}
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-              />
-            </svg>
-          </button>
-
-          {/* 점 3개 메뉴 */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={cn(
-                "p-1 text-gray-600 transition-colors hover:text-gray-800"
-              )}
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                />
-              </svg>
-            </button>
-
-            {/* 드롭다운 메뉴 */}
-            {isMenuOpen && (
-              <div
-                className={cn(
-                  "absolute top-8 right-0 z-10 w-32 rounded-lg border border-gray-200 bg-white shadow-lg"
-                )}
-              >
-                <div className="py-1">
-                  <button
-                    onClick={() => handleMenuAction("수정")}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    )}
-                  >
-                    수정
-                  </button>
-                  <button
-                    onClick={() => handleMenuAction("상단 고정")}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    )}
-                  >
-                    상단 고정
-                  </button>
-                  <button
-                    onClick={() => handleMenuAction("삭제")}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    )}
-                  >
-                    삭제
-                  </button>
-                  <button
-                    onClick={() => handleMenuAction("신고")}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    )}
-                  >
-                    신고
-                  </button>
-                  <button
-                    onClick={() => handleMenuAction("게시글 복사")}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    )}
-                  >
-                    게시글 복사
-                  </button>
-                  <button
-                    onClick={() => handleMenuAction("게시글 이동")}
-                    className={cn(
-                      "w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    )}
-                  >
-                    게시글 이동
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
+    <div className="bg-white pt-12">
       {/* 메인 콘텐츠 */}
       <div className="px-4 py-6 pb-32">
         {/* 활동 후기 헤더 */}
@@ -506,7 +389,20 @@ const PostDetailPage = () => {
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         postTitle={post?.title}
-        postUrl={`https://youthvoice.vake.io/sharing/${post?.id || "1"}`}
+        postUrl={`${currentOrigin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`}
+      />
+
+      {/* 삭제 확인 모달 */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        title="게시글을 삭제할까요?"
+        description="삭제한 게시글은 복구할 수 없어요."
+        cancelText="취소"
+        confirmText={isDeleting ? "삭제 중..." : "삭제"}
+        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        confirmDisabled={isDeleting}
+        variant="danger"
       />
     </div>
   );

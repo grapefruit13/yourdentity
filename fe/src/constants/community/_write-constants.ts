@@ -13,7 +13,31 @@ export const WRITE_MESSAGES = {
     "이미지 URL 교체에 실패했습니다. 잠시 후 다시 시도해주세요.",
   IMAGE_UPLOAD_PARTIAL_FAILED: (count: number) =>
     `이미지 업로드에 실패했습니다. (${count}개 실패) 잠시 후 다시 시도해주세요.`,
+  FILE_UPLOAD_FAILED: "파일 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
   POST_CREATE_FAILED: "등록에 실패했습니다. 잠시 후 다시 시도해주세요.",
   POST_CREATE_SUCCESS: "게시물이 등록되었습니다.",
   POST_RESPONSE_INVALID: "응답에서 postId 또는 communityId를 찾을 수 없습니다.",
+} as const;
+
+/**
+ * @description 게시글 수정 관련 상수
+ */
+export const POST_EDIT_CONSTANTS = {
+  DEFAULT_CATEGORY: "한끗 루틴",
+  NO_CATEGORY: "선택된 카테고리 없음",
+  UNKNOWN_ERROR: "알 수 없는 오류",
+  POST_NOT_FOUND: "게시글 정보를 찾을 수 없습니다.",
+  UPDATE_SUCCESS: "게시물이 수정되었습니다.",
+  UPDATE_FAILED: "수정에 실패했습니다:",
+  DELETE_SUCCESS: "게시물이 삭제되었습니다.",
+  DELETE_FAILED: "게시글 삭제에 실패했습니다.",
+} as const;
+
+/**
+ * @description 에러 메시지 상수
+ */
+export const ERROR_MESSAGES = {
+  IMAGE_UPLOAD_FAILED: "IMAGE_UPLOAD_FAILED",
+  IMAGE_URL_REPLACE_FAILED: "IMAGE_URL_REPLACE_FAILED",
+  FILE_UPLOAD_FAILED: "FILE_UPLOAD_FAILED",
 } as const;
