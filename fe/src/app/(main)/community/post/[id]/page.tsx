@@ -272,32 +272,60 @@ const PostDetailPage = () => {
   return (
     <div className="bg-white pt-12">
       {/* 메인 콘텐츠 */}
-      <div className="px-4 py-6 pb-32">
+      <div className="px-5 py-5">
         {/* 활동 후기 헤더 */}
-        <div className="mb-2 text-sm text-gray-500">
+        <Typography
+          as="h1"
+          font="noto"
+          variant="body2R"
+          className="mb-1 text-gray-500"
+        >
           {post?.category || "활동 후기"}
-        </div>
-
+        </Typography>
         {/* 제목 */}
-        <h1 className="mb-4 text-3xl font-bold text-gray-800">{post?.title}</h1>
+        <Typography
+          as="h2"
+          font="noto"
+          variant="heading1M"
+          className="mb-4 text-gray-950"
+        >
+          {post?.title}
+        </Typography>
 
         {/* 프로필 섹션 */}
-        <div className="mb-6 flex items-center">
-          <div className="mr-3 h-8 w-8 rounded-full bg-gray-300"></div>
+        <div className="flex items-center border-b border-b-gray-200 pb-5">
+          <div className="mr-2 h-10 w-10 rounded-full bg-gray-300"></div>
           <div>
             <div className="flex items-center gap-1">
-              <span className="text-sm font-medium text-gray-800">
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-950"
+              >
                 {post?.author || "익명"}
-              </span>
+              </Typography>
             </div>
-            <div className="text-xs text-gray-500">
-              {post?.createdAt && getTimeAgo(post.createdAt)}
+            <div className="flex items-center gap-1">
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                {post?.createdAt && getTimeAgo(post.createdAt)}
+              </Typography>
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                조회 {post?.viewCount}
+              </Typography>
             </div>
           </div>
         </div>
 
         {/* 내용 */}
-        <div className="mb-6">
+        <div className="py-8">
           {post?.content && (
             <div
               className={cn(
@@ -332,7 +360,7 @@ const PostDetailPage = () => {
             <svg
               className={cn(
                 "h-5 w-5 transition-colors",
-                isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
+                isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
               )}
               fill={isLiked ? "currentColor" : "none"}
               stroke="currentColor"
@@ -350,7 +378,7 @@ const PostDetailPage = () => {
               variant="body2R"
               className={cn(
                 "transition-colors",
-                isLiked ? "text-red-500" : "text-gray-600"
+                isLiked ? "text-main-500" : "text-gray-600"
               )}
             >
               {post?.likesCount || 0}
