@@ -1165,8 +1165,8 @@ class CommunityService {
       let profileImageUrl = null;
       if (authorId) {
         try {
-          const userService = new FirestoreService("users");
-          const author = await userService.getById(authorId);
+          const userService = this.getUserService();
+          const author = await userService.getUserById(authorId);
           if (author && author.profileImageUrl) {
             profileImageUrl = author.profileImageUrl;
           }
