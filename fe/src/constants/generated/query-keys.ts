@@ -230,6 +230,10 @@ export const usersKeys = {
     "users",
     "getUsersMeParticipatingCommunities"
   ),
+  getUsersMeCompletedCommunities: __buildKey(
+    "users",
+    "getUsersMeCompletedCommunities"
+  ),
   getUsersNicknameAvailability: (
     request: usersTypes.TGETUsersNicknameAvailabilityReq
   ) =>
