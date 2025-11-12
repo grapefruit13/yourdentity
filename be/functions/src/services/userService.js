@@ -607,19 +607,27 @@ class UserService {
       const pageSize = 100;
       let hasMore = true;
 
+      const memberWhereConditions = [
+        {field: "userId", operator: "==", value: userId},
+        {field: "status", operator: "==", value: "approved"},
+      ];
+
       while (hasMore) {
         try {
           const pageResult = await tempService.getCollectionGroup("members", {
-            where: [
-              {field: "userId", operator: "==", value: userId}
-            ],
+            where: memberWhereConditions,
             size: pageSize,
             page: currentPage,
             orderBy: "joinedAt",
             orderDirection: "desc"
           });
 
-          allMembers = allMembers.concat(pageResult.content || []);
+          const approvedMembers = (pageResult.content || []).filter((member) => {
+            const status = typeof member.status === "string" ? member.status.trim().toLowerCase() : null;
+            return status === "approved";
+          });
+
+          allMembers = allMembers.concat(approvedMembers);
           hasMore = pageResult.pageable?.hasNext || false;
           currentPage++;
 
@@ -629,14 +637,16 @@ class UserService {
         } catch (error) {
           if (error.code === 9 || error.message.includes("FAILED_PRECONDITION") || error.message.includes("AggregateQuery")) {
             const fallbackResult = await tempService.getCollectionGroupWithoutCount("members", {
-              where: [
-                {field: "userId", operator: "==", value: userId}
-              ],
+              where: memberWhereConditions,
               size: 1000,
               orderBy: "joinedAt",
               orderDirection: "desc"
             });
-            allMembers = fallbackResult.content || [];
+            const approvedMembers = (fallbackResult.content || []).filter((member) => {
+              const status = typeof member.status === "string" ? member.status.trim().toLowerCase() : null;
+              return status === "approved";
+            });
+            allMembers = approvedMembers;
             hasMore = false;
           } else {
             throw error;
