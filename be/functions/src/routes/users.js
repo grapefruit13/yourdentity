@@ -912,6 +912,98 @@ router.get("/me/participating-communities", authGuard, userController.getMyParti
 
 /**
  * @swagger
+ * /users/me/completed-communities:
+ *   get:
+ *     summary: 내가 완료한 커뮤니티 조회
+ *     description: 로그인한 사용자가 종료된 커뮤니티를 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 완료한 커뮤니티 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     routine:
+ *                       type: object
+ *                       description: 한끗 루틴 그룹
+ *                       properties:
+ *                         label:
+ *                           type: string
+ *                           example: "한끗 루틴"
+ *                         items:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "CP:G7C66H69GK"
+ *                               name:
+ *                                 type: string
+ *                                 example: "15일 동안 음악 일기 쓰기"
+ *                     gathering:
+ *                       type: object
+ *                       description: 월간 소모임 그룹
+ *                       properties:
+ *                         label:
+ *                           type: string
+ *                           example: "월간 소모임"
+ *                         items:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "CP:VYTTZW33IH"
+ *                               name:
+ *                                 type: string
+ *                                 example: "하루 한조각, 일상 속 퍼즐 찾기"
+ *                     tmi:
+ *                       type: object
+ *                       description: TMI 그룹
+ *                       properties:
+ *                         label:
+ *                           type: string
+ *                           example: "TMI"
+ *                         items:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "CP:I4U3J7TM07"
+ *                               name:
+ *                                 type: string
+ *                                 example: "TMI 자아탐색"
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/me/completed-communities", authGuard, userController.getMyCompletedCommunities);
+
+/**
+ * @swagger
  * /users/nickname-availability:
  *   get:
  *     summary: 닉네임 가용성 확인

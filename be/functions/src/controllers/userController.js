@@ -331,6 +331,19 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 내가 완료한 커뮤니티 조회 API
+   */
+  async getMyCompletedCommunities(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const result = await userService.getMyCompletedCommunities(uid);
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();
