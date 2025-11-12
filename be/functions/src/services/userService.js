@@ -59,14 +59,7 @@ class UserService {
       throw e;
     }
 
-    // 4) 닉네임 설정
-    const nickname = update.nickname;
-    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
-
-    if (setNickname) {
-      await this.nicknameService.setNickname(nickname, uid, existing.nickname);
-    }
-
+    // 4) 프로필 이미지 검증
     let newProfileImagePath = null;
     let newProfileImageUrl = update.profileImageUrl !== undefined ? update.profileImageUrl : null;
     let previousProfilePath = existing.profileImagePath || null;
@@ -110,7 +103,15 @@ class UserService {
       }
     }
 
-    // 5) 온보딩 완료 처리
+    // 5) 닉네임 설정 (이미지 검증 성공 후 저장)
+    const nickname = update.nickname;
+    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
+
+    if (setNickname) {
+      await this.nicknameService.setNickname(nickname, uid, existing.nickname);
+    }
+
+    // 6) 온보딩 완료 처리
     const userUpdate = {
       ...update,
       lastUpdatedAt: FieldValue.serverTimestamp(),
