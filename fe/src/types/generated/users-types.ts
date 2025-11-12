@@ -222,6 +222,30 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
   };
 };
 
+export type TGETUsersMeCompletedCommunitiesRes = {
+  routine?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+    }[];
+  };
+  gathering?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+    }[];
+  };
+  tmi?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+    }[];
+  };
+};
+
 export interface TGETUsersNicknameAvailabilityReq {
   nickname: string;
 }

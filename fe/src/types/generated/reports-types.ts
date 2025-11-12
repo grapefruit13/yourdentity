@@ -10,7 +10,6 @@ export interface TPOSTReportContentReq {
     targetType: "post" | "comment";
     targetId: string;
     targetUserId: string;
-    reporterId: string;
     communityId?: string;
     reportReason: string;
   };

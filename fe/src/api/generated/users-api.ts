@@ -56,6 +56,12 @@ export const getUsersMeParticipatingCommunities = () => {
   );
 };
 
+export const getUsersMeCompletedCommunities = () => {
+  return get<Types.TGETUsersMeCompletedCommunitiesRes>(
+    `/users/me/completed-communities`
+  );
+};
+
 export const getUsersNicknameAvailability = (
   request: Types.TGETUsersNicknameAvailabilityReq
 ) => {
