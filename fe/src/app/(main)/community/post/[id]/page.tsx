@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { User } from "lucide-react";
 import ShareModal from "@/components/community/ShareModal";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
@@ -293,8 +294,15 @@ const PostDetailPage = () => {
         </Typography>
 
         {/* 프로필 섹션 */}
-        <div className="flex items-center border-b border-b-gray-200 pb-5">
-          <div className="mr-2 h-10 w-10 rounded-full bg-gray-300"></div>
+        <div className="mb-6 flex items-center">
+          {post?.profileImageUrl ? (
+            <img src={post?.profileImageUrl} alt={post?.author} className="" />
+          ) : (
+            <User
+              className="text-main-600 h-8 w-8 rounded-full"
+              strokeWidth={1.5}
+            />
+          )}
           <div>
             <div className="flex items-center gap-1">
               <Typography
