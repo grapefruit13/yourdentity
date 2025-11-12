@@ -41,7 +41,6 @@ const RoutineDetailPage = () => {
   const faqSectionRef = useRef<HTMLDivElement>(null);
 
   // TopBar 제어
-  const setTitle = useTopBarStore((state) => state.setTitle);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
 
@@ -107,7 +106,6 @@ const RoutineDetailPage = () => {
 
     const programTitle =
       programDetailData.title || programDetailData.programName || "한끗루틴";
-    setTitle(`${programTitle}`);
 
     // 공유하기 버튼
     const shareButton = (
@@ -130,7 +128,7 @@ const RoutineDetailPage = () => {
     return () => {
       resetTopBar();
     };
-  }, [programDetailData, setTitle, setRightSlot, resetTopBar, handleShare]);
+  }, [programDetailData, setRightSlot, resetTopBar, handleShare]);
 
   // 또는: 윗 컨텐츠 표시 후 일정 시간 지연 후 로드
   useEffect(() => {
