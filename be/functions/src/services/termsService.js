@@ -86,9 +86,9 @@ class TermsService {
   }
 
   /**
-   * 카카오 약관 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
+   * 카카오 약관 API 호출 (타임아웃 설정, 실패 시 에러 throw)
    * @param {string} accessToken - 카카오 액세스 토큰
-   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
+   * @param {number} maxRetries - 시도 횟수 (기본 1회, 재시도 없음)
    * @private
    */
   async _fetchKakaoTerms(accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {

@@ -245,10 +245,10 @@ class UserService {
   }
 
   /**
-   * 카카오 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
+   * 카카오 API 호출 (타임아웃 설정, 실패 시 에러 throw)
    * @param {string} url - API URL
    * @param {string} accessToken - 카카오 액세스 토큰
-   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
+   * @param {number} maxRetries - 시도 횟수 (기본 1회, 재시도 없음)
    * @private
    */
   async _fetchKakaoAPI(url, accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {
@@ -286,10 +286,22 @@ class UserService {
         picture: customClaims.kakaoPicture || "",
       };
     } else {
-      // 실제 환경: 카카오 API 호출 (타임아웃 + 재시도)
+      // 실제 환경: 카카오 API 호출 (타임아웃 설정, 프론트에서 재시도)
       const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
       const userinfoRes = await this._fetchKakaoAPI(userinfoUrl, accessToken);
       userinfoJson = await userinfoRes.json();
+      
+      // 카카오 API 응답 상세 로깅 (디버깅용)
+      console.log(`[UserService][syncKakaoProfile] 카카오 API 응답 필드 확인:`, {
+        hasName: !!userinfoJson.name,
+        hasGender: !!userinfoJson.gender,
+        hasBirthdate: !!userinfoJson.birthdate,
+        hasPhoneNumber: !!userinfoJson.phone_number,
+        hasPicture: !!userinfoJson.picture,
+        rawGender: userinfoJson.gender,
+        rawBirthdate: userinfoJson.birthdate,
+        phoneNumberLength: userinfoJson.phone_number?.length || 0,
+      });
     }
 
     const name = userinfoJson.name || "";
@@ -300,7 +312,22 @@ class UserService {
 
     // 기본 검증 (카카오 콘솔에서 필수 동의로 설정 가정)
     if (!genderRaw || !birthdateRaw || !phoneRaw) {
-      const e = new Error("카카오에서 필수 정보를 받아올 수 없습니다");
+      console.error(`[UserService][syncKakaoProfile] 필수 정보 누락 감지:`, {
+        uid,
+        missingFields: {
+          gender: !genderRaw,
+          birthdate: !birthdateRaw,
+          phoneNumber: !phoneRaw,
+        },
+        receivedData: {
+          name: !!name,
+          gender: genderRaw || "null",
+          birthdate: birthdateRaw || "null",
+          phoneNumber: phoneRaw || "null",
+          picture: !!profileImageUrl,
+        },
+      });
+      const e = new Error("카카오에서 필수 정보(성별, 생년월일, 전화번호)를 받아올 수 없습니다. 카카오 계정 설정에서 정보 제공 동의를 확인해주세요.");
       e.code = "REQUIRE_FIELDS_MISSING";
       throw e;
     }
@@ -333,14 +360,17 @@ class UserService {
     // 저장은 정규화된 국내형으로
     const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
-    // 2. 서비스 약관 동의 내역 조회 (실패해도 계속 진행)
+    // 2. 서비스 약관 동의 내역 조회
     console.log(`[UserService] 약관 동기화 호출`);
     try {
       await this.termsService.syncFromKakao(uid, accessToken);
       console.log(`[UserService] 약관 동기화 성공`);
     } catch (termsError) {
-      console.warn(`[UserService] 약관 동기화 실패 (기본값으로 계속 진행):`, termsError.message);
-      // 약관 동기화 실패해도 사용자 기본 정보는 저장
+      console.error(`[UserService] 약관 동기화 실패:`, termsError.message);
+      // 약관 동기화 실패 시 프론트에서 재시도하도록 에러 throw
+      const e = new Error("카카오 약관 정보를 받아올 수 없습니다. 잠시 후 다시 시도해주세요.");
+      e.code = "KAKAO_TERMS_SYNC_FAILED";
+      throw e;
     }
 
     // 3. Firestore 업데이트 준비
