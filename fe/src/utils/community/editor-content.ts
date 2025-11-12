@@ -1,5 +1,5 @@
 import { debug } from "@/utils/shared/debugger";
-import { elementToHtml } from "@/utils/shared/text-editor";
+import { elementToHtml, normalizeBrTags } from "@/utils/shared/text-editor";
 
 /**
  * content HTML의 a[data-file-id]를 응답 fileUrl로 교체하고 data 속성을 제거
@@ -35,7 +35,8 @@ export const replaceEditorFileHrefWithUploadedUrls = (
   container.childNodes.forEach((child) => {
     resultHtml += elementToHtml(child);
   });
-  return resultHtml;
+  // 불필요한 <br> 태그 제거
+  return normalizeBrTags(resultHtml);
 };
 
 /**
@@ -99,7 +100,8 @@ export const replaceEditorImageSrcWithUploadedUrls = (
   const remainingImages = tempCheck.querySelectorAll("img[data-client-id]");
   debug.log("교체 후 남은 data-client-id 이미지 개수:", remainingImages.length);
 
-  return resultHtml;
+  // 불필요한 <br> 태그 제거
+  return normalizeBrTags(resultHtml);
 };
 
 /**
