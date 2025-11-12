@@ -2,7 +2,38 @@ const {
   KAKAO_API_TIMEOUT,
   KAKAO_API_RETRY_DELAY,
   KAKAO_API_MAX_RETRIES,
+  HTTP_STATUS_UNAUTHORIZED,
+  HTTP_STATUS_FORBIDDEN,
+  ERROR_CODE_KAKAO_API_FAILED,
+  ERROR_CODE_KAKAO_API_TIMEOUT,
 } = require("../constants/kakaoConstants");
+
+/**
+ * URL에서 민감한 쿼리 파라미터 값을 마스킹
+ * @param {string} urlString - 원본 URL
+ * @return {string} 마스킹된 URL
+ */
+function sanitizeUrl(urlString) {
+  try {
+    const urlObj = new URL(urlString);
+    const sanitized = urlObj.origin + urlObj.pathname;
+    
+    // 쿼리 파라미터가 있으면 키는 유지하되 값은 마스킹
+    if (urlObj.search) {
+      const params = new URLSearchParams(urlObj.search);
+      const maskedParams = [];
+      for (const [key] of params) {
+        maskedParams.push(`${key}=****`);
+      }
+      return sanitized + (maskedParams.length > 0 ? "?" + maskedParams.join("&") : "");
+    }
+    
+    return sanitized;
+  } catch (error) {
+    // URL 파싱 실패 시 안전하게 처리
+    return "[invalid URL]";
+  }
+}
 
 /**
  * 카카오 API 호출 헬퍼 (타임아웃, 재시도, 에러 핸들링)
@@ -26,6 +57,9 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
     serviceName = "KakaoAPI",
   } = options;
 
+  // URL 민감 정보 마스킹 (로그용)
+  const sanitizedUrl = sanitizeUrl(url);
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
     let timeoutId = null;
@@ -34,7 +68,7 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
       // 타임아웃 설정
       timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      console.log(`[${serviceName}] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${url}`);
+      console.log(`[${serviceName}] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${sanitizedUrl}`);
 
       // fetch 호출
       const response = await fetch(url, {
@@ -52,7 +86,7 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
       }
 
       // 401/403은 토큰 활성화 지연 가능성 → 재시도
-      if ((response.status === 401 || response.status === 403) && attempt < maxRetries) {
+      if ((response.status === HTTP_STATUS_UNAUTHORIZED || response.status === HTTP_STATUS_FORBIDDEN) && attempt < maxRetries) {
         console.warn(`[${serviceName}] 카카오 API ${response.status}, ${retryDelay}ms 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         continue;
@@ -60,10 +94,11 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
 
       // 그 외 에러 처리
       if (throwOnError) {
-        const text = await response.text();
-        console.error(`[${serviceName}] 카카오 API 실패: ${response.status}`, text);
+        // 응답 body 길이만 로깅 (민감 정보 노출 방지)
+        const contentLength = response.headers.get("content-length") || "unknown";
+        console.error(`[${serviceName}] 카카오 API 실패: ${response.status} (response size: ${contentLength} bytes)`);
         const e = new Error(`카카오 API 호출 실패 (${response.status})`);
-        e.code = "KAKAO_API_FAILED";
+        e.code = ERROR_CODE_KAKAO_API_FAILED;
         throw e;
       } else {
         console.warn(`[${serviceName}] 카카오 API 실패: ${response.status} (null 반환)`);
@@ -81,7 +116,7 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
         
         if (throwOnError) {
           const e = new Error(`카카오 서버 응답 시간 초과 (${timeout}ms)`);
-          e.code = "KAKAO_API_TIMEOUT";
+          e.code = ERROR_CODE_KAKAO_API_TIMEOUT;
           throw e;
         } else {
           console.warn(`[${serviceName}] 카카오 API 타임아웃 (모든 재시도 소진, null 반환)`);
@@ -104,7 +139,7 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
       if (throwOnError) {
         console.error(`[${serviceName}] 카카오 API 호출 실패 (모든 재시도 소진):`, fetchError);
         const e = new Error("카카오 API 호출 실패: 네트워크 오류");
-        e.code = "KAKAO_API_FAILED";
+        e.code = ERROR_CODE_KAKAO_API_FAILED;
         throw e;
       } else {
         console.warn(`[${serviceName}] 카카오 API 호출 실패 (null 반환):`, fetchError.message);
