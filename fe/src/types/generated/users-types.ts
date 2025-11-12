@@ -204,6 +204,7 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
     items?: {
       id?: string;
       name?: string;
+      status?: string;
     }[];
   };
   gathering?: {
@@ -211,6 +212,7 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
     items?: {
       id?: string;
       name?: string;
+      status?: string;
     }[];
   };
   tmi?: {
@@ -218,6 +220,7 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
     items?: {
       id?: string;
       name?: string;
+      status?: string;
     }[];
   };
 };
@@ -228,6 +231,7 @@ export type TGETUsersMeCompletedCommunitiesRes = {
     items?: {
       id?: string;
       name?: string;
+      status?: string;
     }[];
   };
   gathering?: {
@@ -235,6 +239,7 @@ export type TGETUsersMeCompletedCommunitiesRes = {
     items?: {
       id?: string;
       name?: string;
+      status?: string;
     }[];
   };
   tmi?: {
@@ -242,6 +247,7 @@ export type TGETUsersMeCompletedCommunitiesRes = {
     items?: {
       id?: string;
       name?: string;
+      status?: string;
     }[];
   };
 };

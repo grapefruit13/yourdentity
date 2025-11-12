@@ -321,6 +321,7 @@ export interface CommunityPost {
   commentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
+  profileImageUrl?: string;
   communityId?: string;
   category?: string;
   scheduledDate?: string;
