@@ -16,6 +16,7 @@ import Modal from "@/components/shared/ui/modal";
 import {
   MAX_FILES,
   WRITE_MESSAGES,
+  ERROR_MESSAGES,
 } from "@/constants/community/_write-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
@@ -23,6 +24,7 @@ import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
+import { uploadFileQueue } from "@/utils/community/upload-utils";
 import { debug } from "@/utils/shared/debugger";
 import { extractTextFromHtml, elementToHtml } from "@/utils/shared/text-editor";
 
@@ -210,47 +212,6 @@ const WritePageContent = () => {
   // 첨부 리스트 별도 업로드는 제거(파일 큐를 통해서만 업로드)
 
   /**
-   * 파일 큐를 한 번에 업로드하고 clientId 매핑을 반환
-   */
-  const uploadQueuedFiles = async () => {
-    if (!fileQueue.length)
-      return {
-        byIdToPath: new Map<string, string>(),
-        byIdToUrl: new Map<string, string>(),
-      };
-
-    const formData = new FormData();
-    fileQueue.slice(0, MAX_FILES).forEach(({ clientId, file }) => {
-      const renamed = new File([file], `${clientId}__${file.name}`, {
-        type: file.type,
-      });
-      formData.append("file", renamed);
-    });
-
-    const res = await postFilesUploadMultiple(formData);
-
-    // API 응답 구조: res.data.files (res.data.data.files가 아님!)
-    const items = (res as any)?.data?.files ?? [];
-    const byIdToPath = new Map<string, string>();
-    const byIdToUrl = new Map<string, string>();
-    for (const item of items) {
-      const data = item?.data;
-      // path 또는 fileName이 없으면 건너뛰기
-      const filePath = data?.path ?? data?.fileName;
-      if (!item?.success || !filePath) continue;
-      const original = data.originalFileName ?? data.fileName ?? "";
-      const clientId = String(original).split("__")[0] || "";
-      if (clientId) {
-        byIdToPath.set(clientId, filePath);
-        // fileUrl이 없으면 path를 URL로 사용
-        const url = data.fileUrl || filePath;
-        if (url) byIdToUrl.set(clientId, url);
-      }
-    }
-    return { byIdToPath, byIdToUrl };
-  };
-
-  /**
    * 이미지 큐를 한 번에 업로드하고 clientId 매핑을 반환
    * @returns { byIdToPath, byIdToUrl, failedCount } - 실패한 이미지 개수 포함
    */
@@ -392,11 +353,29 @@ const WritePageContent = () => {
   /**
    * 파일 업로드 및 URL 교체
    * @param content - 콘텐츠 HTML
-   * @returns 업로드된 파일 경로와 URL이 교체된 콘텐츠
+   * @returns 업로드된 파일 경로와 URL이 교체된 콘텐츠, 실패 시 null
    */
-  const handleFileUpload = async (content: string) => {
-    const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
-      await uploadQueuedFiles();
+  const handleFileUpload = async (
+    content: string
+  ): Promise<{ filePaths: string[]; content: string } | null> => {
+    const queueToUse = fileQueue;
+
+    const {
+      byIdToPath: fileIdToPath,
+      byIdToUrl: fileIdToUrl,
+      failedCount: fileFailedCount,
+    } = await uploadFileQueue(queueToUse, "파일");
+
+    if (queueToUse.length > 0 && fileFailedCount > 0) {
+      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      return null;
+    }
+
+    if (queueToUse.length > 0 && fileIdToUrl.size === 0) {
+      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      return null;
+    }
+
     const uploadedFilePaths = Array.from(fileIdToPath.values());
     const contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
       content,
@@ -466,8 +445,8 @@ const WritePageContent = () => {
   const isHandledError = (error: unknown): boolean => {
     if (!(error instanceof Error)) return false;
     return (
-      error.message === "IMAGE_UPLOAD_FAILED" ||
-      error.message === "IMAGE_URL_REPLACE_FAILED"
+      error.message === ERROR_MESSAGES.IMAGE_UPLOAD_FAILED ||
+      error.message === ERROR_MESSAGES.IMAGE_URL_REPLACE_FAILED
     );
   };
 
@@ -515,8 +494,12 @@ const WritePageContent = () => {
       );
 
       // 3. 파일 업로드 및 URL 교체
-      const { filePaths, content: finalContent } =
-        await handleFileUpload(contentWithUrls);
+      const fileUploadResult = await handleFileUpload(contentWithUrls);
+      if (!fileUploadResult) {
+        // 파일 업로드 실패 시 alert는 이미 표시되었으므로 여기서 종료
+        return;
+      }
+      const { filePaths, content: finalContent } = fileUploadResult;
       uploadedFilePaths = filePaths;
 
       // 4. 게시글 등록

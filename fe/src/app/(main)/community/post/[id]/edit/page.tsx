@@ -298,13 +298,30 @@ const EditPageContent = () => {
    * 파일 업로드 및 URL 교체
    * @param content - 콘텐츠 HTML
    * @param currentFileQueue - 현재 fileQueue (클로저 문제 방지)
+   * @returns 업로드된 파일 경로와 URL이 교체된 콘텐츠, 실패 시 null
    */
   const handleFileUpload = async (
     content: string,
     currentFileQueue?: typeof fileQueue
-  ) => {
-    const { byIdToPath: fileIdToPath, byIdToUrl: fileIdToUrl } =
-      await uploadFileQueue(currentFileQueue ?? fileQueue, "파일");
+  ): Promise<{ filePaths: string[]; content: string } | null> => {
+    const queueToUse = currentFileQueue ?? fileQueue;
+
+    const {
+      byIdToPath: fileIdToPath,
+      byIdToUrl: fileIdToUrl,
+      failedCount: fileFailedCount,
+    } = await uploadFileQueue(queueToUse, "파일");
+
+    if (queueToUse.length > 0 && fileFailedCount > 0) {
+      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      return null;
+    }
+
+    if (queueToUse.length > 0 && fileIdToUrl.size === 0) {
+      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      return null;
+    }
+
     const uploadedFilePaths = Array.from(fileIdToPath.values());
     const contentWithUrls = replaceEditorFileHrefWithUploadedUrls(
       content,
@@ -488,10 +505,15 @@ const EditPageContent = () => {
       );
 
       // 3. 파일 업로드 및 URL 교체
-      const { filePaths, content: finalContent } = await handleFileUpload(
+      const fileUploadResult = await handleFileUpload(
         contentWithUrls,
         currentFileQueue
       );
+      if (!fileUploadResult) {
+        // 파일 업로드 실패 시 alert는 이미 표시되었으므로 여기서 종료
+        return;
+      }
+      const { filePaths, content: finalContent } = fileUploadResult;
       uploadedFilePaths = filePaths;
 
       // 4. 최종 content에서 현재 존재하는 이미지/파일 filePath 추출
