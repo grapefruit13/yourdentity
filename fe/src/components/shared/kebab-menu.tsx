@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Flag } from "lucide-react";
 import { useClickOutside } from "@/hooks/shared/useClickOutside";
 import useToggle from "@/hooks/shared/useToggle";
 import { cn } from "@/utils/shared/cn";
@@ -11,6 +11,7 @@ import { KebabButton } from "./ui/kebab-button";
 
 type KebabMenuProps = {
   onShare?: () => void;
+  onReport?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   className?: string;
@@ -24,6 +25,7 @@ type KebabMenuProps = {
  */
 const KebabMenu = ({
   onShare,
+  onReport,
   onEdit,
   onDelete,
   className,
@@ -77,6 +79,24 @@ const KebabMenu = ({
                 <path d="M16 6l-4-4-4 4" />
                 <path d="M12 2v13" />
               </svg>
+            </ButtonBase>
+          )}
+          {onReport && (
+            <ButtonBase
+              onClick={() => {
+                onReport();
+                close();
+              }}
+              className="flex w-full items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50"
+            >
+              <Typography
+                font="noto"
+                variant="body1M"
+                className="text-gray-700"
+              >
+                신고
+              </Typography>
+              <Flag size={16} className="text-gray-700" />
             </ButtonBase>
           )}
           {onEdit && (

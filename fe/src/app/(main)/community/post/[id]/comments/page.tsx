@@ -136,22 +136,16 @@ const CommentsPage = () => {
     if (!commentInput.trim() || !communityId || !postId) return;
 
     try {
-      // 답글 작성 시 parentId 결정
-      let parentId: string | undefined = replyingTo?.commentId;
+      let parentId: string | undefined;
 
-      // 답글에 대한 답글인 경우, 원댓글의 id를 parentId로 사용
-      if (replyingTo?.isReply && replyingTo?.commentId) {
-        // 답글에 대한 답글: 모든 답글은 원댓글을 parentId로 가져야 함
-        // 답글을 찾아서 그 원댓글의 id를 parentId로 사용
-        for (const comment of comments) {
-          const reply = comment.replies?.find(
+      if (replyingTo?.isReply && replyingTo.commentId) {
+        // 답글에 대한 답글: 원댓글의 id를 parentId로 사용
+        const parentComment = comments.find((comment) =>
+          comment.replies?.some(
             (r) => (r.id || r.commentId) === replyingTo.commentId
-          );
-          if (reply) {
-            parentId = comment.id; // 원댓글의 id 사용
-            break;
-          }
-        }
+          )
+        );
+        parentId = parentComment?.id;
       } else if (replyingTo?.commentId) {
         // 원댓글에 대한 답글
         parentId = replyingTo.commentId;
@@ -172,8 +166,8 @@ const CommentsPage = () => {
 
   // 원댓글에 답글 작성 시작 (하단 입력창에 포커스만)
   const handleStartReplyToRoot = (commentId: string, author: string) => {
-    setReplyingTo({ commentId, author, isReply: false });
     setEditingCommentId(null);
+    setReplyingTo({ commentId, author, isReply: false });
     setCommentInput("");
     // 하단 입력창에 포커스
     setTimeout(() => {
@@ -183,27 +177,30 @@ const CommentsPage = () => {
 
   // 답글에 답글 작성 시작 (해당 답글 아래에 입력창 표시)
   const handleStartReplyToReply = (commentId: string, author: string) => {
-    setReplyingTo({ commentId, author, isReply: true });
     setEditingCommentId(null);
+    setReplyingTo({ commentId, author, isReply: true });
     setCommentInput("");
   };
 
   // 답글 작성 취소
   const handleCancelReply = () => {
     setReplyingTo(null);
+    setCommentInput("");
   };
 
   // 댓글 수정 시작
   const handleStartEdit = (commentId: string, content: string) => {
+    setReplyingTo(null);
+    setCommentInput("");
     setEditingCommentId(commentId);
     setEditingContent(content);
-    setReplyingTo(null);
   };
 
   // 댓글 수정 취소
   const handleCancelEdit = () => {
     setEditingCommentId(null);
     setEditingContent("");
+    setReplyingTo(null);
   };
 
   // 댓글 수정 제출
@@ -329,6 +326,10 @@ const CommentsPage = () => {
                   handleStartEdit(commentId, content)
                 }
                 onDelete={(commentId) => handleDeleteClick(commentId)}
+                onReport={(commentId) => {
+                  // TODO: 신고 기능 구현
+                  console.log("신고:", commentId);
+                }}
                 editingCommentId={editingCommentId}
                 editingContent={editingContent}
                 onEditContentChange={setEditingContent}
@@ -338,10 +339,10 @@ const CommentsPage = () => {
                 onCancelReply={handleCancelReply}
                 onCommentSubmit={handleCommentSubmit}
                 commentInput={
-                  // 원댓글에 대한 답글인 경우 (isReply가 false이거나 undefined)
+                  // 원댓글에 대한 답글인 경우
                   (replyingTo?.commentId === comment.id &&
                     !replyingTo?.isReply) ||
-                  // 답글에 대한 답글인 경우 (해당 댓글의 답글 목록에 있는 경우)
+                  // 답글에 대한 답글인 경우
                   (replyingTo?.isReply &&
                     comment.replies?.some(
                       (r) => (r.id || r.commentId) === replyingTo.commentId
@@ -349,19 +350,7 @@ const CommentsPage = () => {
                     ? commentInput
                     : ""
                 }
-                onCommentInputChange={(value) => {
-                  // 원댓글에 대한 답글이거나, 답글에 대한 답글인 경우에만 입력값 업데이트
-                  if (
-                    (replyingTo?.commentId === comment.id &&
-                      !replyingTo?.isReply) ||
-                    (replyingTo?.isReply &&
-                      comment.replies?.some(
-                        (r) => (r.id || r.commentId) === replyingTo.commentId
-                      ))
-                  ) {
-                    setCommentInput(value);
-                  }
-                }}
+                onCommentInputChange={setCommentInput}
               />
             ))}
           </div>
@@ -376,23 +365,36 @@ const CommentsPage = () => {
         {/* 하단 댓글 작성칸 - 원댓글에 대한 답글일 때만 표시 (답글에 대한 답글일 때는 숨김) */}
         {!editingCommentId && (!replyingTo || !replyingTo.isReply) && (
           <div className="fixed right-0 bottom-20 left-0 z-30 border-t border-gray-100 bg-white px-4 py-3">
-            <div className="mb-2 flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-gray-300"></div>
-              <Typography
-                font="noto"
-                variant="body2M"
-                className="text-gray-800"
-              >
-                {currentUserNickname || "익명"}
-              </Typography>
-              {replyingTo && !replyingTo.isReply && (
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-gray-300"></div>
                 <Typography
                   font="noto"
-                  variant="caption1R"
-                  className="text-gray-500"
+                  variant="body2M"
+                  className="text-gray-800"
                 >
-                  @ {replyingTo.author}에게 답글
+                  {currentUserNickname || "익명"}
                 </Typography>
+                {replyingTo && !replyingTo.isReply && (
+                  <Typography
+                    font="noto"
+                    variant="caption1R"
+                    className="text-gray-500"
+                  >
+                    @ {replyingTo.author}에게 답글
+                  </Typography>
+                )}
+              </div>
+              {replyingTo && !replyingTo.isReply && (
+                <button
+                  type="button"
+                  onClick={handleCancelReply}
+                  className="text-sm text-gray-600 hover:text-gray-800"
+                >
+                  <Typography font="noto" variant="body2R">
+                    취소
+                  </Typography>
+                </button>
               )}
             </div>
             <form onSubmit={handleCommentSubmit} className="relative">
@@ -413,17 +415,6 @@ const CommentsPage = () => {
                 }
               />
               <div className="absolute right-2 bottom-3 flex items-center gap-2">
-                {replyingTo && !replyingTo.isReply && (
-                  <button
-                    type="button"
-                    onClick={handleCancelReply}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    <Typography font="noto" variant="body2R">
-                      취소
-                    </Typography>
-                  </button>
-                )}
                 <button
                   type="submit"
                   disabled={!commentInput.trim()}
