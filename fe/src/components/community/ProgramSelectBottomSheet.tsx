@@ -5,8 +5,7 @@ import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import Icon from "@/components/shared/ui/icon";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
-// TEMP: 실제 데이터 생기면 주석 해제
-// import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { cn } from "@/utils/shared/cn";
 
 interface ProgramSelectBottomSheetProps {
@@ -28,28 +27,9 @@ const ProgramSelectBottomSheet = ({
   const router = useRouter();
 
   // 내가 참여중인 커뮤니티 조회
-  //   const { data: communitiesData } =
-  //     useGetUsersMeParticipatingCommunities({
-  //       enabled: isOpen, // 바텀시트가 열렸을 때만 조회
-  //     });
-
-  const communitiesData = {
-    routine: {
-      label: "한끗 루틴",
-      items: [{ id: "CP:I4U3J7TMO7", name: "플래너 작성하기" }],
-    },
-    gathering: {
-      label: "월간 소모임",
-      items: [{ id: "CP:G7C66H69GK", name: "독서 모임" }],
-    },
-    tmi: {
-      label: "TMI",
-      items: [
-        { id: "CP:VYTTZW33IH", name: "TMI 프로젝트 2" },
-        { id: "CP:U1QFE0UYF9", name: "TMI 프로젝트 1" },
-      ],
-    },
-  };
+  const { data: communitiesData } = useGetUsersMeParticipatingCommunities({
+    enabled: isOpen, // 바텀시트가 열렸을 때만 조회
+  });
 
   // 실제 데이터가 있으면 사용, 없으면 TEMP 목 데이터 사용
 
@@ -75,22 +55,29 @@ const ProgramSelectBottomSheet = ({
   const handleProgramSelect = (
     programId: string,
     programName: string,
-    category: string
+    category: string,
+    isReview: boolean = false
   ) => {
     onClose();
-    // 쿼리 파라미터로 프로그램 정보 전달
+    // 쿼리 파라미터로 프로그램 정보 전달 (isReview: true=후기, false=인증)
     router.push(
-      `/community/write?communityId=${programId}&communityName=${encodeURIComponent(programName)}&category=${category}`
+      `/community/write?communityId=${programId}&communityName=${encodeURIComponent(programName)}&category=${category}&isReview=${isReview}`
     );
   };
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="flex flex-col gap-4">
+        {/* TODO: 완료한 프로그램 후기작성 섹션 추가 필요 */}
         {/* 제목 */}
-        <Typography font="noto" variant="heading3B" className="text-gray-900">
-          내가 참여중인 프로그램
-        </Typography>
+        <div className="flex gap-1">
+          <Typography font="noto" variant="heading3B" className="text-gray-900">
+            참여중인 프로그램
+          </Typography>
+          <Typography font="noto" variant="heading3B" className="text-gray-400">
+            인증
+          </Typography>
+        </div>
 
         {/* 프로그램 목록 - 타입별 그룹화 */}
         {programGroups.length > 0 && (
@@ -116,7 +103,8 @@ const ProgramSelectBottomSheet = ({
                           handleProgramSelect(
                             program.id,
                             program.name,
-                            group.label
+                            group.label,
+                            false // 인증글
                           );
                         }
                       }}

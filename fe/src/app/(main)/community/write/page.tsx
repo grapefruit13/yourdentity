@@ -127,6 +127,7 @@ const WritePageContent = () => {
   const selectedCommunityName = searchParams.get("communityName") || "";
   const selectedCategory =
     searchParams.get("category") || "선택된 카테고리 없음";
+  const isReview = searchParams.get("isReview") === "true";
 
   // 선택된 커뮤니티 ID가 있으면 사용, 없으면 기본값 사용
   const COMMUNITY_ID = selectedCommunityId;
@@ -140,6 +141,7 @@ const WritePageContent = () => {
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
   const allowLeaveCountRef = useRef(0);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+  const setTitle = useTopBarStore((state) => state.setTitle);
 
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
   const [fileQueue, setFileQueue] = useState<
@@ -555,9 +557,13 @@ const WritePageContent = () => {
   const isSubmitDisabled = isPending || !hasTitle || !hasContent;
 
   /**
-   * 화면 렌더 시 topbar에 완료(게시글 등록)버튼 추가
+   * 화면 렌더 시 topbar 타이틀 및 완료 버튼 설정
    */
   useEffect(() => {
+    // 탑바 타이틀 설정 (인증글/후기글 구분)
+    setTitle(isReview ? "프로그램 후기 작성" : "프로그램 인증");
+
+    // 탑바 완료 버튼 설정
     setRightSlot(
       <ButtonBase
         type="submit"
@@ -570,7 +576,14 @@ const WritePageContent = () => {
         </Typography>
       </ButtonBase>
     );
-  }, [setRightSlot, isSubmitDisabled, handleSubmit, onSubmit]);
+  }, [
+    setTitle,
+    setRightSlot,
+    isSubmitDisabled,
+    handleSubmit,
+    onSubmit,
+    isReview,
+  ]);
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {
@@ -674,46 +687,53 @@ const WritePageContent = () => {
             </div>
           </div>
         )}
-        {/* 인증방법 */}
-        <div className="border-main-300 bg-main-50 flex flex-col rounded-lg border px-5 py-4">
-          <div className="flex items-center justify-between">
-            <Typography font="noto" variant="label1M" className="text-gray-800">
-              인증 방법
-            </Typography>
-
-            <ButtonBase
-              className="size-8"
-              onClick={() => setIsAuthGuideOpen((prev) => !prev)}
-              aria-expanded={isAuthGuideOpen}
-              aria-controls="auth-guide-content"
-            >
-              {isAuthGuideOpen ? (
-                <ChevronUp size={16} className="text-gray-800" />
-              ) : (
-                <ChevronDown size={16} className="text-gray-800" />
-              )}
-            </ButtonBase>
-          </div>
-          {isAuthGuideOpen && (
-            <p
-              id="auth-guide-content"
-              className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
-            >
-              1. 인증 글 제목 예시 : 9/17 [아침] 정은 인증 <br />
-              &nbsp;날짜 / [아침,점심,저녁] / 닉네임 <br />
-              2. 9월 한끗루틴은 아침, 점심, 저녁 총 세 번의 루틴을 인증하기
-              때문에&nbsp;
-              <Typography font="noto" variant="body3B">
-                태그
+        {/* 인증방법 - 인증글일 때만 표시 */}
+        {!isReview && (
+          <div className="border-main-300 bg-main-50 flex flex-col rounded-lg border px-5 py-4">
+            <div className="flex items-center justify-between">
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-800"
+              >
+                인증 방법
               </Typography>
-              를 꼭 걸어주세요!
-              <br />
-              3. 모든 루틴 인증글에는 타임스탬프(날짜, 시간 포함) 사진이
-              필수입니다. <br />
-              4. 루틴 인증 소감, 이야기도 꼭 남겨주세요!
-            </p>
-          )}
-        </div>
+
+              <ButtonBase
+                className="size-8"
+                onClick={() => setIsAuthGuideOpen((prev) => !prev)}
+                aria-expanded={isAuthGuideOpen}
+                aria-controls="auth-guide-content"
+              >
+                {isAuthGuideOpen ? (
+                  <ChevronUp size={16} className="text-gray-800" />
+                ) : (
+                  <ChevronDown size={16} className="text-gray-800" />
+                )}
+              </ButtonBase>
+            </div>
+            {isAuthGuideOpen && (
+              // TODO: 인증 가이드 데이터 노션에서 받아와 활용하도록 수정 @grapefruit
+              <p
+                id="auth-guide-content"
+                className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
+              >
+                1. 인증 글 제목 예시 : 9/17 [아침] 정은 인증 <br />
+                &nbsp;날짜 / [아침,점심,저녁] / 닉네임 <br />
+                2. 9월 한끗루틴은 아침, 점심, 저녁 총 세 번의 루틴을 인증하기
+                때문에&nbsp;
+                <Typography font="noto" variant="body3B">
+                  태그
+                </Typography>
+                를 꼭 걸어주세요!
+                <br />
+                3. 모든 루틴 인증글에는 타임스탬프(날짜, 시간 포함) 사진이
+                필수입니다. <br />
+                4. 루틴 인증 소감, 이야기도 꼭 남겨주세요!
+              </p>
+            )}
+          </div>
+        )}
       </div>
       <TextEditor
         onImageUpload={registerImage}
