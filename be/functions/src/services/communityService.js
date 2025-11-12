@@ -1161,6 +1161,20 @@ class CommunityService {
       
       const isAuthor = Boolean(viewerId && viewerId === authorId);
 
+      // 작성자 프로필 이미지 조회
+      let profileImageUrl = null;
+      if (authorId) {
+        try {
+          const userService = new FirestoreService("users");
+          const author = await userService.getById(authorId);
+          if (author && author.profileImageUrl) {
+            profileImageUrl = author.profileImageUrl;
+          }
+        } catch (error) {
+          console.warn("[COMMUNITY] 작성자 프로필 이미지 조회 실패:", error.message);
+        }
+      }
+
       const response = {
         ...postWithoutAuthorId,
         programType: resolvedProgramType,
@@ -1177,6 +1191,7 @@ class CommunityService {
           name: community.name,
         } : null,
         isAuthor,
+        profileImageUrl,
       };
 
       if (viewerId) {
