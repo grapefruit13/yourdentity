@@ -43,7 +43,7 @@ const KebabMenu = ({
       {isOpen && (
         <div
           className={cn(
-            "absolute top-9 z-[60] w-36 rounded-lg border border-gray-200 bg-white p-1 shadow-lg",
+            "absolute top-7 z-[60] w-36 rounded-lg border border-gray-200 bg-white p-1 shadow-lg",
             align === "right" ? "right-0" : "left-0"
           )}
         >
@@ -73,7 +73,7 @@ const KebabMenu = ({
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-gray-700"
+                className="text-gray-950"
               >
                 <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
                 <path d="M16 6l-4-4-4 4" />
