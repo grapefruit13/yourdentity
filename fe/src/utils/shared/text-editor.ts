@@ -111,6 +111,219 @@ export const escapeHtml = (text: string): string => {
 };
 
 /**
+ * 블록 요소 태그 목록
+ */
+const BLOCK_ELEMENTS = [
+  "div",
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "pre",
+] as const;
+
+/**
+ * 요소가 블록 요소인지 확인
+ * @param element - 확인할 요소
+ * @returns 블록 요소 여부
+ */
+const isBlockElement = (element: HTMLElement): boolean => {
+  const tagName = element.tagName.toLowerCase();
+  return (
+    BLOCK_ELEMENTS.includes(tagName as (typeof BLOCK_ELEMENTS)[number]) ||
+    tagName === "img" ||
+    element.querySelector("img") !== null
+  );
+};
+
+/**
+ * 요소가 빈 블록 요소인지 확인
+ * @param element - 확인할 요소
+ * @param blockElements - 블록 요소 태그 목록
+ * @returns 빈 블록 요소 여부
+ */
+const isEmptyBlockElement = (
+  element: HTMLElement,
+  blockElements: readonly string[]
+): boolean => {
+  const hasText = (element.textContent || "").trim().length > 0;
+  const hasImages = element.querySelector("img") !== null;
+  const hasAttachments = element.querySelector("[data-attachment]") !== null;
+  const hasBlockChildren = Array.from(element.children).some((child) =>
+    blockElements.includes(child.tagName.toLowerCase())
+  );
+  const hasOnlyBr = Array.from(element.childNodes).every(
+    (node) =>
+      (node.nodeType === Node.TEXT_NODE &&
+        (node.textContent || "").trim() === "") ||
+      (node.nodeType === Node.ELEMENT_NODE &&
+        (node as HTMLElement).tagName.toLowerCase() === "br")
+  );
+
+  return (
+    !hasText &&
+    !hasImages &&
+    !hasAttachments &&
+    !hasBlockChildren &&
+    (hasOnlyBr || element.children.length === 0)
+  );
+};
+
+/**
+ * 빈 블록 요소 제거
+ * @param container - HTML 컨테이너 요소
+ */
+const removeEmptyBlockElements = (container: HTMLElement): void => {
+  const blockElements = Array.from(BLOCK_ELEMENTS);
+  let hasChanges = true;
+
+  // 빈 블록 요소가 없을 때까지 반복 제거
+  while (hasChanges) {
+    hasChanges = false;
+    blockElements.forEach((tagName) => {
+      const elements = Array.from(
+        container.querySelectorAll(tagName)
+      ) as HTMLElement[];
+      elements.reverse().forEach((el) => {
+        if (isEmptyBlockElement(el, blockElements)) {
+          const parent = el.parentElement;
+
+          // 최상위 레벨의 빈 블록 요소는 그냥 제거
+          if (parent === container) {
+            el.remove();
+            hasChanges = true;
+          } else if (parent) {
+            // 중첩된 빈 블록 요소는 자식 요소들을 부모로 이동 (unwrap)
+            while (el.firstChild) {
+              parent.insertBefore(el.firstChild, el);
+            }
+            el.remove();
+            hasChanges = true;
+          }
+        }
+      });
+    });
+  }
+};
+
+/**
+ * 불필요한 <br> 태그인지 확인
+ * @param br - 확인할 <br> 요소
+ * @returns 불필요한 <br> 태그 여부
+ */
+const isUnnecessaryBr = (br: HTMLBRElement): boolean => {
+  const parent = br.parentElement;
+  if (!parent) return false;
+
+  const prevSibling = br.previousSibling;
+  const nextSibling = br.nextSibling;
+
+  // 이전 형제가 <br>이면 제거 (연속된 <br> 통합)
+  if (prevSibling && prevSibling.nodeType === Node.ELEMENT_NODE) {
+    const prevEl = prevSibling as HTMLElement;
+    if (prevEl.tagName.toLowerCase() === "br") {
+      return true;
+    }
+  }
+
+  // 다음 형제가 <br>이면 제거 (연속된 <br> 통합)
+  if (nextSibling && nextSibling.nodeType === Node.ELEMENT_NODE) {
+    const nextEl = nextSibling as HTMLElement;
+    if (nextEl.tagName.toLowerCase() === "br") {
+      return true;
+    }
+  }
+
+  // 블록 요소 앞의 <br> 제거
+  if (nextSibling && nextSibling.nodeType === Node.ELEMENT_NODE) {
+    const nextEl = nextSibling as HTMLElement;
+    if (isBlockElement(nextEl)) {
+      return true;
+    }
+  }
+
+  // 블록 요소 뒤의 <br> 제거
+  if (prevSibling && prevSibling.nodeType === Node.ELEMENT_NODE) {
+    const prevEl = prevSibling as HTMLElement;
+    if (isBlockElement(prevEl)) {
+      return true;
+    }
+  }
+
+  // 부모가 블록 요소이고 <br>이 유일한 자식이거나 텍스트 노드만 있는 경우 제거
+  const parentTagName = parent.tagName.toLowerCase();
+  const isParentBlock = BLOCK_ELEMENTS.includes(
+    parentTagName as (typeof BLOCK_ELEMENTS)[number]
+  );
+  if (isParentBlock) {
+    const hasOnlyBrAndText = Array.from(parent.childNodes).every(
+      (node) =>
+        (node.nodeType === Node.TEXT_NODE &&
+          (node.textContent || "").trim() === "") ||
+        (node.nodeType === Node.ELEMENT_NODE &&
+          (node as HTMLElement).tagName.toLowerCase() === "br")
+    );
+    if (hasOnlyBrAndText) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * 불필요한 <br> 태그 제거
+ * @param container - HTML 컨테이너 요소
+ */
+const removeUnnecessaryBrTags = (container: HTMLElement): void => {
+  const brElements = Array.from(container.querySelectorAll("br"));
+
+  // 불필요한 <br> 태그 제거 (역순으로 제거하여 DOM 변경 시 인덱스 문제 방지)
+  brElements.reverse().forEach((br) => {
+    if (isUnnecessaryBr(br)) {
+      br.remove();
+    }
+  });
+};
+
+/**
+ * HTML에서 불필요한 <br> 태그 및 빈 블록 요소 제거
+ * - contentEditable에서 브라우저가 자동으로 추가한 <br> 태그 제거
+ * - 연속된 <br> 태그를 하나로 통합
+ * - 블록 요소 앞뒤의 불필요한 <br> 제거
+ * - 빈 블록 요소 (<div></div>, <p></p> 등) 제거
+ * @param html - 정규화할 HTML 문자열
+ * @returns 정규화된 HTML 문자열
+ */
+export const normalizeBrTags = (html: string): string => {
+  if (!html) return html;
+
+  // 임시 컨테이너에 HTML 파싱
+  const container = document.createElement("div");
+  container.innerHTML = html;
+
+  // 1. 빈 블록 요소 제거 (먼저 처리)
+  removeEmptyBlockElements(container);
+
+  // 2. 불필요한 <br> 태그 제거
+  removeUnnecessaryBrTags(container);
+
+  // 정규화된 HTML 반환
+  let resultHtml = "";
+  container.childNodes.forEach((child) => {
+    resultHtml += elementToHtml(child);
+  });
+  return resultHtml;
+};
+
+/**
  * DOM 요소를 HTML 문자열로 변환 (속성 보존)
  * container.innerHTML로 파싱한 후에도 속성을 보존하기 위해
  * outerHTML을 사용하여 브라우저가 파싱한 HTML을 그대로 가져옴

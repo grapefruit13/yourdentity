@@ -2,13 +2,17 @@ import { ComponentProps } from "react";
 import { cn } from "@/utils/shared/cn";
 
 /**
- * @description 디자인 시스템 input
+ * @description 디자인 시스템 textarea
  */
-const Input = ({ className, readOnly, ...props }: ComponentProps<"input">) => {
+const Textarea = ({
+  className,
+  readOnly,
+  ...props
+}: ComponentProps<"textarea">) => {
   return (
-    <input
+    <textarea
       className={cn(
-        "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 w-full rounded-md border border-gray-200 bg-white px-3 py-2 pr-10 text-base leading-1.5 font-normal shadow-xs focus:outline-3",
+        "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 h-21 w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-4 text-base leading-1.5 font-normal text-gray-900 shadow-xs focus:outline-3",
         className
       )}
       readOnly={readOnly}
@@ -26,4 +30,4 @@ const Input = ({ className, readOnly, ...props }: ComponentProps<"input">) => {
   );
 };
 
-export default Input;
+export default Textarea;

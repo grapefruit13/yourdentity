@@ -20,10 +20,10 @@ const UnsavedChangesModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      title="프로필 편집 나가기"
-      description="화면을 나가면 변경사항이 저장되지 않아요. 수정을 그만두시겠어요?"
-      confirmText="확인"
-      cancelText="취소"
+      title="그만둘까요?"
+      description="작성 중인 내용이 사라져요."
+      confirmText="그만두기"
+      cancelText="계속하기"
       onConfirm={onConfirm}
       onClose={onClose}
       variant="primary"

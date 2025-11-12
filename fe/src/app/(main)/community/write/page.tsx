@@ -5,10 +5,6 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
-import {
-  deleteFilesById,
-  postFilesUploadMultiple,
-} from "@/api/generated/files-api";
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
@@ -24,89 +20,17 @@ import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
+import {
+  replaceEditorFileHrefWithUploadedUrls,
+  replaceEditorImageSrcWithUploadedUrls,
+} from "@/utils/community/editor-content";
+import {
+  dedupeFiles,
+  rollbackUploadedFiles,
+  isHandledError,
+} from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
-import { debug } from "@/utils/shared/debugger";
-import { extractTextFromHtml, elementToHtml } from "@/utils/shared/text-editor";
-
-/**
- * content HTML의 a[data-file-id]를 응답 fileUrl로 교체하고 data 속성을 제거
- */
-const replaceEditorFileHrefWithUploadedUrls = (
-  html: string,
-  byIdToUrl: Map<string, string>
-) => {
-  if (!html) return html;
-
-  // 파일 링크가 없으면 원본 HTML 반환 (속성 보존)
-  if (byIdToUrl.size === 0) {
-    return html;
-  }
-
-  const container = document.createElement("div");
-  container.innerHTML = html;
-
-  // 파일 링크 URL 교체
-  container
-    .querySelectorAll<HTMLAnchorElement>("a[data-file-id]")
-    .forEach((a) => {
-      const clientId = a.getAttribute("data-file-id") || "";
-      const url = byIdToUrl.get(clientId);
-      if (url) {
-        a.setAttribute("href", url);
-        a.removeAttribute("data-file-id");
-      }
-    });
-
-  // container.innerHTML 사용 후 속성이 사라질 수 있으므로
-  // elementToHtml을 사용하여 속성을 복원
-  let resultHtml = "";
-  container.childNodes.forEach((child) => {
-    resultHtml += elementToHtml(child);
-  });
-  return resultHtml;
-};
-
-/**
- * content HTML의 img[data-client-id]를 응답 fileUrl로 교체하고 data 속성을 제거
- */
-const replaceEditorImageSrcWithUploadedUrls = (
-  html: string,
-  byIdToUrl: Map<string, string>
-) => {
-  if (!html) return html;
-
-  // 이미지가 없으면 원본 HTML 반환 (속성 보존)
-  if (byIdToUrl.size === 0) {
-    return html;
-  }
-
-  const container = document.createElement("div");
-  container.innerHTML = html;
-
-  // 이미지 URL 교체
-  const images = container.querySelectorAll<HTMLImageElement>(
-    "img[data-client-id]"
-  );
-
-  images.forEach((img) => {
-    const clientId = img.getAttribute("data-client-id");
-    if (!clientId) return;
-
-    const url = byIdToUrl.get(clientId);
-    if (url) {
-      img.setAttribute("src", url);
-      img.removeAttribute("data-client-id");
-    }
-  });
-
-  // container.innerHTML 사용 후 속성이 사라질 수 있으므로
-  // elementToHtml을 사용하여 속성을 복원
-  let resultHtml = "";
-  container.childNodes.forEach((child) => {
-    resultHtml += elementToHtml(child);
-  });
-  return resultHtml;
-};
+import { extractTextFromHtml } from "@/utils/shared/text-editor";
 
 /**
  * @description 커뮤니티 글 작성 페이지 콘텐츠 (useSearchParams 사용)
@@ -154,21 +78,6 @@ const WritePageContent = () => {
     Array<{ clientId: string; file: File }>
   >([]);
 
-  /**
-   * 파일 중복 제거
-   * - 같은 이름/사이즈/최종수정시간 조합은 동일 파일로 간주하여 1개만 유지합니다.
-   * @param files 원본 파일 배열
-   * @returns 중복이 제거된 파일 배열
-   */
-  const dedupeFiles = (files: File[]) => {
-    const map = new Map<string, File>();
-    files.forEach((f) => {
-      const key = `${f.name}-${f.size}-${f.lastModified}`;
-      if (!map.has(key)) map.set(key, f);
-    });
-    return Array.from(map.values());
-  };
-
   // 이미지 파일은 TextEditor에서 업로드 콜백을 통해 즉시 처리합니다.
 
   /**
@@ -212,85 +121,6 @@ const WritePageContent = () => {
   // 첨부 리스트 별도 업로드는 제거(파일 큐를 통해서만 업로드)
 
   /**
-   * 이미지 큐를 한 번에 업로드하고 clientId 매핑을 반환
-   * @returns { byIdToPath, byIdToUrl, failedCount } - 실패한 이미지 개수 포함
-   */
-  const uploadQueuedImages = async () => {
-    if (!imageQueue.length)
-      return {
-        byIdToPath: new Map<string, string>(),
-        byIdToUrl: new Map<string, string>(),
-        failedCount: 0,
-      };
-
-    const formData = new FormData();
-    imageQueue.slice(0, MAX_FILES).forEach(({ clientId, file }) => {
-      const renamed = new File([file], `${clientId}__${file.name}`, {
-        type: file.type,
-      });
-      formData.append("file", renamed);
-    });
-
-    const res = await postFilesUploadMultiple(formData);
-
-    // API 응답 구조: res.data.files
-    const items = (res as any)?.data?.files ?? [];
-    const byIdToPath = new Map<string, string>();
-    const byIdToUrl = new Map<string, string>();
-    let failedCount = 0;
-
-    // 업로드한 이미지 개수
-    const uploadedCount = imageQueue.slice(0, MAX_FILES).length;
-
-    // 응답 개수가 업로드한 개수보다 적으면 일부가 실패한 것
-    if (items.length < uploadedCount) {
-      failedCount = uploadedCount - items.length;
-    }
-
-    // 각 응답 아이템 검사
-    for (const item of items) {
-      // 실제 업로드 실패만 카운트 (item.success === false)
-      if (!item?.success) {
-        failedCount += 1;
-        continue;
-      }
-
-      const data = item?.data;
-      // path 또는 fileName이 없으면 업로드 실패로 간주
-      const filePath = data?.path ?? data?.fileName;
-      if (!filePath) {
-        failedCount += 1;
-        continue;
-      }
-
-      const original = data.originalFileName ?? data.fileName ?? "";
-      // clientId는 파일명 앞부분에 __로 구분되어 있음
-      const clientId = String(original).split("__")[0] || "";
-
-      // clientId 파싱 실패는 경고이지만 업로드 자체는 성공
-      if (clientId) {
-        byIdToPath.set(clientId, filePath);
-        // fileUrl이 없으면 path를 URL로 사용
-        const url = data.fileUrl || filePath;
-        byIdToUrl.set(clientId, url);
-      }
-    }
-
-    return { byIdToPath, byIdToUrl, failedCount };
-  };
-
-  /**
-   * 파일 경로 배열로 다건 삭제 요청
-   * @param paths Cloud Storage 내 파일 경로 배열
-   */
-  const deleteFilesByPath = async (paths: string[]) => {
-    if (!paths.length) return;
-    await Promise.allSettled(
-      paths.map((p) => deleteFilesById({ filePath: p }))
-    );
-  };
-
-  /**
    * 이미지 업로드 및 검증
    * @returns 업로드된 이미지 경로와 URL 매핑
    */
@@ -299,18 +129,18 @@ const WritePageContent = () => {
       byIdToPath: imgIdToPath,
       byIdToUrl: imgIdToUrl,
       failedCount: imageFailedCount,
-    } = await uploadQueuedImages();
+    } = await uploadFileQueue(imageQueue, "이미지");
 
     // 이미지 업로드 실패 확인
     if (imageQueue.length > 0 && imageFailedCount > 0) {
       alert(WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount));
-      throw new Error("IMAGE_UPLOAD_FAILED");
+      throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
     // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
     if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
       alert(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
-      throw new Error("IMAGE_UPLOAD_FAILED");
+      throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
     return {
@@ -435,40 +265,6 @@ const WritePageContent = () => {
         },
       });
     });
-  };
-
-  /**
-   * 에러가 이미 처리된 경우인지 확인
-   * @param error - 에러 객체
-   * @returns 이미 처리된 에러인지 여부
-   */
-  const isHandledError = (error: unknown): boolean => {
-    if (!(error instanceof Error)) return false;
-    return (
-      error.message === ERROR_MESSAGES.IMAGE_UPLOAD_FAILED ||
-      error.message === ERROR_MESSAGES.IMAGE_URL_REPLACE_FAILED
-    );
-  };
-
-  /**
-   * 업로드된 파일들 롤백 삭제
-   * @param imagePaths - 업로드된 이미지 경로 배열
-   * @param filePaths - 업로드된 파일 경로 배열
-   */
-  const rollbackUploadedFiles = async (
-    imagePaths: string[],
-    filePaths: string[]
-  ) => {
-    const filesToDelete = [...imagePaths, ...filePaths];
-    if (filesToDelete.length === 0) return;
-
-    debug.log("게시글 작성 실패, 파일 삭제 시작:", filesToDelete);
-    try {
-      await deleteFilesByPath(filesToDelete);
-      debug.log("파일 삭제 완료");
-    } catch (deleteError) {
-      debug.error("파일 삭제 중 에러:", deleteError);
-    }
   };
 
   /**
