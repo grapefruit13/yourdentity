@@ -40,7 +40,7 @@ const PostCard = ({
   return (
     <div
       onClick={onClick}
-      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow hover:shadow-md"
+      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-300 bg-white"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -64,17 +64,17 @@ const PostCard = ({
       </div>
 
       {/* 게시글 정보 */}
-      <div className="flex flex-col gap-2 p-3">
+      <div className="flex h-full max-h-27 flex-col justify-between gap-1 p-2">
         {/* 제목/태그 */}
-        <Typography font="noto" variant="body2B" className="text-pink-600">
+        <Typography font="noto" variant="label2M" className="text-pink-600">
           {title}
         </Typography>
 
         {/* 설명 */}
         <Typography
           font="noto"
-          variant="body2R"
-          className="line-clamp-2 text-gray-900"
+          variant="label1B"
+          className="line-clamp-2 self-start text-gray-900"
         >
           {description}
         </Typography>

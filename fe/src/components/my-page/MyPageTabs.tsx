@@ -19,7 +19,7 @@ interface MyPageTabsProps {
 const MyPageTabs = ({ activeTab, onTabChange }: MyPageTabsProps) => {
   const tabs: { id: TabType; label: string }[] = [
     { id: "posts", label: "게시글" },
-    { id: "comments", label: "댓글 남긴 글" },
+    { id: "comments", label: "댓글단 글" },
     { id: "liked", label: "좋아요" },
   ];
 
@@ -40,9 +40,9 @@ const MyPageTabs = ({ activeTab, onTabChange }: MyPageTabsProps) => {
         >
           <Typography
             font="noto"
-            variant="body1M"
+            variant="body3R"
             className={cn(
-              activeTab === tab.id ? "text-gray-900" : "text-gray-400"
+              activeTab === tab.id ? "text-gray-950" : "text-gray-400"
             )}
           >
             {tab.label}
