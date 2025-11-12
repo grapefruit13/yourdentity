@@ -27,10 +27,12 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
   } = options;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    let timeoutId = null;
+
     try {
-      // AbortController 생성 및 타임아웃 설정
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      // 타임아웃 설정
+      timeoutId = setTimeout(() => controller.abort(), timeout);
 
       console.log(`[${serviceName}] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${url}`);
 
@@ -42,8 +44,6 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
         },
         signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       // 성공
       if (response.ok) {
@@ -109,6 +109,11 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
       } else {
         console.warn(`[${serviceName}] 카카오 API 호출 실패 (null 반환):`, fetchError.message);
         return null;
+      }
+    } finally {
+      // 타임아웃 타이머 정리 (메모리 누수 방지)
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
       }
     }
   }
