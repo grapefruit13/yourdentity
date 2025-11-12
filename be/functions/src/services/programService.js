@@ -64,7 +64,8 @@ const NOTION_FIELDS = {
   NOTES: "참고 사항",
   FAQ: "FAQ",
   LAST_EDITED_TIME: "최근 수정 날짜",
-  NOTION_PAGE_TITLE: "상세페이지(노션)"
+  NOTION_PAGE_TITLE: "상세페이지(노션)",
+  LEADER_USER_ID: "리더 사용자ID"
 };
 
 const PROGRAM_TYPE_ALIASES = {
@@ -411,6 +412,10 @@ class ProgramService {
   formatProgramData(page, includeDetails = false) {
     const props = page.properties;
     
+    // 리더 사용자ID 추출 (relation 타입, 첫 번째 값만 사용)
+    const leaderRelation = getRelationValues(props[NOTION_FIELDS.LEADER_USER_ID]);
+    const leaderUserId = leaderRelation?.relations?.[0]?.id || null;
+    
     const baseData = {
       id: page.id,
       title: getTextContent(props[NOTION_FIELDS.PROGRAM_TITLE]),
@@ -433,6 +438,7 @@ class ProgramService {
       faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
       orientationDate: getDateValue(props[NOTION_FIELDS.ORIENTATION_DATE]),
       shareMeetingDate: getDateValue(props[NOTION_FIELDS.SHARE_MEETING_DATE]),
+      leaderUserId: leaderUserId,
       createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
@@ -835,6 +841,11 @@ class ProgramService {
         },
         '필참 일정 확인 여부': {
           checkbox: canAttendEvents || false
+        },
+        '승인여부': {
+          select: {
+            name: '승인대기'
+          }
         }
       };
 
@@ -937,6 +948,10 @@ class ProgramService {
    */
   async approveApplication(programId, applicationId) {
     try {
+      // applicationId는 실제로 applicantId (userId)와 같음
+      // addMemberToCommunity에서 문서 ID로 userId를 사용하기 때문
+      console.log(`[ProgramService] 승인 요청 - programId: ${programId}, applicationId: ${applicationId}`);
+      
       // 1. Firestore member 데이터 조회
       const member = await this.firestoreService.getDocument(
         `communities/${programId}/members`,
@@ -944,6 +959,23 @@ class ProgramService {
       );
 
       if (!member) {
+        console.error(`[ProgramService] 멤버를 찾을 수 없음 - programId: ${programId}, applicationId: ${applicationId}`);
+        // 디버깅: 해당 커뮤니티의 모든 멤버 조회
+        try {
+          const membersService = new FirestoreService(`communities/${programId}/members`);
+          const allMembers = await membersService.getAll();
+          console.log(`[ProgramService] 해당 커뮤니티의 전체 멤버 수: ${allMembers?.length || 0}`);
+          if (allMembers && allMembers.length > 0) {
+            const memberIds = allMembers.map(m => {
+              // Firestore 문서는 id 필드가 별도로 있거나, 문서 ID를 직접 사용
+              return m.id || m.userId || 'unknown';
+            });
+            console.log(`[ProgramService] 멤버 ID 목록: ${memberIds.join(', ')}`);
+          }
+        } catch (debugError) {
+          console.warn(`[ProgramService] 디버깅 정보 조회 실패: ${debugError.message}`);
+        }
+        
         const error = new Error('신청 정보를 찾을 수 없습니다.');
         error.code = 'NOT_FOUND';
         error.statusCode = 404;
@@ -960,14 +992,16 @@ class ProgramService {
         }
       );
 
-      // 3. Notion 페이지의 승인여부 체크박스 업데이트
+      // 3. Notion 페이지의 승인여부 select 업데이트
       if (member.notionPageId) {
         try {
           await this.notion.pages.update({
             page_id: member.notionPageId,
             properties: {
               '승인여부': {
-                checkbox: true
+                select: {
+                  name: '승인'
+                }
               }
             }
           });
@@ -1028,14 +1062,16 @@ class ProgramService {
         }
       );
 
-      // 3. Notion 페이지의 승인여부 체크박스 업데이트
+      // 3. Notion 페이지의 승인여부 select 업데이트
       if (member.notionPageId) {
         try {
           await this.notion.pages.update({
             page_id: member.notionPageId,
             properties: {
               '승인여부': {
-                checkbox: false
+                select: {
+                  name: '승인거절'
+                }
               }
             }
           });
