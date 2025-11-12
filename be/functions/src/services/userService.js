@@ -609,8 +609,8 @@ class UserService {
 
       const memberWhereConditions = [
         {field: "userId", operator: "==", value: userId},
-        {field: "status", operator: "==", value: "approved"},
       ];
+      const memberStatusMap = {};
 
       while (hasMore) {
         try {
@@ -622,12 +622,18 @@ class UserService {
             orderDirection: "desc"
           });
 
-          const approvedMembers = (pageResult.content || []).filter((member) => {
-            const status = typeof member.status === "string" ? member.status.trim().toLowerCase() : null;
-            return status === "approved";
+          const members = pageResult.content || [];
+          allMembers = allMembers.concat(members);
+          members.forEach((member) => {
+            const communityId = member.communityId;
+            if (!communityId || memberStatusMap[communityId]) {
+              return;
+            }
+            const status = typeof member.status === "string" ? member.status.trim() : null;
+            if (status) {
+              memberStatusMap[communityId] = status;
+            }
           });
-
-          allMembers = allMembers.concat(approvedMembers);
           hasMore = pageResult.pageable?.hasNext || false;
           currentPage++;
 
@@ -642,11 +648,18 @@ class UserService {
               orderBy: "joinedAt",
               orderDirection: "desc"
             });
-            const approvedMembers = (fallbackResult.content || []).filter((member) => {
-              const status = typeof member.status === "string" ? member.status.trim().toLowerCase() : null;
-              return status === "approved";
+            const members = fallbackResult.content || [];
+            allMembers = members;
+            members.forEach((member) => {
+              const communityId = member.communityId;
+              if (!communityId || memberStatusMap[communityId]) {
+                return;
+              }
+              const status = typeof member.status === "string" ? member.status.trim() : null;
+              if (status) {
+                memberStatusMap[communityId] = status;
+              }
             });
-            allMembers = approvedMembers;
             hasMore = false;
           } else {
             throw error;
@@ -773,7 +786,8 @@ class UserService {
           const typeInfo = programTypeMapping[programType];
           grouped[typeInfo.key].items.push({
             id: community.id,
-            name: community.name
+            name: community.name,
+            status: memberStatusMap[community.id] || null,
           });
         }
       });

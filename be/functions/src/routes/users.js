@@ -825,6 +825,10 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                                 type: string
  *                                 description: 커뮤니티 이름
  *                                 example: "15일 동안 음악 일기 쓰기"
+ *                               status:
+ *                                 type: string
+ *                                 description: 신청 상태
+ *                                 example: "approved"
  *                     gathering:
  *                       type: object
  *                       description: 월간 소모임 그룹
@@ -846,6 +850,10 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                                 type: string
  *                                 description: 커뮤니티 이름
  *                                 example: "하루 한조각, 일상 속 퍼즐 찾기"
+ *                               status:
+ *                                 type: string
+ *                                 description: 신청 상태
+ *                                 example: "pending"
  *                     tmi:
  *                       type: object
  *                       description: TMI 그룹
@@ -867,6 +875,10 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                                 type: string
  *                                 description: 커뮤니티 이름
  *                                 example: "TMI 자아탐색"
+ *                               status:
+ *                                 type: string
+ *                                 description: 신청 상태
+ *                                 example: "approved"
  *             example:
  *               status: 200
  *               data:
@@ -875,18 +887,22 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                   items:
  *                     - id: "CP:G7C66H69GK"
  *                       name: "15일 동안 음악 일기 쓰기"
+ *                       status: "approved"
  *                     - id: "CP:ABC123DEF456"
  *                       name: "플래너 작성하기"
+ *                       status: "pending"
  *                 gathering:
  *                   label: "월간 소모임"
  *                   items:
  *                     - id: "CP:VYTTZW33IH"
  *                       name: "하루 한조각, 일상 속 퍼즐 찾기"
+ *                       status: "approved"
  *                 tmi:
  *                   label: "TMI"
  *                   items:
  *                     - id: "CP:I4U3J7TM07"
  *                       name: "TMI 자아탐색"
+ *                       status: "pending"
  *       401:
  *         description: 인증 실패
  *         content:
@@ -951,6 +967,10 @@ router.get("/me/participating-communities", authGuard, userController.getMyParti
  *                               name:
  *                                 type: string
  *                                 example: "15일 동안 음악 일기 쓰기"
+ *                               status:
+ *                                 type: string
+ *                                 description: 신청 상태
+ *                                 example: "approved"
  *                     gathering:
  *                       type: object
  *                       description: 월간 소모임 그룹
@@ -969,6 +989,10 @@ router.get("/me/participating-communities", authGuard, userController.getMyParti
  *                               name:
  *                                 type: string
  *                                 example: "하루 한조각, 일상 속 퍼즐 찾기"
+ *                               status:
+ *                                 type: string
+ *                                 description: 신청 상태
+ *                                 example: "approved"
  *                     tmi:
  *                       type: object
  *                       description: TMI 그룹
@@ -987,6 +1011,10 @@ router.get("/me/participating-communities", authGuard, userController.getMyParti
  *                               name:
  *                                 type: string
  *                                 example: "TMI 자아탐색"
+ *                               status:
+ *                                 type: string
+ *                                 description: 신청 상태
+ *                                 example: "approved"
  *       401:
  *         description: 인증 실패
  *         content:
