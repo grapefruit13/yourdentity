@@ -33,6 +33,7 @@ import {
   replaceEditorFileHrefWithUploadedUrls,
   replaceEditorImageSrcWithUploadedUrls,
   extractImagePathsFromContent,
+  extractFilePathsFromContent,
 } from "@/utils/community/editor-content";
 import { deleteFilesByPath } from "@/utils/community/file-utils";
 import { isFilePathMatching } from "@/utils/community/post-edit-utils";
@@ -356,16 +357,20 @@ const EditPageContent = () => {
   /**
    * media 배열 구성
    * - 기존 media에서 현재 content에 없는 것은 제거
-   * - 새로 업로드된 이미지 filePath 추가
-   * - 현재 content에 있는 기존 이미지 filePath 유지
+   * - 새로 업로드된 이미지/파일 filePath 추가
+   * - 현재 content에 있는 기존 이미지/파일 filePath 유지
    */
   const buildMediaArray = (
     currentImagePaths: string[],
+    currentFilePaths: string[],
     uploadedImagePaths: string[],
     uploadedFilePaths: string[]
   ): string[] => {
+    // 현재 content에 있는 모든 경로들을 합침
+    const allCurrentPaths = [...currentImagePaths, ...currentFilePaths];
+
     const existingMediaInContent = originalMedia.filter((path) =>
-      currentImagePaths.some((currentPath) =>
+      allCurrentPaths.some((currentPath) =>
         isFilePathMatching(currentPath, path)
       )
     );
@@ -489,14 +494,17 @@ const EditPageContent = () => {
       );
       uploadedFilePaths = filePaths;
 
-      // 4. 최종 content에서 현재 존재하는 이미지 filePath 추출
+      // 4. 최종 content에서 현재 존재하는 이미지/파일 filePath 추출
       const currentImagePaths = extractImagePathsFromContent(finalContent);
+      const currentFilePaths = extractFilePathsFromContent(finalContent);
       debug.log("현재 content의 이미지 filePath:", currentImagePaths);
+      debug.log("현재 content의 파일 filePath:", currentFilePaths);
       debug.log("기존 media:", originalMedia);
 
       // 5. media 배열 구성
       const finalMedia = buildMediaArray(
         currentImagePaths,
+        currentFilePaths,
         uploadedImagePaths,
         uploadedFilePaths
       );
