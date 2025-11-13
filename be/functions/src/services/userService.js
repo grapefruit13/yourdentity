@@ -21,7 +21,7 @@ class UserService {
   /**
    * 온보딩 업데이트
    * - 허용 필드만 부분 업데이트
-   * - 닉네임 중복 방지(트랜잭션)
+   * - 닉네임 + 사용자 정보 (트랜잭션)
    * @param {Object} params
    * @param {string} params.uid - 사용자 ID
    * @param {Object} params.payload - 업데이트할 데이터
