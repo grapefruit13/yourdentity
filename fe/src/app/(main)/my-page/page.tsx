@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import MyPageProfileSection from "@/components/my-page/MyPageProfileSection";
 import MyPageTabs, { TabType } from "@/components/my-page/MyPageTabs";
@@ -15,6 +15,7 @@ import {
   useGetUsersMeLikedPosts,
   useGetUsersMeCommentedPosts,
 } from "@/hooks/generated/users-hooks";
+import { getCurrentUser } from "@/lib/auth";
 import type * as Types from "@/types/generated/users-types";
 
 /**
@@ -27,23 +28,41 @@ const Page = () => {
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   // const [activeFilter, setActiveFilter] = useState<FilterType>("program"); // MVP 범위에서 제외
 
-  const { data: userData, isLoading } = useGetUsersMe({
+  const {
+    data: userData,
+    isLoading,
+    isFetched: isUserFetched,
+  } = useGetUsersMe({
     select: (data) => {
       return data?.user;
     },
   });
+  const hasNickname = Boolean(userData?.nickname?.trim());
+
+  useEffect(() => {
+    if (isUserFetched && !hasNickname) {
+      router.replace(LINK_URL.MY_PAGE_EDIT);
+    }
+  }, [hasNickname, isUserFetched, router]);
+
+  const shouldQueryMyPageData = isUserFetched && hasNickname;
 
   // 최초 진입 시 posts 탭 데이터만 페칭
   const { data: postsData, isLoading: isLoadingPosts } = useGetUsersMePosts({
     request: { page: 0, size: 20 },
+    enabled: shouldQueryMyPageData,
   });
 
   // posts 로드 완료 여부를 React Query 응답값으로 확인
-  const isPostsLoaded = Boolean(!isLoadingPosts && postsData);
+  const isPostsLoaded = Boolean(
+    shouldQueryMyPageData && !isLoadingPosts && postsData
+  );
 
   // 탭 전환 시점에 다른 탭 데이터 페칭 (탭 클릭 또는 posts 로드 완료 후)
-  const shouldFetchLiked = activeTab === "liked" || isPostsLoaded;
-  const shouldFetchCommented = activeTab === "comments" || isPostsLoaded;
+  const shouldFetchLiked =
+    shouldQueryMyPageData && (activeTab === "liked" || isPostsLoaded);
+  const shouldFetchCommented =
+    shouldQueryMyPageData && (activeTab === "comments" || isPostsLoaded);
 
   const { data: likedPostsData, isLoading: isLoadingLiked } =
     useGetUsersMeLikedPosts({
@@ -75,7 +94,6 @@ const Page = () => {
       authorProfileUrl: "",
       likeCount: post.likesCount || 0,
       commentCount: post.commentsCount || 0,
-      communityId: post.community?.id || "",
     };
   };
 
@@ -106,14 +124,19 @@ const Page = () => {
       .filter((post): post is NonNullable<typeof post> => post !== null);
   }, [currentPostsData]);
 
+  if (isUserFetched && !hasNickname) {
+    return null;
+  }
+
   // 프로필 편집 버튼 핸들러
   const handleEditProfile = () => {
     router.push(LINK_URL.MY_PAGE_EDIT);
   };
 
   // 게시글 클릭 핸들러
-  const handlePostClick = (postId: string, communityId: string) => {
-    router.push(`/community/post/${postId}?communityId=${communityId}`);
+  const handlePostClick = (postId: string) => {
+    // FIXME: 실제 게시글 상세 페이지로 이동
+    console.log("게시글 클릭:", postId);
   };
 
   return (
@@ -140,7 +163,7 @@ const Page = () => {
       /> */}
 
       {/* 게시글 그리드 */}
-      <div className="grid grid-cols-2 gap-4 pt-4 pb-24">
+      <div className="grid grid-cols-2 gap-4 px-4 pt-4 pb-24">
         {isLoadingCurrentTab ? (
           // 로딩 중일 때 스켈레톤 표시
           Array.from({ length: 4 }).map((_, index) => (
@@ -182,7 +205,7 @@ const Page = () => {
               authorProfileUrl={post.authorProfileUrl}
               likeCount={post.likeCount}
               commentCount={post.commentCount}
-              onClick={() => handlePostClick(post.id, post.communityId)}
+              onClick={() => handlePostClick(post.id)}
             />
           ))
         )}
