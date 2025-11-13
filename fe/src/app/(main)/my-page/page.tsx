@@ -54,7 +54,9 @@ const Page = () => {
   });
 
   // posts 로드 완료 여부를 React Query 응답값으로 확인
-  const isPostsLoaded = Boolean(shouldQueryMyPageData && !isLoadingPosts && postsData);
+  const isPostsLoaded = Boolean(
+    shouldQueryMyPageData && !isLoadingPosts && postsData
+  );
 
   // 탭 전환 시점에 다른 탭 데이터 페칭 (탭 클릭 또는 posts 로드 완료 후)
   const shouldFetchLiked =
