@@ -298,12 +298,7 @@ class UserService {
         
         // userinfo와 약관 API 동시 호출
         const [userinfoRes, fetchedTermsData] = await Promise.all([
-          (async () => {
-            if (userinfoDelay > 0) {
-              await new Promise(resolve => setTimeout(resolve, userinfoDelay));
-            }
-            return this._fetchKakaoAPI(userinfoUrl, accessToken);
-          })(),
+          this._fetchKakaoAPI(userinfoUrl, accessToken),
           this.termsService.fetchKakaoTerms(accessToken),
         ]);
         
