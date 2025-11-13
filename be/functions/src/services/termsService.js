@@ -15,21 +15,51 @@ class TermsService {
   }
 
   /**
-   * 카카오 약관 동기화 (전체 프로세스)
+   * 약관 데이터 검증 (필수 정보 확인)
+   * @param {Object} termsData
    * @param {string} uid
-   * @param {string} accessToken
+   * @throws {Error} 약관 정보가 없으면 에러
    */
-  async syncFromKakao(uid, accessToken) {
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  validateTermsData(termsData, uid) {
+    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed} = termsData;
     
-    let termsData;
-    if (isEmulator && accessToken === "test") {
-      termsData = await this.parseEmulatorTerms(uid);
-    } else {
-      termsData = await this.fetchKakaoTerms(accessToken);
+    if (!serviceVersion && !privacyVersion && !age14Agreed && !pushAgreed) {
+      console.error(`[KAKAO_TERMS_EMPTY] uid=${uid} - 약관 정보 없음`);
+      const e = new Error("카카오 약관 정보를 받아올 수 없습니다. 카카오 계정 설정에서 약관 동의를 확인해주세요.");
+      e.code = "KAKAO_TERMS_MISSING";
+      throw e;
     }
+  }
 
-    return this.updateUserTerms(uid, termsData);
+  /**
+   * 약관 데이터를 Firestore 업데이트 객체로 변환
+   * @param {Object} termsData
+   * @param {string} uid
+   * @return {Object} Firestore 업데이트 객체
+   */
+  prepareTermsUpdate(termsData, uid) {
+    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed, termsAgreedAt} = termsData;
+    
+    const termsUpdate = {};
+    if (serviceVersion) termsUpdate.serviceTermsVersion = serviceVersion;
+    if (privacyVersion) termsUpdate.privacyTermsVersion = privacyVersion;
+    termsUpdate.age14TermsAgreed = !!age14Agreed;
+    termsUpdate.pushTermsAgreed = !!pushAgreed;
+    
+    if (termsAgreedAt) {
+      termsUpdate.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
+    } else {
+      termsUpdate.termsAgreedAt = FieldValue.serverTimestamp();
+    }
+    
+    console.log(`[KAKAO_TERMS_PARSED] uid=${uid}`, {
+      hasService: !!serviceVersion,
+      hasPrivacy: !!privacyVersion,
+      age14: !!age14Agreed,
+      push: !!pushAgreed,
+    });
+    
+    return termsUpdate;
   }
 
   /**
@@ -161,45 +191,6 @@ class TermsService {
     };
   }
 
-  /**
-   * 사용자 약관 정보 업데이트
-   * @param {string} uid
-   * @param {Object} termsData
-   */
-  async updateUserTerms(uid, termsData) {
-    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed, termsAgreedAt} = termsData;
-
-    const update = {};
-
-    // 약관 정보가 있으면 추가
-    if (serviceVersion || privacyVersion || age14Agreed || pushAgreed) {
-      if (serviceVersion) update.serviceTermsVersion = serviceVersion;
-      if (privacyVersion) update.privacyTermsVersion = privacyVersion;
-      update.age14TermsAgreed = !!age14Agreed;
-      update.pushTermsAgreed = !!pushAgreed;
-      
-      // 만 14세 동의가 없는 경우 모니터링 로그 (카카오 정책 변경 감지)
-      if (!age14Agreed) {
-        console.warn(`⚠️ [TermsService] 만 14세 동의 없음 (uid: ${uid}) - 카카오 정책 확인 필요`);
-      }
-      if (termsAgreedAt) {
-        update.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
-      } else {
-        update.termsAgreedAt = FieldValue.serverTimestamp();
-      }
-    } else {
-      // 약관 정보가 없으면 기본값으로 초기화 (최초 동기화 시)
-      console.log(`[TermsService] 약관 정보 없음, 기본값으로 초기화 (uid: ${uid})`);
-      update.serviceTermsVersion = null;
-      update.privacyTermsVersion = null;
-      update.age14TermsAgreed = false;
-      update.pushTermsAgreed = false;
-      update.termsAgreedAt = null;
-    }
-
-    await this.firestoreService.update(uid, update);
-    return {success: true};
-  }
 }
 
 module.exports = TermsService;

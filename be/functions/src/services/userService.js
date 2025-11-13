@@ -1,10 +1,9 @@
-const {FieldValue, Timestamp} = require("firebase-admin/firestore");
+const {FieldValue} = require("firebase-admin/firestore");
 const {admin} = require("../config/database");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
-const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
@@ -36,7 +35,7 @@ class UserService {
     // 1) 현재 사용자 문서 조회
     const existing = await this.firestoreService.getById(uid);
     if (!existing) {
-      const e = new Error("User document not found");
+      const e = new Error("사용자 정보를 찾을 수 없습니다.");
       e.code = "NOT_FOUND";
       throw e;
     }
@@ -268,10 +267,12 @@ class UserService {
    * @return {Promise<{success:boolean}>}
    */
   async syncKakaoProfile(uid, accessToken) {
-    console.log(`[UserService] 카카오 프로필 동기화 시작 (uid: ${uid})`);
+    const startTime = Date.now();
+    console.log(`[KAKAO_SYNC_START] uid=${uid}, timestamp=${new Date().toISOString()}`);
     
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
     let userinfoJson;
+    let termsData;
 
     // 에뮬레이터 환경: Firebase Auth customClaims에서 더미 데이터 사용
     if (isEmulator && accessToken === "test") {
@@ -283,25 +284,51 @@ class UserService {
         gender: (customClaims.kakaoGender || "male").toLowerCase(),
         birthdate: customClaims.kakaoBirthdate || "2000-01-01",
         phone_number: customClaims.kakaoPhoneNumber || "01012345678",
-        picture: customClaims.kakaoPicture || "",
       };
-    } else {
-      // 실제 환경: 카카오 API 호출 (타임아웃 설정, 프론트에서 재시도)
-      const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
-      const userinfoRes = await this._fetchKakaoAPI(userinfoUrl, accessToken);
-      userinfoJson = await userinfoRes.json();
       
+      // 에뮬레이터 약관 데이터
+      termsData = await this.termsService.parseEmulatorTerms(uid);
+    } else {
+      // 실제 환경: userinfo + 약관 병렬 호출 (성능 최적화)
+      const parallelStartTime = Date.now();
+      console.log(`[KAKAO_PARALLEL_API_START] uid=${uid}`);
+      
+      try {
+        const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
+        
+        // userinfo와 약관 API 동시 호출
+        const [userinfoRes, fetchedTermsData] = await Promise.all([
+          (async () => {
+            if (userinfoDelay > 0) {
+              await new Promise(resolve => setTimeout(resolve, userinfoDelay));
+            }
+            return this._fetchKakaoAPI(userinfoUrl, accessToken);
+          })(),
+          this.termsService.fetchKakaoTerms(accessToken),
+        ]);
+        
+        const parallelDuration = Date.now() - parallelStartTime;
+        console.log(`[KAKAO_PARALLEL_API_SUCCESS] uid=${uid}, duration=${parallelDuration}ms`);
+        
+        userinfoJson = await userinfoRes.json();
+        termsData = fetchedTermsData;
+        
       // 카카오 API 응답 상세 로깅 (디버깅용)
       console.log(`[UserService][syncKakaoProfile] 카카오 API 응답 필드 확인:`, {
-        hasName: !!userinfoJson.name,
-        hasGender: !!userinfoJson.gender,
-        hasBirthdate: !!userinfoJson.birthdate,
-        hasPhoneNumber: !!userinfoJson.phone_number,
-        hasPicture: !!userinfoJson.picture,
-        rawGender: userinfoJson.gender,
-        rawBirthdate: userinfoJson.birthdate,
-        phoneNumberLength: userinfoJson.phone_number?.length || 0,
-      });
+          hasName: !!userinfoJson.name,
+          hasGender: !!userinfoJson.gender,
+          hasBirthdate: !!userinfoJson.birthdate,
+          hasPhoneNumber: !!userinfoJson.phone_number,
+          hasPicture: !!userinfoJson.picture,
+          rawGender: userinfoJson.gender,
+          rawBirthdate: userinfoJson.birthdate,
+          phoneNumberLength: userinfoJson.phone_number?.length || 0,
+        });
+      } catch (apiError) {
+        const parallelDuration = Date.now() - parallelStartTime;
+        console.error(`[KAKAO_PARALLEL_API_FAILED] uid=${uid}, duration=${parallelDuration}ms, error=${apiError.message}`);
+        throw apiError;
+      }
     }
 
     const name = userinfoJson.name || "";
@@ -310,10 +337,9 @@ class UserService {
     const phoneRaw = userinfoJson.phone_number || "";
     const profileImageUrl = userinfoJson.picture || "";
 
-    // 기본 검증 (카카오 콘솔에서 필수 동의로 설정 가정)
+    // 필수 정보 검증
     if (!genderRaw || !birthdateRaw || !phoneRaw) {
-      console.error(`[UserService][syncKakaoProfile] 필수 정보 누락 감지:`, {
-        uid,
+      console.error(`[KAKAO_REQUIRED_FIELDS_MISSING] uid=${uid}`, {
         missingFields: {
           gender: !genderRaw,
           birthdate: !birthdateRaw,
@@ -326,6 +352,7 @@ class UserService {
           phoneNumber: phoneRaw || "null",
           picture: !!profileImageUrl,
         },
+        timestamp: new Date().toISOString(),
       });
       const e = new Error("카카오에서 필수 정보(성별, 생년월일, 전화번호)를 받아올 수 없습니다. 카카오 계정 설정에서 정보 제공 동의를 확인해주세요.");
       e.code = "REQUIRE_FIELDS_MISSING";
@@ -357,48 +384,42 @@ class UserService {
       e.code = "INVALID_INPUT";
       throw e;
     }
+    
     // 저장은 정규화된 국내형으로
     const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
-    // 2. 서비스 약관 동의 내역 조회
-    console.log(`[UserService] 약관 동기화 호출`);
-    try {
-      await this.termsService.syncFromKakao(uid, accessToken);
-      console.log(`[UserService] 약관 동기화 성공`);
-    } catch (termsError) {
-      console.error(`[UserService] 약관 동기화 실패:`, termsError.message);
-      // 약관 동기화 실패 시 프론트에서 재시도하도록 에러 throw
-      const e = new Error("카카오 약관 정보를 받아올 수 없습니다. 잠시 후 다시 시도해주세요.");
-      e.code = "KAKAO_TERMS_SYNC_FAILED";
-      throw e;
-    }
+    // 2. 약관 정보 처리
+    this.termsService.validateTermsData(termsData, uid);
+    const termsUpdate = this.termsService.prepareTermsUpdate(termsData, uid);
 
-    // 3. Firestore 업데이트 준비
+    // 3. Firestore 사용자 문서 생성
     const update = {
       name: name || null,
       birthDate,
       gender,
       phoneNumber: normalizedPhone,
       profileImageUrl,
+      ...termsUpdate,
       lastLoginAt: FieldValue.serverTimestamp(),
       lastUpdatedAt: FieldValue.serverTimestamp(),
     };
 
-    // 4. 문서 존재 여부 확인 후 upsert
+    console.log(`[USER_DOCUMENT_UPDATE_START] uid=${uid}`);
+    
+    // 안전 체크: 문서가 없으면 에러 (정상적인 경우 발생하지 않아야 함)
     const existing = await this.firestoreService.getById(uid);
     if (!existing) {
-      await this.firestoreService.create({
-        nickname: "",
-        authType: AUTH_TYPES.SNS,
-        snsProvider: SNS_PROVIDERS.KAKAO,
-        createdAt: FieldValue.serverTimestamp(),
-        ...update,
-      }, uid);
-    } else {
-      await this.firestoreService.update(uid, update);
+      console.error(`[ERROR] 사용자 문서가 없음! authTrigger 실행 확인 필요: uid=${uid}`);
+      const e = new Error("사용자 기본 정보가 없습니다. 다시 로그인해주세요.");
+      e.code = "USER_DOCUMENT_NOT_FOUND";
+      throw e;
     }
+    
+    // 카카오 상세 정보로 업데이트
+    await this.firestoreService.update(uid, update);
+    console.log(`[USER_DOCUMENT_UPDATED] uid=${uid} (카카오 정보 + 약관 포함)`)
 
-    // 5. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
+    // 4. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
     const notionUserService = require("./notionUserService");
     notionUserService.syncSingleUserToNotion(uid)
       .then(result => {
@@ -412,7 +433,8 @@ class UserService {
         console.error(`Notion 동기화 오류: ${uid}`, error);
       });
 
-
+    const totalDuration = Date.now() - startTime;
+    console.log(`[KAKAO_SYNC_SUCCESS] uid=${uid}, totalDuration=${totalDuration}ms`);
     return {success: true};
   }
 
