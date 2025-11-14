@@ -23,7 +23,7 @@ class UserService {
   /**
    * 온보딩 업데이트
    * - 허용 필드만 부분 업데이트
-   * - 닉네임 중복 방지(트랜잭션)
+   * - 닉네임 + 사용자 정보 (트랜잭션)
    * @param {Object} params
    * @param {string} params.uid - 사용자 ID
    * @param {Object} params.payload - 업데이트할 데이터
@@ -61,14 +61,7 @@ class UserService {
       throw e;
     }
 
-    // 4) 닉네임 설정
-    const nickname = update.nickname;
-    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
-
-    if (setNickname) {
-      await this.nicknameService.setNickname(nickname, uid, existing.nickname);
-    }
-
+    // 4) 프로필 이미지 검증
     let newProfileImagePath = null;
     let newProfileImageUrl = update.profileImageUrl !== undefined ? update.profileImageUrl : null;
     let previousProfilePath = existing.profileImagePath || null;
@@ -112,7 +105,10 @@ class UserService {
       }
     }
 
-    // 5) 온보딩 완료 처리
+    // 5) 닉네임 설정 및 사용자 문서 업데이트를 단일 트랜잭션으로 처리
+    const nickname = update.nickname;
+    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
+
     const userUpdate = {
       ...update,
       lastUpdatedAt: FieldValue.serverTimestamp(),
@@ -126,8 +122,29 @@ class UserService {
       userUpdate.profileImageUrl = newProfileImageUrl;
     }
 
-    // 사용자 문서 업데이트
-    await this.firestoreService.update(uid, userUpdate);
+    // 트랜잭션으로 닉네임 + 사용자 업데이트 원자적 처리
+    await db.runTransaction(async (transaction) => {
+      // 닉네임 중복 체크 및 설정
+      if (setNickname) {
+        const lower = nickname.toLowerCase();
+        const nickRef = db.collection("nicknames").doc(lower);
+        const nickDoc = await transaction.get(nickRef);
+        
+        // 이미 존재하고 다른 사용자가 사용 중인 경우
+        if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
+          const e = new Error("NICKNAME_TAKEN");
+          e.code = "NICKNAME_TAKEN";
+          throw e;
+        }
+        
+        // 닉네임 설정 (트랜잭션 내)
+        this.nicknameService.setNickname(transaction, nickname, uid, existing.nickname);
+      }
+      
+      // 사용자 문서 업데이트 (트랜잭션 내)
+      const userRef = db.collection("users").doc(uid);
+      transaction.update(userRef, userUpdate);
+    });
 
     if (newProfileImagePath && previousProfilePath && previousProfilePath !== newProfileImagePath) {
       try {
