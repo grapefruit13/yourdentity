@@ -1,5 +1,6 @@
 const {db} = require("../config/database");
 const admin = require("firebase-admin");
+const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
 
 // Admin 초기화
 if (!admin.apps.length) {
@@ -21,6 +22,9 @@ class NicknameService {
    * @return {Promise<boolean>} 사용 가능 여부 (true: 사용 가능, false: 중복)
    */
   async checkAvailability(nickname) {
+    // 닉네임 검증 (공백 제외, 한글/영어/숫자만, 최대 8글자)
+    validateNicknameOrThrow(nickname);
+    
     const lower = nickname.toLowerCase().trim();
     const nickRef = db.collection(this.collectionName).doc(lower);
     const nickDoc = await nickRef.get();

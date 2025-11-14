@@ -16,6 +16,7 @@ const faqService = require('./faqService');
 const FirestoreService = require('./firestoreService');
 const CommunityService = require('./communityService');
 const { db, FieldValue } = require('../config/database');
+const { validateNicknameOrThrow } = require('../utils/nicknameValidator');
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -689,6 +690,11 @@ class ProgramService {
         error.code = ERROR_CODES.NICKNAME_DUPLICATE;
         error.statusCode = 409;
         throw error;
+      }
+
+      // 닉네임 검증
+      if (nickname) {
+        validateNicknameOrThrow(nickname);
       }
 
       // 4. Notion 프로그램신청자DB에 저장
