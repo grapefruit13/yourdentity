@@ -58,10 +58,10 @@ const AnnouncementDetailPage = () => {
           url: shareUrl,
         });
         return;
-      } catch (err) {
+      } catch (error) {
         // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
-        if ((err as Error).name !== "AbortError") {
-          // 공유 실패 시 무시 (사용자 경험을 위해 에러 표시하지 않음)
+        if ((error as Error).name !== "AbortError") {
+          console.error("공유 실패:", error);
         } else {
           // 사용자가 취소한 경우 그냥 종료
           return;
