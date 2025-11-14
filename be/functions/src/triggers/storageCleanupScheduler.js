@@ -48,15 +48,19 @@ async function findPostById(postId, communities = null) {
 async function deleteFile(fileDoc, bucket, filesService, deleteFromStorage = true) {
   const filePath = fileDoc.filePath;
   
+  await filesService.delete(fileDoc.id);
+
   if (deleteFromStorage && filePath) {
     const file = bucket.file(filePath);
     const [exists] = await file.exists();
     if (exists) {
-      await file.delete();
+      try {
+        await file.delete();
+      } catch (error) {
+        console.error(`[STORAGE_CLEANUP] Storage 파일 삭제 실패 (${filePath}), 다음 정리 작업에서 재시도:`, error.message);
+      }
     }
   }
-  
-  await filesService.delete(fileDoc.id);
 }
 
 /**
@@ -218,7 +222,7 @@ const storageCleanupScheduler = onSchedule(
       schedule: "0 3 * * *", 
       timeZone: "Asia/Seoul",
       region: "asia-northeast3",
-      timeoutSeconds: 540, 
+      timeoutSeconds: 900, 
       memory: "512MiB", 
     },
     async (event) => {
@@ -322,7 +326,7 @@ const storageCleanupWeeklyScheduler = onSchedule(
       schedule: "0 4 * * 0",
       timeZone: "Asia/Seoul",
       region: "asia-northeast3",
-      timeoutSeconds: 540, 
+      timeoutSeconds: 900, 
       memory: "512MiB",
     },
     async (event) => {
