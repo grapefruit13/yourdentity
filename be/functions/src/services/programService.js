@@ -683,6 +683,7 @@ class ProgramService {
         community = await this.createCommunityFromProgram(normalizedProgramId, program);
       }
 
+      validateNicknameOrThrow(nickname);
       // 3. 닉네임 중복 체크
       const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
       if (!isNicknameAvailable) {
@@ -692,10 +693,6 @@ class ProgramService {
         throw error;
       }
 
-      // 닉네임 검증
-      if (nickname) {
-        validateNicknameOrThrow(nickname);
-      }
 
       // 4. Notion 프로그램신청자DB에 저장
       const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
