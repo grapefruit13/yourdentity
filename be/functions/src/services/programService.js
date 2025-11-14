@@ -16,6 +16,7 @@ const faqService = require('./faqService');
 const FirestoreService = require('./firestoreService');
 const CommunityService = require('./communityService');
 const { db, FieldValue } = require('../config/database');
+const { validateNicknameOrThrow } = require('../utils/nicknameValidator');
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -682,6 +683,7 @@ class ProgramService {
         community = await this.createCommunityFromProgram(normalizedProgramId, program);
       }
 
+      validateNicknameOrThrow(nickname);
       // 3. 닉네임 중복 체크
       const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
       if (!isNicknameAvailable) {
@@ -690,6 +692,7 @@ class ProgramService {
         error.statusCode = 409;
         throw error;
       }
+
 
       // 4. Notion 프로그램신청자DB에 저장
       const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);

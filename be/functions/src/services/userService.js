@@ -1,5 +1,5 @@
 const {FieldValue, Timestamp} = require("firebase-admin/firestore");
-const {admin} = require("../config/database");
+const {admin, db} = require("../config/database");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
@@ -8,6 +8,7 @@ const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
+const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -60,6 +61,9 @@ class UserService {
       e.code = "REQUIRE_FIELDS_MISSING";
       throw e;
     }
+
+    // 닉네임 검증 (공백 제외, 한글/영어/숫자만, 최대 8글자)
+    validateNicknameOrThrow(update.nickname);
 
     // 4) 프로필 이미지 검증
     let newProfileImagePath = null;
