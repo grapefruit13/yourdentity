@@ -368,7 +368,7 @@ const PostDetailPage = () => {
       </div>
 
       {/* 하단 스티키 액션 바 (하단 네비게이션 위) */}
-      <div className="fixed right-0 bottom-[77px] left-0 z-40 mx-auto flex h-[48px] w-full max-w-[470px] items-center justify-between border-t border-gray-100 bg-white px-4 py-3">
+      <div className="fixed right-0 bottom-0 left-0 z-40 mx-auto flex h-[48px] w-full max-w-[470px] items-center justify-between border-t border-gray-100 bg-white px-4 py-3">
         <div className="flex items-center gap-6">
           <button
             onClick={handleLike}
