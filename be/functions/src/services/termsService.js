@@ -45,8 +45,9 @@ class TermsService {
     
     let serviceVersion = null;
     let privacyVersion = null;
+    let personalVersion = null;
     let age14Agreed = false;
-    let pushAgreed = false;
+    let marketingAgreed = false;
     let termsAgreedAt = null;
 
     for (const term of mockTerms) {
@@ -62,14 +63,20 @@ class TermsService {
           termsAgreedAt = term.agreed_at;
         }
       }
+      if (term.tag === TERMS_TAGS.PERSONAL) {
+        personalVersion = TERMS_VERSIONS.PERSONAL;
+        if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
+          termsAgreedAt = term.agreed_at;
+        }
+      }
       if (term.tag === TERMS_TAGS.AGE14) {
         age14Agreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
       }
-      if (term.tag === TERMS_TAGS.PUSH) {
-        pushAgreed = true;
+      if (term.tag === TERMS_TAGS.MARKETING) {
+        marketingAgreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
@@ -79,8 +86,9 @@ class TermsService {
     return {
       serviceVersion,
       privacyVersion,
+      personalVersion,
       age14Agreed,
-      pushAgreed,
+      marketingAgreed,
       termsAgreedAt
     };
   }
@@ -120,8 +128,9 @@ class TermsService {
     
     let serviceVersion = null;
     let privacyVersion = null;
+    let personalVersion = null;
     let age14Agreed = false;
-    let pushAgreed = false;
+    let marketingAgreed = false;
     let termsAgreedAt = null;
 
     // 카카오 태그 매핑으로 약관 동의 여부 확인
@@ -138,14 +147,20 @@ class TermsService {
           termsAgreedAt = term.agreed_at;
         }
       }
+      if (term.tag === TERMS_TAGS.PERSONAL) {
+        personalVersion = TERMS_VERSIONS.PERSONAL;
+        if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
+          termsAgreedAt = term.agreed_at;
+        }
+      }
       if (term.tag === TERMS_TAGS.AGE14) {
         age14Agreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
       }
-      if (term.tag === TERMS_TAGS.PUSH) {
-        pushAgreed = true;
+      if (term.tag === TERMS_TAGS.MARKETING) {
+        marketingAgreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
@@ -155,8 +170,9 @@ class TermsService {
     return {
       serviceVersion,
       privacyVersion,
+      personalVersion,
       age14Agreed,
-      pushAgreed,
+      marketingAgreed,
       termsAgreedAt
     };
   }
@@ -167,16 +183,17 @@ class TermsService {
    * @param {Object} termsData
    */
   async updateUserTerms(uid, termsData) {
-    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed, termsAgreedAt} = termsData;
+    const {serviceVersion, privacyVersion, personalVersion, age14Agreed, marketingAgreed, termsAgreedAt} = termsData;
 
     const update = {};
 
     // 약관 정보가 있으면 추가
-    if (serviceVersion || privacyVersion || age14Agreed || pushAgreed) {
+    if (serviceVersion || privacyVersion || personalVersion || age14Agreed || marketingAgreed) {
       if (serviceVersion) update.serviceTermsVersion = serviceVersion;
       if (privacyVersion) update.privacyTermsVersion = privacyVersion;
+      if (personalVersion) update.personalTermsVersion = personalVersion;
       update.age14TermsAgreed = !!age14Agreed;
-      update.pushTermsAgreed = !!pushAgreed;
+      update.marketingTermsAgreed = !!marketingAgreed;
       
       // 만 14세 동의가 없는 경우 모니터링 로그 (카카오 정책 변경 감지)
       if (!age14Agreed) {
@@ -192,8 +209,9 @@ class TermsService {
       console.log(`[TermsService] 약관 정보 없음, 기본값으로 초기화 (uid: ${uid})`);
       update.serviceTermsVersion = null;
       update.privacyTermsVersion = null;
+      update.personalTermsVersion = null;
       update.age14TermsAgreed = false;
-      update.pushTermsAgreed = false;
+      update.marketingTermsAgreed = false;
       update.termsAgreedAt = null;
     }
 
