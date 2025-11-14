@@ -46,6 +46,12 @@ const {
   deleteUserDocument,
 } = require("./src/triggers/authTrigger");
 
+// Storage Cleanup Scheduler
+const {
+  storageCleanupScheduler,
+  storageCleanupWeeklyScheduler,
+} = require("./src/triggers/storageCleanupScheduler");
+
 // 서울 리전 설정 (1st generation에서는 functions.region 사용)
 
 // Express 앱 생성
@@ -225,3 +231,7 @@ exports.api = onRequest(
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
 exports.deleteUserDocument = deleteUserDocument;
+
+// Storage Cleanup Scheduler 내보내기
+exports.storageCleanupScheduler = storageCleanupScheduler;
+exports.storageCleanupWeeklyScheduler = storageCleanupWeeklyScheduler;
