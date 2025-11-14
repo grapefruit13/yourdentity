@@ -41,7 +41,6 @@ class ReportContentController {
         targetId,
         targetUserId,
         communityId: communityId || null,
-        //reporterId,
         reporterId: uid,
         reportReason,
       };
