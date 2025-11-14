@@ -179,7 +179,7 @@ const RoutineDetailPage = () => {
     useGetUsersMeParticipatingCommunities();
 
   // 현재 프로그램의 신청 상태 확인
-  const isApplicationApproved = (() => {
+  const isApplied = (() => {
     if (!participatingCommunitiesData || !programDetailData) return false;
 
     const programType = programDetailData.programType?.toLowerCase();
@@ -207,7 +207,7 @@ const RoutineDetailPage = () => {
       (item) => item.id === programId
     ) as { status?: string } | undefined;
 
-    return foundItem?.status === "approved";
+    return !!foundItem;
   })();
 
   // 탭에 해당하는 섹션으로 스크롤하는 함수
@@ -783,7 +783,7 @@ const RoutineDetailPage = () => {
 
       {/* 하단 고정 버튼 */}
       <div className="sticky bottom-0 z-20 bg-transparent p-4">
-        {isApplicationApproved ? (
+        {isApplied ? (
           <button
             disabled
             className="block w-full cursor-not-allowed rounded-lg bg-gray-300 px-4 py-3 text-center"
