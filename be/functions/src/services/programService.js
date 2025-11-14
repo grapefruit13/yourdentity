@@ -784,6 +784,65 @@ class ProgramService {
   }
 
   /**
+   * Select 필드 값을 Notion DB에 저장된 옵션과 정확히 매칭
+   * Notion select 필드는 정확히 일치하는 옵션만 허용
+   * @param {string} fieldName - 필드명 ('신청 경로', '현재 상황', '참여 동기')
+   * @param {string} value - 변환할 값
+   * @returns {string} 변환된 값
+   */
+  sanitizeSelectValue(fieldName, value) {
+    if (!value || typeof value !== 'string') {
+      return value;
+    }
+
+    // Notion DB에 실제 저장된 옵션값 매핑 테이블
+    const selectOptionsMapping = {
+      '신청 경로': {
+        'SNS(인스타그램, 블로그 등)': 'SNS(인스타그램&블로그 등)',
+        'SNS(인스타그램&블로그 등)': 'SNS(인스타그램&블로그 등)',
+        '가족 추천(부모님, 친척 등)': '가족 추천(부모님&친척 등)',
+        '가족 추천(부모님&친척 등)': '가족 추천(부모님&친척 등)',
+        '지인 추천(선생님, 친구 등)': '지인 추천(선생님&친구 등)',
+        '지인 추천(선생님&친구 등)': '지인 추천(선생님&친구 등)',
+        '포털 사이트 검색': '포털 사이트 검색',
+        '기관/센터 추천': '기관/센터 추천'
+      },
+      '현재 상황': {
+        '현재 학교를 다니고 있지 않아요': '현재 학교를 다니고 있지 않아요',
+        '자퇴를 고민 중이에요': '자퇴를 고민 중이에요',
+        '학업 중단 숙려제에 참여 중이에요': '학업 중단 숙려제에 참여 중이에요',
+        '과거 자퇴한 경험이 있어요': '과거 자퇴한 경험이 있어요',
+        '학교를 다니고 있어요': '학교를 다니고 있어요'
+      },
+      '참여 동기': {
+        '일상을 좀 더 규칙적으로 관리하고 싶어서': '일상을 좀 더 규칙적으로 관리하고 싶어서',
+        '새로운 습관을 만들고 싶어서': '새로운 습관을 만들고 싶어서',
+        '다른 참여자들과 교류하여 동기부여 하고 싶어서': '다른 참여자들과 교류하여 동기부여 하고 싶어서',
+        '나만의 변화를 기록하고 싶어서': '나만의 변화를 기록하고 싶어서',
+        '추천을 받아 관심이 생겨서': '추천을 받아 관심이 생겨서',
+        '직접 입력하기': '직접 입력하기'
+      }
+    };
+
+    // 매핑 테이블에서 정확한 값 찾기
+    const mappingTable = selectOptionsMapping[fieldName];
+    if (mappingTable && mappingTable[value]) {
+      return mappingTable[value];
+    }
+
+    // 매핑 테이블에 없는 경우 처리
+    if (value.includes(',')) {
+      // 쉼표가 포함된 경우: 자동 변환 후 경고 로그
+      const convertedValue = value.replace(/,/g, '&');
+      console.warn(`[ProgramService] 매핑 테이블에 없는 select 값 자동 변환: "${value}" → "${convertedValue}" (필드: ${fieldName})`);
+      return convertedValue;
+    }
+
+    // 쉼표가 없으면 그대로 반환
+    return value;
+  }
+
+  /**
    * Notion 프로그램신청자DB에 저장
    * @param {string} programId - 프로그램 ID (Notion 페이지 ID)
    * @param {Object} applicationData - 신청 데이터
@@ -840,8 +899,11 @@ class ProgramService {
           '새로운 습관을 만들고 싶어서'
         ];
         
-        if (validOptions.includes(applicationMotivation)) {
-          motivationSelect = applicationMotivation;
+        // 매핑 테이블을 통해 정확한 값으로 변환
+        const sanitizedMotivation = this.sanitizeSelectValue('참여 동기', applicationMotivation);
+        
+        if (validOptions.includes(sanitizedMotivation)) {
+          motivationSelect = sanitizedMotivation;
         } else {
           // 선택지에 없는 값이면 "직접 입력하기"로 설정하고 내용은 detail에 저장
           motivationSelect = '직접 입력하기';
@@ -932,7 +994,7 @@ class ProgramService {
       if (currentSituation) {
         properties['현재 상황'] = {
           select: {
-            name: currentSituation
+            name: this.sanitizeSelectValue('현재 상황', currentSituation)
           }
         };
       }
@@ -940,7 +1002,7 @@ class ProgramService {
       if (applicationSource) {
         properties['신청 경로'] = {
           select: {
-            name: applicationSource
+            name: this.sanitizeSelectValue('신청 경로', applicationSource)
           }
         };
       }
