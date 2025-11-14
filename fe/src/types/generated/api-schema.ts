@@ -580,6 +580,8 @@ export interface Program {
   createdAt?: string;
   updatedAt?: string;
   notionPageTitle?: string;
+  leaderNickname?: string;
+  leaderRealName?: string;
 }
 
 export interface ProgramDetail extends Schema.Program {
