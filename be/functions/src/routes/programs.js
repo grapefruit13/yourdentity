@@ -182,18 +182,55 @@ router.get('/:programId', programController.getProgramById);
  *       type: object
  *       required:
  *         - applicantId
- *         - nickname
+ *         - activityNickname
  *       properties:
  *         applicantId:
  *           type: string
  *           description: 신청자 ID
  *           example: "user_123456"
- *         nickname:
+ *         activityNickname:
  *           type: string
  *           minLength: 1
  *           maxLength: 50
  *           description: 참여용 닉네임
  *           example: "홍길동"
+ *         activityPhoneNumber:
+ *           type: string
+ *           description: 참여용 전화번호
+ *           example: "010-1234-5678"
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: 신청자 이메일
+ *           example: "user@example.com"
+ *         region:
+ *           type: object
+ *           description: 거주 지역
+ *           properties:
+ *             city:
+ *               type: string
+ *               description: 시/도
+ *               example: "서울시"
+ *             district:
+ *               type: string
+ *               description: 군/구
+ *               example: "성동구"
+ *         currentSituation:
+ *           type: string
+ *           description: 현재 상황 (자유 텍스트)
+ *           example: "현재 학교를 다니고 있지 않아요"
+ *         applicationSource:
+ *           type: string
+ *           description: 신청 경로 (자유 텍스트)
+ *           example: "SNS(인스타그램, 블로그 등)"
+ *         applicationMotivation:
+ *           type: string
+ *           description: 참여 동기 (자유 텍스트)
+ *           example: "일상을 좀 더 규칙적으로 관리하고 싶어서"
+ *         canAttendEvents:
+ *           type: boolean
+ *           description: 필참 일정 확인 여부
+ *           example: true
  *     
  *     ProgramApplicationResponse:
  *       type: object
