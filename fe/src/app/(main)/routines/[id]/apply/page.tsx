@@ -1248,7 +1248,7 @@ const ProgramApplyPage = () => {
       </div>
 
       {/* 하단 고정 버튼 영역 */}
-      <div className="fixed right-0 bottom-[72px] left-0 z-40 mx-auto max-w-[470px] px-4 py-4">
+      <div className="fixed right-0 bottom-0 left-0 z-40 mx-auto max-w-[470px] px-4 py-4">
         {renderBottomButton()}
       </div>
 

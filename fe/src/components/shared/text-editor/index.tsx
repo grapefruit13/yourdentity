@@ -32,6 +32,7 @@ import {
   setCursorPosition,
   normalizeUrl,
   elementToHtml,
+  normalizeBrTags,
 } from "@/utils/shared/text-editor";
 import { Button } from "../ui/button";
 import Icon from "../ui/icon";
@@ -322,6 +323,9 @@ const TextEditor = ({
       contentRef.current.childNodes.forEach((child) => {
         html += elementToHtml(child);
       });
+
+      // 불필요한 <br> 태그 제거 (브라우저가 자동으로 추가한 것들)
+      html = normalizeBrTags(html);
 
       onContentChange(html);
     }

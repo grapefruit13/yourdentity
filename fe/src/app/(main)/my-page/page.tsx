@@ -15,7 +15,6 @@ import {
   useGetUsersMeLikedPosts,
   useGetUsersMeCommentedPosts,
 } from "@/hooks/generated/users-hooks";
-import { getCurrentUser } from "@/lib/auth";
 import type * as Types from "@/types/generated/users-types";
 
 /**
@@ -76,6 +75,7 @@ const Page = () => {
       authorProfileUrl: "",
       likeCount: post.likesCount || 0,
       commentCount: post.commentsCount || 0,
+      communityId: post.community?.id || "",
     };
   };
 
@@ -112,9 +112,8 @@ const Page = () => {
   };
 
   // 게시글 클릭 핸들러
-  const handlePostClick = (postId: string) => {
-    // FIXME: 실제 게시글 상세 페이지로 이동
-    console.log("게시글 클릭:", postId);
+  const handlePostClick = (postId: string, communityId: string) => {
+    router.push(`/community/post/${postId}?communityId=${communityId}`);
   };
 
   return (
@@ -141,7 +140,7 @@ const Page = () => {
       /> */}
 
       {/* 게시글 그리드 */}
-      <div className="grid grid-cols-2 gap-4 px-4 pt-4 pb-24">
+      <div className="grid grid-cols-2 gap-4 pt-4 pb-24">
         {isLoadingCurrentTab ? (
           // 로딩 중일 때 스켈레톤 표시
           Array.from({ length: 4 }).map((_, index) => (
@@ -183,7 +182,7 @@ const Page = () => {
               authorProfileUrl={post.authorProfileUrl}
               likeCount={post.likeCount}
               commentCount={post.commentCount}
-              onClick={() => handlePostClick(post.id)}
+              onClick={() => handlePostClick(post.id, post.communityId)}
             />
           ))
         )}

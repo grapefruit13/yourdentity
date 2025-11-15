@@ -1767,9 +1767,11 @@ class CommunityService {
    * @param {string} communityId - 커뮤니티 ID
    * @param {string} userId - 사용자 ID
    * @param {string} nickname - 닉네임
+   * @param {Object} [options] - 추가 옵션
+   * @param {string} [options.applicantsPageId] - Notion 프로그램신청자 페이지 ID
    * @return {Promise<Object>} 추가된 멤버 정보
    */
-  async addMemberToCommunity(communityId, userId, nickname) {
+  async addMemberToCommunity(communityId, userId, nickname, options = {}) {
     try {
       if (!communityId) {
         const error = new Error("커뮤니티 ID가 필요합니다");
@@ -1819,6 +1821,10 @@ class CommunityService {
         joinedAt: FieldValue.serverTimestamp(),
       };
 
+      if (options.applicantsPageId) {
+        memberData.applicantsPageId = options.applicantsPageId;
+      }
+
       const memberId = userId;
       const result = await membersService.create(memberData, memberId);
 
@@ -1831,7 +1837,7 @@ class CommunityService {
       };
     } catch (error) {
       console.error("커뮤니티 멤버 추가 오류:", error.message);
-      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "CONFLICT") {
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "CONFLICT" || error.code === "NICKNAME_DUPLICATE") {
         throw error;
       }
       throw new Error("커뮤니티 멤버 추가에 실패했습니다");

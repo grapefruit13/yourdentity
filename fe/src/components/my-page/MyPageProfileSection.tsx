@@ -50,7 +50,7 @@ const ProfileActionButtons = ({
         disabled={disabled}
         className="h-10 flex-1 rounded-lg border border-gray-300 bg-white py-3 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <Typography font="noto" variant="body1M" className="text-gray-900">
+        <Typography font="noto" variant="body3M" className="text-gray-950">
           프로필 편집
         </Typography>
       </ButtonBase>
@@ -102,7 +102,7 @@ const MyPageProfileSection = ({
           {/* 통계 정보 스켈레톤 */}
           <div className="flex w-[280px] justify-between">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="flex flex-col items-center gap-1">
+              <div key={index} className="flex flex-col items-center gap-2">
                 <Skeleton className="h-6 w-8" />
                 <Skeleton className="h-4 w-12" />
               </div>
@@ -145,43 +145,31 @@ const MyPageProfileSection = ({
         {/* 통계 정보 */}
         <div className="flex w-[280px] justify-between">
           {/* 인증 글 */}
-          <div className="flex flex-col items-center gap-1">
-            <Typography
-              font="noto"
-              variant="heading2B"
-              className="text-gray-900"
-            >
+          <div className="flex flex-col items-center gap-2">
+            <Typography font="noto" variant="body2B" className="text-gray-950">
               {postCount ?? 0}
             </Typography>
-            <Typography font="noto" variant="body2R" className="text-gray-600">
+            <Typography font="noto" variant="label1R" className="text-gray-600">
               인증 글
             </Typography>
           </div>
 
           {/* 활동 참여 */}
-          <div className="flex flex-col items-center gap-1">
-            <Typography
-              font="noto"
-              variant="heading2B"
-              className="text-gray-900"
-            >
+          <div className="flex flex-col items-center gap-2">
+            <Typography font="noto" variant="body2B" className="text-gray-950">
               {activityCount ?? 0}
             </Typography>
-            <Typography font="noto" variant="body2R" className="text-gray-600">
+            <Typography font="noto" variant="label1R" className="text-gray-600">
               활동 참여
             </Typography>
           </div>
 
           {/* 포인트 */}
-          <div className="flex flex-col items-center gap-1">
-            <Typography
-              font="noto"
-              variant="heading2B"
-              className="text-gray-900"
-            >
+          <div className="flex flex-col items-center gap-2">
+            <Typography font="noto" variant="body2B" className="text-gray-950">
               {points ?? 0}
             </Typography>
-            <Typography font="noto" variant="body2R" className="text-gray-600">
+            <Typography font="noto" variant="label1R" className="text-gray-600">
               포인트
             </Typography>
           </div>
@@ -191,8 +179,8 @@ const MyPageProfileSection = ({
       {/* 닉네임 */}
       <Typography
         font="noto"
-        variant="heading2B"
-        className="mb-2 text-left text-gray-900"
+        variant="body2B"
+        className="mb-2 text-left text-gray-950"
       >
         {nickname ?? "-"}
       </Typography>
@@ -200,8 +188,8 @@ const MyPageProfileSection = ({
       {/* 자기소개 */}
       <Typography
         font="noto"
-        variant="body2R"
-        className="mb-[13px] text-left text-gray-600"
+        variant="body3R"
+        className="mb-[13px] text-left text-gray-950"
       >
         {bio ?? ""}
       </Typography>

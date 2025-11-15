@@ -63,6 +63,54 @@ class TermsService {
   }
 
   /**
+   * 약관 데이터 검증 (필수 정보 확인)
+   * @param {Object} termsData
+   * @param {string} uid
+   * @throws {Error} 약관 정보가 없으면 에러
+   */
+  validateTermsData(termsData, uid) {
+    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed} = termsData;
+    
+    if (!serviceVersion && !privacyVersion && !age14Agreed && !pushAgreed) {
+      console.error(`[KAKAO_TERMS_EMPTY] uid=${uid} - 약관 정보 없음`);
+      const e = new Error("카카오 약관 정보를 받아올 수 없습니다. 카카오 계정 설정에서 약관 동의를 확인해주세요.");
+      e.code = "KAKAO_TERMS_MISSING";
+      throw e;
+    }
+  }
+
+  /**
+   * 약관 데이터를 Firestore 업데이트 객체로 변환
+   * @param {Object} termsData
+   * @param {string} uid
+   * @return {Object} Firestore 업데이트 객체
+   */
+  prepareTermsUpdate(termsData, uid) {
+    const {serviceVersion, privacyVersion, age14Agreed, pushAgreed, termsAgreedAt} = termsData;
+    
+    const termsUpdate = {};
+    if (serviceVersion) termsUpdate.serviceTermsVersion = serviceVersion;
+    if (privacyVersion) termsUpdate.privacyTermsVersion = privacyVersion;
+    termsUpdate.age14TermsAgreed = !!age14Agreed;
+    termsUpdate.pushTermsAgreed = !!pushAgreed;
+    
+    if (termsAgreedAt) {
+      termsUpdate.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
+    } else {
+      termsUpdate.termsAgreedAt = FieldValue.serverTimestamp();
+    }
+    
+    console.log(`[KAKAO_TERMS_PARSED] uid=${uid}`, {
+      hasService: !!serviceVersion,
+      hasPrivacy: !!privacyVersion,
+      age14: !!age14Agreed,
+      push: !!pushAgreed,
+    });
+    
+    return termsUpdate;
+  }
+
+  /**
    * 에뮬레이터 약관 파싱 (테스트용)
    * @param {string} uid
    */
@@ -75,8 +123,9 @@ class TermsService {
     
     let serviceVersion = null;
     let privacyVersion = null;
+    let personalVersion = null;
     let age14Agreed = false;
-    let pushAgreed = false;
+    let marketingAgreed = false;
     let termsAgreedAt = null;
 
     for (const term of mockTerms) {
@@ -92,14 +141,20 @@ class TermsService {
           termsAgreedAt = term.agreed_at;
         }
       }
+      if (term.tag === TERMS_TAGS.PERSONAL) {
+        personalVersion = TERMS_VERSIONS.PERSONAL;
+        if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
+          termsAgreedAt = term.agreed_at;
+        }
+      }
       if (term.tag === TERMS_TAGS.AGE14) {
         age14Agreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
       }
-      if (term.tag === TERMS_TAGS.PUSH) {
-        pushAgreed = true;
+      if (term.tag === TERMS_TAGS.MARKETING) {
+        marketingAgreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
@@ -109,8 +164,9 @@ class TermsService {
     return {
       serviceVersion,
       privacyVersion,
+      personalVersion,
       age14Agreed,
-      pushAgreed,
+      marketingAgreed,
       termsAgreedAt
     };
   }
@@ -150,8 +206,9 @@ class TermsService {
     
     let serviceVersion = null;
     let privacyVersion = null;
+    let personalVersion = null;
     let age14Agreed = false;
-    let pushAgreed = false;
+    let marketingAgreed = false;
     let termsAgreedAt = null;
 
     // 카카오 태그 매핑으로 약관 동의 여부 확인
@@ -168,14 +225,20 @@ class TermsService {
           termsAgreedAt = term.agreed_at;
         }
       }
+      if (term.tag === TERMS_TAGS.PERSONAL) {
+        personalVersion = TERMS_VERSIONS.PERSONAL;
+        if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
+          termsAgreedAt = term.agreed_at;
+        }
+      }
       if (term.tag === TERMS_TAGS.AGE14) {
         age14Agreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
       }
-      if (term.tag === TERMS_TAGS.PUSH) {
-        pushAgreed = true;
+      if (term.tag === TERMS_TAGS.MARKETING) {
+        marketingAgreed = true;
         if (term.agreed_at && (!termsAgreedAt || term.agreed_at > termsAgreedAt)) {
           termsAgreedAt = term.agreed_at;
         }
@@ -185,12 +248,54 @@ class TermsService {
     return {
       serviceVersion,
       privacyVersion,
+      personalVersion,
       age14Agreed,
-      pushAgreed,
+      marketingAgreed,
       termsAgreedAt
     };
   }
 
+  /**
+   * 사용자 약관 정보 업데이트
+   * @param {string} uid
+   * @param {Object} termsData
+   */
+  async updateUserTerms(uid, termsData) {
+    const {serviceVersion, privacyVersion, personalVersion, age14Agreed, marketingAgreed, termsAgreedAt} = termsData;
+
+    const update = {};
+
+    // 약관 정보가 있으면 추가
+    if (serviceVersion || privacyVersion || personalVersion || age14Agreed || marketingAgreed) {
+      if (serviceVersion) update.serviceTermsVersion = serviceVersion;
+      if (privacyVersion) update.privacyTermsVersion = privacyVersion;
+      if (personalVersion) update.personalTermsVersion = personalVersion;
+      update.age14TermsAgreed = !!age14Agreed;
+      update.marketingTermsAgreed = !!marketingAgreed;
+      
+      // 만 14세 동의가 없는 경우 모니터링 로그 (카카오 정책 변경 감지)
+      if (!age14Agreed) {
+        console.warn(`⚠️ [TermsService] 만 14세 동의 없음 (uid: ${uid}) - 카카오 정책 확인 필요`);
+      }
+      if (termsAgreedAt) {
+        update.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
+      } else {
+        update.termsAgreedAt = FieldValue.serverTimestamp();
+      }
+    } else {
+      // 약관 정보가 없으면 기본값으로 초기화 (최초 동기화 시)
+      console.log(`[TermsService] 약관 정보 없음, 기본값으로 초기화 (uid: ${uid})`);
+      update.serviceTermsVersion = null;
+      update.privacyTermsVersion = null;
+      update.personalTermsVersion = null;
+      update.age14TermsAgreed = false;
+      update.marketingTermsAgreed = false;
+      update.termsAgreedAt = null;
+    }
+
+    await this.firestoreService.update(uid, update);
+    return {success: true};
+  }
 }
 
 module.exports = TermsService;

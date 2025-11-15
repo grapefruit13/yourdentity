@@ -250,9 +250,7 @@ export default function MainLayout({
             }
           />
         )}
-        <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
-          {children}
-        </main>
+        <main className="w-full flex-1 overflow-x-hidden">{children}</main>
         <BottomNavigation />
       </div>
     </div>

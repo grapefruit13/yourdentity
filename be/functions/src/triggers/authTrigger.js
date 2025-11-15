@@ -90,18 +90,16 @@ exports.createUserDocument = functions
 
         // Notion에 새 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
         notionUserService.syncSingleUserToNotion(uid)
-          .then(result => {
-            if (result.success) {
-              console.log(`Notion 동기화 완료: ${uid}`);
-            } else {
-              console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
-            }
-          })
-          .catch(error => {
-            console.error(`Notion 동기화 오류: ${uid}`, error);
-          });
-
-
+            .then((result) => {
+              if (result.success) {
+                console.log(`Notion 동기화 완료: ${uid}`);
+              } else {
+                console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
+              }
+            })
+            .catch((error) => {
+              console.error(`Notion 동기화 오류: ${uid}`, error);
+            });
 
         return {success: true, uid};
       } catch (error) {
@@ -118,6 +116,13 @@ exports.createUserDocument = functions
  *
  * 만약 콘솔 등에서 직접 삭제해 가명처리가 되지 않은 경우,
  * 여기서 개인정보 가명처리를 수행합니다.
+ *
+ * **개인정보 처리:**
+ * - 닉네임 삭제: nicknames 컬렉션에서 해당 사용자의 닉네임 문서 삭제
+ * - 제거: 생년월일(가명처리), deletedAt, lastUpdatedAt을 제외한 모든 필드를 null로 처리
+ *   (이름, 이메일, 전화번호, 닉네임, 주소, 프로필 이미지, 자기소개, rewards, profileImagePath 등 모든 필드)
+ * - 가명처리: 생년월일 (YYYY-**-** 형태로 마스킹)
+ * - 유지: 가명처리된 생년월일, 삭제일시(deletedAt), 마지막 업데이트 일자(lastUpdatedAt)만 유지
  */
 exports.deleteUserDocument = functions
     .region("asia-northeast3")
@@ -139,24 +144,46 @@ exports.deleteUserDocument = functions
             return {success: true, uid, action: "skipped"};
           }
 
+          // 닉네임 삭제 (nicknames 컬렉션에서 제거)
+          if (data.nickname && typeof data.nickname === "string" && data.nickname.trim().length > 0) {
+            try {
+              const nicknameLower = data.nickname.toLowerCase().trim();
+              const nicknameRef = admin.firestore().collection("nicknames").doc(nicknameLower);
+              const nicknameDoc = await nicknameRef.get();
+
+              // 닉네임 문서가 존재하고 해당 사용자의 것인 경우에만 삭제
+              if (nicknameDoc.exists && nicknameDoc.data()?.uid === uid) {
+                await nicknameRef.delete();
+                console.log("✅ Auth Trigger: 닉네임 삭제 완료", {uid, nickname: data.nickname});
+              }
+            } catch (nicknameError) {
+              // 닉네임 삭제 실패해도 계속 진행 (로그만 남김)
+              console.warn("⚠️ Auth Trigger: 닉네임 삭제 실패", {uid, error: nicknameError});
+            }
+          }
+
+          // 생년월일 가명처리
           let maskedBirthDate = null;
           if (data.birthDate && typeof data.birthDate === "string" && data.birthDate.length >= 4) {
             const birthYear = data.birthDate.substring(0, 4);
             maskedBirthDate = `${birthYear}-**-**`;
           }
 
-          const anonymized = {
-            name: null,
-            email: null,
-            phoneNumber: null,
-            address: null,
-            addressDetail: null,
-            profileImageUrl: null,
-            bio: null,
-            birthDate: maskedBirthDate,
-            deletedAt: FieldValue.serverTimestamp(),
-            lastUpdatedAt: FieldValue.serverTimestamp(),
-          };
+          // 모든 필드를 null로 처리 (birthDate, deletedAt, lastUpdatedAt 제외)
+          const anonymized = {};
+          const preserveFields = ["birthDate", "deletedAt", "lastUpdatedAt"];
+
+          // 문서의 모든 필드를 순회하며 null 처리
+          Object.keys(data).forEach((key) => {
+            if (!preserveFields.includes(key)) {
+              anonymized[key] = null;
+            }
+          });
+
+          // 가명처리된 생년월일과 타임스탬프 설정
+          anonymized.birthDate = maskedBirthDate;
+          anonymized.deletedAt = FieldValue.serverTimestamp();
+          anonymized.lastUpdatedAt = FieldValue.serverTimestamp();
 
           await userRef.update(anonymized);
           console.log("✅ Auth Trigger: 사용자 문서 가명처리 완료", {uid});

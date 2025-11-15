@@ -22,11 +22,8 @@ const PersonalInfoPage = () => {
   const displayName = user?.displayName || userData?.nickname || "";
   const email = user?.email || "";
   const phoneNumber = user?.phoneNumber || "";
-
-  // 백엔드 API에서 가져올 수 있는 정보 (추후 구현)
-  // TODO: 백엔드 API에 생년월일, 성별 필드 추가 시 사용
-  const birthDate = ""; // userData?.birthDate || "";
-  const gender = ""; // userData?.gender || "";
+  const birthDate = userData?.birthDate || "";
+  const gender = userData?.gender || "";
 
   return (
     <div className="flex min-h-full w-full flex-col pt-12">
@@ -34,7 +31,7 @@ const PersonalInfoPage = () => {
         <div className="overflow-hidden rounded-2xl bg-white">
           {/* 이름 */}
           <div className="flex flex-col gap-3 p-4">
-            <Typography font="noto" variant="label1M" className="text-gray-600">
+            <Typography font="noto" variant="body2M" className="text-gray-950">
               이름
             </Typography>
             <Input
@@ -46,7 +43,7 @@ const PersonalInfoPage = () => {
 
           {/* 생년월일 */}
           <div className="flex flex-col gap-3 p-4">
-            <Typography font="noto" variant="label1M" className="text-gray-600">
+            <Typography font="noto" variant="body2M" className="text-gray-950">
               생년월일
             </Typography>
             <Input
@@ -59,7 +56,7 @@ const PersonalInfoPage = () => {
 
           {/* 성별 */}
           <div className="flex flex-col gap-3 p-4">
-            <Typography font="noto" variant="label1M" className="text-gray-600">
+            <Typography font="noto" variant="body2M" className="text-gray-950">
               성별
             </Typography>
             <Input
@@ -75,8 +72,8 @@ const PersonalInfoPage = () => {
             <div className="mb-2">
               <Typography
                 font="noto"
-                variant="label1M"
-                className="text-gray-600"
+                variant="body2M"
+                className="text-gray-950"
               >
                 휴대폰 번호
               </Typography>
@@ -94,8 +91,8 @@ const PersonalInfoPage = () => {
             <div className="mb-2">
               <Typography
                 font="noto"
-                variant="label1M"
-                className="text-gray-600"
+                variant="body2M"
+                className="text-gray-950"
               >
                 이메일 주소
               </Typography>

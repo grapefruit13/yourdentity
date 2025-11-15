@@ -12,8 +12,8 @@ import * as UsersApi from "@/api/generated/users-api";
 import ProfileImageBottomSheet from "@/components/my-page/ProfileImageBottomSheet";
 import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
 import Input from "@/components/shared/input";
+import Textarea from "@/components/shared/textarea";
 import { Typography } from "@/components/shared/typography";
-
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
@@ -389,7 +389,7 @@ const ProfileEditPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-gray-50">
+    <div className="flex min-h-screen w-full flex-col bg-white">
       <div className="fixed top-0 z-50 mx-auto flex h-12 w-full max-w-[470px] items-center justify-between border-b border-b-gray-200 bg-white px-5 py-3">
         <button
           onClick={handleBack}
@@ -486,7 +486,7 @@ const ProfileEditPage = () => {
           />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex flex-col gap-1">
           <Typography
             font="noto"
             variant="body2B"
@@ -494,11 +494,10 @@ const ProfileEditPage = () => {
           >
             {PROFILE_EDIT_LABELS.BIO}
           </Typography>
-          <textarea
+          <Textarea
             {...register("bio", {
               maxLength: MAX_BIO_LENGTH,
             })}
-            className="h-32 w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-pink-600 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50"
             placeholder={PROFILE_EDIT_PLACEHOLDERS.BIO}
             disabled={!isDataLoaded}
           />

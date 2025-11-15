@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { User } from "lucide-react";
 import ShareModal from "@/components/community/ShareModal";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
@@ -38,6 +39,7 @@ const PostDetailPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [currentOrigin, setCurrentOrigin] = useState<string>("");
+  const [imageLoadError, setImageLoadError] = useState(false);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
 
   // 클라이언트 사이드에서만 origin 가져오기
@@ -62,6 +64,11 @@ const PostDetailPage = () => {
 
   // postData를 Schema.CommunityPost 타입으로 변환
   const post = postData as Schema.CommunityPost;
+
+  // postData 변경 시 이미지 에러 상태 리셋
+  useEffect(() => {
+    setImageLoadError(false);
+  }, [postData]);
 
   // 작성자 여부 확인 (API 응답에서 isAuthor 필드 사용)
   // TODO: CommunityPost 타입에 isAuthor 필드가 추가되면 타입 단언 제거
@@ -272,32 +279,72 @@ const PostDetailPage = () => {
   return (
     <div className="bg-white pt-12">
       {/* 메인 콘텐츠 */}
-      <div className="px-4 py-6 pb-32">
+      <div className="px-5 py-5">
         {/* 활동 후기 헤더 */}
-        <div className="mb-2 text-sm text-gray-500">
+        <Typography
+          as="h1"
+          font="noto"
+          variant="body2R"
+          className="mb-1 text-gray-500"
+        >
           {post?.category || "활동 후기"}
-        </div>
-
+        </Typography>
         {/* 제목 */}
-        <h1 className="mb-4 text-3xl font-bold text-gray-800">{post?.title}</h1>
+        <Typography
+          as="h2"
+          font="noto"
+          variant="heading1M"
+          className="mb-4 text-gray-950"
+        >
+          {post?.title}
+        </Typography>
 
         {/* 프로필 섹션 */}
         <div className="mb-6 flex items-center">
-          <div className="mr-3 h-8 w-8 rounded-full bg-gray-300"></div>
+          {post?.profileImageUrl && !imageLoadError ? (
+            <img
+              src={post.profileImageUrl}
+              alt={post?.author || "프로필 이미지"}
+              className="mr-3 h-8 w-8 rounded-full object-cover"
+              onError={() => setImageLoadError(true)}
+            />
+          ) : (
+            <User
+              className="text-main-600 mr-3 h-8 w-8 rounded-full"
+              strokeWidth={1.5}
+            />
+          )}
           <div>
             <div className="flex items-center gap-1">
-              <span className="text-sm font-medium text-gray-800">
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-950"
+              >
                 {post?.author || "익명"}
-              </span>
+              </Typography>
             </div>
-            <div className="text-xs text-gray-500">
-              {post?.createdAt && getTimeAgo(post.createdAt)}
+            <div className="flex items-center gap-1">
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                {post?.createdAt && getTimeAgo(post.createdAt)}
+              </Typography>
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                조회 {post?.viewCount}
+              </Typography>
             </div>
           </div>
         </div>
 
         {/* 내용 */}
-        <div className="mb-6">
+        <div className="py-8">
           {post?.content && (
             <div
               className={cn(
@@ -321,7 +368,7 @@ const PostDetailPage = () => {
       </div>
 
       {/* 하단 스티키 액션 바 (하단 네비게이션 위) */}
-      <div className="fixed right-0 bottom-[77px] left-0 z-40 mx-auto flex h-[48px] w-full max-w-[470px] items-center justify-between border-t border-gray-100 bg-white px-4 py-3">
+      <div className="fixed right-0 bottom-0 left-0 z-40 mx-auto flex h-[48px] w-full max-w-[470px] items-center justify-between border-t border-gray-100 bg-white px-4 py-3">
         <div className="flex items-center gap-6">
           <button
             onClick={handleLike}
@@ -332,7 +379,7 @@ const PostDetailPage = () => {
             <svg
               className={cn(
                 "h-5 w-5 transition-colors",
-                isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
+                isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
               )}
               fill={isLiked ? "currentColor" : "none"}
               stroke="currentColor"
@@ -350,7 +397,7 @@ const PostDetailPage = () => {
               variant="body2R"
               className={cn(
                 "transition-colors",
-                isLiked ? "text-red-500" : "text-gray-600"
+                isLiked ? "text-main-500" : "text-gray-600"
               )}
             >
               {post?.likesCount || 0}
