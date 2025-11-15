@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { MissionTag } from "./mission-tag";
 
 type MissionCertificationCardProps = {
   title: string;
@@ -43,13 +44,7 @@ export const MissionCertificationCard = ({
         >
           {thumbnailText}
         </Typography>
-        <Typography
-          font="noto"
-          variant="label1R"
-          className="h-fit w-fit rounded bg-gray-100 px-0.5 text-gray-400"
-        >
-          {tagName}
-        </Typography>
+        <MissionTag tagName={tagName} />
       </div>
       <Image
         src={thumbnailImageUrl}
