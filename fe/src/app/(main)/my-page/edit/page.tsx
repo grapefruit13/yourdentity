@@ -229,7 +229,7 @@ const ProfileEditPage = () => {
 
   /**
    * 닉네임 중복 체크
-   * @returns 사용 가능 여부 (true: 사용 가능, false: 중복)
+   * @returns 사용 가능 여부 (true: 사용 가능, false: 중복 또는 유효하지 않음)
    */
   const checkNicknameAvailability = async (
     nickname: string
@@ -240,12 +240,17 @@ const ProfileEditPage = () => {
       });
       const isAvailable = response.data?.available ?? false;
 
-      // 에러 메시지 초기화
-      setNicknameError(null);
-
-      return isAvailable;
+      if (isAvailable) {
+        // 사용 가능한 경우 에러 메시지 초기화
+        setNicknameError(null);
+        return true;
+      } else {
+        // 200 응답이지만 available이 false인 경우 (중복)
+        setNicknameError("중복된 이름입니다. 다른 이름을 선택해주세요.");
+        return false;
+      }
     } catch (error: unknown) {
-      // 400 에러인 경우 중복 에러 메시지 표시
+      // 400 에러인 경우 (닉네임 형식 오류)
       if (
         error &&
         typeof error === "object" &&
@@ -255,7 +260,7 @@ const ProfileEditPage = () => {
         "status" in error.response &&
         error.response.status === 400
       ) {
-        setNicknameError("중복된 이름입니다. 다른 이름을 선택해주세요.");
+        setNicknameError("닉네임은 한글, 영어, 숫자만 사용 가능합니다.");
         return false;
       }
 
