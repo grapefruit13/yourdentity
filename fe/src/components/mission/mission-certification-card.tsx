@@ -48,7 +48,7 @@ export const MissionCertificationCard = ({
       </div>
       <Image
         src={thumbnailImageUrl}
-        alt={IMAGE_URL.IMG.download.home.alt}
+        alt={`${title} 썸네일 이미지`}
         width={88}
         height={88}
         className="h-[88px] min-h-[88px] w-[88px] min-w-[88px] rounded-lg object-cover"
