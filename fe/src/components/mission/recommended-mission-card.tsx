@@ -20,7 +20,7 @@ export const RecommendedMissionCard = ({
   onClick,
 }: RecommendedMissionCardProps) => {
   return (
-    <div
+    <button
       className="flex h-25 w-[35%] max-w-[35%] min-w-[35%] flex-shrink-0 flex-col justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
       onClick={onClick}
     >
@@ -36,7 +36,7 @@ export const RecommendedMissionCard = ({
           </Typography>
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
