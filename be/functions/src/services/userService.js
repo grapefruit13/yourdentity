@@ -289,7 +289,7 @@ class UserService {
    */
   async syncKakaoProfile(uid, accessToken) {
     const startTime = Date.now();
-    console.log(`[KAKAO_SYNC_START] uid=${uid}, timestamp=${new Date().toISOString()}`);
+    console.log(`[KAKAO_SYNC_START] uid=${uid}`);
     
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
     let userinfoJson;
@@ -368,7 +368,6 @@ class UserService {
           phoneNumber: phoneRaw || "null",
           picture: !!profileImageUrl,
         },
-        timestamp: new Date().toISOString(),
       });
       const e = new Error("카카오에서 필수 정보(성별, 생년월일, 전화번호)를 받아올 수 없습니다. 카카오 계정 설정에서 정보 제공 동의를 확인해주세요.");
       e.code = "REQUIRE_FIELDS_MISSING";
