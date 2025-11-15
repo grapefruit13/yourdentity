@@ -15,21 +15,53 @@ class TermsService {
   }
 
   /**
-   * 카카오 약관 동기화 (전체 프로세스)
+   * 약관 데이터 검증 (필수 정보 확인)
+   * @param {Object} termsData
    * @param {string} uid
-   * @param {string} accessToken
+   * @throws {Error} 약관 정보가 없으면 에러
    */
-  async syncFromKakao(uid, accessToken) {
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  validateTermsData(termsData, uid) {
+    const {serviceVersion, privacyVersion, personalVersion, age14Agreed, marketingAgreed} = termsData;
     
-    let termsData;
-    if (isEmulator && accessToken === "test") {
-      termsData = await this.parseEmulatorTerms(uid);
-    } else {
-      termsData = await this.fetchKakaoTerms(accessToken);
+    if (!serviceVersion && !privacyVersion && !personalVersion && !age14Agreed && !marketingAgreed) {
+      console.error(`[KAKAO_TERMS_EMPTY] uid=${uid} - 약관 정보 없음`);
+      const e = new Error("카카오 약관 정보를 받아올 수 없습니다. 카카오 계정 설정에서 약관 동의를 확인해주세요.");
+      e.code = "KAKAO_TERMS_MISSING";
+      throw e;
     }
+  }
 
-    return this.updateUserTerms(uid, termsData);
+  /**
+   * 약관 데이터를 Firestore 업데이트 객체로 변환
+   * @param {Object} termsData
+   * @param {string} uid
+   * @return {Object} Firestore 업데이트 객체
+   */
+  prepareTermsUpdate(termsData, uid) {
+    const {serviceVersion, privacyVersion, personalVersion, age14Agreed, marketingAgreed, termsAgreedAt} = termsData;
+    
+    const termsUpdate = {};
+    if (serviceVersion) termsUpdate.serviceTermsVersion = serviceVersion;
+    if (privacyVersion) termsUpdate.privacyTermsVersion = privacyVersion;
+    if (personalVersion) termsUpdate.personalTermsVersion = personalVersion;
+    termsUpdate.age14TermsAgreed = !!age14Agreed;
+    termsUpdate.marketingTermsAgreed = !!marketingAgreed;
+    
+    if (termsAgreedAt) {
+      termsUpdate.termsAgreedAt = Timestamp.fromDate(new Date(termsAgreedAt));
+    } else {
+      termsUpdate.termsAgreedAt = FieldValue.serverTimestamp();
+    }
+    
+    console.log(`[KAKAO_TERMS_PARSED] uid=${uid}`, {
+      hasService: !!serviceVersion,
+      hasPrivacy: !!privacyVersion,
+      hasPersonal: !!personalVersion,
+      age14: !!age14Agreed,
+      marketing: !!marketingAgreed,
+    });
+    
+    return termsUpdate;
   }
 
   /**
@@ -94,9 +126,9 @@ class TermsService {
   }
 
   /**
-   * 카카오 약관 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
+   * 카카오 약관 API 호출 (타임아웃 설정, 실패 시 에러 throw)
    * @param {string} accessToken - 카카오 액세스 토큰
-   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
+   * @param {number} maxRetries - 시도 횟수 (기본 1회, 재시도 없음)
    * @private
    */
   async _fetchKakaoTerms(accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {

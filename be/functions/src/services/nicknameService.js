@@ -38,6 +38,7 @@ class NicknameService {
    * @param {string} nickname - 닉네임
    * @param {string} uid - 사용자 UID
    * @param {string} existingNickname - 기존 닉네임 (선택사항)
+   * @return {Promise<boolean>} 설정 성공 여부
    */
   setNickname(transaction, nickname, uid, existingNickname = null) {
     const lower = nickname.toLowerCase();
