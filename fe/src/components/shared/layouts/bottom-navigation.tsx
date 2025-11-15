@@ -18,6 +18,7 @@ const BottomNavigation = () => {
     LINK_URL.HOME,
     LINK_URL.COMMUNITY,
     LINK_URL.MY_PAGE,
+    LINK_URL.MISSION,
   ] as const;
 
   // 현재 경로가 최상단 뎁스 경로 중 하나와 정확히 일치하는지 확인

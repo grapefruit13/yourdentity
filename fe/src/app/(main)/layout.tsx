@@ -32,7 +32,8 @@ export default function MainLayout({
 
   const isCommunityPage = pathname === LINK_URL.COMMUNITY;
   const isMyPage = pathname === LINK_URL.MY_PAGE;
-  const hideTopBar = isCommunityPage || isMyPage;
+  const isMissionPage = pathname === LINK_URL.MISSION;
+  const hideTopBar = isCommunityPage || isMyPage || isMissionPage;
 
   // 라우트 변경 시 항상 스크롤 최상단으로 이동 (Next.js 15 스크롤 복원 이슈 대응)
   useEffect(() => {

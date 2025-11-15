@@ -11,6 +11,8 @@ export const LINK_URL = {
   FIND_PASSWORD: "/find-password",
   EMAIL_SIGNUP: "/signup/email",
   MISSION: "/mission",
+  MISSION_LIST: "/mission/list",
+  MISSION_CERTIFY: "/mission/certify",
   COMMUNITY: "/community",
   COMMUNITY_POST: "/community/post",
   COMMUNITY_WRITE: "/community/write",

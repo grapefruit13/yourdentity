@@ -93,3 +93,24 @@ export const getCurrentDateTime = (suffix = " 수정 중"): string => {
   const minutes = String(now.getMinutes()).padStart(2, "0");
   return `${year}.${month}.${day}(${dayName}) ${hours}:${minutes}${suffix}`;
 };
+
+/**
+ * 현재 시간으로부터 지정된 시간만큼 후의 Date 객체를 반환
+ * @param hours 시간
+ * @param minutes 분
+ * @param seconds 초
+ * @returns 미래의 Date 객체
+ */
+export const getFutureDate = (
+  hours: number,
+  minutes: number,
+  seconds: number
+): Date => {
+  const HOUR_MS = 60 * 60 * 1000;
+  const MINUTE_MS = 60 * 1000;
+  const SECOND_MS = 1000;
+
+  return new Date(
+    Date.now() + hours * HOUR_MS + minutes * MINUTE_MS + seconds * SECOND_MS
+  );
+};
