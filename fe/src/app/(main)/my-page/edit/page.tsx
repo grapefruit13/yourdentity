@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, ChangeEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, User } from "lucide-react";
+import { Camera, User, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as FilesApi from "@/api/generated/files-api";
 import { deleteFilesById } from "@/api/generated/files-api";
@@ -27,10 +27,15 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   useGetUsersMe,
   usePatchUsersMeOnboarding,
+  usePostUsersMeSyncKakaoProfile,
 } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import type { FileUploadResponse } from "@/types/generated/api-schema";
 import type { ProfileEditFormValues } from "@/types/my-page/_profile-edit-types";
+import {
+  getKakaoAccessToken,
+  removeKakaoAccessToken,
+} from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 
 /**
@@ -50,6 +55,8 @@ const ProfileEditPage = () => {
     },
   });
   const { mutateAsync: patchOnboardingAsync } = usePatchUsersMeOnboarding();
+  const { mutateAsync: syncKakaoProfileAsync } =
+    usePostUsersMeSyncKakaoProfile();
 
   const actualUserData = userData;
 
@@ -78,9 +85,10 @@ const ProfileEditPage = () => {
     open: openBottomSheet,
   } = useToggle();
   const [isUnsavedModalOpen, setIsUnsavedModalOpen] = useState(false);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
 
   const isNicknameValid = nickname.trim().length > 0;
-  const isCompleteEnabled = isDirty && isNicknameValid;
+  const isCompleteEnabled = isDirty && isNicknameValid && !nicknameError;
   const isDataLoaded = !!actualUserData;
 
   /**
@@ -221,14 +229,44 @@ const ProfileEditPage = () => {
 
   /**
    * 닉네임 중복 체크
+   * @returns 사용 가능 여부 (true: 사용 가능, false: 중복 또는 유효하지 않음)
    */
   const checkNicknameAvailability = async (
     nickname: string
   ): Promise<boolean> => {
-    const response = await UsersApi.getUsersNicknameAvailability({
-      nickname,
-    });
-    return response.data?.available ?? false;
+    try {
+      const response = await UsersApi.getUsersNicknameAvailability({
+        nickname,
+      });
+      const isAvailable = response.data?.available ?? false;
+
+      if (isAvailable) {
+        // 사용 가능한 경우 에러 메시지 초기화
+        setNicknameError(null);
+        return true;
+      } else {
+        // 200 응답이지만 available이 false인 경우 (중복)
+        setNicknameError("중복된 이름입니다. 다른 이름을 선택해주세요.");
+        return false;
+      }
+    } catch (error: unknown) {
+      // 400 에러인 경우 (닉네임 형식 오류)
+      if (
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        error.response &&
+        typeof error.response === "object" &&
+        "status" in error.response &&
+        error.response.status === 400
+      ) {
+        setNicknameError("닉네임은 한글, 영어, 숫자만 사용 가능합니다.");
+        return false;
+      }
+
+      // 기타 에러는 그대로 throw
+      throw error;
+    }
   };
 
   /**
@@ -247,7 +285,10 @@ const ProfileEditPage = () => {
 
     try {
       const uploadResult = await uploadImageFile(selectedFileRef.current);
-      return { fileUrl: uploadResult.fileUrl, filePath: uploadResult.filePath };
+      return {
+        fileUrl: uploadResult.fileUrl,
+        filePath: uploadResult.filePath,
+      };
     } catch (error) {
       debug.error("이미지 업로드 실패:", error);
       // 사용자 알림 없이 메시지를 포함한 오류만 던지기
@@ -294,30 +335,55 @@ const ProfileEditPage = () => {
 
   /**
    * 프로필 편집 완료 핸들러
-   * 닉네임 중복 체크 → 이미지 업로드 → 프로필 업데이트 순서로 진행
+   * 온보딩 플로우:
+   * 1. sessionStorage에서 카카오 액세스 토큰 확인
+   * 2. 토큰이 있으면 syncKakaoProfile API 먼저 호출 (카카오 정보 동기화)
+   * 3. 성공하면 닉네임 중복 체크 → 이미지 업로드 → updateOnboarding API 호출 (닉네임 등 저장)
    */
   const onSubmit = async (data: ProfileEditFormValues) => {
     const trimmedNickname = data.nickname.trim();
     const initialNickname = actualUserData?.nickname ?? "";
     let uploadedImagePath: string | null = null;
+    const kakaoAccessToken = getKakaoAccessToken();
 
     try {
-      // 닉네임 중복 체크
-      const isNicknameChanged = trimmedNickname !== initialNickname;
-      if (isNicknameChanged) {
-        const isAvailable = await checkNicknameAvailability(trimmedNickname);
-        if (!isAvailable) {
-          alert(PROFILE_EDIT_MESSAGES.NICKNAME_DUPLICATED);
+      // 1. 카카오 액세스 토큰이 있으면 syncKakaoProfile 먼저 호출
+      if (kakaoAccessToken) {
+        try {
+          await syncKakaoProfileAsync({
+            data: {
+              accessToken: kakaoAccessToken,
+            },
+          });
+          debug.log("카카오 프로필 동기화 성공");
+
+          // 토큰 사용 후 sessionStorage에서 제거
+          removeKakaoAccessToken();
+        } catch (error) {
+          debug.error("카카오 프로필 동기화 실패:", error);
+          // 에러 발생 시 토큰 정리
+          removeKakaoAccessToken();
+          alert("카카오 프로필 동기화에 실패했습니다.");
           return;
         }
       }
 
-      // 이미지 업로드 처리
+      // 2. 닉네임 중복 체크
+      const isNicknameChanged = trimmedNickname !== initialNickname;
+      if (isNicknameChanged) {
+        const isAvailable = await checkNicknameAvailability(trimmedNickname);
+        if (!isAvailable) {
+          // 에러 메시지는 checkNicknameAvailability에서 이미 설정됨
+          return;
+        }
+      }
+
+      // 3. 이미지 업로드 처리
       const { fileUrl: finalImageUrl, filePath } =
         await handleImageUploadIfNeeded(data.profileImageUrl);
       uploadedImagePath = filePath;
 
-      // 프로필 업데이트
+      // 4. 프로필 업데이트 (updateOnboarding API 호출)
       await patchOnboardingAsync(
         {
           data: {
@@ -336,6 +402,10 @@ const ProfileEditPage = () => {
       );
     } catch (error) {
       debug.error("프로필 업데이트 실패:", error);
+      // 에러 발생 시 토큰 정리 (아직 사용하지 않은 경우)
+      if (kakaoAccessToken) {
+        removeKakaoAccessToken();
+      }
       alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_FAILED);
       await rollbackUploadedImage(uploadedImagePath);
     }
@@ -476,14 +546,32 @@ const ProfileEditPage = () => {
               *
             </Typography>
           </div>
-          <Input
-            {...register("nickname", {
-              maxLength: MAX_NICKNAME_LENGTH,
-            })}
-            type="text"
-            placeholder={PROFILE_EDIT_PLACEHOLDERS.NICKNAME}
-            disabled={!isDataLoaded}
-          />
+          <div className="relative">
+            <Input
+              {...register("nickname", {
+                maxLength: MAX_NICKNAME_LENGTH,
+                onChange: () => {
+                  // 닉네임 변경 시 에러 메시지 초기화
+                  setNicknameError(null);
+                },
+              })}
+              type="text"
+              placeholder={PROFILE_EDIT_PLACEHOLDERS.NICKNAME}
+              disabled={!isDataLoaded}
+            />
+            {nicknameError && (
+              <div className="absolute top-full left-0 mt-1 flex w-full items-center gap-1">
+                <X className="h-4 w-4 text-red-500" />
+                <Typography
+                  font="noto"
+                  variant="label1R"
+                  className="text-red-500"
+                >
+                  {nicknameError}
+                </Typography>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mb-6 flex flex-col gap-1">
