@@ -21,7 +21,7 @@ const Page = () => {
   const router = useRouter();
 
   // TODO: 실 api response로 교체
-  const isOnMission = true;
+  const isOnMission = false;
   const remainingMission = 3;
 
   return (
@@ -73,7 +73,11 @@ const Page = () => {
           variant="default"
           size="default"
           className="mt-1 w-full rounded-lg"
-          onClick={() => router.push(LINK_URL.MISSION_LIST)}
+          onClick={() =>
+            router.push(
+              isOnMission ? LINK_URL.MISSION_CERTIFY : LINK_URL.MISSION_LIST
+            )
+          }
         >
           <Typography font="noto" variant="body3B" className="text-white">
             {isOnMission ? "미션 인증하기" : "미션 보러가기"}
