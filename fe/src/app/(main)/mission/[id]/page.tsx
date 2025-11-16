@@ -186,18 +186,12 @@ const Page = () => {
       {/* 탭 컨텐츠 */}
       {activeTab === "description" && (
         <div className="bg-white px-5 py-10">
-          {activeTab === "description" && (
-            <div className="flex flex-col gap-4">
-              <Typography
-                font="noto"
-                variant="body1R"
-                className="text-gray-950"
-              >
-                {missionData.description || "미션 설명이 없습니다."}
-              </Typography>
-              {/* TODO: 실제 미션 설명 컨텐츠로 교체 */}
-            </div>
-          )}
+          <div className="flex flex-col gap-4">
+            <Typography font="noto" variant="body1R" className="text-gray-950">
+              {missionData.description || "미션 설명이 없습니다."}
+            </Typography>
+            {/* TODO: 실제 미션 설명 컨텐츠로 교체 */}
+          </div>
         </div>
       )}
       {activeTab === "reviews" && (
