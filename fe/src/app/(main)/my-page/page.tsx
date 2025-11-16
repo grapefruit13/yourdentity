@@ -123,15 +123,26 @@ const Page = () => {
       .filter((post): post is NonNullable<typeof post> => post !== null);
   }, [currentPostsData]);
 
+  // communityId 추출 헬퍼 (타입 안전 + 폴백 고려)
+  const extractCommunityId = (raw: unknown): string | undefined => {
+    const asAny = raw as {
+      communityId?: unknown;
+      community?: { id?: unknown };
+    };
+    const direct =
+      typeof asAny?.communityId === "string" ? asAny.communityId : undefined;
+    const nested =
+      typeof asAny?.community?.id === "string" ? asAny.community.id : undefined;
+    return direct ?? nested;
+  };
+
   // raw 데이터에서 postId -> communityId 매핑 생성 (훅은 조건부로 호출되면 안 되므로 early return 위에 둠)
   const postIdToCommunityIdMap = useMemo(() => {
     const map = new Map<string, string>();
     (currentPostsData || []).forEach((rawPost) => {
       if (!rawPost) return;
       // 다양한 위치에서 communityId 추출 시도
-      const candidate =
-        // @ts-expect-error: 스키마 간 미세한 차이를 허용
-        rawPost.communityId || rawPost.community?.id;
+      const candidate = extractCommunityId(rawPost);
       if (rawPost.id && typeof candidate === "string" && candidate.length > 0) {
         map.set(rawPost.id, candidate);
       }
@@ -152,9 +163,13 @@ const Page = () => {
   const handlePostClick = (postId: string) => {
     const communityId = postIdToCommunityIdMap.get(postId);
     if (!communityId) {
-      console.warn("communityId가 없어 상세 페이지로 이동할 수 없습니다.", {
-        postId,
-      });
+      console.warn(
+        "communityId가 없어 상세 페이지로 이동할 수 없습니다. 커뮤니티 목록으로 이동합니다.",
+        {
+          postId,
+        }
+      );
+      router.push(LINK_URL.COMMUNITY);
       return;
     }
     router.push(
