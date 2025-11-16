@@ -101,7 +101,7 @@ jobs:
         working-directory: be/functions
         run: |
           echo "🚀 Functions 실행 테스트 시작"
-          node -e "require('./lib/index.js')"
+          node -e "require('./index.js')"
           echo "✅ Functions 실행 테스트 완료"
 
       
