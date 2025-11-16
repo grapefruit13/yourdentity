@@ -52,6 +52,14 @@ const DualGroupFilterButtons = <
   renderCustomIcon,
 }: DualGroupFilterButtonsProps<TLeftId, TRightId>) => {
   const handleLeftSelectChange = (filterId: TLeftId) => {
+    // 기본 필터가 이미 선택된 상태에서 다시 클릭하면 아무 일도 하지 않음
+    if (
+      filterId === defaultLeftFilterId &&
+      filters.leftSelect === defaultLeftFilterId
+    ) {
+      return;
+    }
+
     // 이미 선택된 필터를 다시 클릭하면 기본값으로 변경
     const newFilterId =
       filters.leftSelect === filterId ? defaultLeftFilterId : filterId;
