@@ -7,18 +7,20 @@ import { BOTTOM_NAV_TABS } from "@/constants/shared/_bottom-nav-tabs";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { cn } from "@/utils/shared/cn";
 
+const isDev = process.env.NODE_ENV === "development";
+
 /**
  * @description 하단 네비게이션 바
  */
 const BottomNavigation = () => {
   const pathname = usePathname();
 
-  // 최상단 뎁스 경로 목록
+  // 최상단 뎁스 경로 목록 (개발 환경에서만 미션 경로 포함)
   const topLevelPaths = [
     LINK_URL.HOME,
     LINK_URL.COMMUNITY,
     LINK_URL.MY_PAGE,
-    LINK_URL.MISSION,
+    ...(isDev ? [LINK_URL.MISSION] : []),
   ] as const;
 
   // 현재 경로가 최상단 뎁스 경로 중 하나와 정확히 일치하는지 확인

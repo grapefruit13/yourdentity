@@ -1,6 +1,15 @@
 import { IMAGE_URL } from "./_image-url";
 import { LINK_URL } from "./_link-url";
 
+const isDev = process.env.NODE_ENV === "development";
+
+const MISSION_TAB = {
+  key: "mission" as const,
+  label: "미션",
+  href: LINK_URL.MISSION,
+  icon: IMAGE_URL.ICON.mission.url,
+} as const;
+
 export const BOTTOM_NAV_TABS = [
   {
     key: "home" as const,
@@ -8,13 +17,8 @@ export const BOTTOM_NAV_TABS = [
     href: LINK_URL.HOME,
     icon: IMAGE_URL.ICON.home.url,
   },
-  // TODO: 프론트 완전히 구현하기 전까지 임시 주석
-  // {
-  //   key: "mission" as const,
-  //   label: "미션",
-  //   href: LINK_URL.MISSION,
-  //   icon: IMAGE_URL.ICON.mission.url,
-  // },
+  // 개발 환경에서만 미션 탭 표시
+  ...(isDev ? [MISSION_TAB] : []),
   {
     key: "community" as const,
     label: "피드",
