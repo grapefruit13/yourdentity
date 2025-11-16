@@ -36,8 +36,3 @@ export const RIGHT_SELECT_FILTERS: FilterOption[] = [
   { id: "self-exploration2", label: "자기 탐색2" },
   { id: "self-exploration3", label: "자기 탐색3" },
 ];
-
-/**
- * @deprecated 다중 선택 기능 제거됨. RIGHT_SELECT_FILTERS 사용
- */
-export const MULTI_SELECT_FILTERS = RIGHT_SELECT_FILTERS;
