@@ -287,8 +287,7 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
         reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
         reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
         communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
-        //status: props['상태']?.select?.name || null,
-        status : props['상태']?.checkbox || false,
+        status : props['처리 여부']?.checkbox || false,
         reportedAt: props['신고일시']?.date?.start || null,
         syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
         syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null
@@ -385,7 +384,7 @@ async syncReportToNotion(reportData) {
         '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
         '신고일시': { date: { start: new Date().toISOString() } },
         '커뮤니티 ID': { rich_text: communityId ? [{ text: { content: communityId } }] : [] },
-        '상태': { checkbox: status },
+        '처리 여부': { checkbox: status },
         '동기화 시간(Firebase)': { 
             date: { 
               start: new Date(new Date().getTime()).toISOString()
@@ -474,7 +473,7 @@ async syncResolvedReports() {
         const targetType = props['신고 타입']?.title?.[0]?.text?.content || null;
         const targetId = props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null;
         const communityId = props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null;
-        const status = props['상태']?.checkbox || false;
+        const status = props['처리 여부']?.checkbox || false;
         const notionUpdatedAt = new Date().toISOString();
 
         reports.push({
@@ -642,9 +641,9 @@ async syncResolvedReports() {
            }
 
            // 상태를 true로 설정 (status=true인 경우만 여기 도달)
-           backupProperties['상태'] = {
-             checkbox: true
-           };
+          backupProperties['처리 여부'] = {
+            checkbox: true
+          };
 
            // 동기화 시간 추가
            backupProperties['동기화 시간(Notion)'] = {
