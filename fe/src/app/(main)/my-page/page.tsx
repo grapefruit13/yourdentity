@@ -123,11 +123,7 @@ const Page = () => {
       .filter((post): post is NonNullable<typeof post> => post !== null);
   }, [currentPostsData]);
 
-  if (isUserFetched && !hasNickname) {
-    return null;
-  }
-
-  // raw 데이터에서 postId -> communityId 매핑 생성
+  // raw 데이터에서 postId -> communityId 매핑 생성 (훅은 조건부로 호출되면 안 되므로 early return 위에 둠)
   const postIdToCommunityIdMap = useMemo(() => {
     const map = new Map<string, string>();
     (currentPostsData || []).forEach((rawPost) => {
@@ -143,6 +139,10 @@ const Page = () => {
     });
     return map;
   }, [currentPostsData]);
+
+  if (isUserFetched && !hasNickname) {
+    return null;
+  }
 
   // 프로필 편집 버튼 핸들러
   const handleEditProfile = () => {
