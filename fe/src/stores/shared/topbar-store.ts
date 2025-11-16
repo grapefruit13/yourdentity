@@ -10,6 +10,8 @@ type TopBarStore = {
   setLeftSlot: (leftSlot: ReactNode | null) => void;
   rightSlot: ReactNode | null;
   setRightSlot: (rightSlot: ReactNode | null) => void;
+  hideTopBar: boolean;
+  setHideTopBar: (hideTopBar: boolean) => void;
   reset: () => void;
 };
 
@@ -25,5 +27,8 @@ export const useTopBarStore = create<TopBarStore>((set) => ({
   setLeftSlot: (leftSlot) => set({ leftSlot }),
   rightSlot: null,
   setRightSlot: (rightSlot) => set({ rightSlot }),
-  reset: () => set({ title: null, leftSlot: null, rightSlot: null }),
+  hideTopBar: false,
+  setHideTopBar: (hideTopBar) => set({ hideTopBar }),
+  reset: () =>
+    set({ title: null, leftSlot: null, rightSlot: null, hideTopBar: false }),
 }));
