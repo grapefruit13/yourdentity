@@ -1844,5 +1844,4 @@ class CommunityService {
     }
   }
 }
-
 module.exports = CommunityService;
