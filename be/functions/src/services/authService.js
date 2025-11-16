@@ -142,8 +142,9 @@ const checkSuspensionStatus = async (uid) => {
     }
 
     const now = new Date();
-    const startDate = new Date(suspensionStartAt);
-    const endDate = new Date(suspensionEndAt);
+    // Firestore Timestamp 객체를 Date로 변환 (toDate 메서드가 있으면 사용, 없으면 new Date 사용)
+    const startDate = suspensionStartAt?.toDate?.() || new Date(suspensionStartAt);
+    const endDate = suspensionEndAt?.toDate?.() || new Date(suspensionEndAt);
 
     // 현재 시간이 자격정지 기간 내인지 확인
     const isSuspended = now >= startDate && now < endDate;
@@ -151,7 +152,8 @@ const checkSuspensionStatus = async (uid) => {
     return {
       isSuspended,
       suspensionReason: isSuspended ? (suspensionReason || "자격정지 상태입니다") : undefined,
-      suspensionEndAt: isSuspended ? suspensionEndAt : undefined,
+      // suspensionEndAt을 ISO 문자열로 반환 (Timestamp 객체인 경우 변환)
+      suspensionEndAt: isSuspended ? (suspensionEndAt?.toDate?.()?.toISOString() || suspensionEndAt) : undefined,
     };
   } catch (error) {
     console.error("❌ AuthService: 자격정지 체크 실패:", error.message);
