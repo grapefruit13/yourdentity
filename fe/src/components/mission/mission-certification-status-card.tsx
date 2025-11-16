@@ -32,7 +32,7 @@ const MissionCertificationStatusCard = ({
     <div
       className={cn(
         "flex w-full items-center justify-between rounded-lg border bg-white px-4 py-3.5",
-        isActive ? "border-main-500" : "border-gray-400"
+        isActive ? "border-main-500" : "border-gray-200"
       )}
     >
       <div className="flex items-center gap-1.5">
