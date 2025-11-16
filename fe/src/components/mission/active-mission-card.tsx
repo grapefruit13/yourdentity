@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Clock, Trash2 } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
+import { cn } from "@/utils/shared/cn";
 import { MissionTag } from "./mission-tag";
 
 type ActiveMissionCardProps = {
@@ -10,6 +11,7 @@ type ActiveMissionCardProps = {
   tags: string[];
   endTime: Date; // 미션 종료 시간
   onDelete?: () => void;
+  onClick?: () => void;
 };
 
 const COUNTDOWN_UPDATE_INTERVAL_MS = 1000; // 1초마다 업데이트
@@ -23,6 +25,7 @@ export function ActiveMissionCard({
   tags,
   endTime,
   onDelete,
+  onClick,
 }: ActiveMissionCardProps) {
   const [remainingTime, setRemainingTime] = useState<string>("");
 
@@ -63,7 +66,25 @@ export function ActiveMissionCard({
   }, [endTime]);
 
   return (
-    <div className="flex w-[85%] max-w-[85%] min-w-[85%] flex-shrink-0 flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4">
+    <div
+      className={cn(
+        "flex w-[85%] max-w-[85%] min-w-[85%] flex-shrink-0 flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4",
+        onClick && "cursor-pointer"
+      )}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
       {/* 헤더: 시계 아이콘 + 시간, 휴지통 아이콘 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -74,7 +95,10 @@ export function ActiveMissionCard({
         </div>
         {onDelete && (
           <button
-            onClick={onDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="flex items-center justify-center"
             aria-label="미션 삭제"
           >
