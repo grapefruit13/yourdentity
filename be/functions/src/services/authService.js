@@ -1,4 +1,4 @@
-const {admin} = require("../config/database");
+const {admin, db} = require("../config/database");
 
 /**
  * 로그아웃 - Refresh Token 무효화
@@ -112,8 +112,57 @@ const deleteAccount = async (uid, kakaoAccessToken) => {
   }
 };
 
+/**
+ * 자격정지 상태 체크
+ *
+ * @description
+ * Firestore에서 사용자의 자격정지 정보를 조회하여 현재 정지 상태인지 확인
+ * - suspensionStartAt, suspensionEndAt 기간 내에 있는지 체크
+ * - 정지 중이면 정지 사유와 종료일 반환
+ *
+ * @param {string} uid - 사용자 UID
+ * @return {Promise<{isSuspended: boolean, suspensionReason?: string, suspensionEndAt?: string}>}
+ */
+const checkSuspensionStatus = async (uid) => {
+  try {
+    const userDoc = await db.collection("users").doc(uid).get();
+    
+    if (!userDoc.exists) {
+      // 사용자 문서가 없으면 정지되지 않은 것으로 간주
+      return {isSuspended: false};
+    }
+
+    const userData = userDoc.data();
+    const {suspensionStartAt, suspensionEndAt, suspensionReason} = userData;
+
+    // 자격정지 기간 체크
+    if (!suspensionStartAt || !suspensionEndAt) {
+      // 자격정지 정보가 없으면 정지되지 않은 것으로 간주
+      return {isSuspended: false};
+    }
+
+    const now = new Date();
+    const startDate = new Date(suspensionStartAt);
+    const endDate = new Date(suspensionEndAt);
+
+    // 현재 시간이 자격정지 기간 내인지 확인
+    const isSuspended = now >= startDate && now < endDate;
+
+    return {
+      isSuspended,
+      suspensionReason: isSuspended ? (suspensionReason || "자격정지 상태입니다") : undefined,
+      suspensionEndAt: isSuspended ? suspensionEndAt : undefined,
+    };
+  } catch (error) {
+    console.error("❌ AuthService: 자격정지 체크 실패:", error.message);
+    // 에러 발생 시 정지되지 않은 것으로 간주 (안전한 실패)
+    return {isSuspended: false};
+  }
+};
+
 module.exports = {
   logout,
   deleteAccount,
+  checkSuspensionStatus,
 };
 
