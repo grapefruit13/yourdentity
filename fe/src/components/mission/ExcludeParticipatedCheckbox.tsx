@@ -26,11 +26,7 @@ const ExcludeParticipatedCheckbox = ({
         id={CHECKBOX_ID}
         aria-label={CHECKBOX_LABEL}
       />
-      <label
-        htmlFor={CHECKBOX_ID}
-        className="flex cursor-pointer items-center"
-        onClick={() => onCheckedChange(!checked)}
-      >
+      <label htmlFor={CHECKBOX_ID} className="flex cursor-pointer items-center">
         <Typography font="noto" variant="label1M" className="text-gray-500">
           {CHECKBOX_LABEL}
         </Typography>
