@@ -9,7 +9,6 @@ interface GrayCheckboxProps {
   id?: string;
   "aria-label"?: string;
   disabled?: boolean;
-  className?: string;
 }
 
 /**
