@@ -45,7 +45,9 @@ const MissionCertificationStatusCard = ({
           {label}
         </Typography>
       </div>
-      {isActive && <Check className="text-main-500 size-4" />}
+      <Check
+        className={cn("size-4", isActive ? "text-main-500" : "text-gray-400")}
+      />
     </div>
   );
 };
