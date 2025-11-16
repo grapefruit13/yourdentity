@@ -14,12 +14,17 @@ import { cn } from "@/utils/shared/cn";
 const BottomNavigation = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: userData, isFetched } = useGetUsersMe({
+  const {
+    data: userData,
+    isFetched,
+    isLoading,
+    isError,
+  } = useGetUsersMe({
     select: (data) => data?.user,
     staleTime: 5 * 60 * 1000,
   });
   const hasNickname = Boolean(userData?.nickname?.trim());
-  const shouldBlockMyTab = isFetched && !hasNickname;
+  const shouldBlockMyTab = (isFetched && !hasNickname) || isLoading || isError;
 
   return (
     <nav className="pb-safe fixed bottom-0 left-1/2 z-50 flex w-full max-w-[470px] -translate-x-1/2 items-center justify-center gap-14 border-t border-gray-200 bg-white/90 pt-3 backdrop-blur-sm">

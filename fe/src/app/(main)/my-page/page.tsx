@@ -15,7 +15,6 @@ import {
   useGetUsersMeLikedPosts,
   useGetUsersMeCommentedPosts,
 } from "@/hooks/generated/users-hooks";
-import { getCurrentUser } from "@/lib/auth";
 import type * as Types from "@/types/generated/users-types";
 
 /**
@@ -128,6 +127,24 @@ const Page = () => {
     return null;
   }
 
+  // raw 데이터에서 postId -> communityId 매핑 생성
+  const postIdToCommunityIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (currentPostsData || []).forEach((rawPost) => {
+      if (!rawPost) return;
+      // 다양한 위치에서 communityId 추출 시도
+      const candidate =
+        // @ts-expect-error: 스키마 간 미세한 차이를 허용
+        rawPost.communityId ||
+        // @ts-expect-error: 스키마 간 미세한 차이를 허용
+        rawPost.community?.id;
+      if (rawPost.id && typeof candidate === "string" && candidate.length > 0) {
+        map.set(rawPost.id, candidate);
+      }
+    });
+    return map;
+  }, [currentPostsData]);
+
   // 프로필 편집 버튼 핸들러
   const handleEditProfile = () => {
     router.push(LINK_URL.MY_PAGE_EDIT);
@@ -135,8 +152,14 @@ const Page = () => {
 
   // 게시글 클릭 핸들러
   const handlePostClick = (postId: string) => {
-    // FIXME: 실제 게시글 상세 페이지로 이동
-    console.log("게시글 클릭:", postId);
+    const communityId = postIdToCommunityIdMap.get(postId);
+    if (!communityId) {
+      console.warn("communityId가 없어 상세 페이지로 이동할 수 없습니다.", {
+        postId,
+      });
+      return;
+    }
+    router.push(`/community/post/${postId}?communityId=${encodeURIComponent(communityId)}`);
   };
 
   return (
