@@ -47,13 +47,8 @@ const Page = () => {
               onDelete={() => {
                 // TODO: 미션 삭제 로직
               }}
-            />
-            <ActiveMissionCard
-              title="친구와 함께 요리하기"
-              tags={["건강한 아침 러닝 30분 하기", "요리", "친구와 함께"]}
-              endTime={getFutureDate(7, 32, 12)}
-              onDelete={() => {
-                // TODO: 미션 삭제 로직
+              onClick={() => {
+                router.push(`${LINK_URL.MISSION_CERTIFY}?missionId=1`);
               }}
             />
             <ActiveMissionCard
@@ -62,6 +57,20 @@ const Page = () => {
               endTime={getFutureDate(7, 32, 12)}
               onDelete={() => {
                 // TODO: 미션 삭제 로직
+              }}
+              onClick={() => {
+                router.push(`${LINK_URL.MISSION_CERTIFY}?missionId=2`);
+              }}
+            />
+            <ActiveMissionCard
+              title="친구와 함께 요리하기"
+              tags={["건강한 아침 러닝 30분 하기", "요리", "친구와 함께"]}
+              endTime={getFutureDate(7, 32, 12)}
+              onDelete={() => {
+                // TODO: 미션 삭제 로직
+              }}
+              onClick={() => {
+                router.push(`${LINK_URL.MISSION_CERTIFY}?missionId=3`);
               }}
             />
           </div>
