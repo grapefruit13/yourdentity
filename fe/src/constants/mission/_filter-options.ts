@@ -32,7 +32,4 @@ export const SINGLE_SELECT_FILTERS: FilterOption[] = [
 export const RIGHT_SELECT_FILTERS: FilterOption[] = [
   { id: "self-satisfaction", label: "자기 만족" },
   { id: "self-exploration", label: "자기 탐색" },
-  { id: "self-exploration1", label: "자기 탐색1" },
-  { id: "self-exploration2", label: "자기 탐색2" },
-  { id: "self-exploration3", label: "자기 탐색3" },
 ];

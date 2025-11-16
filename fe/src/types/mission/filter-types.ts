@@ -4,10 +4,7 @@
 
 export type SingleSelectFilterId = "all" | "liked";
 
-export type MultiSelectFilterId =
-  | "self-satisfaction"
-  | "self-exploration"
-  | string;
+export type MultiSelectFilterId = "self-satisfaction" | "self-exploration";
 
 export interface FilterOption {
   id: SingleSelectFilterId | MultiSelectFilterId;
