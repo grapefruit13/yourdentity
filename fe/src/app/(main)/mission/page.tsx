@@ -21,7 +21,7 @@ const Page = () => {
   const router = useRouter();
 
   // TODO: 실 api response로 교체
-  const isOnMission = false;
+  const isOnMission = true;
   const remainingMission = 3;
 
   return (
