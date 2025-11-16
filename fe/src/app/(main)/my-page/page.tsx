@@ -131,8 +131,7 @@ const Page = () => {
       // 다양한 위치에서 communityId 추출 시도
       const candidate =
         // @ts-expect-error: 스키마 간 미세한 차이를 허용
-        rawPost.communityId ||
-        rawPost.community?.id;
+        rawPost.communityId || rawPost.community?.id;
       if (rawPost.id && typeof candidate === "string" && candidate.length > 0) {
         map.set(rawPost.id, candidate);
       }
@@ -158,7 +157,9 @@ const Page = () => {
       });
       return;
     }
-    router.push(`/community/post/${postId}?communityId=${encodeURIComponent(communityId)}`);
+    router.push(
+      `/community/post/${postId}?communityId=${encodeURIComponent(communityId)}`
+    );
   };
 
   return (
