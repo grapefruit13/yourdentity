@@ -136,7 +136,6 @@ const Page = () => {
       const candidate =
         // @ts-expect-error: 스키마 간 미세한 차이를 허용
         rawPost.communityId ||
-        // @ts-expect-error: 스키마 간 미세한 차이를 허용
         rawPost.community?.id;
       if (rawPost.id && typeof candidate === "string" && candidate.length > 0) {
         map.set(rawPost.id, candidate);
