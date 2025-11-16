@@ -152,8 +152,8 @@ const checkSuspensionStatus = async (uid) => {
     return {
       isSuspended,
       suspensionReason: isSuspended ? (suspensionReason || "자격정지 상태입니다") : undefined,
-      // suspensionEndAt을 ISO 문자열로 반환 (Timestamp 객체인 경우 변환)
-      suspensionEndAt: isSuspended ? (suspensionEndAt?.toDate?.()?.toISOString() || suspensionEndAt) : undefined,
+      // 이미 변환된 endDate를 ISO 문자열로 반환 (타입 일관성 보장)
+      suspensionEndAt: isSuspended ? endDate.toISOString() : undefined,
     };
   } catch (error) {
     console.error("❌ AuthService: 자격정지 체크 실패:", error.message);
