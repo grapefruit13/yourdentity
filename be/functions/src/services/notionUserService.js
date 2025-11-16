@@ -111,7 +111,6 @@ async syncUserAccounts() {
           "가입 방법": { select: { name: user.authType || "email" } },
           "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
           "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-          "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
           "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
           "성별": { 
             select: { 
@@ -431,7 +430,6 @@ async syncAllUserAccounts() {
             "가입 방법": { select: { name: user.authType || "email" } },
             "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-            "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
             "성별": { 
               select: { 
@@ -1267,19 +1265,19 @@ async syncSelectedUsers() {
 
             // 백업 페이지 생성 또는 업데이트
             if (userId && backupUsers[userId]) {
-              // 기존 페이지 업데이트
-              await this.notion.pages.update({
-                page_id: backupUsers[userId].pageId,
-                properties: backupProperties,
-              });
-              updatedCount++;
-            } else {
-              // 새 페이지 생성
-              await this.notion.pages.create({
-                parent: { database_id: this.notionUserAccountBackupDB },
-                properties: backupProperties,
-              });
-              createdCount++;
+                // 기존 페이지 업데이트
+                await this.updateNotionPageWithRetry(
+                  backupUsers[userId].pageId,
+                  backupProperties
+                );
+                updatedCount++;
+               } else {
+               // 새 페이지 생성
+               await this.createNotionPageWithRetry({
+                  parent: { database_id: this.notionUserAccountBackupDB },
+                  properties: backupProperties,
+               });
+               createdCount++;
             }
 
 
@@ -1777,7 +1775,6 @@ async syncSingleUserToNotion(userId) {
       "가입 방법": { select: { name: user.authType || "email" } },
       "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
       "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-      "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
       "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
       "성별": { 
         select: { 
