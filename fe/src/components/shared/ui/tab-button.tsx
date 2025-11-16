@@ -33,7 +33,7 @@ const TabButton = ({ label, isActive, ...props }: TabButtonProps) => {
       <Typography
         font="noto"
         variant="body3B"
-        className={cn(!isActive && "font-normal")}
+        className={cn("text-nowrap", !isActive && "font-normal")}
       >
         {label}
       </Typography>
