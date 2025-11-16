@@ -96,6 +96,13 @@ jobs:
           echo "🔨 Firebase 에뮬레이터 빌드 테스트 시작"
           pnpm run build
           echo "✅ 빌드 테스트 완료"
+          
+      - name: 🚀 Functions 실행 테스트
+        working-directory: be/functions
+        run: |
+          echo "🚀 Functions 실행 테스트 시작"
+          node -e "require('./lib/index.js')"
+          echo "✅ Functions 실행 테스트 완료"
 
       
       # ✅ 성공 시 코멘트 남기기
