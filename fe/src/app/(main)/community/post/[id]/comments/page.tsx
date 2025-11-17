@@ -392,8 +392,8 @@ const CommentsPage = () => {
           </div>
         )}
 
-        {/* 하단 댓글 작성칸 - 원댓글에 대한 답글일 때만 표시 (답글에 대한 답글일 때는 숨김) */}
-        {!editingCommentId && (!replyingTo || !replyingTo.isReply) && (
+        {/* 하단 댓글 작성칸 - 항상 표시하되, 답글에 대한 답글일 때는 비활성화 */}
+        {!editingCommentId && (
           <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[470px] -translate-x-1/2 border-t border-gray-100 bg-white px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -401,7 +401,10 @@ const CommentsPage = () => {
                 <Typography
                   font="noto"
                   variant="body2M"
-                  className="text-gray-800"
+                  className={cn(
+                    "text-gray-800",
+                    replyingTo?.isReply && "text-gray-400"
+                  )}
                 >
                   {currentUserNickname || "익명"}
                 </Typography>
@@ -438,7 +441,13 @@ const CommentsPage = () => {
                     ? `${replyingTo.author}에게 답글 남기기`
                     : "서로 배려하는 댓글을 남겨요:)"
                 }
-                className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
+                disabled={replyingTo?.isReply === true}
+                className={cn(
+                  "w-full resize-none rounded-lg border p-3 pr-20 pb-12 text-sm focus:outline-none",
+                  replyingTo?.isReply
+                    ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400"
+                    : "focus:ring-main-400 border-gray-200 focus:ring-2"
+                )}
                 rows={
                   commentInput.trim()
                     ? Math.min(commentInput.split("\n").length + 1, 5)
@@ -448,10 +457,12 @@ const CommentsPage = () => {
               <div className="absolute right-2 bottom-3 flex items-center gap-2">
                 <button
                   type="submit"
-                  disabled={!commentInput.trim()}
+                  disabled={
+                    !commentInput.trim() || replyingTo?.isReply === true
+                  }
                   className={cn(
                     "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                    commentInput.trim()
+                    commentInput.trim() && !replyingTo?.isReply
                       ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                       : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                   )}
@@ -460,7 +471,9 @@ const CommentsPage = () => {
                     font="noto"
                     variant="body2M"
                     className={
-                      commentInput.trim() ? "text-white" : "text-gray-400"
+                      commentInput.trim() && !replyingTo?.isReply
+                        ? "text-white"
+                        : "text-gray-400"
                     }
                   >
                     등록
