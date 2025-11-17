@@ -50,7 +50,6 @@ class MissionController {
       }
 
       res.success({
-        message: "미션 목록을 성공적으로 조회했습니다.",
         missions: result.missions,
         totalCount: result.totalCount
       });
@@ -102,7 +101,6 @@ class MissionController {
       const mission = await notionMissionService.getMissionById(missionId);
 
       res.success({
-        message: "미션 상세 정보를 성공적으로 조회했습니다.",
         mission
       });
 

@@ -47,6 +47,30 @@ const optionalAuth = require("../middleware/optionalAuth");
  *     responses:
  *       200:
  *         description: 미션 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     missions:
+ *                       type: array
+ *                       items:
+ *                         $ref: "#/components/schemas/Mission"
+ *                     totalCount:
+ *                       type: integer
+ *                       example: 30
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
  */
 router.get("/", optionalAuth, missionController.getMissions);
 
@@ -66,8 +90,25 @@ router.get("/", optionalAuth, missionController.getMissions);
  *     responses:
  *       200:
  *         description: 미션 상세 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     mission:
+ *                       $ref: "#/components/schemas/Mission"
  *       404:
  *         description: 미션을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
  */
 router.get("/:missionId", optionalAuth, missionController.getMissionById);
 
