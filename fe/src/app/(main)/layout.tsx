@@ -30,13 +30,16 @@ export default function MainLayout({
 }>) {
   const pathname = usePathname();
   const isHomePage = pathname === LINK_URL.HOME;
-
   const isCommunityPage = pathname === LINK_URL.COMMUNITY;
   const isMyPage = pathname === LINK_URL.MY_PAGE;
   const isMissionPage = pathname === LINK_URL.MISSION;
-  const storeHideTopBar = useTopBarStore((state) => state.hideTopBar);
+  const hideTopBarState = useTopBarStore((state) => state.hideTopBar);
+
+  // 정적 경로는 본 페이지(Layout)에서 위와같이 pathname 기반으로 처리하고,
+  // 동적 조건이 필요한 경우에만 스토어(useTopBarStore)의 hideTopBar를 제어합니다.
+  // 커뮤니티 페이지는 탑바를 숨기고 페이지 내부에서 알람 아이콘을 표시합니다.
   const hideTopBar =
-    isCommunityPage || isMyPage || isMissionPage || storeHideTopBar;
+    isMyPage || isMissionPage || isCommunityPage || hideTopBarState;
 
   // 라우트 변경 시 항상 스크롤 최상단으로 이동 (Next.js 15 스크롤 복원 이슈 대응)
   useEffect(() => {

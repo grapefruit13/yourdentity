@@ -10,6 +10,11 @@ type TopBarStore = {
   setLeftSlot: (leftSlot: ReactNode | null) => void;
   rightSlot: ReactNode | null;
   setRightSlot: (rightSlot: ReactNode | null) => void;
+  /**
+   * @description TopBar 숨김 여부
+   * 주요 정적 경로(예: /mission, /my-page)는 레이아웃에서 pathname 기반으로 처리합니다.
+   * 이 스토어는 동적 조건이 필요한 경우에만 사용하세요 (예: /mission/list의 isFirstEnter 조건).
+   */
   hideTopBar: boolean;
   setHideTopBar: (hideTopBar: boolean) => void;
   reset: () => void;
