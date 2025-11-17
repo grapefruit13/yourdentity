@@ -11,7 +11,7 @@ import { getTimeAgo } from "@/utils/shared/date";
 interface MissionListCardProps {
   id: string;
   title: string;
-  category: string;
+  categories: string[];
   thumbnailUrl: string;
   likeCount: number;
   createdAt: string | Date;
@@ -25,7 +25,7 @@ interface MissionListCardProps {
 const MissionListCard = ({
   id,
   title,
-  category,
+  categories,
   thumbnailUrl,
   likeCount: initialLikeCount,
   createdAt,
@@ -83,7 +83,8 @@ const MissionListCard = ({
         {/* 부제목과 좋아요 */}
         <div className="mt-1 flex items-center justify-between gap-2">
           <Typography font="noto" variant="label2R" className="text-gray-400">
-            {category} | {timeAgo}
+            {categories.length > 0 ? `${categories.join(" | ")} | ` : ""}
+            {timeAgo}
           </Typography>
           <button
             type="button"
