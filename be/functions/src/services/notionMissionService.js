@@ -93,7 +93,7 @@ class NotionMissionService {
       // 전체 미션 조회
       const response = await this.notion.dataSources.query({
         data_source_id: this.missionDataSource,
-        page_size: 100,
+        page_size: MAX_PAGE_SIZE,
       });
 
       // 모든 미션에서 카테고리 추출 및 중복 제거
