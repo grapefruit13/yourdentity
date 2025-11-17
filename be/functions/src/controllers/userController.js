@@ -226,14 +226,29 @@ class UserController {
 
   /**
    * 사용자 삭제 API
+   * - 본인이 요청하면: 계정 탈퇴 (게시글, 댓글, 프로필 이미지 등 모든 데이터 정리)
    */
   async deleteUser(req, res, next) {
     try {
       const {userId} = req.params;
+      const {uid} = req.user;
 
-      await userService.deleteUser(userId);
+      if (!uid) {
+        const err = new Error("인증이 필요합니다");
+        err.code = "UNAUTHORIZED";
+        throw err;
+      }
 
-      return res.success({userId});
+      // 본인이 요청한 경우: 계정 탈퇴 로직 실행
+      if (uid === userId) {
+        const result = await userService.deleteAccount(userId);
+        return res.success(result);
+      }
+
+      // 본인이 아닌 경우: 권한 없음
+      const err = new Error("권한이 없습니다");
+      err.code = "FORBIDDEN";
+      throw err;
     } catch (error) {
       console.error("사용자 삭제 에러:", error);
       return next(error);
