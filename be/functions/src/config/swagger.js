@@ -248,48 +248,117 @@ const options = {
         },
         Mission: {
           type: "object",
-          required: ["title", "description", "userId"],
+          description: "노션에서 관리되는 미션 데이터",
           properties: {
-            missionId: {
+            id: {
               type: "string",
-              description: "미션 ID",
-              example: "mission_001",
-            },
-            userId: {
-              type: "string",
-              description: "소유자 ID",
-              example: "abc123def456",
+              description: "Notion 페이지 ID",
+              example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522",
             },
             title: {
               type: "string",
               description: "미션 제목",
-              example: "노을 보기 미션",
+              example: "내가 좋아하는 책 읽고 책 추천사 써보기",
             },
-            description: {
+            detailPageUrl: {
               type: "string",
-              description: "미션 설명",
-              example: "노을 보기 미션 설명",
+              nullable: true,
+              description: "상세 페이지(노션) URL",
             },
-            status: {
-              type: "string",
-              enum: ["pending", "in_progress", "completed", "cancelled"],
-              description: "미션 상태",
-              example: "in_progress",
+            isRecruiting: {
+              type: "boolean",
+              description: "현재 모집 여부",
+              example: true,
             },
-            dueDate: {
+            isUnlimited: {
+              type: "boolean",
+              description: "무제한(상시) 미션 여부",
+              example: false,
+            },
+            applicationDeadline: {
               type: "string",
               format: "date-time",
-              description: "미션 마감일",
+              nullable: true,
+              description: "신청 마감일시(무제한이 아닐 경우)",
+            },
+            certificationDeadline: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "인증 마감일시",
+            },
+            categories: {
+              type: "array",
+              items: {type: "string"},
+              description: "카테고리(다중 선택)",
+              example: ["자기 탐색", "자기 만족"],
+            },
+            detailTags: {
+              type: "string",
+              nullable: true,
+              description: "상세 태그(텍스트)",
+              example: "혼자, 글쓰기",
+            },
+            targetAudience: {
+              type: "string",
+              nullable: true,
+              description: "참여 대상",
+            },
+            notes: {
+              type: "string",
+              nullable: true,
+              description: "참고 사항",
+            },
+            certificationMethod: {
+              type: "string",
+              nullable: true,
+              description: "인증 방법",
+            },
+            reactionCount: {
+              type: "number",
+              description: "찜/반응 수",
+              example: 219,
+            },
+            faqRelation: {
+              type: "object",
+              description: "FAQ 관계 정보",
+              properties: {
+                relations: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: {
+                        type: "string",
+                        description: "FAQ ID",
+                        example: "2a645f52-4cd0-80b8-a954-c912f7c57f27",
+                      },
+                    },
+                  },
+                },
+                has_more: {
+                  type: "boolean",
+                  description: "추가 FAQ 존재 여부",
+                  example: false,
+                },
+              },
+            },
+            isReviewRegistered: {
+              type: "boolean",
+              description: "후기 등록 여부",
+              example: true,
             },
             createdAt: {
               type: "string",
               format: "date-time",
-              description: "생성일시",
+              description: "Notion 페이지 생성 시간",
+              example: "2025-11-09T13:12:00.000Z",
             },
             updatedAt: {
               type: "string",
               format: "date-time",
-              description: "수정일시",
+              description: "Notion 페이지 최근 수정 시간",
+              example: "2025-11-09T23:00:00.000+09:00",
             },
           },
         },
