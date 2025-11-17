@@ -89,7 +89,7 @@ const DualGroupFilterButtons = <
   };
 
   return (
-    <div className="scrollbar-hide w-[calc(100%+2.5rem)] overflow-x-auto overflow-y-hidden">
+    <div className="scrollbar-hide w-[calc(100%+2.5rem)] overflow-x-auto overflow-y-hidden pb-7">
       <div className="flex items-center gap-2">
         {/* 왼쪽 그룹 필터 */}
         <div className="flex flex-shrink-0 gap-2">
