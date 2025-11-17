@@ -32,6 +32,8 @@ interface CommentItemProps {
   onCommentSubmit: (e: FormEvent) => void;
   commentInput: string;
   onCommentInputChange: (value: string) => void;
+  openMenuId?: string | null;
+  onMenuToggle?: (menuId: string | null) => void;
 }
 
 /**
@@ -61,6 +63,8 @@ const CommentItem = ({
   onCommentSubmit,
   commentInput,
   onCommentInputChange,
+  openMenuId = null,
+  onMenuToggle,
 }: CommentItemProps) => {
   const [isLiked, setIsLiked] = useState(false);
   // 답글별 좋아요 상태 관리 (답글 ID -> { isLiked, likesCount })
@@ -85,6 +89,15 @@ const CommentItem = ({
   const isEditing = editingCommentId === commentId;
   const isReplying =
     replyingTo?.commentId === commentId && !replyingTo?.isReply;
+
+  // 메뉴 제어 (외부 제어가 있으면 사용, 없으면 내부 제어)
+  const commentMenuId = `comment-${commentId}`;
+  const isCommentMenuOpen = openMenuId === commentMenuId;
+  const handleCommentMenuToggle = () => {
+    if (onMenuToggle) {
+      onMenuToggle(isCommentMenuOpen ? null : commentMenuId);
+    }
+  };
 
   // 좋아요 mutation
   const { mutateAsync: likeCommentAsync } = usePostCommentsLikeById({
@@ -202,6 +215,8 @@ const CommentItem = ({
                 onDelete={isOwnComment ? handleDelete : undefined}
                 onReport={!isOwnComment ? handleReport : undefined}
                 className="flex-shrink-0"
+                isOpen={isCommentMenuOpen}
+                onToggle={handleCommentMenuToggle}
               />
             )}
           </div>
@@ -341,6 +356,15 @@ const CommentItem = ({
                 replyingTo?.isReply === true &&
                 !isReplying; // 원댓글에 대한 답글 입력창이 활성화되어 있지 않을 때만
 
+              // 답글 메뉴 제어
+              const replyMenuId = `reply-${replyId}`;
+              const isReplyMenuOpen = openMenuId === replyMenuId;
+              const handleReplyMenuToggle = () => {
+                if (onMenuToggle) {
+                  onMenuToggle(isReplyMenuOpen ? null : replyMenuId);
+                }
+              };
+
               return (
                 <div key={replyId} className="flex gap-3">
                   <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
@@ -387,6 +411,8 @@ const CommentItem = ({
                               : undefined
                           }
                           className="flex-shrink-0"
+                          isOpen={isReplyMenuOpen}
+                          onToggle={handleReplyMenuToggle}
                         />
                       )}
                     </div>

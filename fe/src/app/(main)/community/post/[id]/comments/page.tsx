@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import {
   useDeleteCommentsById,
 } from "@/hooks/generated/comments-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
 import { debug } from "@/utils/shared/debugger";
 
@@ -45,13 +46,23 @@ const CommentsPage = () => {
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
     new Set()
   );
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const bottomTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const setRightSlot = useTopBarStore((state) => state.setRightSlot);
 
   // 현재 사용자 정보
   const { data: userData } = useGetUsersMe({
     select: (data) => data?.user,
   });
   const currentUserNickname = userData?.nickname || "";
+
+  // 댓글 화면에서는 게시글 관련 컨텍스트 메뉴 숨기기
+  useEffect(() => {
+    setRightSlot(null);
+    return () => {
+      setRightSlot(null);
+    };
+  }, [setRightSlot]);
 
   // 댓글 데이터 가져오기
   const { data: commentsData, isLoading: isCommentsLoading } =
@@ -251,6 +262,11 @@ const CommentsPage = () => {
     });
   };
 
+  // 메뉴 토글 핸들러 (한 번에 하나의 메뉴만 열리도록 제어)
+  const handleMenuToggle = (menuId: string | null) => {
+    setOpenMenuId((prev) => (prev === menuId ? null : menuId));
+  };
+
   // 로딩 중
   if (isCommentsLoading) {
     return (
@@ -351,6 +367,8 @@ const CommentsPage = () => {
                     : ""
                 }
                 onCommentInputChange={setCommentInput}
+                openMenuId={openMenuId}
+                onMenuToggle={handleMenuToggle}
               />
             ))}
           </div>

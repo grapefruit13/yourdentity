@@ -16,12 +16,15 @@ type KebabMenuProps = {
   onDelete?: () => void;
   className?: string;
   align?: "right" | "left";
+  isOpen?: boolean;
+  onToggle?: () => void;
 };
 
 /**
  * KebabMenu
  * - 상단 우측 등에서 사용하는 케밥 버튼 + 컨텍스트 메뉴
  * - 외부 클릭 시 자동으로 닫힘
+ * - isOpen과 onToggle이 제공되면 외부 제어, 없으면 내부 제어
  */
 const KebabMenu = ({
   onShare,
@@ -30,15 +33,42 @@ const KebabMenu = ({
   onDelete,
   className,
   align = "right",
+  isOpen: externalIsOpen,
+  onToggle: externalOnToggle,
 }: KebabMenuProps) => {
-  const { isOpen, toggle, close } = useToggle();
+  const {
+    isOpen: internalIsOpen,
+    toggle: internalToggle,
+    close: internalClose,
+  } = useToggle();
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(menuRef, () => close, isOpen);
+  // 외부 제어가 있으면 외부 상태 사용, 없으면 내부 상태 사용
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const toggle = externalOnToggle || internalToggle;
+  const close = externalOnToggle
+    ? () => {
+        // 외부 제어를 사용할 때는 외부 onToggle을 호출하여 메뉴를 닫음
+        // 외부 onToggle은 현재 열린 메뉴 ID를 토글하므로, 열려있으면 닫힘
+        if (isOpen) {
+          externalOnToggle();
+        }
+      }
+    : internalClose;
+
+  useClickOutside(
+    menuRef,
+    () => {
+      if (isOpen) {
+        close();
+      }
+    },
+    isOpen
+  );
 
   return (
     <div ref={menuRef} className={`relative ${className ?? ""}`}>
-      <KebabButton onClick={() => toggle()} />
+      <KebabButton onClick={toggle} />
 
       {isOpen && (
         <div
