@@ -373,10 +373,13 @@ const CommentItem = ({
                       <div className="flex items-center gap-2">
                         <Typography
                           font="noto"
-                          variant="body2M"
+                          variant="body2R"
                           className="text-gray-800"
                         >
-                          @ {comment.author || "익명"} {replyAuthor}
+                          <span className="text-main-500">
+                            @{comment.author || "익명"}
+                          </span>{" "}
+                          {replyAuthor}
                         </Typography>
                         {reply.createdAt && (
                           <Typography
@@ -579,10 +582,13 @@ const CommentItem = ({
                             <div className="h-6 w-6 rounded-full bg-gray-300"></div>
                             <Typography
                               font="noto"
-                              variant="body2M"
+                              variant="body2R"
                               className="text-gray-800"
                             >
-                              @ {replyingTo?.author} {currentUserNickname}
+                              <span className="text-main-500">
+                                @{replyingTo?.author}
+                              </span>{" "}
+                              {currentUserNickname}
                             </Typography>
                           </div>
                           <button

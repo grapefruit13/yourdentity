@@ -408,10 +408,11 @@ const CommentsPage = () => {
                 {replyingTo && !replyingTo.isReply && (
                   <Typography
                     font="noto"
-                    variant="caption1R"
+                    variant="body2R"
                     className="text-gray-500"
                   >
-                    @ {replyingTo.author}에게 답글
+                    <span className="text-main-500">@{replyingTo.author}</span>
+                    에게 답글
                   </Typography>
                 )}
               </div>
