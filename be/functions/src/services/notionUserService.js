@@ -42,7 +42,6 @@ class NotionUserService {
     const snapshot = await db.collection("users").get();
 
     // Firebase에 lastUpdated 필드 존재 여부 확인
-    //const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdated);
     const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdatedAt);
 
     const now = new Date();
@@ -67,7 +66,6 @@ class NotionUserService {
           const userId = doc.id;
 
           //문자열 or timestamp로 저장되어도 모두 조회
-          //const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdated);
           const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdatedAt);
           const firebaseLastUpdated = firebaseLastUpdatedDate
             ? firebaseLastUpdatedDate.getTime()
@@ -82,7 +80,6 @@ class NotionUserService {
             : 0;
 
           // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
-          //if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
           if (!user.lastUpdatedAt || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
             // 날짜 변환
             const createdAtIso = safeDateToIso(user.createdAt);
@@ -138,18 +135,21 @@ class NotionUserService {
                 date: { 
                   start: user.suspensionStartAt 
                 }
-              } : undefined,
+              } : { date: null },
               "자격정지 기간(종료)": user.suspensionEndAt ? {
                 date: { 
                   start: user.suspensionEndAt 
                 }
-              } : undefined,
+              } : { date: null },
               "정지 사유": user.suspensionReason ? {
                 rich_text: [{
                   text: { content: user.suspensionReason }
                 }]
               } : {
                 rich_text: []
+              },
+              "패널티 카운트": {
+                number: (user.penaltyCount !== null && user.penaltyCount !== undefined) ? user.penaltyCount : 0
               },
               "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
             };
@@ -487,18 +487,21 @@ async syncAllUserAccounts() {
               date: { 
                 start: user.suspensionStartAt 
               }
-            } : undefined,
+            } : { date: null },
             "자격정지 기간(종료)": user.suspensionEndAt ? {
               date: { 
                 start: user.suspensionEndAt 
               }
-            } : undefined,
+            } : { date: null },
             "정지 사유": user.suspensionReason ? {
               rich_text: [{
                 text: { content: user.suspensionReason }
               }]
             } : {
               rich_text: []
+            },
+            "패널티 카운트": {
+              number: (user.penaltyCount !== null && user.penaltyCount !== undefined) ? user.penaltyCount : 0
             },
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
           };
@@ -881,15 +884,10 @@ async syncPenaltyUsers() {
 
       // 시작 값은 빈 값인데 종료 값만 있는 경우 검증
       if (!penaltyPeriodStart && penaltyPeriodEnd) {
-        // const error = new Error(`사용자 ${userName}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
-        // error.code = "SUSPENSION_START_REQUIRED";
-        // throw error;
-
         failedCount++;
         failedUserIds.push(userId);
         console.log("사용자 ${userName}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다");
         continue;
-
       }
 
       // Firebase users 컬렉션에서 해당 사용자 찾기
@@ -1035,6 +1033,26 @@ async syncSelectedUsers() {
 
       // 노션 필드에서 데이터 추출
       const nickname = props["기본 닉네임"]?.title?.[0]?.plain_text ||  "";
+
+      //닉네임의 경우 정책상 유일한 값
+      if (nickname) {
+        const duplicateSnapshot = await db
+          .collection("users")
+          .where("nickname", "==", nickname)
+          .get();
+
+        const conflictingDoc = duplicateSnapshot.docs.find((doc) => doc.id !== userId);
+
+        if (conflictingDoc) {
+          console.warn(
+            `사용자 ${userId}의 노션 기본 닉네임(${nickname})이 다른 사용자(${conflictingDoc.id})와 중복되어 동기화를 중단합니다`
+          );
+          validateErrorCount++;
+          failedUserIds.push(userId);
+          continue;
+        }
+      }
+
       const name = props["사용자 실명"]?.rich_text?.[0]?.plain_text || "";
       
       // 프로필 사진 URL 추출 (files 타입)
@@ -1081,6 +1099,9 @@ async syncSelectedUsers() {
       const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
       const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
 
+      // 패널티 카운트 필드 추출 (number 타입)
+      const penaltyCount = props["패널티 카운트"]?.number ?? 0;
+      
       // 업데이트할 데이터 객체 생성 (undefined가 아닌 값만 업데이트)
       const updateData = {};
       
@@ -1101,14 +1122,10 @@ async syncSelectedUsers() {
         updateData.lastLoginAt = lastLoginDate;
       }
 
-      // 자격정지 필드 처리
-      if (suspensionReason || suspensionReason === "") updateData.suspensionReason = suspensionReason;
-      if (suspensionStartAt) {
-        updateData.suspensionStartAt = suspensionStartAt;
-      }
-      if (suspensionEndAt) {
-        updateData.suspensionEndAt = suspensionEndAt;
-      }
+      // 자격정지 필드 처리 - 값이 없어도 명시적으로 null/빈 문자열로 저장
+      updateData.suspensionReason = suspensionReason || "";
+      updateData.suspensionStartAt = suspensionStartAt || null;
+      updateData.suspensionEndAt = suspensionEndAt || null;
 
 
       if(!suspensionStartAt && !suspensionEndAt && suspensionReason){
@@ -1122,21 +1139,61 @@ async syncSelectedUsers() {
       const now = new Date();
       updateData.lastUpdated = now;
 
+      // 자격정지 시작날짜만 존재하고 종료날짜가 없는 경우
+      if (suspensionStartAt && !suspensionEndAt) {
+        console.warn(
+          `사용자 ${name}의 자격정지 기간(시작)만 있고 종료가 없습니다. 당일 자격정지를 원하면 종료 날짜를 시작 날짜와 동일하게 입력해 주세요.`
+        );
+        validateErrorCount++;
+        failedUserIds.push(userId);
+        continue;
+      }
 
-       // 시작 값은 빈 값인데 종료 값만 있는 경우 검증
-       if (!suspensionStartAt && suspensionEndAt) {
-        const endDate = new Date(suspensionEndAt);
-        const isPermanentSuspension = endDate.getFullYear() === 9999 && 
-                                     endDate.getMonth() === 11 && // 12월은 11 (0부터 시작)
-                                     endDate.getDate() === 31;
+      // 시작 값은 빈 값인데 종료 값만 있는 경우 검증
+      if (!suspensionStartAt && suspensionEndAt) {
+          const endDate = new Date(suspensionEndAt);
+          const isPermanentSuspension = endDate.getFullYear() === 9999 && 
+                                      endDate.getMonth() === 11 && // 12월은 11 (0부터 시작)
+                                      endDate.getDate() === 31;
+                                      
+          if (!isPermanentSuspension) {
+              console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
+              validateErrorCount++;
+              failedUserIds.push(userId);
+              continue;
+          }
                                      
-        if (!isPermanentSuspension) {
-            console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
-            validateErrorCount++;
-            failedUserIds.push(userId);
-            continue;
+      }
+
+      
+      // 자격정지 관련 유효성 검사를 통과한 경우: suspensionStartAt/suspensionEndAt 비교 및 penaltyCount 처리
+      const userData = userDoc.data();
+      const existingSuspensionStartAt = userData.suspensionStartAt || null;
+      const existingSuspensionEndAt = userData.suspensionEndAt || null;
+      const existingPenaltyCount = userData.penaltyCount || 0;
+      
+
+      // suspensionStartAt과 suspensionEndAt에 모두 값이 있거나, suspensionEndAt에만 값이 있는 경우
+      if ((suspensionStartAt && suspensionEndAt) || (!suspensionStartAt && suspensionEndAt)) {
+        // 기존 값과 비교
+        const isStartAtChanged = suspensionStartAt !== existingSuspensionStartAt;
+        const isEndAtChanged = suspensionEndAt !== existingSuspensionEndAt;
+
+        if (isStartAtChanged || isEndAtChanged) {
+          // 다른 값이면 신고 카운트 1 증가
+          updateData.penaltyCount = existingPenaltyCount + 1;
+          console.log(`[패널티 카운트 증가] 사용자 ${userId} (${name || nickname}): ${existingPenaltyCount} -> ${updateData.penaltyCount}`);
+        } else {
+          // 같은 값이면 신고 카운트 증가 없이 노션의 신고 카운트 값 적용
+          if (penaltyCount !== null) {
+            updateData.penaltyCount = penaltyCount;
+          }
         }
-                                     
+      } else {
+        // suspensionStartAt과 suspensionEndAt이 모두 없는 경우, 노션의 신고 카운트 값만 적용
+        if (penaltyCount !== null) {
+          updateData.penaltyCount = penaltyCount;
+        }
       }
 
 
@@ -1145,19 +1202,89 @@ async syncSelectedUsers() {
 
       console.log(`[SUCCESS] ${userId} (${name || nickname}) 업데이트 완료`);
 
-      // 노션의 "선택" 체크박스 해제 (동기화 후 선택 상태 해제)
-      try {
-        await this.notion.pages.update({
-          page_id: pageId,
-          properties: {
-            "선택": {
-              checkbox: false
+       // Firebase에서 업데이트된 최신 데이터 가져오기
+       const updatedUserDoc = await userRef.get();
+       const updatedUserData = updatedUserDoc.data();
+ 
+       // 날짜 변환
+       const createdAtIso = safeDateToIso(updatedUserData.createdAt);
+       const lastLoginIso = safeDateToIso(updatedUserData.lastLoginAt);
+       const lastUpdatedIso = new Date();
+
+      const notionPageUpdate = {
+        '기본 닉네임': { title: [{ text: { content: updatedUserData.nickname || "" } }] },
+        "프로필 사진": {
+          files: [
+            {
+              name: "profile-image",
+              type: "external",
+              external: { url: updatedUserData.profileImageUrl || "https://example.com/default-profile.png" },
             },
-            "동기화 시간": {
-              date: { start: now.toISOString() }
-            }
+          ],
+        },
+        "사용자ID": { rich_text: [{ text: { content: userId } }] },
+        "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
+        "상태": {
+          select: {
+            name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
+              ? "탈퇴" 
+              : "가입"
+          }
+        },
+        "전화번호": { rich_text: [{ text: { content: updatedUserData.phoneNumber || "" } }] },
+        "생년월일": { rich_text: [{ text: { content: updatedUserData.birthDate || "" } }] },
+        "이메일": { rich_text: [{ text: { content: updatedUserData.email || "" } }] },
+        "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+        "가입 방법": { select: { name: updatedUserData.authType || "email" } },
+        "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+        "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+        "유입경로": { rich_text: [{ text: { content: updatedUserData.utmSource || "" } }] },
+        "성별": { 
+          select: { 
+            name: 
+              updatedUserData.gender === 'male' ? "남성" : updatedUserData.gender === 'female' ? "여성" : "미선택",
+          } 
+        },
+        "Push 광고 수신 여부": {
+          select: {
+            name:
+              updatedUserData.pushTermsAgreed === true
+                ? "동의"
+                : updatedUserData.pushTermsAgreed === false
+                ? "거부"
+                : "미설정",
           },
-        });
+        },
+        "자격정지 기간(시작)": updatedUserData.suspensionStartAt ? {
+          date: { 
+            start: updatedUserData.suspensionStartAt 
+          }
+        } : { date: null },
+        "자격정지 기간(종료)": updatedUserData.suspensionEndAt ? {
+          date: { 
+            start: updatedUserData.suspensionEndAt 
+          }
+        } : { date: null },
+        "정지 사유": updatedUserData.suspensionReason ? {
+          rich_text: [{
+            text: { content: updatedUserData.suspensionReason }
+          }]
+        } : {
+          rich_text: []
+        },
+        "패널티 카운트": {
+          number: (updatedUserData.penaltyCount !== null && updatedUserData.penaltyCount !== undefined) ? updatedUserData.penaltyCount : 0
+        },
+        "선택": {
+          checkbox: false
+        },
+         "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+      };
+
+      // 노션 페이지 업데이트 (Firebase의 최신 데이터로)
+      try {
+        await this.updateNotionPageWithRetry(pageId, notionPageUpdate);
+        console.log(`[SUCCESS] ${userId} (${name || nickname}) 노션 동기화 완료`);
       } catch (notionUpdateError) {
         console.warn(`[WARN] 노션 페이지 ${pageId} 업데이트 실패:`, notionUpdateError.message);
       }
@@ -1556,6 +1683,9 @@ async syncSelectedUsers() {
           const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
           const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
 
+          // 패널티 카운트 필드 추출 (number 타입)
+          const penaltyCount = props["패널티 카운트"]?.number ?? null;
+
           // 업데이트할 데이터 객체 생성
           const updateData = {};
           
@@ -1576,13 +1706,16 @@ async syncSelectedUsers() {
             updateData.lastLoginAt = lastLoginDate;
           }
 
-          // 자격정지 필드 처리
-          if (suspensionReason || suspensionReason === "") updateData.suspensionReason = suspensionReason;
-          if (suspensionStartAt) {
-            updateData.suspensionStartAt = suspensionStartAt;
-          }
-          if (suspensionEndAt) {
-            updateData.suspensionEndAt = suspensionEndAt;
+          // 자격정지 필드 처리 - 값이 없어도 명시적으로 null/빈 문자열로 저장
+         updateData.suspensionReason = suspensionReason || "";
+         updateData.suspensionStartAt = suspensionStartAt || null;
+         updateData.suspensionEndAt = suspensionEndAt || null;
+
+          // 패널티 카운트 필드 처리 (null이 아니면 적용, null이면 0으로 설정)
+          if (penaltyCount !== null && penaltyCount !== undefined) {
+            updateData.penaltyCount = penaltyCount;
+          } else {
+            updateData.penaltyCount = 0;
           }
 
           // lastUpdated 업데이트
@@ -1608,6 +1741,35 @@ async syncSelectedUsers() {
                 console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
               }
             }
+            return { success: false, userId, reason: "validation_error" };
+          }
+
+          // 자격정지 시작날짜만 존재하고 종료날짜가 없는 경우
+          if (suspensionStartAt && !suspensionEndAt) {
+            console.warn(
+              `사용자 ${name}의 자격정지 기간(시작)만 있고 종료가 없습니다. 당일 자격정지를 원하면 종료 날짜를 시작 날짜와 동일하게 입력해 주세요.`
+            );
+            validateErrorCount++;
+            failedUserIds.push(userId);
+
+            if (pageId) {
+              try {
+                await this.notion.pages.update({
+                  page_id: pageId,
+                  properties: {
+                    "백업 결과": {
+                      select: { name: "실패" }
+                    }
+                  }
+                });
+              } catch (updateError) {
+                console.warn(
+                  `[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`,
+                  updateError.message
+                );
+              }
+            }
+
             return { success: false, userId, reason: "validation_error" };
           }
 
@@ -1846,12 +2008,12 @@ async syncSingleUserToNotion(userId) {
         date: { 
           start: user.suspensionStartAt 
         }
-      } : undefined,
+      } : { date: null },
       "자격정지 기간(종료)": user.suspensionEndAt ? {
         date: { 
           start: user.suspensionEndAt 
         }
-      } : undefined,
+      } : { date: null },
       "정지 사유": user.suspensionReason ? {
         rich_text: [{
           text: { content: user.suspensionReason }
