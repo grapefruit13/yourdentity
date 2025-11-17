@@ -355,11 +355,13 @@ const options = {
             },
             createdAt: {
               type: "string",
+              format: "date-time",
               description: "Notion 페이지 생성 시간",
               example: "2025-11-09T13:12:00.000Z",
             },
             updatedAt: {
               type: "string",
+              format: "date-time",
               description: "Notion 페이지 최근 수정 시간",
               example: "2025-11-09T23:00:00.000+09:00",
             },
