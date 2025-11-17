@@ -9,7 +9,6 @@ const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
 const CommunityService = require("./communityService");
-const CommentService = require("./commentService");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -343,7 +342,8 @@ class UserService {
         if (!postId || !communityId) continue;
 
         try {
-          // 1. 해당 게시글의 모든 댓글 조회
+          // 1. 해당 게시글의 모든 댓글 조회 (순환 참조 방지를 위해 lazy require)
+          const CommentService = require("./commentService");
           const commentsService = new CommentService();
           const comments = await commentsService.firestoreService.getCollectionWhereMultiple(
             "comments",
@@ -485,6 +485,8 @@ class UserService {
    */
   async _deleteUserComments(uid) {
     try {
+      // 순환 참조 방지를 위해 lazy require
+      const CommentService = require("./commentService");
       const commentsService = new CommentService();
       
       // 사용자가 작성한 모든 댓글 조회
