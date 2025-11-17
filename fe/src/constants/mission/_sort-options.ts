@@ -10,5 +10,5 @@ import type { SortType } from "@/types/mission/sort-types";
  */
 export const MISSION_SORT_OPTIONS: SortOption<SortType>[] = [
   { value: "latest", label: "최신순" },
-  { value: "oldest", label: "오래된 순" },
+  { value: "popular", label: "인기순" },
 ];
