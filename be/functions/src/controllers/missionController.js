@@ -3,9 +3,30 @@ const notionMissionService = require("../services/notionMissionService");
 class MissionController {
   constructor() {
     // 메서드 바인딩
+    this.getCategories = this.getCategories.bind(this);
     this.getMissions = this.getMissions.bind(this);
     this.getMissionById = this.getMissionById.bind(this);
     this.getParticipatedMissionIds = this.getParticipatedMissionIds.bind(this);
+  }
+
+  /**
+   * 미션 카테고리 목록 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getCategories(req, res, next) {
+    try {
+      const result = await notionMissionService.getCategories();
+
+      res.success({
+        categories: result.categories
+      });
+
+    } catch (error) {
+      console.error("[MissionController] 카테고리 조회 오류:", error.message);
+      return next(error);
+    }
   }
 
   /**

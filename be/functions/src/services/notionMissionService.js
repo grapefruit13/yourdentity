@@ -83,6 +83,42 @@ class NotionMissionService {
   }
 
   /**
+   * 미션 카테고리 목록 조회
+   * @returns {Promise<Object>} 카테고리 목록
+   * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
+   * @note 모든 미션에서 사용된 카테고리를 중복 제거하여 반환
+   */
+  async getCategories() {
+    try {
+      // 전체 미션 조회
+      const response = await this.notion.dataSources.query({
+        data_source_id: this.missionDataSource,
+        page_size: 100,
+      });
+
+      // 모든 미션에서 카테고리 추출 및 중복 제거
+      const categorySet = new Set();
+      
+      response.results.forEach(page => {
+        const categories = getMultiSelectNames(page.properties[NOTION_FIELDS.CATEGORY]);
+        categories.forEach(category => categorySet.add(category));
+      });
+
+      // Set을 배열로 변환하고 정렬
+      const categories = Array.from(categorySet).sort();
+
+      return { categories };
+
+    } catch (error) {
+      console.error('[NotionMissionService] 카테고리 조회 오류:', error.message);
+      const notionError = new Error('미션 카테고리 조회에 실패했습니다');
+      notionError.code = ERROR_CODES.NOTION_API_ERROR;
+      notionError.statusCode = 500;
+      throw notionError;
+    }
+  }
+
+  /**
    * 미션 목록 조회 (필터링 & 정렬)
    * @param {Object} filters - 필터 조건
    * @param {string} [filters.category] - 카테고리 (자기만족, 취미생활, 건강, 관계, 성장)
