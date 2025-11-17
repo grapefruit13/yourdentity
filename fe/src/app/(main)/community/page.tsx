@@ -6,8 +6,8 @@ import FilterButtons from "@/components/community/FilterButtons";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
-import UserImageCarouselSection from "@/components/community/UserImageCarouselSection";
-import { userImages } from "@/constants/community/sampleData"; // TODO: 삭제 예정
+import AlarmButton from "@/components/shared/AlarmButton";
+import { Typography } from "@/components/shared/typography";
 import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 
@@ -151,60 +151,59 @@ const Page = () => {
   }
 
   return (
-    <div className="relative min-h-full bg-white">
-      <div className="px-5 pb-20">
-        {/* 미션 프로그램 섹션 */}
-        {/* <div className="mb-5">
-          <div className="mb-5 flex items-center gap-4">
-            <span className="text-lg font-bold text-gray-500">미션</span>
-            <span className="text-lg font-bold text-black">프로그램</span>
+    <div className="bg-whit relative min-h-full px-5">
+      {/* 필터 버튼들 - 스티키 */}
+      <div className="sticky top-0 z-40 mb-6 bg-white pt-2">
+        <div className="flex h-12 items-center justify-between bg-white">
+          <div className="flex items-center gap-4">
+            <Typography font="noto" variant="title4" className="text-black">
+              프로그램
+            </Typography>
+            {/* <Typography font="noto" variant="heading2B" className="text-black">미션</Typography> */}
           </div>
-        </div> */}
-
-        {/* 필터 버튼들 - 스티키 */}
-        <div className="sticky top-0 z-40 mt-3 mb-6 bg-white pt-2">
-          <FilterButtons
-            activeFilter={activeFilter}
-            onFilterChange={handleFilterChange}
-          />
+          <AlarmButton variant="inline" />
         </div>
+        <FilterButtons
+          activeFilter={activeFilter}
+          onFilterChange={handleFilterChange}
+        />
+      </div>
 
-        {/* 전체 포스트가 없을 때 - 로딩 완료 후에만 표시 */}
-        {!isInitialLoading && filteredPosts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-4xl">📭</div>
-            <p className="mb-2 text-base font-medium text-gray-900">
-              아직 게시글이 없어요
-            </p>
-            <p className="text-sm text-gray-500">
-              첫 번째 이야기를 공유해보세요!
-            </p>
-          </div>
-        )}
-
-        {/* 상위 3개 포스트 */}
-        <div className="mb-6">
-          <PostFeed
-            posts={topPosts}
-            onPostClick={handlePostClick}
-            isLoading={isInitialLoading}
-            skeletonCount={3}
-          />
+      {/* 전체 포스트가 없을 때 - 로딩 완료 후에만 표시 */}
+      {!isInitialLoading && filteredPosts.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-4 text-4xl">📭</div>
+          <p className="mb-2 text-base font-medium text-gray-900">
+            아직 게시글이 없어요
+          </p>
+          <p className="text-sm text-gray-500">
+            첫 번째 이야기를 공유해보세요!
+          </p>
         </div>
+      )}
 
-        {topPosts.length > 0 && (
+      {/* 상위 3개 포스트 */}
+      <div className="mb-6">
+        <PostFeed
+          posts={topPosts}
+          onPostClick={handlePostClick}
+          isLoading={isInitialLoading}
+          skeletonCount={3}
+        />
+      </div>
+
+      {/* {topPosts.length > 0 && (
           <UserImageCarouselSection images={userImages} />
-        )}
+        )} */}
 
-        {/* 나머지 포스트 */}
-        <div className="mb-6">
-          <PostFeed
-            posts={remainingPosts}
-            onPostClick={handlePostClick}
-            isLoading={isInitialLoading}
-            skeletonCount={5}
-          />
-        </div>
+      {/* 나머지 포스트 */}
+      <div className="mb-6">
+        <PostFeed
+          posts={remainingPosts}
+          onPostClick={handlePostClick}
+          isLoading={isInitialLoading}
+          skeletonCount={5}
+        />
       </div>
 
       {/* 플로팅 작성 버튼 */}
