@@ -8,6 +8,8 @@ const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = requir
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
+const CommunityService = require("./communityService");
+const CommentService = require("./commentService");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -342,8 +344,7 @@ class UserService {
 
         try {
           // 1. 해당 게시글의 모든 댓글 조회
-          const commentService = require("./commentService");
-          const commentsService = new commentService();
+          const commentsService = new CommentService();
           const comments = await commentsService.firestoreService.getCollectionWhereMultiple(
             "comments",
             [
@@ -398,9 +399,9 @@ class UserService {
             console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 처리 완료: 하드딜리트 ${hardDeleteCount}개, 소프트딜리트 ${softDeleteComments.length}개`);
           }
 
-          // 3. 게시글 문서 삭제
-          const postRef = db.collection(`communities/${communityId}/posts`).doc(postId);
-          await postRef.delete();
+          // 3. 게시글 삭제 (이미지 포함, communityService 사용)
+          const communityService = new CommunityService();
+          await communityService.deletePost(communityId, postId, uid);
 
           // 4. 다른 사용자들의 서브컬렉션에서 제거
           await this._removePostFromOtherUsersSubCollections(postId);
@@ -484,8 +485,7 @@ class UserService {
    */
   async _deleteUserComments(uid) {
     try {
-      const commentService = require("./commentService");
-      const commentsService = new commentService();
+      const commentsService = new CommentService();
       
       // 사용자가 작성한 모든 댓글 조회
       const comments = await commentsService.firestoreService.getCollectionWhere(
