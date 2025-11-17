@@ -3,6 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   useQuery,
   useMutation,
@@ -13,124 +14,34 @@ import * as Api from "@/api/generated/missions-api";
 import { missionsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/missions-types";
 
-export const usePostUsersMissionsById = <
-  TContext = unknown,
-  TVariables = Types.TPOSTUsersMissionsByIdReq,
->(
-  options?: Omit<
-    UseMutationOptions<
-      Awaited<ReturnType<typeof Api.postUsersMissionsById>>,
-      Error,
-      TVariables,
-      TContext
-    >,
-    "mutationFn"
-  >
-) => {
-  return useMutation<
-    Awaited<ReturnType<typeof Api.postUsersMissionsById>>,
-    Error,
-    TVariables,
-    TContext
-  >({
-    mutationFn: (variables: TVariables) =>
-      Api.postUsersMissionsById(variables as Types.TPOSTUsersMissionsByIdReq),
-    ...options,
-  });
-};
-
-export const useGetUsersMissionsById = <TData = Types.TGETUsersMissionsByIdRes>(
+export const useGetMissions = <TData = any>(
   options: {
-    request: Types.TGETUsersMissionsByIdReq;
-  } & Omit<
-    UseQueryOptions<Types.TGETUsersMissionsByIdRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
+    request: Types.TGETMissionsReq;
+  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETUsersMissionsByIdRes, Error, TData>({
-    queryKey: missionsKeys.getUsersMissionsById(request),
+  return useQuery<any, Error, TData>({
+    queryKey: missionsKeys.getMissions(request),
     queryFn: async () => {
-      const response = await Api.getUsersMissionsById(request);
+      const response = await Api.getMissions(request);
       return response.data;
     },
     ...queryOptions,
   });
 };
 
-export const useGetUsersMissionsByTwoIds = <
-  TData = Types.TGETUsersMissionsByTwoIdsRes,
->(
+export const useGetMissionsById = <TData = any>(
   options: {
-    request: Types.TGETUsersMissionsByTwoIdsReq;
-  } & Omit<
-    UseQueryOptions<Types.TGETUsersMissionsByTwoIdsRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
+    request: Types.TGETMissionsByIdReq;
+  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETUsersMissionsByTwoIdsRes, Error, TData>({
-    queryKey: missionsKeys.getUsersMissionsByTwoIds(request),
+  return useQuery<any, Error, TData>({
+    queryKey: missionsKeys.getMissionsById(request),
     queryFn: async () => {
-      const response = await Api.getUsersMissionsByTwoIds(request);
+      const response = await Api.getMissionsById(request);
       return response.data;
     },
     ...queryOptions,
-  });
-};
-
-export const usePutUsersMissionsByTwoIds = <
-  TContext = unknown,
-  TVariables = Types.TPUTUsersMissionsByTwoIdsReq,
->(
-  options?: Omit<
-    UseMutationOptions<
-      Awaited<ReturnType<typeof Api.putUsersMissionsByTwoIds>>,
-      Error,
-      TVariables,
-      TContext
-    >,
-    "mutationFn"
-  >
-) => {
-  return useMutation<
-    Awaited<ReturnType<typeof Api.putUsersMissionsByTwoIds>>,
-    Error,
-    TVariables,
-    TContext
-  >({
-    mutationFn: (variables: TVariables) =>
-      Api.putUsersMissionsByTwoIds(
-        variables as Types.TPUTUsersMissionsByTwoIdsReq
-      ),
-    ...options,
-  });
-};
-
-export const useDeleteUsersMissionsByTwoIds = <
-  TContext = unknown,
-  TVariables = Types.TDELETEUsersMissionsByTwoIdsReq,
->(
-  options?: Omit<
-    UseMutationOptions<
-      Awaited<ReturnType<typeof Api.deleteUsersMissionsByTwoIds>>,
-      Error,
-      TVariables,
-      TContext
-    >,
-    "mutationFn"
-  >
-) => {
-  return useMutation<
-    Awaited<ReturnType<typeof Api.deleteUsersMissionsByTwoIds>>,
-    Error,
-    TVariables,
-    TContext
-  >({
-    mutationFn: (variables: TVariables) =>
-      Api.deleteUsersMissionsByTwoIds(
-        variables as Types.TDELETEUsersMissionsByTwoIdsReq
-      ),
-    ...options,
   });
 };

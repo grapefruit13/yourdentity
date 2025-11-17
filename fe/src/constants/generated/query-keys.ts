@@ -162,16 +162,18 @@ export const imagesKeys = {} as const;
 
 // Missions Query Keys
 export const missionsKeys = {
-  getUsersMissionsById: (request: missionsTypes.TGETUsersMissionsByIdReq) =>
-    __buildKey("missions", "getUsersMissionsById", {
-      path: { userId: request.userId },
-      query: { status: request.status },
+  getMissions: (request: missionsTypes.TGETMissionsReq) =>
+    __buildKey("missions", "getMissions", {
+      path: {},
+      query: {
+        sortBy: request.sortBy,
+        category: request.category,
+        excludeParticipated: request.excludeParticipated,
+      },
     }),
-  getUsersMissionsByTwoIds: (
-    request: missionsTypes.TGETUsersMissionsByTwoIdsReq
-  ) =>
-    __buildKey("missions", "getUsersMissionsByTwoIds", {
-      path: { userId: request.userId, missionId: request.missionId },
+  getMissionsById: (request: missionsTypes.TGETMissionsByIdReq) =>
+    __buildKey("missions", "getMissionsById", {
+      path: { missionId: request.missionId },
       query: {},
     }),
 } as const;
