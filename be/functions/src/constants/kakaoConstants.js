@@ -5,11 +5,11 @@
 // 카카오 API 타임아웃 (10초)
 const KAKAO_API_TIMEOUT = 10000;
 
-// 카카오 API 재시도 지연 시간 (1.5초)
+// 카카오 API 재시도 지연 시간
 const KAKAO_API_RETRY_DELAY = 1500;
 
-// 카카오 API 최대 재시도 횟수
-const KAKAO_API_MAX_RETRIES = 2;
+// 카카오 API 시도 횟수 (프론트에서만 재시도, 백엔드는 1회만)
+const KAKAO_API_MAX_RETRIES = 1;
 
 // HTTP 상태 코드
 const HTTP_STATUS_UNAUTHORIZED = 401;

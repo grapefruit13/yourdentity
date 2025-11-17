@@ -9,6 +9,7 @@ import TopBar from "@/components/shared/layouts/top-bar";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETHomeRes } from "@/types/generated/home-types";
 import {
   findEarliestExpiry,
@@ -32,7 +33,10 @@ export default function MainLayout({
 
   const isCommunityPage = pathname === LINK_URL.COMMUNITY;
   const isMyPage = pathname === LINK_URL.MY_PAGE;
-  const hideTopBar = isCommunityPage || isMyPage;
+  const isMissionPage = pathname === LINK_URL.MISSION;
+  const storeHideTopBar = useTopBarStore((state) => state.hideTopBar);
+  const hideTopBar =
+    isCommunityPage || isMyPage || isMissionPage || storeHideTopBar;
 
   // 라우트 변경 시 항상 스크롤 최상단으로 이동 (Next.js 15 스크롤 복원 이슈 대응)
   useEffect(() => {
@@ -250,9 +254,7 @@ export default function MainLayout({
             }
           />
         )}
-        <main className="w-full flex-1 overflow-x-hidden pb-[72px]">
-          {children}
-        </main>
+        <main className="w-full flex-1 overflow-x-hidden">{children}</main>
         <BottomNavigation />
       </div>
     </div>

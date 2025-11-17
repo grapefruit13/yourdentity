@@ -23,7 +23,7 @@ const ACTION_REASON_MAP = {
   'gathering_review_text': '소모임 후기',
   'gathering_review_media': '소모임 포토 후기',
   'tmi_review': 'TMI 후기',
-  'additional_point': '나다움 추가 지급',
+  'additional_point': '나다움 추가 지급/차감',
 };
 
 /**
@@ -252,6 +252,95 @@ class RewardService {
     });
 
     return { isDuplicate };
+  }
+
+  /**
+   * 사용자 리워드 차감 + 히스토리 추가
+   * - 잔액 부족이어도 에러 없이 0 미만으로 내려가지 않도록 클램프 처리
+   * @param {string} userId - 사용자 ID
+   * @param {number} amount - 차감 금액(양수 기대, 음수 입력 시 절대값 처리)
+   * @param {string} actionKey - 액션 키(예: "additional_point")
+   * @param {string} historyId - 히스토리 문서 ID (중복 체크용)
+   * @param {Date|Timestamp|null} actionTimestamp - 액션 발생 시간 (null이면 FieldValue.serverTimestamp() 사용)
+   * @param {boolean} checkDuplicate - 중복 체크 여부 (기본: true)
+   * @param {string|null} reason - 차감 사유
+   * @param {Object} [options] - 추가 옵션(예약)
+   * @return {Promise<{isDuplicate: boolean, deducted: number}>}
+   */
+  async deductRewardFromUser(
+    userId,
+    amount,
+    actionKey,
+    historyId,
+    actionTimestamp = null,
+    checkDuplicate = true,
+    reason = null,
+    options = {}
+  ) {
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+    if (typeof amount !== 'number' || isNaN(amount) || amount === 0) {
+      throw new Error('유효하지 않은 amount입니다');
+    }
+    const amountAbs = Math.abs(amount);
+    if (!actionKey || typeof actionKey !== 'string' || actionKey.trim().length === 0) {
+      throw new Error('유효하지 않은 actionKey입니다');
+    }
+    if (!historyId || typeof historyId !== 'string' || historyId.trim().length === 0) {
+      throw new Error('유효하지 않은 historyId입니다');
+    }
+
+    const userRef = db.collection('users').doc(userId);
+    const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
+
+    let isDuplicate = false;
+    let deducted = 0;
+
+    await this.firestoreService.runTransaction(async (transaction) => {
+      // 중복 체크
+      if (checkDuplicate) {
+        const historyDoc = await transaction.get(historyRef);
+        if (historyDoc.exists) {
+          isDuplicate = true;
+          return;
+        }
+      }
+
+      // 현재 리워드 조회
+      const userDoc = await transaction.get(userRef);
+      const currentRewards = userDoc.exists && typeof userDoc.data().rewards === 'number'
+        ? userDoc.data().rewards
+        : 0;
+
+      // 0 미만 방지: 현재 보유치 만큼만 차감
+      deducted = Math.min(currentRewards, amountAbs);
+      const rewardReason = reason || ACTION_REASON_MAP[actionKey] || '리워드 차감';
+      const createdAtValue = actionTimestamp
+        ? (actionTimestamp instanceof Timestamp ? actionTimestamp : Timestamp.fromDate(new Date(actionTimestamp)))
+        : FieldValue.serverTimestamp();
+
+      // 히스토리 기록 (expiresAt, isProcessed는 만료 전용 의미 유지 → 설정하지 않음)
+      transaction.set(historyRef, {
+        actionKey,
+        amount: deducted,
+        changeType: 'deduct',
+        reason: rewardReason,
+        createdAt: createdAtValue,
+        isProcessed: false,
+      });
+
+      // 사용자 리워드 차감
+      if (deducted > 0) {
+        transaction.update(userRef, {
+          rewards: FieldValue.increment(-deducted),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+    });
+
+    return { isDuplicate, deducted };
   }
 
   /**

@@ -65,6 +65,11 @@ class AuthController {
    * @description
    * - 카카오 로그인 사용자: 카카오 연결 해제 필수
    * - Firestore: 개인정보 제거 + 생년월일 가명처리
+   *   * 닉네임 삭제: nicknames 컬렉션에서 해당 사용자의 닉네임 문서 삭제
+   *   * 제거: 생년월일(가명처리), deletedAt, lastUpdatedAt을 제외한 모든 필드를 null로 처리
+   *     (이름, 이메일, 전화번호, 닉네임, 주소, 프로필 이미지, 자기소개, rewards, profileImagePath 등 모든 필드)
+   *   * 가명처리: 생년월일 (YYYY-**-** 형태로 마스킹)
+   *   * 유지: 가명처리된 생년월일, 삭제일시(deletedAt), 마지막 업데이트 일자(lastUpdatedAt)만 유지
    * - Firebase Auth: 사용자 삭제
    *
    * @param {Object} req - Express request object

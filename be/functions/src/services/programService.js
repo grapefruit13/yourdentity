@@ -16,6 +16,7 @@ const faqService = require('./faqService');
 const FirestoreService = require('./firestoreService');
 const CommunityService = require('./communityService');
 const { db, FieldValue } = require('../config/database');
+const { validateNicknameOrThrow } = require('../utils/nicknameValidator');
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -682,6 +683,7 @@ class ProgramService {
         community = await this.createCommunityFromProgram(normalizedProgramId, program);
       }
 
+      validateNicknameOrThrow(nickname);
       // 3. 닉네임 중복 체크
       const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
       if (!isNicknameAvailable) {
@@ -690,6 +692,7 @@ class ProgramService {
         error.statusCode = 409;
         throw error;
       }
+
 
       // 4. Notion 프로그램신청자DB에 저장
       const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
@@ -783,6 +786,7 @@ class ProgramService {
     }
   }
 
+
   /**
    * Notion 프로그램신청자DB에 저장
    * @param {string} programId - 프로그램 ID (Notion 페이지 ID)
@@ -825,29 +829,6 @@ class ProgramService {
         }
       }
 
-      // 참여 동기가 "직접 입력하기"인 경우와 선택지인 경우 구분
-      let motivationSelect = null;
-      let motivationDetail = '';
-      
-      if (applicationMotivation) {
-        // Notion select options에 있는 값들
-        const validOptions = [
-          '직접 입력하기',
-          '추천을 받아 관심이 생겨서',
-          '나만의 변화를 기록하고 싶어서',
-          '다른 참여자들과 교류하여 동기부여 하고 싶어서',
-          '일상을 좀 더 규칙적으로 관리하고 싶어서',
-          '새로운 습관을 만들고 싶어서'
-        ];
-        
-        if (validOptions.includes(applicationMotivation)) {
-          motivationSelect = applicationMotivation;
-        } else {
-          // 선택지에 없는 값이면 "직접 입력하기"로 설정하고 내용은 detail에 저장
-          motivationSelect = '직접 입력하기';
-          motivationDetail = applicationMotivation;
-        }
-      }
 
       // "회원 관리" DB에서 사용자 찾기
       const userNotionPageId = await this.findUserNotionPageId(applicantId);
@@ -931,34 +912,34 @@ class ProgramService {
 
       if (currentSituation) {
         properties['현재 상황'] = {
-          select: {
-            name: currentSituation
-          }
+          rich_text: [
+            {
+              text: {
+                content: currentSituation
+              }
+            }
+          ]
         };
       }
 
       if (applicationSource) {
         properties['신청 경로'] = {
-          select: {
-            name: applicationSource
-          }
-        };
-      }
-
-      if (motivationSelect) {
-        properties['참여 동기'] = {
-          select: {
-            name: motivationSelect
-          }
-        };
-      }
-
-      if (motivationDetail) {
-        properties['참여 동기 (직접 입력)'] = {
           rich_text: [
             {
               text: {
-                content: motivationDetail
+                content: applicationSource
+              }
+            }
+          ]
+        };
+      }
+
+      if (applicationMotivation) {
+        properties['참여 동기'] = {
+          rich_text: [
+            {
+              text: {
+                content: applicationMotivation
               }
             }
           ]

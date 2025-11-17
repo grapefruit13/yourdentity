@@ -580,6 +580,8 @@ export interface Program {
   createdAt?: string;
   updatedAt?: string;
   notionPageTitle?: string;
+  leaderNickname?: string;
+  leaderRealName?: string;
 }
 
 export interface ProgramDetail extends Schema.Program {
@@ -666,7 +668,17 @@ export interface CommunityMember {
 
 export interface ProgramApplicationRequest {
   applicantId: string;
-  nickname: string;
+  activityNickname: string;
+  activityPhoneNumber?: string;
+  email?: string;
+  region?: {
+    city?: string;
+    district?: string;
+  };
+  currentSituation?: string;
+  applicationSource?: string;
+  applicationMotivation?: string;
+  canAttendEvents?: boolean;
 }
 
 export interface ProgramApplicationResponse {

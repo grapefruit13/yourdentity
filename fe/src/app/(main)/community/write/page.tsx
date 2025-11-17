@@ -9,6 +9,7 @@ import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
+import SubmitButton from "@/components/shared/ui/submit-button";
 import {
   MAX_FILES,
   WRITE_MESSAGES,
@@ -30,6 +31,7 @@ import {
   isHandledError,
 } from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
+import { getCurrentDateTime } from "@/utils/shared/date";
 import { extractTextFromHtml } from "@/utils/shared/text-editor";
 
 /**
@@ -344,16 +346,10 @@ const WritePageContent = () => {
 
     // 탑바 완료 버튼 설정
     setRightSlot(
-      <ButtonBase
-        type="submit"
-        className="disabled:opacity-50"
+      <SubmitButton
         disabled={isSubmitDisabled}
         onClick={handleSubmit(onSubmit)}
-      >
-        <Typography font="noto" variant="body2M" className="text-main-600">
-          완료
-        </Typography>
-      </ButtonBase>
+      />
     );
   }, [
     setTitle,
@@ -390,19 +386,6 @@ const WritePageContent = () => {
       window.removeEventListener("popstate", handlePopState);
     };
   }, []);
-
-  // 현재 날짜/시간 포맷팅
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-    const dayName = dayNames[now.getDay()];
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    return `${year}.${month}.${day}(${dayName}) ${hours}:${minutes} 작성 중`;
-  };
 
   // Auth 초기화 대기 중이거나 미인증 사용자는 렌더링하지 않음
   // (useRequireAuth가 자동으로 리다이렉트 처리)
@@ -441,7 +424,7 @@ const WritePageContent = () => {
                 variant="label2M"
                 className="text-gray-400"
               >
-                {getCurrentDateTime()}
+                {getCurrentDateTime(" 작성 중")}
               </Typography>
             </div>
             {/* 공개 범위 */}

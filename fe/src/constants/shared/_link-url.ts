@@ -4,11 +4,15 @@ export const LINK_URL = {
   LOGIN: "/login",
   KAKAO_LOGIN: "/kakao-login",
   EMAIL_LOGIN: "/email-login",
-  TERMS_OF_SERVICE: "/terms-of-service",
-  PRIVACY_POLICY: "/privacy-policy",
+  TERMS_OF_SERVICE:
+    "https://www.notion.so/youthvoice/2a845f524cd0805bb753d8b98694ff3d",
+  PRIVACY_POLICY:
+    "https://www.notion.so/youthvoice/2a845f524cd080278624e57498305bf2",
   FIND_PASSWORD: "/find-password",
   EMAIL_SIGNUP: "/signup/email",
   MISSION: "/mission",
+  MISSION_LIST: "/mission/list",
+  MISSION_CERTIFY: "/mission/certify",
   COMMUNITY: "/community",
   COMMUNITY_POST: "/community/post",
   COMMUNITY_WRITE: "/community/write",

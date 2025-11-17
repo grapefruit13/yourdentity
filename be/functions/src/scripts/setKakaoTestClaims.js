@@ -31,11 +31,15 @@ const customClaims = {
   kakaoPicture: '',
   kakaoTerms: [
     {
-      tag: 'terms_service_v1',
+      tag: 'terms_service',
       agreed_at: new Date().toISOString(),
     },
     {
-      tag: 'terms_privacy_v1',
+      tag: 'terms_privacy',
+      agreed_at: new Date().toISOString(),
+    },
+    {
+      tag: 'consent_privacy',
       agreed_at: new Date().toISOString(),
     },
     {
@@ -43,7 +47,7 @@ const customClaims = {
       agreed_at: new Date().toISOString(),
     },
     {
-      tag: 'terms_push_v1',
+      tag: 'consent_marketing',
       agreed_at: new Date().toISOString(),
     },
   ],

@@ -8,6 +8,8 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { cn } from "@/utils/shared/cn";
 
+const isDev = process.env.NODE_ENV === "development";
+
 /**
  * @description 하단 네비게이션 바
  */
@@ -25,6 +27,22 @@ const BottomNavigation = () => {
   });
   const hasNickname = Boolean(userData?.nickname?.trim());
   const shouldBlockMyTab = (isFetched && !hasNickname) || isLoading || isError;
+
+  // 최상단 뎁스 경로 목록 (개발 환경에서만 미션 경로 포함)
+  const topLevelPaths = [
+    LINK_URL.HOME,
+    LINK_URL.COMMUNITY,
+    LINK_URL.MY_PAGE,
+    ...(isDev ? [LINK_URL.MISSION] : []),
+  ] as const;
+
+  // 현재 경로가 최상단 뎁스 경로 중 하나와 정확히 일치하는지 확인
+  const shouldShow = topLevelPaths.some((path) => pathname === path);
+
+  // 최상단 뎁스 경로가 아니면 렌더링하지 않음
+  if (!shouldShow) {
+    return null;
+  }
 
   return (
     <nav className="pb-safe fixed bottom-0 left-1/2 z-50 flex w-full max-w-[470px] -translate-x-1/2 items-center justify-center gap-14 border-t border-gray-200 bg-white/90 pt-3 backdrop-blur-sm">

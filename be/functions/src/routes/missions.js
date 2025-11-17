@@ -1,7 +1,7 @@
 const express = require("express");
-const missionController = require("../controllers/missionController");
-
 const router = express.Router();
+const missionController = require("../controllers/missionController");
+const optionalAuth = require("../middleware/optionalAuth");
 
 /**
  * @swagger
@@ -12,265 +12,65 @@ const router = express.Router();
 
 /**
  * @swagger
- * /users/{userId}/missions:
- *   post:
- *     summary: 미션 생성
- *     description: 사용자에게 새로운 미션을 할당합니다
- *     tags: [Missions]
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: abc123def456
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - missionId
- *             properties:
- *               missionId:
- *                 type: string
- *                 example: mission_001
- *               status:
- *                 type: string
- *                 enum: [ONGOING, COMPLETED, EXPIRED, RETRY]
- *                 default: ONGOING
- *                 example: ONGOING
- *     responses:
- *       200:
- *         description: 미션 생성 성공
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Success'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Mission'
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.post("/users/:userId/missions", missionController.createMission);
-
-/**
- * @swagger
- * /users/{userId}/missions:
+ * /missions:
  *   get:
- *     summary: 사용자 미션 목록 조회
- *     description: 특정 사용자의 미션 목록을 조회합니다
+ *     summary: 미션 목록 조회 (MVP)
  *     tags: [Missions]
+ *     description: |
+ *       전체 미션 목록을 조회합니다. (약 30~100개, 페이지네이션 없음)
+ *       
+ *       정렬:
+ *       - latest: 최신순 (기본값)
+ *       - popular: 인기순 (반응 수 많은 순)
+ *       
+ *       필터:
+ *       - category: 카테고리 칩 (예: 자기 탐색, 자기 만족 등)
+ *       - excludeParticipated: 참여한 미션 제외 (로그인 필요)
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: abc123def456
  *       - in: query
- *         name: status
- *         required: false
+ *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [ONGOING, COMPLETED, EXPIRED, RETRY]
- *         description: 미션 상태 필터
- *         example: ONGOING
+ *           enum: [latest, popular]
+ *           default: latest
+ *         description: 정렬 기준
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: 카테고리 필터
+ *       - in: query
+ *         name: excludeParticipated
+ *         schema:
+ *           type: boolean
+ *         description: 참여한 미션 제외 (로그인 필요)
  *     responses:
  *       200:
  *         description: 미션 목록 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Success'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Mission'
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.get("/users/:userId/missions",
-    missionController.getUserMissions);
+router.get("/", optionalAuth, missionController.getMissions);
 
 /**
  * @swagger
- * /users/{userId}/missions/{missionId}:
+ * /missions/{missionId}:
  *   get:
  *     summary: 미션 상세 조회
- *     description: 특정 미션의 상세 정보를 조회합니다
  *     tags: [Missions]
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: abc123def456
  *       - in: path
  *         name: missionId
  *         required: true
  *         schema:
  *           type: string
- *         description: 미션 ID
- *         example: mission_001
+ *         description: 미션 ID (Notion 페이지 ID)
  *     responses:
  *       200:
- *         description: 미션 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Success'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Mission'
+ *         description: 미션 상세 조회 성공
  *       404:
  *         description: 미션을 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.get("/users/:userId/missions/:missionId",
-    missionController.getMissionById);
-
-/**
- * @swagger
- * /users/{userId}/missions/{missionId}:
- *   put:
- *     summary: 미션 업데이트
- *     description: 미션의 상태나 정보를 업데이트합니다
- *     tags: [Missions]
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: abc123def456
- *       - in: path
- *         name: missionId
- *         required: true
- *         schema:
- *           type: string
- *         description: 미션 ID
- *         example: mission_001
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [ONGOING, COMPLETED, EXPIRED, RETRY]
- *                 example: COMPLETED
- *               certified:
- *                 type: boolean
- *                 example: true
- *               review:
- *                 type: string
- *                 example: 미션이 유익했습니다.
- *     responses:
- *       200:
- *         description: 미션 업데이트 성공
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Success'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Mission'
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.put("/users/:userId/missions/:missionId",
-    missionController.updateMission);
-
-/**
- * @swagger
- * /users/{userId}/missions/{missionId}:
- *   delete:
- *     summary: 미션 삭제
- *     description: 특정 미션을 삭제합니다
- *     tags: [Missions]
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: 사용자 ID
- *         example: abc123def456
- *       - in: path
- *         name: missionId
- *         required: true
- *         schema:
- *           type: string
- *         description: 미션 ID
- *         example: mission_001
- *     responses:
- *       200:
- *         description: 미션 삭제 성공
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Success'
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.delete("/users/:userId/missions/:missionId",
-    missionController.deleteMission);
+router.get("/:missionId", optionalAuth, missionController.getMissionById);
 
 module.exports = router;
+
 

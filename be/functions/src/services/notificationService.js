@@ -486,6 +486,54 @@ class NotificationService {
           }
           throw rewardError;
         }
+      } else if (nadumAmount < 0) {
+        try {
+          const rewardPromises = userIds.map(async (userId) => {
+            const historyId = `additional_point_${pageId}_${userId}`;
+            try {
+              const { isDuplicate, deducted } = await this.rewardService.deductRewardFromUser(
+                userId,
+                Math.abs(nadumAmount),
+                'additional_point',
+                historyId,
+                null,  // actionTimestamp: 서버 시간 사용
+                true,
+                null
+              );
+              
+              if (isDuplicate) {
+                console.log(`[나다움 중복 차감 방지] userId=${userId}, pageId=${pageId}`);
+                return { userId, success: true, duplicate: true, deducted: 0 };
+              }
+              
+              return { userId, success: true, deducted };
+            } catch (error) {
+              console.error(`[나다움 차감 실패] userId=${userId}:`, error.message);
+              return { userId, success: false, error: error.message };
+            }
+          });
+
+          rewardResults = await Promise.allSettled(rewardPromises);
+          rewardedUserIds = rewardResults
+            .filter(result => result.status === 'fulfilled' && result.value.success)
+            .map(result => result.value.userId);
+
+          const rewardSuccessCount = rewardedUserIds.length;
+          const rewardFailureCount = userIds.length - rewardSuccessCount;
+          console.log(`[나다움 차감 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${rewardSuccessCount}, 실패=${rewardFailureCount}`);
+
+          // 차감은 실패해도 알림 자체는 진행 가능하게 유지(정책에 따라 조정)
+          paymentResult = rewardSuccessCount > 0 ? PAYMENT_RESULT.COMPLETED : PAYMENT_RESULT.FAILED;
+        } catch (rewardError) {
+          paymentResult = PAYMENT_RESULT.FAILED;
+          rewardFailed = true;
+          console.error("나다움 차감 처리 실패:", rewardError.message);
+          if (!rewardError.code) {
+            rewardError.code = ERROR_CODES.REWARD_FAILED;
+            rewardError.statusCode = 500;
+          }
+          throw rewardError;
+        }
       } else {
         rewardedUserIds = userIds;
         // 나다움 지급이 없으면 지급 결과 업데이트 불필요

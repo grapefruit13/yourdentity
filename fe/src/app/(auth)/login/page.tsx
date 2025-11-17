@@ -8,12 +8,10 @@ import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import {
-  useGetUsersMe,
-  usePostUsersMeSyncKakaoProfile,
-} from "@/hooks/generated/users-hooks";
+import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao } from "@/lib/auth";
+import { setKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 
 /**
@@ -34,10 +32,6 @@ const LoginPageContent = () => {
     ? LINK_URL.COMMUNITY
     : rawNext;
 
-  const { mutateAsync: syncMutateAsync } = usePostUsersMeSyncKakaoProfile({
-    retry: 1, // 실패 시 1회 재시도
-    retryDelay: 2000, // 재시도 간격: 2초
-  });
   const { refetch: refetchUserData } = useGetUsersMe({
     enabled: false, // 자동 실행 비활성화
     select: (data) => {
@@ -76,9 +70,9 @@ const LoginPageContent = () => {
    * 흐름:
    * 1. 카카오 회원가입/로그인 진행
    * 2. 신규 회원인 경우:
-   *    2-1. 카카오 프로필 동기화 API 호출
+   *    2-1. 카카오 액세스 토큰을 sessionStorage에 저장
    *    2-2. FCM 토큰 등록 (실패해도 계속 진행)
-   *    2-3. 온보딩 페이지로 이동
+   *    2-3. 온보딩 페이지로 이동 (온보딩 페이지에서 syncKakaoProfile 호출)
    * 3. 기존 사용자인 경우:
    *    3-1. 사용자 정보 조회
    *    3-2. FCM 토큰 등록 (실패해도 계속 진행)
@@ -104,28 +98,15 @@ const LoginPageContent = () => {
           return;
         }
 
-        // 2-1. 카카오 프로필 동기화 (비동기 완료 대기, React Query가 자동으로 1회 재시도)
-        try {
-          await syncMutateAsync({
-            data: {
-              accessToken: kakaoAccessToken,
-            },
-          });
-          // 성공 시, 프로필 편집(온보딩)페이지로 이동
-          debug.log("카카오 프로필 동기화 성공");
-          // 신규 회원은 항상 온보딩 페이지로 (next 파라미터 무시)
-          router.replace(LINK_URL.MY_PAGE_EDIT);
-        } catch (error) {
-          // 모든 시도 실패 시 (React Query가 자동으로 1회 재시도한 후 실패)
-          debug.error("카카오 프로필 동기화 실패:", error);
-          setErrorMessage("카카오 프로필 동기화에 실패했습니다.");
-          router.replace(LINK_URL.LOGIN);
-        } finally {
-          setIsLoading(false);
-        }
+        // 2-1. 카카오 액세스 토큰을 sessionStorage에 저장 (온보딩 페이지에서 사용)
+        setKakaoAccessToken(kakaoAccessToken);
 
         // 2-2. FCM 토큰 등록 (실패해도 계속 진행)
         await registerFCMTokenSafely();
+
+        // 2-3. 신규 회원은 항상 온보딩 페이지로 (next 파라미터 무시)
+        setIsLoading(false);
+        router.replace(LINK_URL.MY_PAGE_EDIT);
       }
 
       // 3. 기존 사용자 처리
