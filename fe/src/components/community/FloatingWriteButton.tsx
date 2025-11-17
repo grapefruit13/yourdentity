@@ -37,7 +37,7 @@ const FloatingWriteButton = ({
   };
 
   return (
-    <div className="pointer-events-none fixed bottom-[92px] left-1/2 z-50 w-full max-w-[470px] -translate-x-1/2 px-5">
+    <div className="pointer-events-none fixed bottom-[97px] left-1/2 z-50 w-full max-w-[470px] -translate-x-1/2 px-5">
       <button
         onClick={handleClick}
         className={cn(
