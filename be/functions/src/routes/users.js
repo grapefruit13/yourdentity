@@ -1383,7 +1383,7 @@ router.put("/:userId", userController.updateUser);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:userId", userController.deleteUser);
+router.delete("/:userId", authGuard, userController.deleteUser);
 
 module.exports = router;
 

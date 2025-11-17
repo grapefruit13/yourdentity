@@ -8,6 +8,8 @@ const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = requir
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
+const CommunityService = require("./communityService");
+const CommentService = require("./commentService");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -261,6 +263,309 @@ class UserService {
       const e = new Error("사용자를 삭제할 수 없습니다");
       e.code = "INTERNAL_ERROR";
       throw e;
+    }
+  }
+
+  /**
+   * 계정 탈퇴 (게시글, 댓글, 프로필 이미지 등 모든 데이터 정리)
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<{success: boolean}>}
+   */
+  async deleteAccount(uid) {
+    try {
+      console.log(`[ACCOUNT_DELETION] 시작: userId=${uid}`);
+
+      // 1. 사용자 정보 조회
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        const e = new Error("사용자를 찾을 수 없습니다");
+        e.code = "NOT_FOUND";
+        throw e;
+      }
+
+      // 2. 게시글 삭제 및 관련 데이터 정리
+      await this._deleteUserPosts(uid);
+
+      // 3. 댓글 삭제 (게시글에 속하지 않은 댓글들)
+      await this._deleteUserComments(uid);
+
+      // 4. 프로필 이미지 삭제
+      if (user.profileImagePath) {
+        try {
+          await fileService.deleteFile(user.profileImagePath, uid);
+          console.log(`[ACCOUNT_DELETION] 프로필 이미지 삭제 완료: ${user.profileImagePath}`);
+        } catch (profileError) {
+          console.error(`[ACCOUNT_DELETION] 프로필 이미지 삭제 실패:`, profileError.message);
+          // 프로필 이미지 삭제 실패해도 계속 진행
+        }
+      }
+
+      // 5. Firebase Auth에서 사용자 삭제
+      await admin.auth().deleteUser(uid);
+
+      // 6. Firestore users 문서 삭제
+      await this.firestoreService.delete(uid);
+
+      console.log(`[ACCOUNT_DELETION] 완료: userId=${uid}`);
+      return {success: true};
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 에러: userId=${uid}`, error.message);
+      if (error.code) {
+        throw error;
+      }
+      const e = new Error("계정 탈퇴 중 오류가 발생했습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
+    }
+  }
+
+  /**
+   * 사용자가 작성한 게시글 삭제 및 관련 데이터 정리
+   * @param {string} uid - 사용자 ID
+   * @private
+   */
+  async _deleteUserPosts(uid) {
+    try {
+      // authoredPosts 서브컬렉션에서 모든 게시글 조회
+      const authoredPostsService = new FirestoreService(`users/${uid}/authoredPosts`);
+      const authoredPosts = await authoredPostsService.getAll();
+
+      if (!authoredPosts || authoredPosts.length === 0) {
+        console.log(`[ACCOUNT_DELETION] 작성한 게시글 없음: userId=${uid}`);
+        return;
+      }
+
+      console.log(`[ACCOUNT_DELETION] 게시글 삭제 시작: ${authoredPosts.length}개`);
+
+      // 각 게시글별로 처리
+      for (const authoredPost of authoredPosts) {
+        const {postId, communityId} = authoredPost;
+        if (!postId || !communityId) continue;
+
+        try {
+          // 1. 해당 게시글의 모든 댓글 조회
+          const commentsService = new CommentService();
+          const comments = await commentsService.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              {field: "postId", operator: "==", value: postId}
+            ]
+          );
+
+          // 2. 각 댓글별로 대댓글 확인 후 삭제 처리
+          if (comments && comments.length > 0) {
+            const batch = db.batch();
+            const softDeleteComments = [];
+            let hardDeleteCount = 0;
+            
+            for (const comment of comments) {
+              // 대댓글 확인
+              const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
+                "comments",
+                [
+                  {field: "parentId", operator: "==", value: comment.id},
+                  {field: "isDeleted", operator: "==", value: false}
+                ]
+              );
+
+              if (replies && replies.length > 0) {
+                // 대댓글이 있으면 소프트 딜리트로 처리 (배치에서 제외)
+                softDeleteComments.push({comment, repliesCount: replies.length});
+              } else {
+                // 대댓글이 없으면 하드 딜리트
+                const commentRef = db.collection("comments").doc(comment.id);
+                batch.delete(commentRef);
+                hardDeleteCount++;
+              }
+            }
+            
+            // 하드 딜리트 배치 실행
+            if (hardDeleteCount > 0) {
+              await batch.commit();
+            }
+            
+            // 소프트 딜리트 처리
+            for (const {comment, repliesCount} of softDeleteComments) {
+              const commentRef = db.collection("comments").doc(comment.id);
+              await commentRef.update({
+                isDeleted: true,
+                author: "알 수 없음",
+                content: "삭제된 댓글입니다",
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+              console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} 소프트 딜리트 (대댓글 ${repliesCount}개)`);
+            }
+            
+            console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 처리 완료: 하드딜리트 ${hardDeleteCount}개, 소프트딜리트 ${softDeleteComments.length}개`);
+          }
+
+          // 3. 게시글 삭제 (이미지 포함, communityService 사용)
+          const communityService = new CommunityService();
+          await communityService.deletePost(communityId, postId, uid);
+
+          // 4. 다른 사용자들의 서브컬렉션에서 제거
+          await this._removePostFromOtherUsersSubCollections(postId);
+
+          console.log(`[ACCOUNT_DELETION] 게시글 삭제 완료: postId=${postId}`);
+        } catch (postError) {
+          console.error(`[ACCOUNT_DELETION] 게시글 삭제 실패: postId=${postId}`, postError.message);
+          // 개별 게시글 삭제 실패해도 계속 진행
+        }
+      }
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 게시글 삭제 중 오류:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 다른 사용자들의 서브컬렉션에서 게시글 제거
+   * @param {string} postId - 게시글 ID
+   * @private
+   */
+  async _removePostFromOtherUsersSubCollections(postId) {
+    try {
+      // likedPosts 서브컬렉션에서 제거
+      const likedPostsQuery = db.collectionGroup("likedPosts")
+        .where("postId", "==", postId)
+        .limit(1000);
+      
+      const likedPostsSnapshot = await likedPostsQuery.get();
+      
+      if (!likedPostsSnapshot.empty) {
+        const batch = db.batch();
+        likedPostsSnapshot.forEach((doc) => {
+          // doc.ref.path에서 userId 추출: users/{userId}/likedPosts/{postId}
+          const pathParts = doc.ref.path.split("/");
+          if (pathParts.length >= 4 && pathParts[0] === "users") {
+            const userId = pathParts[1];
+            const likedPostRef = db.collection(`users/${userId}/likedPosts`).doc(postId);
+            batch.delete(likedPostRef);
+          }
+        });
+        if (!likedPostsSnapshot.empty) {
+          await batch.commit();
+          console.log(`[ACCOUNT_DELETION] 다른 사용자들의 likedPosts에서 ${likedPostsSnapshot.size}개 제거`);
+        }
+      }
+
+      // commentedPosts 서브컬렉션에서 제거
+      const commentedPostsQuery = db.collectionGroup("commentedPosts")
+        .where("postId", "==", postId)
+        .limit(1000);
+      
+      const commentedPostsSnapshot = await commentedPostsQuery.get();
+      
+      if (!commentedPostsSnapshot.empty) {
+        const batch = db.batch();
+        commentedPostsSnapshot.forEach((doc) => {
+          // doc.ref.path에서 userId 추출: users/{userId}/commentedPosts/{postId}
+          const pathParts = doc.ref.path.split("/");
+          if (pathParts.length >= 4 && pathParts[0] === "users") {
+            const userId = pathParts[1];
+            const commentedPostRef = db.collection(`users/${userId}/commentedPosts`).doc(postId);
+            batch.delete(commentedPostRef);
+          }
+        });
+        if (!commentedPostsSnapshot.empty) {
+          await batch.commit();
+          console.log(`[ACCOUNT_DELETION] 다른 사용자들의 commentedPosts에서 ${commentedPostsSnapshot.size}개 제거`);
+        }
+      }
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 다른 사용자 서브컬렉션 정리 실패:`, error.message);
+      // 실패해도 계속 진행
+    }
+  }
+
+  /**
+   * 사용자가 작성한 댓글 삭제 (게시글에 속하지 않은 댓글들)
+   * @param {string} uid - 사용자 ID
+   * @private
+   */
+  async _deleteUserComments(uid) {
+    try {
+      const commentsService = new CommentService();
+      
+      // 사용자가 작성한 모든 댓글 조회
+      const comments = await commentsService.firestoreService.getCollectionWhere(
+        "comments",
+        "userId",
+        "==",
+        uid
+      );
+
+      if (!comments || comments.length === 0) {
+        console.log(`[ACCOUNT_DELETION] 작성한 댓글 없음: userId=${uid}`);
+        return;
+      }
+
+      console.log(`[ACCOUNT_DELETION] 댓글 삭제 시작: ${comments.length}개`);
+
+      // 각 댓글별로 처리
+      for (const comment of comments) {
+        try {
+          // 대댓글 확인 (삭제되지 않은 댓글만)
+          const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              {field: "parentId", operator: "==", value: comment.id},
+              {field: "isDeleted", operator: "==", value: false}
+            ]
+          );
+
+          if (replies && replies.length > 0) {
+            // 대댓글이 있으면 소프트 딜리트
+            const commentRef = db.collection("comments").doc(comment.id);
+            await commentRef.update({
+              isDeleted: true,
+              author: "알 수 없음",
+              content: "삭제된 댓글입니다",
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            console.log(`[ACCOUNT_DELETION] 댓글 소프트 딜리트: commentId=${comment.id} (대댓글 ${replies.length}개)`);
+          } else {
+            // 대댓글이 없으면 하드 딜리트
+            await commentsService.firestoreService.runTransaction(async (transaction) => {
+              const commentRef = db.collection("comments").doc(comment.id);
+              const postRef = db.collection(`communities/${comment.communityId}/posts`).doc(comment.postId);
+              const commentedPostRef = db.collection(`users/${uid}/commentedPosts`).doc(comment.postId);
+
+              // 댓글 삭제
+              transaction.delete(commentRef);
+
+              // 게시글 commentsCount 감소
+              transaction.update(postRef, {
+                commentsCount: FieldValue.increment(-1),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+
+              // 해당 게시글에 남은 댓글이 있는지 확인
+              const remainingSnapshot = await transaction.get(
+                db.collection("comments")
+                  .where("postId", "==", comment.postId)
+                  .where("userId", "==", uid)
+              );
+              
+              const remainingCount = remainingSnapshot.docs.filter(
+                (doc) => doc.id !== comment.id
+              ).length;
+
+              // 남은 댓글이 없으면 commentedPosts에서 제거
+              if (remainingCount === 0) {
+                transaction.delete(commentedPostRef);
+              }
+            });
+            console.log(`[ACCOUNT_DELETION] 댓글 하드 딜리트: commentId=${comment.id}`);
+          }
+        } catch (commentError) {
+          console.error(`[ACCOUNT_DELETION] 댓글 삭제 실패: commentId=${comment.id}`, commentError.message);
+          // 개별 댓글 삭제 실패해도 계속 진행
+        }
+      }
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 댓글 삭제 중 오류:`, error.message);
+      throw error;
     }
   }
 

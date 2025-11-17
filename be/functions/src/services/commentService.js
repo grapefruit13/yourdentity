@@ -265,8 +265,7 @@ class CommentService {
         orderDirection: "desc",
         where: [
           { field: "postId", operator: "==", value: postId },
-          { field: "parentId", operator: "==", value: null },
-          { field: "isDeleted", operator: "==", value: false }
+          { field: "parentId", operator: "==", value: null }
         ]
       });
 
@@ -287,8 +286,7 @@ class CommentService {
         const allReplies = await this.firestoreService.getCollectionWhereMultiple(
           "comments",
           [
-            { field: "parentId", operator: "in", value: parentIds },
-            { field: "isDeleted", operator: "==", value: false }
+            { field: "parentId", operator: "in", value: parentIds }
           ]
         );
 
@@ -320,9 +318,10 @@ class CommentService {
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .slice(0, 50)
             .map(reply => {
-              const { isDeleted, media, userId: _userId, ...replyWithoutDeleted } = reply;
+              const { media, userId: _userId, ...replyWithoutDeleted } = reply;
               const replyResult = {
                 ...replyWithoutDeleted,
+                isDeleted: reply.isDeleted || false,
               };
               if (viewerId) {
                 replyResult.isLiked = likedCommentIds.has(reply.id);
@@ -330,10 +329,11 @@ class CommentService {
               return replyResult;
             });
 
-          const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
+          const { media, userId: _userId, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
+            isDeleted: comment.isDeleted || false,
             replies: sortedReplies,
             repliesCount: replies.length, 
           };
@@ -509,39 +509,60 @@ class CommentService {
         throw error;
       }
 
-      await this.firestoreService.runTransaction(async (transaction) => {
+      // 대댓글 확인 (삭제되지 않은 댓글만)
+      const replies = await this.firestoreService.getCollectionWhereMultiple(
+        "comments",
+        [
+          {field: "parentId", operator: "==", value: commentId},
+          {field: "isDeleted", operator: "==", value: false}
+        ]
+      );
+
+      if (replies && replies.length > 0) {
+        // 대댓글이 있으면 소프트 딜리트
         const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
-        const postRef = this.firestoreService.db.collection(
-          `communities/${comment.communityId}/posts`
-        ).doc(comment.postId);
-        const commentedPostRef = this.firestoreService.db.collection(
-          `users/${userId}/commentedPosts`
-        ).doc(comment.postId);
-
-        const remainingSnapshot = await transaction.get(
-          this.firestoreService.db
-            .collection("comments")
-            .where("postId", "==", comment.postId)
-            .where("userId", "==", userId)
-        );
-        
-        const remainingCount = remainingSnapshot.docs.filter(
-          (doc) => doc.id !== commentId
-        ).length;
-
-        // 댓글 실제 삭제
-        transaction.delete(commentRef);
-
-        transaction.update(postRef, {
-          commentsCount: FieldValue.increment(-1),
+        await commentRef.update({
+          isDeleted: true,
+          author: "알 수 없음",
+          content: "삭제된 댓글입니다",
           updatedAt: FieldValue.serverTimestamp(),
         });
+      } else {
+        // 대댓글이 없으면 하드 딜리트
+        await this.firestoreService.runTransaction(async (transaction) => {
+          const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
+          const postRef = this.firestoreService.db.collection(
+            `communities/${comment.communityId}/posts`
+          ).doc(comment.postId);
+          const commentedPostRef = this.firestoreService.db.collection(
+            `users/${userId}/commentedPosts`
+          ).doc(comment.postId);
 
-        // 남은 댓글이 없으면 commentedPosts에서 제거
-        if (remainingCount === 0) {
-          transaction.delete(commentedPostRef);
-        }
-      });
+          const remainingSnapshot = await transaction.get(
+            this.firestoreService.db
+              .collection("comments")
+              .where("postId", "==", comment.postId)
+              .where("userId", "==", userId)
+          );
+          
+          const remainingCount = remainingSnapshot.docs.filter(
+            (doc) => doc.id !== commentId
+          ).length;
+
+          // 댓글 실제 삭제
+          transaction.delete(commentRef);
+
+          transaction.update(postRef, {
+            commentsCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+
+          // 남은 댓글이 없으면 commentedPosts에서 제거
+          if (remainingCount === 0) {
+            transaction.delete(commentedPostRef);
+          }
+        });
+      }
     } catch (error) {
       console.error("Delete comment error:", error.message);
       if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
