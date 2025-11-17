@@ -348,11 +348,6 @@ const options = {
               description: "후기 등록 여부",
               example: true,
             },
-            linkUrl: {
-              type: "string",
-              nullable: true,
-              description: "바로 보러가기 링크",
-            },
             createdAt: {
               type: "string",
               format: "date-time",

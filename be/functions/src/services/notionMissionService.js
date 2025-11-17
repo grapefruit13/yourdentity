@@ -336,9 +336,6 @@ class NotionMissionService {
       faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
       isReviewRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
       
-      // 링크
-      linkUrl: getUrlValue(props[NOTION_FIELDS.LINK_URL]),
-      
       // 메타
       createdAt: page.created_time,
       updatedAt: getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || page.last_edited_time,
