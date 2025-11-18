@@ -17,7 +17,7 @@ import {
 } from "@/utils/shared/s3-url-parser";
 
 const isDev = process.env.NODE_ENV === "development";
-const HOME_DATA_STALE_TIME = 60 * 1000; // 1분
+const HOME_DATA_STALE_TIME = 3 * 1000;
 const CACHE_EXPIRY_KEY = "notion-home-data-expiry";
 
 /**
