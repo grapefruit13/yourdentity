@@ -1098,7 +1098,7 @@ class CommunityService {
         type: resolvedType,
         programType: resolvedProgramType,
         isReview: resolvedIsReview,
-        channel: channel || community.channel || "general",
+        channel: channel || community.name || "general",
         category: category || null,
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         isLocked: false,
