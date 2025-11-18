@@ -9,6 +9,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import type { User } from "firebase/auth";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
@@ -26,6 +27,7 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import type { ProgramListResponse } from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
@@ -77,12 +79,25 @@ const Page = () => {
   const isSearchingRef = useRef(false);
   const [showLeftGradient, setShowLeftGradient] = useState(false);
   const [showRightGradient, setShowRightGradient] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  // Firebase Auth 상태 추적
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 로그인된 사용자일 때만 API 호출
   const { data: participatingCommunities } =
-    useGetUsersMeParticipatingCommunities();
+    useGetUsersMeParticipatingCommunities({
+      enabled: Boolean(currentUser),
+    });
 
   // 프로그램 목록 조회 (추천 섹션용)
-  const { data: programsData, isLoading: isProgramsLoading } = useGetPrograms({
+  const { data: programsData } = useGetPrograms({
     request: { pageSize: 20 },
     select: (data) => {
       if (!data || typeof data !== "object") {
@@ -610,18 +625,24 @@ const Page = () => {
             </div>
           )}
 
-          {/* 참여중인 프로그램만 보기 */}
-          <div className="flex items-center gap-2 py-2">
-            <GrayCheckbox
-              id="only-my-programs"
-              checked={onlyMyPrograms}
-              aria-label="내가 참여중인 프로그램 게시글만 보기"
-              onCheckedChange={(checked) => setOnlyMyPrograms(checked)}
-            />
-            <Typography font="noto" variant="label1M" className="text-gray-500">
-              내가 참여중인 프로그램만 보기
-            </Typography>
-          </div>
+          {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
+          {currentUser && (
+            <div className="flex items-center gap-2 py-2">
+              <GrayCheckbox
+                id="only-my-programs"
+                checked={onlyMyPrograms}
+                aria-label="내가 참여중인 프로그램 게시글만 보기"
+                onCheckedChange={(checked) => setOnlyMyPrograms(checked)}
+              />
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-500"
+              >
+                내가 참여중인 프로그램만 보기
+              </Typography>
+            </div>
+          )}
         </div>
       </div>
 
