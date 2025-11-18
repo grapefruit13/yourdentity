@@ -39,8 +39,11 @@ class FCMService {
    */
   async saveToken(userId, token, deviceInfo, deviceType = "pwa") {
     try {
+      console.log("[FCM][saveToken] 시작", { userId, deviceType, deviceInfoLength: deviceInfo?.length, tokenLength: token?.length });
+      
       // deviceInfo 검증
       if (!deviceInfo || deviceInfo.trim() === "") {
+        console.error("[FCM][saveToken] deviceInfo 누락", { userId, deviceType, deviceInfo });
         const error = new Error("deviceInfo가 필요합니다.");
         error.code = "INVALID_DEVICE_INFO";
         error.statusCode = 400;
@@ -49,11 +52,14 @@ class FCMService {
 
       // 모든 타입에서 deviceInfo를 해시로 변환하여 deviceId 생성 (웹/PWA와 동일하게 처리)
       const deviceId = this.generateDeviceId(deviceInfo);
+      console.log("[FCM][saveToken] deviceId 생성 완료", { userId, deviceType, deviceId, deviceInfoLength: deviceInfo.length });
 
       const existingTokens = await this.getUserTokens(userId);
+      console.log("[FCM][saveToken] 기존 토큰 조회 완료", { userId, existingTokensCount: existingTokens?.length });
 
       const existingToken = existingTokens.find((t) => t.token === token);
       if (existingToken) {
+        console.log("[FCM][saveToken] 기존 토큰 발견, 업데이트", { userId, existingTokenId: existingToken.id });
         await this.updateTokenLastUsed(userId, existingToken.id);
         return {deviceId: existingToken.id, message: "토큰 업데이트 완료"};
       }
@@ -76,15 +82,24 @@ class FCMService {
         createdAt: FieldValue.serverTimestamp(),
       };
 
+      console.log("[FCM][saveToken] Firestore 저장 시작", { userId, deviceId, path: `users/${userId}/fcmTokens/${deviceId}` });
       await this.firestoreService.setDocument(
           `users/${userId}/fcmTokens`,
           deviceId,
           tokenData,
       );
+      console.log("[FCM][saveToken] Firestore 저장 완료", { userId, deviceId });
 
       return {deviceId, message: "토큰 저장 완료"};
     } catch (error) {
-      console.error("FCM 토큰 저장 실패:", error);
+      console.error("[FCM][saveToken] 토큰 저장 실패", {
+        userId,
+        deviceType,
+        deviceInfo: deviceInfo?.substring(0, 100),
+        deviceInfoLength: deviceInfo?.length,
+        error: error.message,
+        errorStack: error.stack,
+      });
       const errorMessage = error.message || "토큰 저장에 실패했습니다.";
       const fcmError = new Error(errorMessage);
       fcmError.code = "FCM_TOKEN_SAVE_FAILED";

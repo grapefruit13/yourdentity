@@ -10,18 +10,35 @@ class FCMController {
       const {token, deviceInfo, deviceType = "pwa"} = req.body;
       const userId = req.user.uid;
 
+      console.log("[FCM][Controller][saveToken] 요청 수신", {
+        deviceType,
+        hasToken: !!token,
+        hasDeviceInfo: !!deviceInfo,
+        deviceInfoLength: deviceInfo?.length,
+        deviceInfoPreview: deviceInfo?.substring(0, 50),
+      });
+
       if (!token) {
+        console.error("[FCM][Controller][saveToken] 토큰 누락", { userId, deviceType });
         return res.error(400, "FCM 토큰이 필요합니다.");
       }
 
       const result = await this.fcmService.saveToken(userId, token, deviceInfo, deviceType);
       if (!result) {
+        console.error("[FCM][Controller][saveToken] 저장 결과 없음", { userId, deviceType });
         return res.error(500, "토큰 저장에 실패했습니다.");
       }
+      
+      console.log("[FCM][Controller][saveToken] 저장 성공", { userId, deviceType, deviceId: result.deviceId });
       return res.success(result);
     } catch (error) {
-      console.error("FCM 토큰 저장 실패:", error);
-      return res.error(500, error.message);
+      console.error("[FCM][Controller][saveToken] 에러 발생", {
+        deviceType: req.body?.deviceType,
+        error: error.message,
+        errorCode: error.code,
+        errorStack: error.stack,
+      });
+      return res.error(error.statusCode || 500, error.message);
     }
   }
 
