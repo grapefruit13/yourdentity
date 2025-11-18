@@ -7,6 +7,7 @@ import {
   useEffect,
   useCallback,
   type ChangeEvent,
+  Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "firebase/auth";
@@ -57,9 +58,9 @@ const PROGRAM_SORT_LABELS: Record<ProgramSortOption, string> = {
 const CHIP_SCROLL_OFFSET = 200;
 
 /**
- * @description 커뮤니티 페이지
+ * @description 커뮤니티 페이지 컨텐츠 (useSearchParams 사용)
  */
-const Page = () => {
+const CommunityPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -940,6 +941,25 @@ const Page = () => {
         />
       </div>
     </div>
+  );
+};
+
+const Page = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <div className="p-4">
+            <div className="animate-pulse space-y-4">
+              <div className="h-12 rounded bg-gray-200" />
+              <div className="h-40 rounded bg-gray-200" />
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CommunityPageContent />
+    </Suspense>
   );
 };
 
