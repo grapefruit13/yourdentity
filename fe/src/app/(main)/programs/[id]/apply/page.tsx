@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getCommunitiesNicknameAvailability } from "@/api/generated/communities-api";
 import {
   ActivityApplicationForm,
   useActivityApplicationForm,
@@ -17,6 +16,7 @@ import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { useGetCommunitiesNicknameAvailabilityById } from "@/hooks/generated/communities-hooks";
 import {
   useGetProgramsById,
   usePostProgramsApplyById,
@@ -207,6 +207,16 @@ const ProgramApplyPage = () => {
   // 폼 데이터 관리 (공통 hook 사용)
   const formHook = useActivityApplicationForm(getInitialFormData());
   const formData = formHook.formData;
+
+  const { refetch: refetchNicknameAvailability } =
+    useGetCommunitiesNicknameAvailabilityById({
+      request: {
+        communityId: programId,
+        nickname: formData.nickname.trim(),
+      },
+      enabled: false,
+      retry: false,
+    });
 
   // 폼 데이터 변경 시 localStorage에 저장
   useEffect(() => {
@@ -563,10 +573,11 @@ const ProgramApplyPage = () => {
     }
 
     try {
-      const { available } = await getCommunitiesNicknameAvailability(
-        programId,
-        trimmedNickname
-      );
+      const { data, error } = await refetchNicknameAvailability();
+      if (error) {
+        throw error;
+      }
+      const available = data?.available ?? false;
 
       if (!available) {
         setFieldErrors((prev) => ({
@@ -592,7 +603,13 @@ const ProgramApplyPage = () => {
       }));
       setShowNicknameConfirm(false);
     }
-  }, [formData.nickname, programId, updateStep]);
+  }, [
+    formData.nickname,
+    refetchNicknameAvailability,
+    setFieldErrors,
+    setShowNicknameConfirm,
+    updateStep,
+  ]);
 
   // 닉네임 다음 버튼 클릭
   const handleNicknameNext = useCallback(() => {
