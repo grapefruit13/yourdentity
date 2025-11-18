@@ -987,7 +987,7 @@ router.post(
  *                     available:
  *                       type: boolean
  *                       example: true
- *                       description: 닉네임 사용 가능 여부 (true: 사용 가능, false: 중복)
+ *                       description: "닉네임 사용 가능 여부 (true: 사용 가능, false: 중복)"
  *       400:
  *         description: 잘못된 요청
  *         content:
