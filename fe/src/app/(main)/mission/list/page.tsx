@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Heart } from "lucide-react";
 import FilterBar from "@/components/mission/FilterBar";
 import MissionFirstEnterMessage from "@/components/mission/MissionFirstEnterMessage";
@@ -11,12 +11,14 @@ import DualGroupFilterButtons, {
 import { Typography } from "@/components/shared/typography";
 import {
   SINGLE_SELECT_FILTERS,
-  RIGHT_SELECT_FILTERS,
   DEFAULT_SINGLE_SELECT_FILTER_ID,
   LIKED_FILTER_ID,
 } from "@/constants/mission/_filter-options";
 import { MISSION_SORT_OPTIONS } from "@/constants/mission/_sort-options";
-import { useGetMissions } from "@/hooks/generated/missions-hooks";
+import {
+  useGetMissions,
+  useGetMissionsCategories,
+} from "@/hooks/generated/missions-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETMissionsReq } from "@/types/generated/missions-types";
 import type { SingleSelectFilterId } from "@/types/mission/filter-types";
@@ -55,6 +57,15 @@ const Page = () => {
 
   const [sortValue, setSortValue] = useState<SortType>("latest");
   const [excludeParticipated, setExcludeParticipated] = useState(false);
+
+  // 카테고리 목록 조회 API
+  const { data: categoriesResponse } = useGetMissionsCategories();
+  // API 응답을 TFilterOption[] 형태로 변환
+  const rightSelectFilters =
+    categoriesResponse?.categories?.map((category) => ({
+      id: category,
+      label: category,
+    })) ?? [];
 
   // API 요청 파라미터
   const apiRequestParams: TGETMissionsReq = {
@@ -114,7 +125,7 @@ const Page = () => {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           leftOptions={SINGLE_SELECT_FILTERS}
-          rightOptions={RIGHT_SELECT_FILTERS}
+          rightOptions={rightSelectFilters}
           defaultLeftFilterId={DEFAULT_SINGLE_SELECT_FILTER_ID}
           renderCustomIcon={(optionId, isActive) => {
             if (optionId === LIKED_FILTER_ID) {

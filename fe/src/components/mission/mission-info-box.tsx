@@ -2,7 +2,7 @@ import { Typography } from "@/components/shared/typography";
 
 interface MissionInfoItem {
   label: string;
-  value: string | string[];
+  value: string;
 }
 
 interface MissionInfoBoxProps {
@@ -38,28 +38,18 @@ const MissionInfoBox = ({ items }: MissionInfoBoxProps) => {
         </Typography>
       </div>
 
-      {/* 세 번째 항목: 참여 대상 (배열) */}
+      {/* 세 번째 항목: 참여 대상 */}
       <div className="flex items-start gap-4">
         <Typography
           font="noto"
           variant="label1B"
-          className="shrink-0 text-nowrap text-gray-950"
+          className="shrink-0 text-gray-950"
         >
           {items[2].label}
         </Typography>
-        <div className="flex flex-col">
-          {Array.isArray(items[2].value) &&
-            items[2].value.map((value, index) => (
-              <Typography
-                key={index}
-                font="noto"
-                variant="label1R"
-                className="text-gray-600"
-              >
-                {value}
-              </Typography>
-            ))}
-        </div>
+        <Typography font="noto" variant="label1R" className="text-gray-600">
+          {items[2].value || "-"}
+        </Typography>
       </div>
     </div>
   );

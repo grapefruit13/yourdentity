@@ -12,6 +12,7 @@ import { InfoIconWithTooltip } from "@/components/shared/ui/info-icon-with-toolt
 import { MoreButton } from "@/components/shared/ui/more-button";
 import { ProgressGauge } from "@/components/shared/ui/progress-gauge";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useGetMissions } from "@/hooks/generated/missions-hooks";
 import { getFutureDate } from "@/utils/shared/date";
 
 /**
@@ -23,6 +24,16 @@ const Page = () => {
   // TODO: 실 api response로 교체
   const isOnMission = true;
   const remainingMission = 3;
+
+  // 추천 미션 목록 조회 API (인기순으로 최대 4개)
+  const { data: recommendedMissionsResponse } = useGetMissions({
+    request: {
+      sortBy: "popular",
+    },
+  });
+
+  const recommendedMissions =
+    recommendedMissionsResponse?.missions?.slice(0, 4) || [];
 
   return (
     <div className="h-full min-h-screen bg-gray-200">
@@ -213,7 +224,7 @@ const Page = () => {
         {/* 미션 진행 중인거 있을때  */}
         {isOnMission && (
           <>
-            <div className="mt-9 mb-5 flex w-full items-center justify-between">
+            <div className="mt-9 mb-3 flex w-full items-center justify-between">
               <Typography
                 font="noto"
                 variant="heading3B"
@@ -225,39 +236,19 @@ const Page = () => {
             </div>
             {/* 후기 슬라이딩 */}
             <div className="scrollbar-hide -mx-5 flex gap-3 overflow-x-auto overflow-y-hidden px-5">
-              {/* TODO: 카드 클릭 시 미션 상세로 이동 */}
-              <RecommendedMissionCard
-                title="주말 자전거 타기 1시간 하기"
-                tagName="자전거"
-                likeCount={15}
-                onClick={() => {
-                  // TODO: 미션 상세로 이동
-                }}
-              />
-              <RecommendedMissionCard
-                title="주말 자전거 타기 1시간 하기"
-                tagName="자전거"
-                likeCount={15}
-                onClick={() => {
-                  // TODO: 미션 상세로 이동
-                }}
-              />
-              <RecommendedMissionCard
-                title="주말 자전거 타기 1시간 하기"
-                tagName="자전거"
-                likeCount={15}
-                onClick={() => {
-                  // TODO: 미션 상세로 이동
-                }}
-              />
-              <RecommendedMissionCard
-                title="주말 자전거 타기 1시간 하기"
-                tagName="자전거"
-                likeCount={15}
-                onClick={() => {
-                  // TODO: 미션 상세로 이동
-                }}
-              />
+              {recommendedMissions.map((mission) => (
+                <RecommendedMissionCard
+                  key={mission.id}
+                  title={mission.title || ""}
+                  tagName={mission.categories?.[0] || ""}
+                  likeCount={mission.reactionCount || 0}
+                  onClick={() => {
+                    if (mission.id) {
+                      router.push(`/mission/${mission.id}`);
+                    }
+                  }}
+                />
+              ))}
             </div>
           </>
         )}
