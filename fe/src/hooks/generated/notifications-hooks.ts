@@ -31,3 +31,47 @@ export const useGetNotificationsSendAllPending = <
     ...options,
   });
 };
+
+export const useGetNotifications = <TData = Types.TGETNotificationsRes>(
+  options: {
+    request: Types.TGETNotificationsReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETNotificationsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETNotificationsRes, Error, TData>({
+    queryKey: notificationsKeys.getNotifications(request),
+    queryFn: async () => {
+      const response = await Api.getNotifications(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const usePatchNotificationsReadAll = <
+  TContext = unknown,
+  TVariables = void,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.patchNotificationsReadAll>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.patchNotificationsReadAll>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (_variables: TVariables) => Api.patchNotificationsReadAll(),
+    ...options,
+  });
+};

@@ -11,3 +11,11 @@ export const getNotificationsSendAllPending = () => {
     `/notifications/send-all-pending`
   );
 };
+
+export const getNotifications = (request: Types.TGETNotificationsReq) => {
+  return get<Types.TGETNotificationsRes>(`/notifications`, { params: request });
+};
+
+export const patchNotificationsReadAll = () => {
+  return patch<Types.TPATCHNotificationsReadAllRes>(`/notifications/read-all`);
+};
