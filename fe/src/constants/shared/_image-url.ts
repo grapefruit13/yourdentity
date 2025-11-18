@@ -111,6 +111,10 @@ const ICON = {
     url: "/icons/search.svg",
     alt: "검색",
   },
+  avatar: {
+    url: "/icons/avatar.svg",
+    alt: "기본 프로필 이미지",
+  },
 };
 
 const IMG = {

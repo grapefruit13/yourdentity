@@ -311,7 +311,7 @@ const CommentsPage = () => {
         <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
           <Skeleton className="h-6 w-16" />
         </div>
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 pb-48">
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
               <div key={`comment-skeleton-${index}`} className="flex gap-3">
@@ -335,7 +335,7 @@ const CommentsPage = () => {
   return (
     <div className="min-h-screen bg-white pt-12">
       {/* 댓글 목록 */}
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 pb-48">
         {comments.length > 0 ? (
           <div className="space-y-4">
             {comments.map((comment) => (

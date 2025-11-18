@@ -436,8 +436,8 @@ const Page = () => {
   ]);
 
   const segmentedPosts = useMemo(() => {
-    const top = filteredPosts.slice(0, 3);
-    const rest = filteredPosts.slice(3);
+    const top = filteredPosts.slice(0, 4);
+    const rest = filteredPosts.slice(4);
     return { top, rest };
   }, [filteredPosts]);
 
@@ -479,8 +479,8 @@ const Page = () => {
           </div>
 
           {/* 검색 입력 */}
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex flex-1 items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
+          <div className="mt-4 flex items-center gap-[10px]">
+            <div className="my-3 flex h-[40px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3">
               <input
                 ref={searchInputRef}
                 id="community-search-input"
@@ -490,7 +490,7 @@ const Page = () => {
                 onKeyDown={handleSearchKeyDown}
                 onBlur={handleSearchBlur}
                 placeholder="관심있는 키워드를 검색해보세요."
-                className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                className="flex-1 bg-transparent text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none"
               />
               <button
                 type="button"
@@ -501,9 +501,9 @@ const Page = () => {
                 <Icon
                   src={IMAGE_URL.ICON.search.url}
                   aria-hidden="true"
-                  className="text-gray-400"
-                  width={16}
-                  height={16}
+                  className="text-gray-800"
+                  width={20}
+                  height={20}
                 />
               </button>
             </div>
@@ -594,12 +594,9 @@ const Page = () => {
               aria-label="내가 참여중인 프로그램 게시글만 보기"
               onCheckedChange={(checked) => setOnlyMyPrograms(checked)}
             />
-            <label
-              htmlFor="only-my-programs"
-              className="text-sm font-medium text-gray-700"
-            >
+            <Typography font="noto" variant="label1M" className="text-gray-500">
               내가 참여중인 프로그램만 보기
-            </label>
+            </Typography>
           </div>
         </div>
       </div>
@@ -619,19 +616,20 @@ const Page = () => {
             </div>
           )}
 
-        {/* 상위 3개 포스트 */}
+        {/* 상위 4개 포스트 */}
         <div className="mb-6">
           <PostFeed
             posts={segmentedPosts.top}
             onPostClick={handlePostClick}
             isLoading={isInitialLoading}
-            skeletonCount={3}
+            skeletonCount={4}
           />
         </div>
-
-        {/* {topPosts.length > 0 && (
+        {/*
+        {segmentedPosts.top.length > 0 && (
           <UserImageCarouselSection images={userImages} />
-        )} */}
+        )}
+        */}
 
         {/* 나머지 포스트 */}
         <div className="mb-6">
