@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { User } from "lucide-react";
-import ShareModal from "@/components/community/ShareModal";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
@@ -35,19 +34,10 @@ const PostDetailPage = () => {
   const communityId = searchParams.get("communityId") || "";
 
   const queryClient = useQueryClient();
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [currentOrigin, setCurrentOrigin] = useState<string>("");
   const [imageLoadError, setImageLoadError] = useState(false);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
-
-  // 클라이언트 사이드에서만 origin 가져오기
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentOrigin(window.location.origin);
-    }
-  }, []);
 
   // API 연동 - useGetCommunitiesPostsByTwoIds 사용 (communityId와 postId 모두 필요)
   const {
@@ -75,13 +65,58 @@ const PostDetailPage = () => {
   const isAuthor =
     (post as Schema.CommunityPost & { isAuthor?: boolean })?.isAuthor ?? false;
 
+  // 공유하기 기능
+  const handleShare = useCallback(async () => {
+    if (!post) return;
+
+    const shareTitle = post.title || "게시글";
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`
+        : "";
+
+    // content가 문자열인 경우에만 텍스트 추출 (실제로는 HTML 문자열로 사용됨)
+    const contentString = post.content as unknown as string | undefined;
+    const contentText =
+      contentString && typeof contentString === "string"
+        ? contentString.replace(/<[^>]*>/g, "").substring(0, 100)
+        : "";
+    const shareText = contentText
+      ? `${shareTitle}\n${contentText}...`
+      : shareTitle;
+
+    // Web Share API 지원 확인 (모바일/일부 데스크톱 브라우저)
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (error) {
+        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
+        if ((error as Error).name !== "AbortError") {
+          console.error("공유 실패:", error);
+        } else {
+          // 사용자가 취소한 경우 그냥 종료
+          return;
+        }
+      }
+    }
+
+    // Web Share API를 지원하지 않거나 실패한 경우 클립보드에 복사
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      // TODO: 토스트 메시지 표시 (선택사항)
+      alert("링크가 클립보드에 복사되었습니다.");
+    } catch (error) {
+      alert("링크 복사에 실패했습니다.");
+    }
+  }, [post, postId, communityId]);
+
   // 탑바 커스텀
   useEffect(() => {
-    // 공유 클릭
-    const handleShareClick = () => {
-      setIsShareModalOpen(true);
-    };
-
     // 수정 클릭
     const handleEditClick = () => {
       if (!postId || !communityId) return;
@@ -95,12 +130,12 @@ const PostDetailPage = () => {
 
     setRightSlot(
       <KebabMenu
-        onShare={handleShareClick}
+        onShare={handleShare}
         onEdit={isAuthor ? handleEditClick : undefined}
         onDelete={isAuthor ? handleDeleteClick : undefined}
       />
     );
-  }, [setRightSlot, communityId, postId, router, isAuthor]);
+  }, [setRightSlot, communityId, postId, router, isAuthor, handleShare]);
 
   /**
    * 게시글 삭제 핸들러
@@ -430,14 +465,6 @@ const PostDetailPage = () => {
           </button>
         </div>
       </div>
-
-      {/* 공유 모달 */}
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        postTitle={post?.title}
-        postUrl={`${currentOrigin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`}
-      />
 
       {/* 삭제 확인 모달 */}
       <Modal
