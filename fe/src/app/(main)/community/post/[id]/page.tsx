@@ -168,8 +168,22 @@ const PostDetailPage = () => {
       // 성공 메시지 표시
       alert(POST_EDIT_CONSTANTS.DELETE_SUCCESS);
 
-      // 커뮤니티 목록으로 이동
-      router.replace("/community");
+      // 커뮤니티 목록으로 이동 (필터 상태 유지)
+      const params = new URLSearchParams();
+      const search = searchParams.get("search");
+      const sort = searchParams.get("sort");
+      const state = searchParams.get("state");
+      const categories = searchParams.get("categories");
+      const onlyMyPrograms = searchParams.get("onlyMyPrograms");
+
+      if (search) params.set("search", search);
+      if (sort && sort !== "latest") params.set("sort", sort);
+      if (state && state !== "all") params.set("state", state);
+      if (categories) params.set("categories", categories);
+      if (onlyMyPrograms === "true") params.set("onlyMyPrograms", "true");
+
+      const queryString = params.toString();
+      router.replace(queryString ? `/community?${queryString}` : "/community");
     } catch (error) {
       debug.error("게시글 삭제 실패:", error);
     } finally {
@@ -301,7 +315,27 @@ const PostDetailPage = () => {
             </div>
           )}
           <button
-            onClick={() => router.push("/community")}
+            onClick={() => {
+              // 필터 상태 유지
+              const params = new URLSearchParams();
+              const search = searchParams.get("search");
+              const sort = searchParams.get("sort");
+              const state = searchParams.get("state");
+              const categories = searchParams.get("categories");
+              const onlyMyPrograms = searchParams.get("onlyMyPrograms");
+
+              if (search) params.set("search", search);
+              if (sort && sort !== "latest") params.set("sort", sort);
+              if (state && state !== "all") params.set("state", state);
+              if (categories) params.set("categories", categories);
+              if (onlyMyPrograms === "true")
+                params.set("onlyMyPrograms", "true");
+
+              const queryString = params.toString();
+              router.push(
+                queryString ? `/community?${queryString}` : "/community"
+              );
+            }}
             className="px-4 py-2 text-sm text-blue-600 underline hover:text-blue-800"
           >
             커뮤니티로 돌아가기

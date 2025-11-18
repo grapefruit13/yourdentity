@@ -8,7 +8,7 @@ import {
   useCallback,
   type ChangeEvent,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "firebase/auth";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
@@ -61,15 +61,43 @@ const CHIP_SCROLL_OFFSET = 200;
  */
 const Page = () => {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
-  const [selectedSort, setSelectedSort] = useState<ProgramSortOption>("latest");
+  const searchParams = useSearchParams();
+
+  // 쿼리스트링에서 필터 상태 복원
+  const getInitialSearchQuery = () => searchParams.get("search") || "";
+  const getInitialAppliedSearchQuery = () => searchParams.get("search") || "";
+  const getInitialSort = (): ProgramSortOption => {
+    const sort = searchParams.get("sort");
+    return sort === "popular" ? "popular" : "latest";
+  };
+  const getInitialProgramState = (): ProgramStateFilter => {
+    const state = searchParams.get("state");
+    return state === "ongoing" || state === "finished" ? state : "all";
+  };
+  const getInitialCategories = (): ProgramCategoryFilter[] => {
+    const categories = searchParams.get("categories");
+    if (!categories) return [];
+    return categories.split(",").filter((cat): cat is ProgramCategoryFilter => {
+      return ["한끗루틴", "월간소모임", "TMI"].includes(cat);
+    });
+  };
+  const getInitialOnlyMyPrograms = () => {
+    return searchParams.get("onlyMyPrograms") === "true";
+  };
+
+  const [searchQuery, setSearchQuery] = useState(getInitialSearchQuery);
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState(
+    getInitialAppliedSearchQuery
+  );
+  const [selectedSort, setSelectedSort] =
+    useState<ProgramSortOption>(getInitialSort);
   const [selectedProgramState, setSelectedProgramState] =
-    useState<ProgramStateFilter>("all");
-  const [selectedCategories, setSelectedCategories] = useState<
-    ProgramCategoryFilter[]
-  >([]);
-  const [onlyMyPrograms, setOnlyMyPrograms] = useState(false);
+    useState<ProgramStateFilter>(getInitialProgramState);
+  const [selectedCategories, setSelectedCategories] =
+    useState<ProgramCategoryFilter[]>(getInitialCategories);
+  const [onlyMyPrograms, setOnlyMyPrograms] = useState(
+    getInitialOnlyMyPrograms
+  );
   const [isProgramSelectSheetOpen, setIsProgramSelectSheetOpen] =
     useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
@@ -170,6 +198,56 @@ const Page = () => {
   // 데이터가 이미 있으면 브라우저 탭 전환 시에도 캐시된 데이터를 표시
   const isInitialLoading = isLoading && posts.length === 0;
 
+  // 필터 상태를 쿼리스트링에 업데이트하는 함수
+  const updateQueryParams = useCallback(
+    (filters: {
+      search?: string;
+      sort?: ProgramSortOption;
+      state?: ProgramStateFilter;
+      categories?: ProgramCategoryFilter[];
+      onlyMyPrograms?: boolean;
+    }) => {
+      const params = new URLSearchParams();
+
+      // 검색어
+      if (filters.search && filters.search.trim()) {
+        params.set("search", filters.search.trim());
+      }
+
+      // 정렬
+      if (filters.sort && filters.sort !== "latest") {
+        params.set("sort", filters.sort);
+      }
+
+      // 프로그램 상태
+      if (filters.state && filters.state !== "all") {
+        params.set("state", filters.state);
+      }
+
+      // 카테고리
+      if (filters.categories && filters.categories.length > 0) {
+        params.set("categories", filters.categories.join(","));
+      }
+
+      // 내가 참여중인 프로그램만 보기
+      if (filters.onlyMyPrograms) {
+        params.set("onlyMyPrograms", "true");
+      }
+
+      // 현재 쿼리스트링과 비교하여 변경된 경우에만 업데이트
+      const newQueryString = params.toString();
+      const currentQueryString = searchParams.toString();
+
+      if (newQueryString !== currentQueryString) {
+        const newUrl = newQueryString
+          ? `/community?${newQueryString}`
+          : "/community";
+        router.replace(newUrl, { scroll: false });
+      }
+    },
+    [router, searchParams]
+  );
+
   const handlePostClick = (post: CommunityPostListItem) => {
     // CommunityPostListItem을 Schema.CommunityPost로 확장하여 communityId 추출
     const postWithCommunity = post as CommunityPostListItem & {
@@ -188,8 +266,28 @@ const Page = () => {
 
     const postId = post.id;
     if (postId && communityId) {
-      // communityId를 쿼리 파라미터로 전달
-      router.push(`/community/post/${postId}?communityId=${communityId}`);
+      // 현재 필터 상태를 쿼리스트링에 포함하여 상세 페이지로 이동
+      const params = new URLSearchParams();
+      params.set("communityId", communityId);
+
+      // 필터 상태 추가
+      if (appliedSearchQuery.trim()) {
+        params.set("search", appliedSearchQuery.trim());
+      }
+      if (selectedSort !== "latest") {
+        params.set("sort", selectedSort);
+      }
+      if (selectedProgramState !== "all") {
+        params.set("state", selectedProgramState);
+      }
+      if (selectedCategories.length > 0) {
+        params.set("categories", selectedCategories.join(","));
+      }
+      if (onlyMyPrograms) {
+        params.set("onlyMyPrograms", "true");
+      }
+
+      router.push(`/community/post/${postId}?${params.toString()}`);
     } else {
       alert("게시물 정보를 찾을 수 없습니다.");
     }
@@ -205,7 +303,22 @@ const Page = () => {
     setTimeout(() => {
       isSearchingRef.current = false;
     }, 0);
-  }, [searchQuery]);
+    // 쿼리스트링 업데이트
+    updateQueryParams({
+      search: searchQuery,
+      sort: selectedSort,
+      state: selectedProgramState,
+      categories: selectedCategories,
+      onlyMyPrograms,
+    });
+  }, [
+    searchQuery,
+    selectedSort,
+    selectedProgramState,
+    selectedCategories,
+    onlyMyPrograms,
+    updateQueryParams,
+  ]);
 
   const handleSearchKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -372,6 +485,14 @@ const Page = () => {
     setSelectedCategories(categories);
     setHasFilterChanges(hasChanges);
     setIsFilterSheetOpen(false);
+    // 쿼리스트링 업데이트
+    updateQueryParams({
+      search: appliedSearchQuery,
+      sort,
+      state: programState,
+      categories,
+      onlyMyPrograms,
+    });
   };
 
   useEffect(() => {
@@ -386,6 +507,31 @@ const Page = () => {
     selectedProgramState,
     selectedCategories,
     normalizedSearchKeyword,
+  ]);
+
+  // 필터 상태 변경 시 쿼리스트링 업데이트 (초기 로드 제외)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    // 초기 마운트 시에는 쿼리스트링에서 복원한 상태이므로 업데이트하지 않음
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    updateQueryParams({
+      search: appliedSearchQuery,
+      sort: selectedSort,
+      state: selectedProgramState,
+      categories: selectedCategories,
+      onlyMyPrograms,
+    });
+  }, [
+    selectedSort,
+    selectedProgramState,
+    selectedCategories,
+    onlyMyPrograms,
+    appliedSearchQuery,
+    updateQueryParams,
   ]);
 
   const filteredPosts = useMemo(() => {
