@@ -2730,22 +2730,6 @@ const options = {
             },
           },
         },
-        Error: {
-          type: "object",
-          required: ["status", "message"],
-          properties: {
-            status: {
-              type: "number",
-              description: "HTTP 상태 코드",
-              example: 400,
-            },
-            message: {
-              type: "string",
-              description: "에러 메시지",
-              example: "잘못된 요청입니다",
-            },
-          },
-        },
       },
     },
     security: [
