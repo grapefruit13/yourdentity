@@ -1395,6 +1395,12 @@ const options = {
               description: "상대적 시간",
               example: "2분 전",
             },
+            profileImageUrl: {
+              type: "string",
+              nullable: true,
+              description: "작성자 프로필 이미지 URL",
+              example: "https://example.com/profile.jpg",
+            },
           },
         },
         CommunityPost: {
