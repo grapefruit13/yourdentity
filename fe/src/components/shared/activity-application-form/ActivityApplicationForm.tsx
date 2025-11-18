@@ -7,6 +7,11 @@ import { cn } from "@/utils/shared/cn";
 import type { ActivityApplicationFormData } from "./types";
 import type { useActivityApplicationForm } from "./useActivityApplicationForm";
 
+/**
+ * @description 참여 동기 직접 입력 최소 글자 수
+ */
+const MIN_MOTIVATION_LENGTH = 10;
+
 type FormHandlers = ReturnType<typeof useActivityApplicationForm>;
 
 interface ActivityApplicationFormProps {
@@ -58,7 +63,12 @@ export const ActivityApplicationForm = ({
 
       {/* 참여 동기 필드 (현재 스텝이 motivation일 때만 활성화) */}
       {currentStepIndex >= 6 && (
-        <div className="mb-7">
+        <div
+          className={cn(
+            "mb-7",
+            formData.applicationMotivation === "직접 입력하기" && "mb-4"
+          )}
+        >
           <label className="mb-3 block">
             <Typography font="noto" variant="label1B" className="text-gray-700">
               참여 동기
@@ -100,26 +110,18 @@ export const ActivityApplicationForm = ({
       {currentStepIndex === 6 &&
         formData.applicationMotivation === "직접 입력하기" && (
           <div className="mb-7">
-            <label className="mb-3 block">
-              <Typography
-                font="noto"
-                variant="label1B"
-                className="text-gray-700"
-              >
-                직접 입력한 참여 동기
-              </Typography>
-            </label>
             <textarea
               value={formData.customMotivation}
               onChange={(e) =>
                 handlers.handleCustomMotivationChange(e.target.value)
               }
-              placeholder="참여 동기를 입력하세요"
+              placeholder={`최소 ${MIN_MOTIVATION_LENGTH}자 이상 입력해주세요`}
               maxLength={200}
               rows={4}
               className={cn(
                 "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-base font-normal shadow-xs focus:outline-3",
-                formData.customMotivation.length >= 10 && "border-pink-500"
+                formData.customMotivation.length >= MIN_MOTIVATION_LENGTH &&
+                  "border-pink-500"
               )}
             />
             <Typography
