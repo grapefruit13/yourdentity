@@ -1637,16 +1637,43 @@ class CommunityService {
     
         if (isLiked && post.authorId !== userId) {
           try {
-            const liker = await this.getUserService().getUserById(userId);
-            const likerName = liker?.name || "사용자";
+            // 게시글 isPublic에 따라 닉네임 가져오기
+            const isPrivatePost = post.isPublic === false;
+            let likerName = "사용자";
+
+            if (isPrivatePost) {
+              // 비공개 게시글: members 컬렉션에서 가져오기
+              const members = await this.firestoreService.getCollectionWhere(
+                `communities/${communityId}/members`,
+                "userId",
+                "==",
+                userId
+              );
+              const memberData = members && members[0];
+              if (memberData) {
+                likerName = memberData.nickname || "사용자";
+              }
+            } else {
+              // 공개 게시글: nicknames 컬렉션에서 가져오기
+              const nicknames = await this.firestoreService.getCollectionWhere(
+                "nicknames",
+                "uid",
+                "==",
+                userId
+              );
+              const nicknameDoc = nicknames && nicknames[0];
+              if (nicknameDoc) {
+                likerName = nicknameDoc.id || nicknameDoc.nickname || "사용자";
+              }
+            }
 
             fcmHelper.sendNotification(
               post.authorId,
               "게시글에 좋아요가 달렸습니다",
               `${likerName}님이 "${post.title}"에 좋아요를 눌렀습니다`,
-              "community",
+              "POST_LIKE",
               postId,
-              `/community/${communityId}/posts/${postId}`
+              communityId
             ).catch((err) => {
               console.error("게시글 좋아요 알림 전송 실패:", err);
             });

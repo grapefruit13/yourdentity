@@ -1,5 +1,6 @@
 const express = require("express");
 const notificationController = require("../controllers/notificationController");
+const authGuard = require("../middleware/authGuard");
 
 const router = express.Router();
 
@@ -69,6 +70,125 @@ const router = express.Router();
  *         description: 서버 오류
  */
 router.get("/send-all-pending", notificationController.sendAllPending);
+
+/**
+ * @swagger
+ * /notifications:
+ *   get:
+ *     summary: 알림 목록 조회
+ *     description: 현재 로그인한 사용자의 알림 목록을 조회합니다. 읽지 않은 알림 개수도 함께 반환됩니다.
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 알림 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notifications:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           message:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                           commentId:
+ *                             type: string
+ *                             description: COMMENT_LIKE, COMMENT 타입일 때 사용
+ *                           communityId:
+ *                             type: string
+ *                           postId:
+ *                             type: string
+ *                           isRead:
+ *                             type: boolean
+ *                           createdAt:
+ *                             type: string
+ *                           updatedAt:
+ *                             type: string
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         size:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         hasNext:
+ *                           type: boolean
+ *                     unreadCount:
+ *                       type: integer
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
+router.get("/", authGuard, notificationController.getNotifications);
+
+/**
+ * @swagger
+ * /notifications/read-all:
+ *   patch:
+ *     summary: 전체 읽음 처리
+ *     description: 현재 로그인한 사용자의 모든 읽지 않은 알림을 읽음 처리합니다.
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 전체 읽음 처리 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "모든 알림이 읽음 처리되었습니다"
+ *                     updatedCount:
+ *                       type: integer
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
+router.patch("/read-all", authGuard, notificationController.markAllAsRead);
 
 module.exports = router;
 
