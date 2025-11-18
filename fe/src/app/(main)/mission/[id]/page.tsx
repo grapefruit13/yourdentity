@@ -14,9 +14,9 @@ import ShareButton from "@/components/shared/ui/share-button";
 import TabButton from "@/components/shared/ui/tab-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MOCK_FAQ_ITEMS } from "@/constants/mission/_mock-faq";
-import { getMockMissionDetail } from "@/constants/mission/_mock-mission-detail";
 import { MOCK_REVIEW_ITEMS } from "@/constants/mission/_mock-reviews";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useGetMissionsById } from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { MissionDetailTabType } from "@/types/mission/tab-types";
@@ -33,15 +33,20 @@ const Page = () => {
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
 
-  // TODO: API 연동 후 실제 데이터로 교체
-  const [isLoading] = useState(false);
-  const [error] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<MissionDetailTabType>("faq");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  // 목 데이터 (실제 API 연동 시 제거)
-  const missionData = getMockMissionDetail(missionId);
-  const [isLiked, setIsLiked] = useState(missionData.isLiked);
+  // 미션 상세 조회 API
+  const {
+    data: missionResponse,
+    isLoading,
+    error,
+  } = useGetMissionsById({
+    request: { missionId },
+  });
+
+  const missionData = missionResponse?.mission;
+  const [isLiked, setIsLiked] = useState(false);
   const {
     isOpen: isConfirmModalOpen,
     open: openConfirmModal,
@@ -50,9 +55,9 @@ const Page = () => {
 
   // TopBar 설정
   useEffect(() => {
-    if (!missionData) return;
+    if (!missionData?.title) return;
 
-    const missionTitle = missionData.title || "미션";
+    const missionTitle = missionData.title;
     setTitle(
       missionTitle.length > 20
         ? `${missionTitle.slice(0, 20)}...`
@@ -61,12 +66,10 @@ const Page = () => {
 
     // 공유하기 기능
     const handleShare = async () => {
-      if (!missionData) return;
-
       const shareTitle = missionTitle;
       const shareUrl =
         typeof window !== "undefined" ? window.location.href : "";
-      const shareText = missionData.description || shareTitle;
+      const shareText = missionData.notes || shareTitle;
 
       // Web Share API 지원 확인
       if (typeof navigator !== "undefined" && navigator.share) {
@@ -80,14 +83,13 @@ const Page = () => {
         } catch (shareError) {
           if ((shareError as Error).name !== "AbortError") {
             // 공유 실패 시 클립보드로 대체
-          } else {
-            return;
+            await copyUrlToClipboard(shareUrl);
           }
         }
+      } else {
+        // 클립보드에 복사
+        await copyUrlToClipboard(shareUrl);
       }
-
-      // 클립보드에 복사
-      await copyUrlToClipboard(shareUrl);
     };
 
     // 공유하기 버튼
@@ -102,8 +104,8 @@ const Page = () => {
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white p-4">
-        <Typography font="noto" variant="body2R" className="text-gray-500">
-          데이터를 불러오는 중 오류가 발생했습니다.
+        <Typography font="noto" variant="body2R" className="text-red-500">
+          미션 정보를 불러오는 중 오류가 발생했습니다.
         </Typography>
       </div>
     );
@@ -125,15 +127,17 @@ const Page = () => {
   const infoItems = [
     {
       label: "신청 기간",
-      value: missionData.applicationPeriod,
+      value: missionData.isUnlimited
+        ? "무제한"
+        : missionData.applicationDeadline || "-",
     },
     {
       label: "인증 마감",
-      value: missionData.certificationDeadline,
+      value: missionData.certificationDeadline || "-",
     },
     {
       label: "참여 대상",
-      value: missionData.targetAudience,
+      value: missionData.targetAudience || "-",
     },
   ];
 
@@ -141,7 +145,7 @@ const Page = () => {
     <div className="min-h-screen bg-white pt-12">
       {/* 메인 이미지 */}
       <DetailImage
-        imageUrl={missionData.thumbnailUrl || "/imgs/mockup.jpg"}
+        imageUrl={missionData.detailPageUrl || "/imgs/mockup.jpg"}
         alt={missionData.title || "미션 이미지"}
       />
 
@@ -188,9 +192,8 @@ const Page = () => {
         <div className="bg-white px-5 py-10">
           <div className="flex flex-col gap-4">
             <Typography font="noto" variant="body1R" className="text-gray-950">
-              {missionData.description || "미션 설명이 없습니다."}
+              {missionData.notes || "미션 설명이 없습니다."}
             </Typography>
-            {/* TODO: 실제 미션 설명 컨텐츠로 교체 */}
           </div>
         </div>
       )}
@@ -263,15 +266,17 @@ const Page = () => {
       )}
 
       {/* 하단 액션 바 */}
-      <MissionDetailActionBar
-        deadline={missionData.deadline}
-        isLiked={isLiked}
-        onLikeClick={() => {
-          setIsLiked((prev) => !prev);
-          // TODO: 실제 찜하기 API 호출
-        }}
-        onStartClick={openConfirmModal}
-      />
+      {missionData.certificationDeadline && (
+        <MissionDetailActionBar
+          deadline={new Date(missionData.certificationDeadline)}
+          isLiked={isLiked}
+          onLikeClick={() => {
+            setIsLiked((prev) => !prev);
+            // TODO: 실제 찜하기 API 호출
+          }}
+          onStartClick={openConfirmModal}
+        />
+      )}
 
       {/* 미션 시작 확인 모달 */}
       <Modal
