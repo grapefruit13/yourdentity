@@ -14,7 +14,6 @@ const PROGRAM_TYPE_ALIASES = {
   [PROGRAM_TYPES.ROUTINE]: [
     "ROUTINE",
     "한끗루틴",
-    "한끗 루틴",
     "루틴",
   ],
   [PROGRAM_TYPES.GATHERING]: [

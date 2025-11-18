@@ -60,7 +60,7 @@ const MissionCertifyPageContent = () => {
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
-      defaultValues: { title: "", content: "", category: "한끗 루틴" },
+      defaultValues: { title: "", content: "", category: "한끗루틴" },
       mode: "onChange",
     });
 

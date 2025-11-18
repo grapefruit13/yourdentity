@@ -75,8 +75,6 @@ const PostFeed = ({
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-gray-100 text-gray-600";
     switch (category) {
-      // CHECK: 카테고리 구분을 코드 구분으로 안하고 있어 띄어쓰기 주의가 필요... (한끗루틴, 한끗 루틴)
-      case "한끗 루틴":
       case "한끗루틴":
       case "월간 소모임":
       case "TMI":

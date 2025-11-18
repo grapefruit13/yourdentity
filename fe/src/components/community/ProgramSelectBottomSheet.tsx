@@ -37,7 +37,7 @@ const ProgramSelectBottomSheet = ({
   const programGroups = [
     {
       type: "routine",
-      label: "한끗 루틴",
+      label: "한끗루틴",
       items:
         communitiesData?.routine?.items?.filter(
           (item) => (item as { status?: string }).status === "approved"

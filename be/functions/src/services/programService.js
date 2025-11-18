@@ -75,7 +75,7 @@ const NOTION_FIELDS = {
 };
 
 const PROGRAM_TYPE_ALIASES = {
-  ROUTINE: ["ROUTINE", "한끗루틴", "한끗 루틴", "루틴"],
+  ROUTINE: ["ROUTINE", "한끗루틴", "루틴"],
   GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
   TMI: ["TMI", "티엠아이"],
 };

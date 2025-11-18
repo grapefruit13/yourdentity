@@ -1061,7 +1061,7 @@ class UserService {
       )];
 
       const emptyGrouped = () => ({
-        "routine": {label: "한끗 루틴", items: []},
+        "routine": {label: "한끗루틴", items: []},
         "gathering": {label: "월간 소모임", items: []},
         "tmi": {label: "TMI", items: []}
       });
@@ -1084,7 +1084,7 @@ class UserService {
       const communities = communitiesChunked.flat();
 
       const PROGRAM_TYPE_ALIASES = {
-        ROUTINE: ["ROUTINE", "한끗루틴", "한끗 루틴", "루틴"],
+        ROUTINE: ["ROUTINE", "한끗루틴", "루틴"],
         GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
         TMI: ["TMI", "티엠아이"],
       };
@@ -1122,7 +1122,7 @@ class UserService {
       };
 
       const programTypeMapping = {
-        ROUTINE: {key: "routine", label: "한끗 루틴"},
+        ROUTINE: {key: "routine", label: "한끗루틴"},
         GATHERING: {key: "gathering", label: "월간 소모임"},
         TMI: {key: "tmi", label: "TMI"},
       };
