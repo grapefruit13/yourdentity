@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -219,7 +219,8 @@ const MissionCertifyPageContent = () => {
    * - 제목/내용 유효성 검사 후 첨부 파일 업로드 → 미션 인증 게시글 등록까지 수행
    * - 실패 시 업로드된 파일들 롤백 삭제
    */
-  const onSubmit = async (values: WriteFormValues) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const onSubmit = async (_values: WriteFormValues) => {
     const currentContent = getValues("content");
     let uploadedImagePaths: string[] = [];
     let uploadedFilePaths: string[] = [];
@@ -291,17 +292,21 @@ const MissionCertifyPageContent = () => {
   /**
    * 화면 렌더 시 topbar 타이틀 및 완료 버튼 설정
    */
-  useEffect(() => {
-    setTitle("인증하기");
-
-    // 탑바 완료 버튼 설정
-    setRightSlot(
+  const submitButton = useMemo(
+    () => (
       <SubmitButton
         disabled={isSubmitDisabled}
         onClick={handleSubmit(onSubmit)}
       />
-    );
-  }, [setTitle, setRightSlot, isSubmitDisabled, handleSubmit, onSubmit]);
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSubmitDisabled]
+  );
+
+  useEffect(() => {
+    setTitle("인증하기");
+    setRightSlot(submitButton);
+  }, [setTitle, setRightSlot, submitButton]);
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {
