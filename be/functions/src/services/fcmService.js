@@ -39,9 +39,16 @@ class FCMService {
    */
   async saveToken(userId, token, deviceInfo, deviceType = "pwa") {
     try {
-      const deviceId = deviceType === "mobile" ?
-        deviceInfo :
-        this.generateDeviceId(deviceInfo);
+      // deviceInfo 검증
+      if (!deviceInfo || deviceInfo.trim() === "") {
+        const error = new Error("deviceInfo가 필요합니다.");
+        error.code = "INVALID_DEVICE_INFO";
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 모든 타입에서 deviceInfo를 해시로 변환하여 deviceId 생성 (웹/PWA와 동일하게 처리)
+      const deviceId = this.generateDeviceId(deviceInfo);
 
       const existingTokens = await this.getUserTokens(userId);
 
