@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
@@ -11,6 +11,7 @@ import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
@@ -29,6 +30,7 @@ const MAX_INQUIRIES_DISPLAY = 3;
  */
 const ProgramDetailPage = () => {
   const params = useParams();
+  const router = useRouter();
   const programId = params.id as string;
 
   const [shouldLoadNotion, setShouldLoadNotion] = useState(false);
@@ -263,6 +265,23 @@ const ProgramDetailPage = () => {
       }
     }
   }, [programDetailData, scrollToTabSection]);
+
+  // 신청 완료 상태에서 뒤로가기 시 홈으로 리다이렉트
+  useEffect(() => {
+    const handlePopState = () => {
+      // 신청이 완료된 상태에서 뒤로가기를 하면 홈으로 이동
+      router.replace(LINK_URL.HOME);
+    };
+
+    // 히스토리에 현재 상태 추가하여 뒤로가기 감지 가능하도록 함
+    window.history.pushState(null, "", window.location.href);
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isApplied, router]);
 
   // 프로그램 타입에 따른 일러스트 배경색
   const getProgramBgColor = (programType?: string): string => {
