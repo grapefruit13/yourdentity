@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { MouseEvent, TouchEvent } from "react";
+import type { MouseEvent, TouchEvent as ReactTouchEvent } from "react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { cn } from "@/utils/shared/cn";
@@ -57,7 +57,7 @@ const PwaDownloadBottomSheet = ({
       document.body.style.width = "100%";
 
       // 터치 스크롤 방지 (추가 보안)
-      const preventTouchMove = (e: TouchEvent) => {
+      const preventTouchMove = (e: globalThis.TouchEvent) => {
         // 바텀시트 내부가 아닌 경우에만 preventDefault
         const target = e.target as HTMLElement;
         const bottomSheet = target.closest('[role="dialog"]');
@@ -96,12 +96,12 @@ const PwaDownloadBottomSheet = ({
     }
   }, [isOpen]);
 
-  const handleTouchStart = (e: TouchEvent) => {
+  const handleTouchStart = (e: ReactTouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
     isDragging.current = true;
   };
 
-  const handleTouchMove = (e: TouchEvent) => {
+  const handleTouchMove = (e: ReactTouchEvent) => {
     if (!isDragging.current || !sheetRef.current) return;
 
     const currentY = e.touches[0].clientY;
