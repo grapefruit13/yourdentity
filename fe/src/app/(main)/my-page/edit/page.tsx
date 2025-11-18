@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, ChangeEvent } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, User, X } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as FilesApi from "@/api/generated/files-api";
 import { deleteFilesById } from "@/api/generated/files-api";
@@ -14,6 +13,7 @@ import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
 import Input from "@/components/shared/input";
 import Textarea from "@/components/shared/textarea";
 import { Typography } from "@/components/shared/typography";
+import ProfileImage from "@/components/shared/ui/profile-image";
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
@@ -511,17 +511,8 @@ const ProfileEditPage = () => {
             className="relative disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={PROFILE_EDIT_LABELS.PROFILE_IMAGE_CHANGE}
           >
-            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-pink-100">
-              {profileImageUrl ? (
-                <Image
-                  src={profileImageUrl}
-                  alt={PROFILE_EDIT_LABELS.PROFILE_IMAGE_ALT}
-                  className="h-full w-full object-cover"
-                  fill
-                />
-              ) : (
-                <User className="h-12 w-12 text-pink-400" strokeWidth={1.5} />
-              )}
+            <div className="relative h-24 w-24">
+              <ProfileImage src={profileImageUrl} size="h-full w-full" />
             </div>
             <div className="absolute right-0 bottom-0 flex h-7 w-7 items-center justify-center rounded-full bg-gray-700">
               <Camera className="h-4 w-4 text-white" />

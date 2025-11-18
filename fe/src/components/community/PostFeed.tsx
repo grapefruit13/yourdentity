@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import Image from "next/image";
+import ProfileImage from "@/components/shared/ui/profile-image";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
@@ -23,33 +23,6 @@ const PostFeed = ({
   isLoading = false,
   skeletonCount = 3,
 }: PostFeedProps) => {
-  // 프로필 이미지 컴포넌트 (로드 실패 시 fallback 이미지 사용)
-  const ProfileImage = ({ src, alt }: { src?: string | null; alt: string }) => {
-    const [hasError, setHasError] = useState(false);
-    const [imageSrc, setImageSrc] = useState(
-      src && isValidImageUrl(src) ? src : IMAGE_URL.ICON.avatar.url
-    );
-
-    const handleError = () => {
-      if (!hasError) {
-        setHasError(true);
-        setImageSrc(IMAGE_URL.ICON.avatar.url);
-      }
-    };
-
-    return (
-      <div className="relative h-4 w-4 overflow-hidden rounded-full bg-gray-100">
-        <Image
-          src={imageSrc}
-          alt={alt || IMAGE_URL.ICON.avatar.alt}
-          fill
-          className="object-cover"
-          onError={handleError}
-        />
-      </div>
-    );
-  };
-
   // 썸네일 이미지 컴포넌트 (로드 실패 시 아예 렌더링하지 않음)
   const PostThumbnail = ({ src, alt }: { src: string; alt: string }) => {
     const [hasError, setHasError] = useState(false);
@@ -207,6 +180,7 @@ const PostFeed = ({
               <ProfileImage
                 src={post.profileImageUrl}
                 alt={post.author || ""}
+                size="h-4 w-4"
               />
               <Typography
                 font="noto"
@@ -270,4 +244,4 @@ const PostFeed = ({
   );
 };
 
-export default PostFeed;
+export default memo(PostFeed);
