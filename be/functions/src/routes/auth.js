@@ -64,7 +64,15 @@ const router = express.Router();
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: 토큰이 만료되었습니다
+ *                   description: |
+ *                     인증 실패 사유에 따른 메시지:
+ *                     - "Bearer 토큰이 필요합니다"
+ *                     - "잘못된 인증 헤더 형식입니다"
+ *                     - "토큰이 무효화되었습니다 (로그아웃됨)"
+ *                     - "토큰이 만료되었습니다"
+ *                     - "유효하지 않은 토큰입니다"
+ *                     - "인증에 실패했습니다"
+ *                   example: "토큰이 만료되었습니다"
  *       500:
  *         description: 서버 오류
  *         content:
@@ -131,7 +139,15 @@ router.post("/logout", authGuard, authController.logout);
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: 토큰이 만료되었습니다
+ *                   description: |
+ *                     인증 실패 사유에 따른 메시지:
+ *                     - "Bearer 토큰이 필요합니다"
+ *                     - "잘못된 인증 헤더 형식입니다"
+ *                     - "토큰이 무효화되었습니다 (로그아웃됨)"
+ *                     - "토큰이 만료되었습니다"
+ *                     - "유효하지 않은 토큰입니다"
+ *                     - "인증에 실패했습니다"
+ *                   example: "토큰이 만료되었습니다"
  */
 router.get("/verify", authGuard, authController.verifyToken);
 
@@ -210,7 +226,15 @@ router.get("/verify", authGuard, authController.verifyToken);
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: 토큰이 만료되었습니다
+ *                   description: |
+ *                     인증 실패 사유에 따른 메시지:
+ *                     - "Bearer 토큰이 필요합니다"
+ *                     - "잘못된 인증 헤더 형식입니다"
+ *                     - "토큰이 무효화되었습니다 (로그아웃됨)"
+ *                     - "토큰이 만료되었습니다"
+ *                     - "유효하지 않은 토큰입니다"
+ *                     - "인증에 실패했습니다"
+ *                   example: "토큰이 만료되었습니다"
  *       500:
  *         description: 서버 오류
  *         content:

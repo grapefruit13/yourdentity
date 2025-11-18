@@ -23,9 +23,6 @@ const router = express.Router();
  *         message:
  *           type: string
  *           example: 잘못된 요청입니다
- *         code:
- *           type: string
- *           example: BAD_REQUEST
  *     StandardResponse:
  *       type: object
  *       properties:
