@@ -260,22 +260,6 @@ router.get('/:programId', programController.getProgramById);
  *           type: string
  *           description: Notion 페이지 ID
  *           example: "notion_page_123"
- *     
- *     ErrorResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: false
- *         message:
- *           type: string
- *           example: "오류 메시지"
- *         code:
- *           type: string
- *           example: "ERROR_CODE"
- *         statusCode:
- *           type: integer
- *           example: 400
  */
 
 /**

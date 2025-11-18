@@ -41,7 +41,7 @@ const optionalAuth = require("../middleware/optionalAuth");
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/Error"
+ *               $ref: "#/components/schemas/ErrorResponse"
  */
 router.get("/categories", missionController.getCategories);
 
@@ -105,7 +105,7 @@ router.get("/categories", missionController.getCategories);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/Error"
+ *               $ref: "#/components/schemas/ErrorResponse"
  */
 router.get("/", optionalAuth, missionController.getMissions);
 
@@ -143,7 +143,7 @@ router.get("/", optionalAuth, missionController.getMissions);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/Error"
+ *               $ref: "#/components/schemas/ErrorResponse"
  */
 router.get("/:missionId", optionalAuth, missionController.getMissionById);
 
