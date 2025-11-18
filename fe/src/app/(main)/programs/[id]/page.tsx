@@ -105,16 +105,9 @@ const ProgramDetailPage = () => {
   useEffect(() => {
     if (!programDetailData) return;
 
-    const programTitle =
-      programDetailData.title || programDetailData.programName || "한끗루틴";
-
     // 공유하기 버튼
     const shareButton = (
-      <button
-        onClick={handleShare}
-        className="flex h-10 w-10 items-center justify-center"
-        aria-label="공유하기"
-      >
+      <button onClick={handleShare} className="flex" aria-label="공유하기">
         <Icon
           src={IMAGE_URL.ICON.share.url}
           width={24}

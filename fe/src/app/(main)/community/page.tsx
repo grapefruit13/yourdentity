@@ -488,13 +488,16 @@ const Page = () => {
   return (
     <div className="relative min-h-full bg-white">
       {/* 검색 & 필터 섹션 */}
-      <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5 pt-2">
+      <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5">
         <div className="relative">
           <div className="flex h-12 items-center justify-between bg-white">
             <div className="flex items-center gap-4">
               <Typography font="noto" variant="title4" className="text-black">
                 프로그램
               </Typography>
+              {/* <Typography font="noto" variant="title4" className="text-black">
+                미션
+              </Typography> */}
             </div>
             <AlarmButton variant="inline" />
           </div>

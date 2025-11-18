@@ -56,46 +56,47 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
 
   const rightSlotEl = useMemo(() => {
     if (showAlarmButton) return alarmButtonEl;
-    if (rightSlot) return <div className="absolute right-4">{rightSlot}</div>;
-    if (storeRightSlot)
-      return <div className="absolute right-4">{storeRightSlot}</div>;
-    return <div className="size-6"></div>;
+    return storeRightSlot || rightSlot;
   }, [showAlarmButton, alarmButtonEl, rightSlot, storeRightSlot]);
 
   return (
     <div
       className={
-        "fixed top-0 z-50 mx-auto flex h-12 w-full max-w-[470px] items-center justify-between border-b px-5 py-3 transition-all duration-500 ease-out " +
+        "fixed top-0 z-50 mx-auto flex h-12 w-full max-w-[470px] items-center border-b px-5 py-3 transition-all duration-500 ease-out " +
         (isHomePage && !isScrolled
           ? "border-b-transparent bg-transparent"
           : "border-b-gray-200 bg-white shadow-sm")
       }
     >
       {/* Left Slot (홈 페이지 로고 등): leftSlot 지정사항이 없을 때 기본 Back Button 표시 */}
-      {leftSlot || storeLeftSlot || !showBackButton ? (
-        <div>{leftSlot || storeLeftSlot}</div>
-      ) : (
-        <button onClick={handleClick} className="hover:cursor-pointer">
-          <Image
-            src={IMAGE_URL.ICON.chevron.left.url}
-            alt={IMAGE_URL.ICON.chevron.left.alt}
-            width={24}
-            height={24}
-          />
-        </button>
-      )}
+      <div className="flex flex-shrink-0 items-center">
+        {leftSlot || storeLeftSlot || !showBackButton ? (
+          <div>{leftSlot || storeLeftSlot}</div>
+        ) : (
+          <button onClick={handleClick} className="hover:cursor-pointer">
+            <Image
+              src={IMAGE_URL.ICON.chevron.left.url}
+              alt={IMAGE_URL.ICON.chevron.left.alt}
+              width={24}
+              height={24}
+            />
+          </button>
+        )}
+      </div>
 
-      {/* Title */}
-      <Typography
-        font="noto"
-        variant="body1M"
-        className="max-w-[285px] overflow-hidden text-ellipsis whitespace-nowrap"
-      >
-        {currentTitle}
-      </Typography>
+      {/* Center Slot - 가장 큰 비율 선점 */}
+      <div className="flex min-w-0 flex-1 items-center justify-center px-2">
+        <Typography
+          font="noto"
+          variant="body1M"
+          className="overflow-hidden text-ellipsis whitespace-nowrap"
+        >
+          {currentTitle}
+        </Typography>
+      </div>
 
       {/* Right Slot */}
-      {rightSlotEl}
+      <div className="flex flex-shrink-0 items-center">{rightSlotEl}</div>
     </div>
   );
 };

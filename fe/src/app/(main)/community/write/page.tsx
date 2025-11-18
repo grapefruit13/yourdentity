@@ -70,6 +70,7 @@ const WritePageContent = () => {
   const allowLeaveCountRef = useRef(0);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const setTitle = useTopBarStore((state) => state.setTitle);
+  const resetTopBar = useTopBarStore((state) => state.reset);
 
   // 제출 시 일괄 업로드할 파일 큐 (a 태그 href 교체용)
   const [fileQueue, setFileQueue] = useState<
@@ -351,6 +352,10 @@ const WritePageContent = () => {
         onClick={handleSubmit(onSubmit)}
       />
     );
+
+    return () => {
+      resetTopBar();
+    };
   }, [
     setTitle,
     setRightSlot,
