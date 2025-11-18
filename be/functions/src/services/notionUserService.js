@@ -65,6 +65,24 @@ class NotionUserService {
           const user = doc.data();
           const userId = doc.id;
 
+          // 신고 카운트(communities/*/posts/*) 합산
+          let reportCount = 0;
+          try {
+            const reportSnapshot = await db
+              .collectionGroup("posts")
+              .where("authorId", "==", userId)
+              .get();
+
+            reportCount = reportSnapshot.docs.reduce((sum, postDoc) => {
+              const reportsCount = postDoc.data().reportsCount || 0;
+              return sum + reportsCount;
+            }, 0);
+          } catch (countError) {
+            console.warn(
+              `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
+            );
+          }
+
           //문자열 or timestamp로 저장되어도 모두 조회
           const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdatedAt);
           const firebaseLastUpdated = firebaseLastUpdatedDate
@@ -151,6 +169,7 @@ class NotionUserService {
               "패널티 카운트": {
                 number: (user.penaltyCount !== null && user.penaltyCount !== undefined) ? user.penaltyCount : 0
               },
+              "신고 카운트": { number: reportCount },
               "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
             };
       
@@ -433,6 +452,25 @@ async syncAllUserAccounts() {
           const userId = doc.id;
           const existingNotionUser = notionUsers[userId];
 
+          //신고 카운트 (firebase 단일필드 authorId 추가)
+          let reportCount = 0;
+          try {
+            const reportSnapshot = await db
+              .collectionGroup("posts")
+              .where("authorId", "==", userId)
+              .get();
+            
+            // 각 문서의 reportsCount 값을 합산
+            reportCount = reportSnapshot.docs.reduce((sum, doc) => {
+              const reportsCount = doc.data().reportsCount || 0;
+              return sum + reportsCount;
+            }, 0);
+          } catch (countError) {
+            console.warn(
+              `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
+            );
+          }
+
           // 날짜 처리
           const createdAtIso = safeDateToIso(user.createdAt);
           const lastLoginIso = safeDateToIso(user.lastLoginAt);
@@ -503,6 +541,7 @@ async syncAllUserAccounts() {
             "패널티 카운트": {
               number: (user.penaltyCount !== null && user.penaltyCount !== undefined) ? user.penaltyCount : 0
             },
+            "신고 카운트": { number: reportCount },
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
           };
 
