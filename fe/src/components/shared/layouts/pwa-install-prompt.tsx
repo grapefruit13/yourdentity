@@ -10,7 +10,7 @@ import PwaDownloadBottomSheet from "./pwa-download-bottomsheet";
 
 const PWA_PROMPT_DISMISSED_KEY = "pwa_prompt_dismissed";
 const PWA_PROMPT_DISMISSED_UNTIL_KEY = "pwa_prompt_dismissed_until";
-const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7일
+const DISMISS_DURATION_MS = 1 * 24 * 60 * 60 * 1000; // 1일
 
 /**
  * @description PWA 설치 프롬프트를 관리하는 컴포넌트
