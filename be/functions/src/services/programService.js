@@ -734,9 +734,16 @@ class ProgramService {
     } catch (error) {
       console.error('[ProgramService] 프로그램 신청 오류:', error.message);
       
+      // 클라이언트 에러(4xx)는 그대로 전달
+      if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+        throw error;
+      }
+      
+      // 특정 에러 코드는 그대로 전달
       if (error.code === ERROR_CODES.NICKNAME_DUPLICATE || 
           error.code === ERROR_CODES.DUPLICATE_APPLICATION ||
-          error.code === ERROR_CODES.PROGRAM_NOT_FOUND) {
+          error.code === ERROR_CODES.PROGRAM_NOT_FOUND ||
+          error.code === 'BAD_REQUEST') {
         throw error;
       }
       

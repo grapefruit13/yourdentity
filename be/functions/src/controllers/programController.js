@@ -269,13 +269,17 @@ class ProgramController {
     } catch (error) {
       console.error("[ProgramController] 프로그램 신청 오류:", error.message);
       
-      // 특정 에러 코드에 대한 상태 코드 설정
+      // 특정 에러 코드에 대한 상태 코드 설정 (이미 설정된 경우는 유지)
+      if (!error.statusCode) {
       if (error.code === 'NICKNAME_DUPLICATE') {
         error.statusCode = 409;
       } else if (error.code === 'DUPLICATE_APPLICATION') {
         error.statusCode = 409;
       } else if (error.code === 'PROGRAM_NOT_FOUND') {
         error.statusCode = 404;
+        } else if (error.code === 'BAD_REQUEST') {
+          error.statusCode = 400;
+        }
       }
       
       return next(error);

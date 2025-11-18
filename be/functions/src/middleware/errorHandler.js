@@ -11,7 +11,7 @@ const errorHandler = (err, req, res, next) => {
   console.error("에러 발생:", err);
   if (err.stack) console.error("스택 추적:", err.stack);
 
-  let httpStatus = err.status || 500;
+  let httpStatus = err.statusCode || err.status || 500;
   let errorMessage = err.message || "서버 내부 오류가 발생했습니다";
 
   // 에러 코드 매핑
@@ -54,6 +54,7 @@ const errorHandler = (err, req, res, next) => {
 
     case "RESOURCE_ALREADY_EXISTS":
     case "CONFLICT":
+    case "DUPLICATE_APPLICATION":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;
@@ -64,6 +65,7 @@ const errorHandler = (err, req, res, next) => {
       break;
 
     case "NICKNAME_TAKEN":
+    case "NICKNAME_DUPLICATE":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 사용 중인 닉네임입니다";
       break;
