@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { getCommunitiesNicknameAvailability } from "@/api/generated/communities-api";
 import {
   ActivityApplicationForm,
   useActivityApplicationForm,
@@ -27,6 +28,7 @@ import type { ProgramDetailResponse } from "@/types/generated/api-schema";
 import * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { formatDateRange } from "@/utils/shared/date";
+import { validateNickname } from "@/utils/shared/nickname-validator";
 
 /**
  * @description 참여 동기 직접 입력 최소 글자 수
@@ -528,18 +530,76 @@ const ProgramApplyPage = () => {
     updateStep("nickname");
   }, [updateStep, formHook]);
 
-  // 닉네임 확인 모달 확인
-  const handleNicknameConfirm = useCallback(() => {
-    setShowNicknameConfirm(false);
-    updateStep("phone");
-  }, [updateStep, setShowNicknameConfirm]);
+  const handleNicknameChange = useCallback(
+    (value: string) => {
+      const limitedValue = value.slice(0, 8);
+      formHook.handleNicknameChange(limitedValue);
+
+      if (!limitedValue.trim()) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          nickname: undefined,
+        }));
+        return;
+      }
+
+      const validationResult = validateNickname(limitedValue);
+      setFieldErrors((prev) => ({
+        ...prev,
+        nickname: validationResult.isValid
+          ? undefined
+          : validationResult.error || "닉네임을 확인해주세요.",
+      }));
+    },
+    [formHook, setFieldErrors]
+  );
+
+  // 닉네임 확인 모달 확인 (커뮤니티 members 닉네임 중복 검사)
+  const handleNicknameConfirm = useCallback(async () => {
+    const trimmedNickname = formData.nickname.trim();
+
+    if (!trimmedNickname) {
+      return;
+    }
+
+    try {
+      const { available } = await getCommunitiesNicknameAvailability(
+        programId,
+        trimmedNickname
+      );
+
+      if (!available) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          nickname: "이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.",
+        }));
+        setShowNicknameConfirm(false);
+        return;
+      }
+
+      setFieldErrors((prev) => ({
+        ...prev,
+        nickname: undefined,
+      }));
+      setShowNicknameConfirm(false);
+      updateStep("phone");
+    } catch (error) {
+      console.error("닉네임 중복 검사 실패:", error);
+      setFieldErrors((prev) => ({
+        ...prev,
+        nickname:
+          "닉네임 중복 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      }));
+      setShowNicknameConfirm(false);
+    }
+  }, [formData.nickname, programId, updateStep]);
 
   // 닉네임 다음 버튼 클릭
   const handleNicknameNext = useCallback(() => {
-    if (formData.nickname.trim()) {
+    if (formData.nickname.trim() && !fieldErrors.nickname) {
       setShowNicknameConfirm(true);
     }
-  }, [formData.nickname, setShowNicknameConfirm]);
+  }, [formData.nickname, fieldErrors.nickname, setShowNicknameConfirm]);
 
   // 휴대폰 번호 입력 완료 (자동 다음 단계 이동 포함)
   const handlePhoneChangeWithAutoNext = useCallback(
@@ -949,6 +1009,8 @@ const ProgramApplyPage = () => {
             handlers={formHook}
             getStepTitle={getStepTitle}
             onPhoneChangeComplete={handlePhoneChangeWithAutoNext}
+            onNicknameChange={handleNicknameChange}
+            fieldErrors={fieldErrors}
           />
         )}
 
@@ -1175,17 +1237,9 @@ const ProgramApplyPage = () => {
                     <Input
                       type="text"
                       value={formData.nickname}
-                      onChange={(e) => {
-                        formHook.handleNicknameChange(e.target.value);
-                        // 에러 초기화
-                        if (fieldErrors.nickname) {
-                          setFieldErrors((prev) => ({
-                            ...prev,
-                            nickname: undefined,
-                          }));
-                        }
-                      }}
+                      onChange={(e) => handleNicknameChange(e.target.value)}
                       placeholder="닉네임을 입력하세요"
+                      maxLength={8}
                       className={cn(
                         "pr-10",
                         fieldErrors.nickname && "border-red-500"
@@ -1193,7 +1247,7 @@ const ProgramApplyPage = () => {
                     />
                     {formData.nickname && (
                       <button
-                        onClick={() => formHook.handleNicknameChange("")}
+                        onClick={() => handleNicknameChange("")}
                         className="absolute top-1/2 right-3 -translate-y-1/2"
                       >
                         <svg

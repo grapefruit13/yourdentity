@@ -14,6 +14,15 @@ const MIN_MOTIVATION_LENGTH = 10;
 
 type FormHandlers = ReturnType<typeof useActivityApplicationForm>;
 
+type ActivityFieldErrors = Partial<{
+  nickname: string;
+  phoneNumber: string;
+  region: string;
+  currentSituation: string;
+  applicationSource: string;
+  applicationMotivation: string;
+}>;
+
 interface ActivityApplicationFormProps {
   /** 현재 스텝 인덱스 (1: nickname, 2: phone, 3: region, 4: situation, 5: source, 6: motivation) */
   currentStepIndex: number;
@@ -27,6 +36,10 @@ interface ActivityApplicationFormProps {
   getStepTitle: (stepIndex: number, programName: string) => string;
   /** 휴대폰 번호 입력 완료 시 호출되는 콜백 (11자리 입력 시 자동 다음 단계 이동용) */
   onPhoneChangeComplete?: (value: string) => void;
+  /** 닉네임 변경 핸들러 (실시간 검증 포함) */
+  onNicknameChange?: (value: string) => void;
+  /** 필드별 에러 메시지 */
+  fieldErrors?: ActivityFieldErrors;
 }
 
 /**
@@ -41,7 +54,16 @@ export const ActivityApplicationForm = ({
   handlers,
   getStepTitle,
   onPhoneChangeComplete,
+  onNicknameChange,
+  fieldErrors,
 }: ActivityApplicationFormProps) => {
+  const errors = fieldErrors ?? {};
+  const nicknameError = errors.nickname;
+  const phoneError = errors.phoneNumber;
+  const regionError = errors.region;
+  const situationError = errors.currentSituation;
+  const sourceError = errors.applicationSource;
+  const motivationError = errors.applicationMotivation;
   // 현재 스텝의 타이틀
   const stepTitle = useMemo(
     () => getStepTitle(currentStepIndex, programName),
@@ -103,6 +125,15 @@ export const ActivityApplicationForm = ({
               className="bg-gray-100"
             />
           )}
+          {motivationError && currentStepIndex === 6 && (
+            <Typography
+              font="noto"
+              variant="caption1R"
+              className="mt-1 text-red-500"
+            >
+              {motivationError}
+            </Typography>
+          )}
         </div>
       )}
 
@@ -120,8 +151,10 @@ export const ActivityApplicationForm = ({
               rows={4}
               className={cn(
                 "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-base font-normal shadow-xs focus:outline-3",
-                formData.customMotivation.length >= MIN_MOTIVATION_LENGTH &&
-                  "border-pink-500"
+                motivationError
+                  ? "border-red-500"
+                  : formData.customMotivation.length >= MIN_MOTIVATION_LENGTH &&
+                      "border-pink-500"
               )}
             />
             <Typography
@@ -131,6 +164,15 @@ export const ActivityApplicationForm = ({
             >
               {formData.customMotivation.length}/200
             </Typography>
+            {motivationError && (
+              <Typography
+                font="noto"
+                variant="caption1R"
+                className="mt-1 text-red-500"
+              >
+                {motivationError}
+              </Typography>
+            )}
           </div>
         )}
 
@@ -165,6 +207,15 @@ export const ActivityApplicationForm = ({
               className="bg-gray-100"
             />
           )}
+          {sourceError && (
+            <Typography
+              font="noto"
+              variant="caption1R"
+              className="mt-1 text-red-500"
+            >
+              {sourceError}
+            </Typography>
+          )}
         </div>
       )}
 
@@ -198,6 +249,15 @@ export const ActivityApplicationForm = ({
               readOnly
               className="bg-gray-100"
             />
+          )}
+          {situationError && (
+            <Typography
+              font="noto"
+              variant="caption1R"
+              className="mt-1 text-red-500"
+            >
+              {situationError}
+            </Typography>
           )}
         </div>
       )}
@@ -239,6 +299,15 @@ export const ActivityApplicationForm = ({
               className="bg-gray-100"
             />
           )}
+          {regionError && (
+            <Typography
+              font="noto"
+              variant="caption1R"
+              className="mt-1 text-red-500"
+            >
+              {regionError}
+            </Typography>
+          )}
         </div>
       )}
 
@@ -262,7 +331,11 @@ export const ActivityApplicationForm = ({
               }}
               placeholder="01012345678"
               maxLength={11}
-              className={cn(formData.phoneNumber && "border-pink-500")}
+              className={cn(
+                phoneError
+                  ? "border-red-500"
+                  : formData.phoneNumber && "border-pink-500"
+              )}
             />
           ) : (
             <Input
@@ -271,6 +344,15 @@ export const ActivityApplicationForm = ({
               readOnly
               className="bg-gray-100"
             />
+          )}
+          {phoneError && currentStepIndex === 2 && (
+            <Typography
+              font="noto"
+              variant="caption1R"
+              className="mt-1 text-red-500"
+            >
+              {phoneError}
+            </Typography>
           )}
         </div>
       )}
@@ -284,35 +366,58 @@ export const ActivityApplicationForm = ({
             </Typography>
           </label>
           {currentStepIndex === 1 ? (
-            <div className="relative">
-              <Input
-                type="text"
-                value={formData.nickname}
-                onChange={(e) => handlers.handleNicknameChange(e.target.value)}
-                placeholder="닉네임을 입력하세요"
-                className={cn("pr-10", formData.nickname && "border-pink-500")}
-              />
-              {formData.nickname && (
-                <button
-                  onClick={() => handlers.handleNicknameChange("")}
-                  className="absolute top-1/2 right-3 -translate-y-1/2"
-                >
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            <>
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={formData.nickname}
+                  onChange={(e) =>
+                    (onNicknameChange ?? handlers.handleNicknameChange)(
+                      e.target.value
+                    )
+                  }
+                  placeholder="닉네임을 입력하세요"
+                  maxLength={8}
+                  className={cn(
+                    "pr-10",
+                    nicknameError
+                      ? "border-red-500"
+                      : formData.nickname && "border-pink-500"
+                  )}
+                />
+                {formData.nickname && (
+                  <button
+                    onClick={() =>
+                      (onNicknameChange ?? handlers.handleNicknameChange)("")
+                    }
+                    className="absolute top-1/2 right-3 -translate-y-1/2"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      className="h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {nicknameError && (
+                <Typography
+                  font="noto"
+                  variant="caption1R"
+                  className="mt-1 text-red-500"
+                >
+                  {nicknameError}
+                </Typography>
               )}
-            </div>
+            </>
           ) : (
             <Input
               type="text"
