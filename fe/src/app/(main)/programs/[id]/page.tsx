@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import type { User } from "firebase/auth";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
@@ -15,6 +16,7 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import { onAuthStateChange } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type {
   ProgramDetailResponse,
@@ -38,6 +40,7 @@ const ProgramDetailPage = () => {
     "detail"
   );
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const tabRef = useRef<HTMLDivElement>(null);
   const detailSectionRef = useRef<HTMLDivElement>(null);
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
@@ -46,6 +49,15 @@ const ProgramDetailPage = () => {
   // TopBar 제어
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
+
+  // Firebase Auth 상태 추적
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // 프로그램 상세 정보 조회
   const {
@@ -170,8 +182,11 @@ const ProgramDetailPage = () => {
   });
 
   // 내가 참여 중인 커뮤니티 조회 (신청 상태 확인용)
+  // 로그인된 사용자일 때만 API 호출
   const { data: participatingCommunitiesData } =
-    useGetUsersMeParticipatingCommunities();
+    useGetUsersMeParticipatingCommunities({
+      enabled: Boolean(currentUser),
+    });
 
   // 현재 프로그램의 신청 상태 확인
   const isApplied = (() => {
