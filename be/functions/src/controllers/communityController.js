@@ -209,6 +209,25 @@ class CommunityController {
       return next(error);
     }
   }
+
+  /**
+   * 커뮤니티 멤버 닉네임 가용성 확인 API
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async checkNicknameAvailability(req, res, next) {
+    try {
+      const {communityId} = req.params;
+      const {nickname} = req.query;
+
+      const available = await communityService.checkNicknameAvailability(communityId, nickname);
+
+      return res.success({available});
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new CommunityController();
