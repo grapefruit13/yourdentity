@@ -25,9 +25,9 @@ import { formatDateRange, getTimeAgo } from "@/utils/shared/date";
 const MAX_INQUIRIES_DISPLAY = 3;
 
 /**
- * @description 한끗루틴 상세 페이지
+ * @description 프로그램 상세 페이지
  */
-const RoutineDetailPage = () => {
+const ProgramDetailPage = () => {
   const params = useParams();
   const programId = params.id as string;
 
@@ -663,7 +663,7 @@ const RoutineDetailPage = () => {
             더 궁금한 점이 있으신가요?
           </Typography>
           <Link
-            href={`/routines/${programId}/comments`}
+            href={`/programs/${programId}/comments`}
             className="text-pink-500"
           >
             <Typography font="noto" variant="body3R">
@@ -721,7 +721,7 @@ const RoutineDetailPage = () => {
           {/* 더 보기 버튼 */}
           {inquiries.length > MAX_INQUIRIES_DISPLAY && (
             <Link
-              href={`/routines/${programId}/comments`}
+              href={`/programs/${programId}/comments`}
               className="block rounded-lg border border-gray-200 bg-white p-4 text-center"
             >
               <Typography font="noto" variant="body3R">
@@ -742,7 +742,7 @@ const RoutineDetailPage = () => {
             {recommendedProgramsData.map((recommendedProgram) => (
               <Link
                 key={recommendedProgram.id}
-                href={`/routines/${recommendedProgram.id || ""}`}
+                href={`/programs/${recommendedProgram.id || ""}`}
                 className="flex min-w-[240px] flex-shrink-0 flex-col overflow-hidden rounded-lg border-2 border-pink-300 bg-white"
               >
                 {/* 일러스트 영역 */}
@@ -794,7 +794,7 @@ const RoutineDetailPage = () => {
           </button>
         ) : (
           <Link
-            href={`/routines/${programId}/apply`}
+            href={`/programs/${programId}/apply`}
             className="bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white"
           >
             <Typography font="noto" variant="body3R" className="text-white">
@@ -807,4 +807,4 @@ const RoutineDetailPage = () => {
   );
 };
 
-export default RoutineDetailPage;
+export default ProgramDetailPage;

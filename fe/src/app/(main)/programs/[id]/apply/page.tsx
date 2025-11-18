@@ -217,7 +217,7 @@ const ProgramApplyPage = () => {
   const updateStep = useCallback(
     (step: ApplicationStep) => {
       setCurrentStep(step);
-      router.push(`/routines/${programId}/apply?step=${step}`, {
+      router.push(`/programs/${programId}/apply?step=${step}`, {
         scroll: false,
       });
     },
@@ -419,7 +419,7 @@ const ProgramApplyPage = () => {
   const goToPreviousStep = useCallback(() => {
     // 신청 완료 페이지나 신청 정보 확인 페이지에서는 상세페이지로 이동
     if (currentStep === "complete" || currentStep === "review") {
-      router.push(`/routines/${programId}`);
+      router.push(`/programs/${programId}`);
       return;
     }
 
@@ -449,7 +449,7 @@ const ProgramApplyPage = () => {
       if (window.location.pathname.includes("/apply")) {
         // 첫 번째 스텝이면 상세페이지로 이동 (히스토리 조작 없이 자연스럽게)
         if (currentStep === "schedule-confirm") {
-          router.replace(`/routines/${programId}`);
+          router.replace(`/programs/${programId}`);
           return;
         }
         // 다른 스텝에서는 이전 스텝으로 이동
@@ -480,7 +480,7 @@ const ProgramApplyPage = () => {
         onClick={() => {
           // 첫 단계에서는 상세페이지로 이동
           if (currentStep === "schedule-confirm") {
-            router.push(`/routines/${programId}`);
+            router.push(`/programs/${programId}`);
           } else {
             goToPreviousStep();
           }
@@ -642,7 +642,7 @@ const ProgramApplyPage = () => {
   // 신청 완료 후 확인
   const handleComplete = useCallback(() => {
     // 상세 페이지로 이동하고 히스토리 정리 (뒤로가기 방지)
-    router.replace(`/routines/${programId}`);
+    router.replace(`/programs/${programId}`);
   }, [router, programId]);
 
   // 스텝 순서 정의
