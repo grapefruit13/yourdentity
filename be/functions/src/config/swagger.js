@@ -362,6 +362,24 @@ const options = {
             },
           },
         },
+        MissionApplicationResult: {
+          type: "object",
+          description: "미션 신청 결과",
+          required: ["missionId", "status"],
+          properties: {
+            missionId: {
+              type: "string",
+              description: "신청한 미션의 Notion 페이지 ID",
+              example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522",
+            },
+            status: {
+              type: "string",
+              description: "미션 참여 상태",
+              enum: ["IN_PROGRESS", "COMPLETED", "QUIT"],
+              example: "IN_PROGRESS",
+            },
+          },
+        },
         ImageUpload: {
           type: "object",
           required: ["image"],

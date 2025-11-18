@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const missionController = require("../controllers/missionController");
 const optionalAuth = require("../middleware/optionalAuth");
+const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
@@ -146,6 +147,69 @@ router.get("/", optionalAuth, missionController.getMissions);
  *               $ref: "#/components/schemas/ErrorResponse"
  */
 router.get("/:missionId", optionalAuth, missionController.getMissionById);
+
+/**
+ * @swagger
+ * /missions/{missionId}/apply:
+ *   post:
+ *     summary: 미션 신청
+ *     description: 주어진 미션 ID로 사용자가 미션을 신청합니다. (동일 미션은 하루 한 번만 신청 가능)
+ *     tags: [Missions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: missionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 ID (Notion 페이지 ID)
+ *     responses:
+ *       201:
+ *         description: 미션 신청 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     missionId:
+ *                       type: string
+ *                       example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
+ *                     status:
+ *                       type: string
+ *                       example: "IN_PROGRESS"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       409:
+ *         description: 신청 제한 초과 혹은 중복 신청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.post("/:missionId/apply", authGuard, missionController.applyMission);
 
 module.exports = router;
 
