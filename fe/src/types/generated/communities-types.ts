@@ -149,3 +149,12 @@ export type TPOSTCommunitiesPostsLikeByTwoIdsRes = {
   isLiked?: boolean;
   likesCount?: number;
 };
+
+export interface TGETCommunitiesNicknameAvailabilityByIdReq {
+  communityId: string;
+  nickname: string;
+}
+
+export type TGETCommunitiesNicknameAvailabilityByIdRes = {
+  available?: boolean;
+};

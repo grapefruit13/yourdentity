@@ -184,3 +184,33 @@ export const usePostCommunitiesPostsLikeByTwoIds = <
     ...options,
   });
 };
+
+export const useGetCommunitiesNicknameAvailabilityById = <
+  TData = Types.TGETCommunitiesNicknameAvailabilityByIdRes,
+>(
+  options: {
+    request: Types.TGETCommunitiesNicknameAvailabilityByIdReq;
+  } & Omit<
+    UseQueryOptions<
+      Types.TGETCommunitiesNicknameAvailabilityByIdRes,
+      Error,
+      TData
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<
+    Types.TGETCommunitiesNicknameAvailabilityByIdRes,
+    Error,
+    TData
+  >({
+    queryKey: communitiesKeys.getCommunitiesNicknameAvailabilityById(request),
+    queryFn: async () => {
+      const response =
+        await Api.getCommunitiesNicknameAvailabilityById(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};

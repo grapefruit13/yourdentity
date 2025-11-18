@@ -110,6 +110,13 @@ export const communitiesKeys = {
       path: { communityId: request.communityId, postId: request.postId },
       query: {},
     }),
+  getCommunitiesNicknameAvailabilityById: (
+    request: communitiesTypes.TGETCommunitiesNicknameAvailabilityByIdReq
+  ) =>
+    __buildKey("communities", "getCommunitiesNicknameAvailabilityById", {
+      path: { communityId: request.communityId },
+      query: { nickname: request.nickname },
+    }),
 } as const;
 
 // FAQs Query Keys
