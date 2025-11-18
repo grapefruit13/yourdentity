@@ -1046,7 +1046,17 @@ class CommunityService {
         const memberData = members && members[0];
         if (memberData) {
           if (resolvedProgramType === PROGRAM_TYPES.TMI) {
-            author = memberData.name || "익명";
+            // TMI 타입: users 컬렉션에서 name 가져오기
+            try {
+              const userProfile = await this.firestoreService.getDocument("users", userId);
+              author = userProfile?.name || "익명";
+            } catch (userError) {
+              console.warn("[COMMUNITY][createPost] 사용자 정보 조회 실패", {
+                userId,
+                error: userError.message,
+              });
+              author = "익명";
+            }
           } else {
             author = memberData.nickname || "익명";
           }
