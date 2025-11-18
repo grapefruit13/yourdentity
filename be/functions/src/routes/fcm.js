@@ -67,7 +67,17 @@ const authGuard = require("../middleware/authGuard");
  *                   type: string
  *                   example: "토큰 저장에 실패했습니다."
  */
-router.post("/token", authGuard, fcmController.saveToken.bind(fcmController));
+router.post("/token", authGuard, (req, res, next) => {
+  console.log("[FCM][Route][POST /token] 요청 도달", {
+    deviceType: req.body?.deviceType,
+    hasToken: !!req.body?.token,
+    hasDeviceInfo: !!req.body?.deviceInfo,
+    userAgent: req.headers["user-agent"],
+    method: req.method,
+    path: req.path,
+  });
+  fcmController.saveToken(req, res, next);
+});
 
 /**
  * @swagger
