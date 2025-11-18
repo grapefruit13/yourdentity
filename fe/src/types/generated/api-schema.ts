@@ -62,12 +62,26 @@ export interface User {
 }
 
 export interface Mission {
-  missionId?: string;
-  userId: string;
-  title: string;
-  description: string;
-  status?: "pending" | "in_progress" | "completed" | "cancelled";
-  dueDate?: string;
+  id?: string;
+  title?: string;
+  detailPageUrl?: string;
+  isRecruiting?: boolean;
+  isUnlimited?: boolean;
+  applicationDeadline?: string;
+  certificationDeadline?: string;
+  categories?: string[];
+  detailTags?: string;
+  targetAudience?: string;
+  notes?: string;
+  certificationMethod?: string;
+  reactionCount?: number;
+  faqRelation?: {
+    relations?: {
+      id?: string;
+    }[];
+    has_more?: boolean;
+  };
+  isReviewRegistered?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -304,6 +318,7 @@ export interface CommunityPostListItem {
   commentsCount?: number;
   createdAt?: string;
   timeAgo?: string;
+  profileImageUrl?: string;
 }
 
 export interface CommunityPost {

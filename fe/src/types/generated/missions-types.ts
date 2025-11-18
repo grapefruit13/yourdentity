@@ -5,12 +5,25 @@
 
 import type * as Schema from "./api-schema";
 
+export type TGETMissionsCategoriesRes = {
+  categories?: string[];
+};
+
 export interface TGETMissionsReq {
   sortBy?: "latest" | "popular";
   category?: string;
   excludeParticipated?: boolean;
 }
 
+export type TGETMissionsRes = {
+  missions?: Schema.Mission[];
+  totalCount?: number;
+};
+
 export interface TGETMissionsByIdReq {
   missionId: string;
 }
+
+export type TGETMissionsByIdRes = {
+  mission?: Schema.Mission;
+};
