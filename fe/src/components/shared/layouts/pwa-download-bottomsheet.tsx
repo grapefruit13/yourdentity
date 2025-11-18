@@ -28,9 +28,8 @@ const PwaDownloadBottomSheet = ({
   const dragStartY = useRef<number>(0);
   const currentTranslateY = useRef<number>(0);
   const isDragging = useRef<boolean>(false);
-  const previousOverflow = useRef<string>("");
-  const previousPosition = useRef<string>("");
-  const previousTop = useRef<string>("");
+  const previousBodyOverflow = useRef<string>("");
+  const previousHtmlOverflow = useRef<string>("");
   const scrollY = useRef<number>(0);
 
   useEffect(() => {
@@ -46,15 +45,11 @@ const PwaDownloadBottomSheet = ({
       scrollY.current = window.scrollY;
 
       // 기존 스타일 저장
-      previousOverflow.current = document.body.style.overflow;
-      previousPosition.current = document.body.style.position;
-      previousTop.current = document.body.style.top;
+      previousBodyOverflow.current = document.body.style.overflow;
+      previousHtmlOverflow.current = document.documentElement.style.overflow;
 
-      // body 스크롤 방지 (모바일 포함)
       document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY.current}px`;
-      document.body.style.width = "100%";
+      document.documentElement.style.overflow = "hidden";
 
       // 터치 스크롤 방지 (추가 보안)
       const preventTouchMove = (e: globalThis.TouchEvent) => {
@@ -72,10 +67,8 @@ const PwaDownloadBottomSheet = ({
 
       return () => {
         // 스타일 복원
-        document.body.style.overflow = previousOverflow.current;
-        document.body.style.position = previousPosition.current;
-        document.body.style.top = previousTop.current;
-        document.body.style.width = "";
+        document.body.style.overflow = previousBodyOverflow.current;
+        document.documentElement.style.overflow = previousHtmlOverflow.current;
 
         // 스크롤 위치 복원
         window.scrollTo(0, scrollY.current);
@@ -87,10 +80,8 @@ const PwaDownloadBottomSheet = ({
       const timer = setTimeout(() => {
         setIsAnimating(false);
         // 스타일 복원
-        document.body.style.overflow = previousOverflow.current;
-        document.body.style.position = previousPosition.current;
-        document.body.style.top = previousTop.current;
-        document.body.style.width = "";
+        document.body.style.overflow = previousBodyOverflow.current;
+        document.documentElement.style.overflow = previousHtmlOverflow.current;
       }, ANIMATION_DURATION_MS);
       return () => clearTimeout(timer);
     }
