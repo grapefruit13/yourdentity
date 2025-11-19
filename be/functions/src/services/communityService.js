@@ -58,6 +58,12 @@ const LEGACY_POST_TYPE_TO_PROGRAM_TYPE = {
   TMI: PROGRAM_TYPES.TMI,
 };
 
+const PROGRAM_TYPE_TO_CATEGORY = {
+  [PROGRAM_TYPES.ROUTINE]: "한끗루틴",
+  [PROGRAM_TYPES.GATHERING]: "월간소모임",
+  [PROGRAM_TYPES.TMI]: "TMI",
+};
+
 const CERTIFICATION_COUNT_TYPES = new Set([
   PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert,
   PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.GATHERING].cert,
@@ -1135,15 +1141,7 @@ class CommunityService {
         throw error;
       }
 
-      // programType에 따라 category 자동 설정
-      const PROGRAM_TYPE_TO_CATEGORY = {
-        [PROGRAM_TYPES.ROUTINE]: "한끗루틴",
-        [PROGRAM_TYPES.GATHERING]: "월간소모임",
-        [PROGRAM_TYPES.TMI]: "TMI",
-      };
-      
-      const defaultCategory = PROGRAM_TYPE_TO_CATEGORY[resolvedProgramType] || null;
-      const resolvedCategory = category || defaultCategory;
+      const resolvedCategory = PROGRAM_TYPE_TO_CATEGORY[resolvedProgramType] || null;
 
       let resolvedIsReview = null;
       if (Object.prototype.hasOwnProperty.call(postData, "isReview")) {
