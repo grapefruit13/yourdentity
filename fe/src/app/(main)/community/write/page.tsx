@@ -469,7 +469,7 @@ const WritePageContent = () => {
               >
                 공개 범위
               </Typography>
-              <div className="flex items-center gap-1">
+              <label className="flex cursor-pointer items-center gap-1">
                 <input
                   type="checkbox"
                   className="border border-gray-950"
@@ -487,7 +487,7 @@ const WritePageContent = () => {
                 >
                   참여자에게만 공개
                 </Typography>
-              </div>
+              </label>
             </div>
           </div>
         )}
