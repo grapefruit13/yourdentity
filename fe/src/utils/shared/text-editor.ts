@@ -96,6 +96,33 @@ export const extractTextFromHtml = (html: string): string => {
 };
 
 /**
+ * 게시글 텍스트 길이가 최소 길이 이상인지 확인
+ * @param content - HTML 콘텐츠
+ * @param minLength - 최소 텍스트 길이
+ * @returns 최소 길이 이상 여부
+ */
+export const checkPostTextLength = (
+  content: string,
+  minLength: number
+): boolean => {
+  const contentText = extractTextFromHtml(content);
+  return contentText.length >= minLength;
+};
+
+/**
+ * HTML 콘텐츠에 이미지가 포함되어 있는지 확인
+ * @param content - HTML 콘텐츠
+ * @returns 이미지 포함 여부
+ */
+export const hasImageInContent = (content: string): boolean => {
+  if (!content) return false;
+  const tempContainer = document.createElement("div");
+  tempContainer.innerHTML = content;
+  const images = tempContainer.querySelectorAll("img");
+  return images.length > 0;
+};
+
+/**
  * 텍스트를 HTML 엔티티로 이스케이프하여 XSS 공격 방지
  * @param text - 이스케이프할 텍스트
  * @returns HTML 엔티티로 변환된 안전한 텍스트

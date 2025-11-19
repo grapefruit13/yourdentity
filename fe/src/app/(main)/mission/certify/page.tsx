@@ -33,7 +33,11 @@ import {
 } from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
 import { getCurrentDateTime } from "@/utils/shared/date";
-import { extractTextFromHtml } from "@/utils/shared/text-editor";
+import {
+  extractTextFromHtml,
+  checkPostTextLength,
+  hasImageInContent,
+} from "@/utils/shared/text-editor";
 
 /**
  * @description 미션 인증 페이지 콘텐츠 (useSearchParams 사용)
@@ -274,17 +278,8 @@ const MissionCertifyPageContent = () => {
 
   // 인증 조건 검사
   const content = watch("content") || "";
-  const contentText = extractTextFromHtml(content);
-  const isTextLongEnough = contentText.length >= MIN_POST_TEXT_LENGTH;
-
-  // 이미지 첨부 여부 확인 (content HTML에 img 태그가 있는지 확인)
-  const hasImage = (() => {
-    if (!content) return false;
-    const tempContainer = document.createElement("div");
-    tempContainer.innerHTML = content;
-    const images = tempContainer.querySelectorAll("img");
-    return images.length > 0;
-  })();
+  const isTextLongEnough = checkPostTextLength(content, MIN_POST_TEXT_LENGTH);
+  const hasImage = hasImageInContent(content);
 
   const isSubmitDisabled =
     isPending || !hasTitle || !hasContent || !isTextLongEnough || !hasImage;
