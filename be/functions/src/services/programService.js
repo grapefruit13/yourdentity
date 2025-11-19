@@ -193,6 +193,10 @@ class ProgramService {
    */
   async getPrograms(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
+      // 오늘 날짜를 ISO 형식으로 변환 (YYYY-MM-DD)
+      const today = new Date();
+      const todayISO = today.toISOString().split('T')[0];
+
       const queryBody = {
         page_size: normalizePageSize(pageSize),
         sorts: [
@@ -203,38 +207,52 @@ class ProgramService {
         ]
       };
 
-      // 필터 조건 추가
-      if (filters.recruitmentStatus || filters.programStatus || filters.programType) {
-        queryBody.filter = {
-          and: []
-        };
-
-        if (filters.recruitmentStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.RECRUITMENT_STATUS,
-            status: {
-              equals: filters.recruitmentStatus
+      // 필터 조건 추가 (항상 표시 시작일자 필터 적용)
+      queryBody.filter = {
+        and: [
+          // 표시 시작일자가 설정되어 있어야 함
+          {
+            property: NOTION_FIELDS.DISPLAY_START_DATE,
+            date: {
+              is_not_empty: true
             }
-          });
-        }
-
-        if (filters.programStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_STATUS,
-            status: {
-              equals: filters.programStatus
+          },
+          // 표시 시작일자가 현재 날짜 이하여야 함
+          {
+            property: NOTION_FIELDS.DISPLAY_START_DATE,
+            date: {
+              on_or_before: todayISO
             }
-          });
-        }
+          }
+        ]
+      };
 
-        if (filters.programType) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_TYPE,
-            select: {
-              equals: filters.programType
-            }
-          });
-        }
+      // 추가 필터 조건
+      if (filters.recruitmentStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.RECRUITMENT_STATUS,
+          status: {
+            equals: filters.recruitmentStatus
+          }
+        });
+      }
+
+      if (filters.programStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_STATUS,
+          status: {
+            equals: filters.programStatus
+          }
+        });
+      }
+
+      if (filters.programType) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_TYPE,
+          select: {
+            equals: filters.programType
+          }
+        });
       }
 
       if (startCursor) {
@@ -507,6 +525,35 @@ class ProgramService {
    */
   async searchPrograms(searchTerm, filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
+      // 오늘 날짜를 ISO 형식으로 변환 (YYYY-MM-DD)
+      const today = new Date();
+      const todayISO = today.toISOString().split('T')[0];
+
+      // 검색 조건 (OR)
+      const searchFilter = {
+        or: [
+          {
+            property: NOTION_FIELDS.PROGRAM_TITLE,
+            rich_text: {
+              contains: searchTerm
+            }
+          },
+          {
+            property: NOTION_FIELDS.PROGRAM_DESCRIPTION,
+            rich_text: {
+              contains: searchTerm
+            }
+          },
+          {
+            property: NOTION_FIELDS.PROGRAM_NAME,
+            rich_text: {
+              contains: searchTerm
+            }
+          }
+        ]
+      };
+
+      // 항상 표시 시작일자 필터 적용 + 검색 필터
       const queryBody = {
         page_size: normalizePageSize(pageSize),
         sorts: [
@@ -516,23 +563,20 @@ class ProgramService {
           }
         ],
         filter: {
-          or: [
+          and: [
+            searchFilter,
+            // 표시 시작일자가 설정되어 있어야 함
             {
-              property: NOTION_FIELDS.PROGRAM_TITLE,
-              rich_text: {
-                contains: searchTerm
+              property: NOTION_FIELDS.DISPLAY_START_DATE,
+              date: {
+                is_not_empty: true
               }
             },
+            // 표시 시작일자가 현재 날짜 이하여야 함
             {
-              property: NOTION_FIELDS.PROGRAM_DESCRIPTION,
-              rich_text: {
-                contains: searchTerm
-              }
-            },
-            {
-              property: NOTION_FIELDS.PROGRAM_NAME,
-              rich_text: {
-                contains: searchTerm
+              property: NOTION_FIELDS.DISPLAY_START_DATE,
+              date: {
+                on_or_before: todayISO
               }
             }
           ]
@@ -544,37 +588,31 @@ class ProgramService {
       }
 
       // 추가 필터 조건 적용
-      if (filters.recruitmentStatus || filters.programStatus || filters.programType) {
-        queryBody.filter = {
-          and: [queryBody.filter]
-        };
+      if (filters.recruitmentStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.RECRUITMENT_STATUS,
+          status: {
+            equals: filters.recruitmentStatus
+          }
+        });
+      }
 
-        if (filters.recruitmentStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.RECRUITMENT_STATUS,
-            status: {
-              equals: filters.recruitmentStatus
-            }
-          });
-        }
+      if (filters.programStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_STATUS,
+          status: {
+            equals: filters.programStatus
+          }
+        });
+      }
 
-        if (filters.programStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_STATUS,
-            status: {
-              equals: filters.programStatus
-            }
-          });
-        }
-
-        if (filters.programType) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_TYPE,
-            select: {
-              equals: filters.programType
-            }
-          });
-        }
+      if (filters.programType) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_TYPE,
+          select: {
+            equals: filters.programType
+          }
+        });
       }
 
       // v5.3.0에서 databases.query가 제거되어 dataSources.query 사용
