@@ -1,118 +1,127 @@
-const {db, FieldValue} = require("../config/database");
+const { db, Timestamp } = require("../config/database");
+const notionMissionService = require("./notionMissionService");
 
-/**
- * Mission Service - 미션 관련 비즈니스 로직
- */
+const USER_MISSIONS_COLLECTION = "userMissions";
+const USER_MISSION_STATS_COLLECTION = "userMissionStats";
+const MAX_ACTIVE_MISSIONS = 3;
+
+const MISSION_STATUS = {
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  QUIT: "QUIT",
+};
+
+const BLOCKED_STATUSES = [
+  MISSION_STATUS.IN_PROGRESS,
+  MISSION_STATUS.COMPLETED,
+];
+
+function buildError(message, code, statusCode) {
+  const error = new Error(message);
+  error.code = code;
+  error.statusCode = statusCode;
+  return error;
+}
+
 class MissionService {
   /**
-   * 미션 생성
-   * @param {string} userId - 사용자 ID
-   * @param {string} missionId - 미션 ID
-   * @param {string} status - 미션 상태
-   * @return {Promise<Object>} 생성된 미션 데이터
+   * 미션 신청
+   * @param {Object} params
+   * @param {string} params.userId - 신청자 UID
+   * @param {string} params.missionId - 노션 미션 페이지 ID
+   * @returns {Promise<Object>} 신청 결과
    */
-  async createMission(userId, missionId, status = "ONGOING") {
-    const missionData = {
-      status,
-      startedAt: FieldValue.serverTimestamp(),
-      certified: false,
-    };
-
-    if (status === "COMPLETED") {
-      missionData.completedAt = FieldValue.serverTimestamp();
-      missionData.certified = true;
+  async applyMission({ userId, missionId }) {
+    if (!userId) {
+      throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
     }
 
-    await db.collection("users").doc(userId).collection("missions").doc(missionId).set(missionData);
-    return {userId, missionId, ...missionData};
-  }
-
-  /**
-   * 사용자 미션 목록 조회
-   * @param {string} userId - 사용자 ID
-   * @param {string} statusFilter - 상태 필터
-   * @return {Promise<Array>} 미션 목록
-   */
-  async getUserMissions(userId, statusFilter = null) {
-    let query = db.collection("users").doc(userId).collection("missions");
-
-    if (statusFilter) {
-      query = query.where("status", "==", statusFilter);
+    if (!missionId) {
+      throw buildError("미션 ID가 필요합니다.", "BAD_REQUEST", 400);
     }
 
-    const snapshot = await query.get();
-    const missions = [];
+    const mission = await notionMissionService.getMissionById(missionId);
+    if (!mission) {
+      throw buildError("존재하지 않는 미션입니다.", "MISSION_NOT_FOUND", 404);
+    }
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      missions.push({
-        missionId: doc.id,
-        ...data,
-        startedAt: data.startedAt?.toDate().toISOString(),
-        completedAt: data.completedAt?.toDate().toISOString(),
-      });
+    const missionDocId = `${userId}_${missionId}`;
+    const missionDocRef = db.collection(USER_MISSIONS_COLLECTION).doc(missionDocId);
+    const userMissionsRef = db.collection(USER_MISSIONS_COLLECTION);
+    const userMissionStatsRef = db.collection(USER_MISSION_STATS_COLLECTION).doc(userId);
+    const now = Timestamp.now();
+
+    await db.runTransaction(async (transaction) => {
+      const statsDoc = await transaction.get(userMissionStatsRef);
+      const statsData = statsDoc.exists
+        ? statsDoc.data()
+        : {
+            userId,
+            activeCount: 0,
+            dailyAppliedCount: 0,
+            dailyCompletedCount: 0,
+            lastAppliedAt: null,
+            updatedAt: now,
+          };
+
+      const dailyAppliedCount = statsData.dailyAppliedCount || 0;
+
+      const activeQuery = userMissionsRef
+        .where("userId", "==", userId)
+        .where("status", "==", MISSION_STATUS.IN_PROGRESS);
+      const activeSnapshot = await transaction.get(activeQuery);
+      const existingDoc = await transaction.get(missionDocRef);
+
+      if (statsData.activeCount >= MAX_ACTIVE_MISSIONS || activeSnapshot.size >= MAX_ACTIVE_MISSIONS) {
+        throw buildError(
+          "동시에 진행할 수 있는 미션은 최대 3개입니다.",
+          "MAX_ACTIVE_MISSIONS_EXCEEDED",
+          409,
+        );
+      }
+      const existingData = existingDoc.exists ? existingDoc.data() : null;
+      if (existingDoc.exists) {
+        const currentStatus = existingData?.status;
+        if (BLOCKED_STATUSES.includes(currentStatus)) {
+          throw buildError(
+            "이미 참여한 미션입니다. 다음 리셋 이후에 다시 신청해주세요.",
+            "MISSION_ALREADY_APPLIED",
+            409,
+          );
+        }
+      }
+
+      const missionPayload = {
+        userId,
+        missionNotionPageId: missionId,
+        missionTitle: mission.title || null,
+        status: MISSION_STATUS.IN_PROGRESS,
+        startedAt: now,
+        lastActivityAt: now,
+        createdAt: existingData?.createdAt || now,
+        updatedAt: now,
+      };
+
+      transaction.set(missionDocRef, missionPayload);
+      transaction.set(
+        userMissionStatsRef,
+        {
+          userId,
+          activeCount: (statsData.activeCount || 0) + 1,
+          dailyAppliedCount: dailyAppliedCount + 1,
+          updatedAt: now,
+          lastAppliedAt: now,
+        },
+        { merge: true },
+      );
     });
 
-    return missions;
-  }
-
-  /**
-   * 미션 상세 조회
-   * @param {string} userId - 사용자 ID
-   * @param {string} missionId - 미션 ID
-   * @return {Promise<Object|null>} 미션 데이터
-   */
-  async getMissionById(userId, missionId) {
-    const doc = await db.collection("users").doc(userId).collection("missions").doc(missionId).get();
-
-    if (!doc.exists) {
-      return null;
-    }
-
-    const data = doc.data();
     return {
-      missionId: doc.id,
-      ...data,
-      startedAt: data.startedAt?.toDate().toISOString(),
-      completedAt: data.completedAt?.toDate().toISOString(),
+      missionId,
+      status: MISSION_STATUS.IN_PROGRESS,
     };
-  }
-
-  /**
-   * 미션 업데이트
-   * @param {string} userId - 사용자 ID
-   * @param {string} missionId - 미션 ID
-   * @param {Object} updateData - 업데이트할 데이터
-   * @return {Promise<Object>} 업데이트된 미션 데이터
-   */
-  async updateMission(userId, missionId, updateData) {
-    if (updateData.status === "COMPLETED") {
-      updateData.completedAt = FieldValue.serverTimestamp();
-    }
-
-    await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .doc(missionId)
-        .update(updateData);
-    return {userId, missionId, ...updateData};
-  }
-
-  /**
-   * 미션 삭제
-   * @param {string} userId - 사용자 ID
-   * @param {string} missionId - 미션 ID
-   * @return {Promise<void>}
-   */
-  async deleteMission(userId, missionId) {
-    await db
-        .collection("users")
-        .doc(userId)
-        .collection("missions")
-        .doc(missionId)
-        .delete();
   }
 }
 
 module.exports = new MissionService();
+

@@ -1,12 +1,45 @@
 const notionMissionService = require("../services/notionMissionService");
+const missionService = require("../services/missionService");
 
 class MissionController {
   constructor() {
     // 메서드 바인딩
     this.getCategories = this.getCategories.bind(this);
+    this.applyMission = this.applyMission.bind(this);
     this.getMissions = this.getMissions.bind(this);
     this.getMissionById = this.getMissionById.bind(this);
     this.getParticipatedMissionIds = this.getParticipatedMissionIds.bind(this);
+  }
+
+  /**
+   * 미션 신청
+   */
+  async applyMission(req, res, next) {
+    try {
+      const { missionId } = req.params;
+      const userId = req.user?.uid;
+
+      if (!missionId) {
+        const error = new Error("미션 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await missionService.applyMission({
+        userId,
+        missionId,
+      });
+
+      return res.created({
+        missionId: result.missionId,
+        status: result.status,
+      });
+
+    } catch (error) {
+      console.error("[MissionController] 미션 신청 오류:", error.message);
+      return next(error);
+    }
   }
 
   /**
@@ -91,7 +124,7 @@ class MissionController {
     try {
       const snapshot = await db.collection('userMissions')
         .where('userId', '==', userId)
-        .where('status', 'in', ['IN_PROGRESS', 'QUIT']) // 완료는 재참여 가능
+        .where('status', 'in', ['IN_PROGRESS', 'COMPLETED'])
         .select('missionNotionPageId')
         .get();
       
