@@ -5,6 +5,7 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
+import MissionCertificationStatusCard from "@/components/mission/mission-certification-status-card";
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
@@ -16,6 +17,7 @@ import {
   ERROR_MESSAGES,
 } from "@/constants/community/_write-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { MIN_POST_TEXT_LENGTH } from "@/constants/shared/_post-constants";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -32,7 +34,11 @@ import {
 } from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
 import { getCurrentDateTime } from "@/utils/shared/date";
-import { extractTextFromHtml } from "@/utils/shared/text-editor";
+import {
+  extractTextFromHtml,
+  checkPostTextLength,
+  hasImageInContent,
+} from "@/utils/shared/text-editor";
 
 /**
  * @description 커뮤니티 글 작성 페이지 콘텐츠 (useSearchParams 사용)
@@ -62,7 +68,12 @@ const WritePageContent = () => {
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
-      defaultValues: { title: "", content: "", category: "한끗루틴" },
+      defaultValues: {
+        title: "",
+        content: "",
+        category: "한끗루틴",
+        isPublic: false,
+      },
       mode: "onChange",
     });
 
@@ -235,7 +246,8 @@ const WritePageContent = () => {
     title: string,
     content: string,
     category: string,
-    media: string[]
+    media: string[],
+    isPublic: boolean
   ): Promise<{ postId: string; communityId: string }> => {
     return new Promise((resolve, reject) => {
       const requestParam = {
@@ -245,6 +257,7 @@ const WritePageContent = () => {
           content,
           category,
           media,
+          isPublic,
         },
       } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
 
@@ -302,11 +315,14 @@ const WritePageContent = () => {
       uploadedFilePaths = filePaths;
 
       // 4. 게시글 등록
+      // "참여자에게만 공개" 체크 시 isPublic: false (공개 범위 제한)
+      // 체크 해제 시 isPublic: true (전체 공개)
       const postResponse = await createPost(
         trimmedTitle,
         finalContent,
         values.category,
-        [...uploadedImagePaths, ...uploadedFilePaths]
+        [...uploadedImagePaths, ...uploadedFilePaths],
+        !values.isPublic
       );
 
       // 5. 성공 후 처리
@@ -316,6 +332,8 @@ const WritePageContent = () => {
       reset({
         title: "",
         content: "",
+        category: "한끗루틴",
+        isPublic: false,
       });
       router.replace(
         `/community/post/${postResponse.postId}?communityId=${postResponse.communityId}`
@@ -336,7 +354,17 @@ const WritePageContent = () => {
   };
   const hasTitle = watch("title").trim();
   const hasContent = extractTextFromHtml(watch("content") || "").length > 0;
-  const isSubmitDisabled = isPending || !hasTitle || !hasContent;
+
+  // 인증 조건 검사 (인증글일 때만)
+  const content = watch("content") || "";
+  const isTextLongEnough = checkPostTextLength(content, MIN_POST_TEXT_LENGTH);
+  const hasImage = hasImageInContent(content);
+
+  const isSubmitDisabled =
+    isPending ||
+    !hasTitle ||
+    !hasContent ||
+    (!isReview && (!isTextLongEnough || !hasImage));
 
   /**
    * 화면 렌더 시 topbar 타이틀 및 완료 버튼 설정
@@ -441,8 +469,17 @@ const WritePageContent = () => {
               >
                 공개 범위
               </Typography>
-              <div className="flex items-center gap-1">
-                <input type="checkbox" className="border border-gray-950" />
+              <label className="flex cursor-pointer items-center gap-1">
+                <input
+                  type="checkbox"
+                  className="border border-gray-950"
+                  checked={watch("isPublic")}
+                  onChange={(e) =>
+                    setValue("isPublic", e.target.checked, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
                 <Typography
                   font="noto"
                   variant="label1M"
@@ -450,7 +487,7 @@ const WritePageContent = () => {
                 >
                   참여자에게만 공개
                 </Typography>
-              </div>
+              </label>
             </div>
           </div>
         )}
@@ -500,6 +537,36 @@ const WritePageContent = () => {
               </p>
             )}
           </div>
+        )}
+        {/* 현재 완료된 인증 - 인증글일 때만 표시 */}
+        {!isReview && (
+          <>
+            <Typography font="noto" variant="label2R" className="text-gray-400">
+              *작성 완료 시 나다움 포인트 지급 및 해당 인증글은 피드에
+              올라갑니다.
+            </Typography>
+            <div className="flex flex-col gap-2">
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-950"
+              >
+                현재 완료된 인증
+              </Typography>
+              <div className="flex gap-2">
+                <MissionCertificationStatusCard
+                  label={`${MIN_POST_TEXT_LENGTH}자 이상 작성`}
+                  isActive={isTextLongEnough}
+                  icon="pencil"
+                />
+                <MissionCertificationStatusCard
+                  label="사진 업로드"
+                  isActive={hasImage}
+                  icon="photo"
+                />
+              </div>
+            </div>
+          </>
         )}
       </div>
       <TextEditor
