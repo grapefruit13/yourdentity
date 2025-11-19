@@ -80,12 +80,9 @@ class MissionService {
         userId,
         missionNotionPageId: missionId,
         missionTitle: mission.title || null,
-        categories: mission.categories || [],
         status: MISSION_STATUS.IN_PROGRESS,
         startedAt: now,
         lastActivityAt: now,
-        completedAt: null,
-        quitAt: null,
         createdAt: existingData?.createdAt || now,
         updatedAt: now,
       };
