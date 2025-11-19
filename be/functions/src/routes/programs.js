@@ -8,7 +8,12 @@ const programController = require('../controllers/programController');
  * /programs:
  *   get:
  *     summary: 프로그램 목록 조회
- *     description: 모집상태 및 프로그램진행여부로 필터링된 프로그램 목록을 조회합니다.
+ *     description: |
+ *       모집상태 및 프로그램진행여부로 필터링된 프로그램 목록을 조회합니다.
+ *       
+ *       **자동 필터링:**
+ *       - 표시 시작일자가 설정된 프로그램만 조회됩니다.
+ *       - 표시 시작일자가 오늘 이전이거나 오늘인 프로그램만 조회됩니다.
  *     tags: [Programs]
  *     parameters:
  *       - in: query
@@ -69,7 +74,12 @@ router.get('/', programController.getPrograms);
  * /programs/search:
  *   get:
  *     summary: 프로그램 검색
- *     description: 제목, 설명을 기반으로 프로그램을 검색합니다.
+ *     description: |
+ *       제목, 설명을 기반으로 프로그램을 검색합니다.
+ *       
+ *       **자동 필터링:**
+ *       - 표시 시작일자가 설정된 프로그램만 검색됩니다.
+ *       - 표시 시작일자가 오늘 이전이거나 오늘인 프로그램만 검색됩니다.
  *     tags: [Programs]
  *     parameters:
  *       - in: query
