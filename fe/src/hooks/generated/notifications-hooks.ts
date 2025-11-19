@@ -75,3 +75,31 @@ export const usePatchNotificationsReadAll = <
     ...options,
   });
 };
+
+export const usePatchNotificationsReadById = <
+  TContext = unknown,
+  TVariables = Types.TPATCHNotificationsReadByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.patchNotificationsReadById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.patchNotificationsReadById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.patchNotificationsReadById(
+        variables as Types.TPATCHNotificationsReadByIdReq
+      ),
+    ...options,
+  });
+};

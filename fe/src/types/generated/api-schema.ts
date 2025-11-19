@@ -175,9 +175,6 @@ export interface StandardResponse {
 export interface ErrorResponse {
   status: number;
   message: string;
-  success?: boolean;
-  code?: string;
-  statusCode?: number;
 }
 
 export interface PaginatedResponse {
@@ -663,11 +660,6 @@ export interface ProgramSearchResponse {
 export interface Success {
   status: number;
   data?: any;
-}
-
-export interface Error {
-  status: number;
-  message: string;
 }
 
 export interface CommunityMember {

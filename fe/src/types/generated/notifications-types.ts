@@ -53,3 +53,12 @@ export type TPATCHNotificationsReadAllRes = {
   message?: string;
   updatedCount?: number;
 };
+
+export interface TPATCHNotificationsReadByIdReq {
+  notificationId: string;
+}
+
+export type TPATCHNotificationsReadByIdRes = {
+  message?: string;
+  updated?: boolean;
+};

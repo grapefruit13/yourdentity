@@ -19,3 +19,11 @@ export const getNotifications = (request: Types.TGETNotificationsReq) => {
 export const patchNotificationsReadAll = () => {
   return patch<Types.TPATCHNotificationsReadAllRes>(`/notifications/read-all`);
 };
+
+export const patchNotificationsReadById = (
+  request: Types.TPATCHNotificationsReadByIdReq
+) => {
+  return patch<Types.TPATCHNotificationsReadByIdRes>(
+    `/notifications/${request.notificationId}/read`
+  );
+};
