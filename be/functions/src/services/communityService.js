@@ -1135,6 +1135,16 @@ class CommunityService {
         throw error;
       }
 
+      // programType에 따라 category 자동 설정
+      const PROGRAM_TYPE_TO_CATEGORY = {
+        [PROGRAM_TYPES.ROUTINE]: "한끗루틴",
+        [PROGRAM_TYPES.GATHERING]: "월간소모임",
+        [PROGRAM_TYPES.TMI]: "TMI",
+      };
+      
+      const defaultCategory = PROGRAM_TYPE_TO_CATEGORY[resolvedProgramType] || null;
+      const resolvedCategory = category || defaultCategory;
+
       let resolvedIsReview = null;
       if (Object.prototype.hasOwnProperty.call(postData, "isReview")) {
         if (typeof requestIsReview !== "boolean") {
@@ -1225,7 +1235,7 @@ class CommunityService {
         programType: resolvedProgramType,
         isReview: resolvedIsReview,
         channel: channel || community.name || "general",
-        category: category || null,
+        category: resolvedCategory,
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         isLocked: false,
         isPublic,
