@@ -10,7 +10,8 @@ const {
   getFileUrls,
   getRelationValues,
   getRollupValues,
-  formatNotionBlocks
+  formatNotionBlocks,
+  nowKstIso
 } = require('../utils/notionHelper');
 const faqService = require('./faqService');
 const FirestoreService = require('./firestoreService');
@@ -193,9 +194,8 @@ class ProgramService {
    */
   async getPrograms(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
-      // 오늘 날짜를 ISO 형식으로 변환 (YYYY-MM-DD)
-      const today = new Date();
-      const todayISO = today.toISOString().split('T')[0];
+      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
+      const todayISO = nowKstIso().split('T')[0];
 
       const queryBody = {
         page_size: normalizePageSize(pageSize),
@@ -525,9 +525,8 @@ class ProgramService {
    */
   async searchPrograms(searchTerm, filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
-      // 오늘 날짜를 ISO 형식으로 변환 (YYYY-MM-DD)
-      const today = new Date();
-      const todayISO = today.toISOString().split('T')[0];
+      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
+      const todayISO = nowKstIso().split('T')[0];
 
       // 검색 조건 (OR)
       const searchFilter = {
