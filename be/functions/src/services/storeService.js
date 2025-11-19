@@ -10,6 +10,7 @@ const {
   getRelationValues,
   getPhoneNumberValue,
   formatNotionBlocks,
+  getCoverImageUrl,
 } = require("../utils/notionHelper");
 
 // 상수 정의
@@ -255,6 +256,7 @@ class StoreService {
       name: getTitleValue(props[NOTION_FIELDS.NAME]),
       description: getTextContent(props[NOTION_FIELDS.DESCRIPTION]),
       thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      coverImage: getCoverImageUrl(page),
       requiredPoints: getNumberValue(props[NOTION_FIELDS.REQUIRED_POINTS]) || 0,
       onSale: getCheckboxValue(props[NOTION_FIELDS.ON_SALE]),
       requiresDelivery: getCheckboxValue(props[NOTION_FIELDS.REQUIRES_DELIVERY]),
