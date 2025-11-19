@@ -15,9 +15,9 @@ import {
   WRITE_MESSAGES,
   ERROR_MESSAGES,
 } from "@/constants/community/_write-constants";
-import { MIN_CERTIFICATION_TEXT_LENGTH } from "@/constants/mission/_certify-constants";
 import { MOCK_MISSIONS } from "@/constants/mission/_mock-missions";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { MIN_POST_TEXT_LENGTH } from "@/constants/shared/_post-constants";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -275,7 +275,7 @@ const MissionCertifyPageContent = () => {
   // 인증 조건 검사
   const content = watch("content") || "";
   const contentText = extractTextFromHtml(content);
-  const isTextLongEnough = contentText.length >= MIN_CERTIFICATION_TEXT_LENGTH;
+  const isTextLongEnough = contentText.length >= MIN_POST_TEXT_LENGTH;
 
   // 이미지 첨부 여부 확인 (content HTML에 img 태그가 있는지 확인)
   const hasImage = (() => {
@@ -431,7 +431,7 @@ const MissionCertifyPageContent = () => {
           </Typography>
           <div className="flex gap-2">
             <MissionCertificationStatusCard
-              label={`${MIN_CERTIFICATION_TEXT_LENGTH}자 이상 작성`}
+              label={`${MIN_POST_TEXT_LENGTH}자 이상 작성`}
               isActive={isTextLongEnough}
               icon="pencil"
             />
