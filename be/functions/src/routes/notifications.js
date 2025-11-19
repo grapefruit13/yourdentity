@@ -190,5 +190,54 @@ router.get("/", authGuard, notificationController.getNotifications);
  */
 router.patch("/read-all", authGuard, notificationController.markAllAsRead);
 
+/**
+ * @swagger
+ * /notifications/{notificationId}/read:
+ *   patch:
+ *     summary: 개별 알림 읽음 처리
+ *     description: 특정 알림을 읽음 처리합니다.
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: notificationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 알림 ID
+ *     responses:
+ *       200:
+ *         description: 개별 읽음 처리 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "알림이 읽음 처리되었습니다"
+ *                     updated:
+ *                       type: boolean
+ *                       example: true
+ *       400:
+ *         description: 잘못된 요청 (알림 ID 누락)
+ *       401:
+ *         description: 인증 실패
+ *       403:
+ *         description: 권한 없음
+ *       404:
+ *         description: 알림을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
+router.patch("/:notificationId/read", authGuard, notificationController.markAsRead);
+
 module.exports = router;
 

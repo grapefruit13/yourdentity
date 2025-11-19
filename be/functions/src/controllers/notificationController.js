@@ -65,6 +65,25 @@ class NotificationController {
       return next(error);
     }
   }
+
+  /**
+   * 개별 알림 읽음 처리
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express 다음 미들웨어 함수
+   * @returns {Promise<void>}
+   */
+  async markAsRead(req, res, next) {
+    try {
+      const userId = req.user.uid;
+      const { notificationId } = req.params;
+      const result = await notificationService.markAsRead(userId, notificationId);
+      return res.success(result);
+    } catch (error) {
+      console.error("개별 읽음 처리 에러:", error);
+      return next(error);
+    }
+  }
 }
 
 module.exports = new NotificationController();

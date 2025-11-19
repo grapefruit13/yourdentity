@@ -1066,6 +1066,63 @@ class NotificationService {
       throw serviceError;
     }
   }
+
+  /**
+   * 개별 알림 읽음 처리
+   * @param {string} userId - 사용자 ID
+   * @param {string} notificationId - 알림 ID
+   * @return {Promise<Object>} 업데이트 결과
+   */
+  async markAsRead(userId, notificationId) {
+    try {
+      if (!notificationId) {
+        const error = new Error("알림 ID가 필요합니다");
+        error.code = "INVALID_NOTIFICATION_ID";
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 알림 조회
+      const notification = await this.notificationFirestoreService.getById(notificationId);
+
+      if (!notification) {
+        const error = new Error("알림을 찾을 수 없습니다");
+        error.code = "NOTIFICATION_NOT_FOUND";
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // 사용자 소유 확인
+      if (notification.userId !== userId) {
+        const error = new Error("권한이 없습니다");
+        error.code = "NOTIFICATION_UNAUTHORIZED";
+        error.statusCode = 403;
+        throw error;
+      }
+
+      // 이미 읽은 알림인지 확인
+      if (notification.isRead === true) {
+        return { message: "이미 읽음 처리된 알림입니다", updated: false };
+      }
+
+      // 읽음 처리
+      await this.notificationFirestoreService.update(notificationId, {
+        isRead: true,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+
+      return { message: "알림이 읽음 처리되었습니다", updated: true };
+    } catch (error) {
+      console.error("개별 읽음 처리 실패:", error);
+      if (error.code && error.statusCode) {
+        throw error;
+      }
+      const serviceError = new Error("개별 읽음 처리에 실패했습니다");
+      serviceError.code = "NOTIFICATION_MARK_READ_FAILED";
+      serviceError.statusCode = 500;
+      throw serviceError;
+    }
+  }
 }
 
 module.exports = NotificationService;
