@@ -611,7 +611,7 @@ const CommunityPageContent = () => {
           </div>
 
           {/* 검색 입력 */}
-          <div className="mt-4 flex items-center gap-[10px]">
+          <div className="flex items-center gap-[10px]">
             <div className="my-3 flex h-[40px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3">
               <input
                 ref={searchInputRef}
@@ -665,7 +665,7 @@ const CommunityPageContent = () => {
           {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
           {currentUser && (
             <div
-              className="flex w-fit cursor-pointer items-center gap-2 py-2"
+              className="flex w-fit cursor-pointer items-center gap-2 py-[9px]"
               onClick={() => setOnlyMyPrograms(!onlyMyPrograms)}
             >
               <GrayCheckbox
