@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "firebase/auth";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import FilterChipsSection from "@/components/community/FilterChipsSection";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
 import ProgramFilterBottomSheet, {
@@ -54,8 +54,6 @@ const PROGRAM_SORT_LABELS: Record<ProgramSortOption, string> = {
   latest: "최신순",
   popular: "인기순",
 };
-
-const CHIP_SCROLL_OFFSET = 200;
 
 /**
  * @description 커뮤니티 페이지 컨텐츠 (useSearchParams 사용)
@@ -103,11 +101,8 @@ const CommunityPageContent = () => {
     useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [hasFilterChanges, setHasFilterChanges] = useState(false);
-  const chipScrollContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isSearchingRef = useRef(false);
-  const [showLeftGradient, setShowLeftGradient] = useState(false);
-  const [showRightGradient, setShowRightGradient] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Firebase Auth 상태 추적
@@ -417,54 +412,6 @@ const CommunityPageContent = () => {
     selectedSort,
   ]);
 
-  const updateChipScrollIndicators = useCallback(() => {
-    const scrollContainer = chipScrollContainerRef.current;
-    if (!scrollContainer) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
-    const isAtStart = scrollLeft <= 0;
-    const isAtEnd = scrollLeft + clientWidth >= scrollWidth - 1;
-
-    setShowLeftGradient(!isAtStart);
-    setShowRightGradient(!isAtEnd);
-  }, []);
-
-  useEffect(() => {
-    const scrollContainer = chipScrollContainerRef.current;
-    if (!scrollContainer) return;
-
-    updateChipScrollIndicators();
-
-    const handleScroll = () => updateChipScrollIndicators();
-    const resizeObserver = new ResizeObserver(() => {
-      updateChipScrollIndicators();
-    });
-
-    scrollContainer.addEventListener("scroll", handleScroll);
-    window.addEventListener("resize", handleScroll);
-    resizeObserver.observe(scrollContainer);
-
-    return () => {
-      scrollContainer.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-      resizeObserver.disconnect();
-    };
-  }, [filterChips.length, updateChipScrollIndicators]);
-
-  const handleScrollLeft = () => {
-    chipScrollContainerRef.current?.scrollBy({
-      left: -CHIP_SCROLL_OFFSET,
-      behavior: "smooth",
-    });
-  };
-
-  const handleScrollRight = () => {
-    chipScrollContainerRef.current?.scrollBy({
-      left: CHIP_SCROLL_OFFSET,
-      behavior: "smooth",
-    });
-  };
-
   const handleSearchInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };
@@ -713,63 +660,7 @@ const CommunityPageContent = () => {
           </div>
 
           {/* 선택된 필터 칩 */}
-          {filterChips.length > 0 && (
-            <div className="relative mt-4">
-              <div
-                ref={chipScrollContainerRef}
-                className="scrollbar-hide flex gap-2 overflow-x-auto pr-8"
-              >
-                {filterChips.map((chip) => (
-                  <div
-                    key={chip.id}
-                    className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700"
-                  >
-                    <span>{chip.label}</span>
-                    <button
-                      type="button"
-                      aria-label={`${chip.label} 필터 제거`}
-                      onClick={chip.onRemove}
-                      className="flex items-center justify-center rounded-full p-0.5 text-gray-500 hover:bg-gray-200"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {showLeftGradient && (
-                <div className="pointer-events-none absolute top-0 left-0 z-10 flex h-full items-center">
-                  <div className="relative h-full w-16">
-                    <div className="h-full w-full bg-gradient-to-r from-white via-white to-transparent" />
-                    <button
-                      type="button"
-                      onClick={handleScrollLeft}
-                      className="pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full bg-white p-1 shadow"
-                      aria-label="필터 칩 왼쪽으로 스크롤"
-                    >
-                      <ChevronLeft className="size-4 text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {showRightGradient && (
-                <div className="pointer-events-none absolute top-0 right-0 z-10 flex h-full items-center">
-                  <div className="relative h-full w-16">
-                    <div className="h-full w-full bg-gradient-to-l from-white via-white to-transparent" />
-                    <button
-                      type="button"
-                      onClick={handleScrollRight}
-                      className="pointer-events-auto absolute top-1/2 right-0 -translate-y-1/2 rounded-full bg-white p-1 shadow"
-                      aria-label="필터 칩 오른쪽으로 스크롤"
-                    >
-                      <ChevronRight className="size-4 text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <FilterChipsSection chips={filterChips} />
 
           {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
           {currentUser && (
