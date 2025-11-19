@@ -10,7 +10,9 @@ import {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
+import { getCommunitiesPosts } from "@/api/generated/communities-api";
 import FilterChipsSection from "@/components/community/FilterChipsSection";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
@@ -25,15 +27,15 @@ import GrayCheckbox from "@/components/shared/GrayCheckbox";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
-import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import type { ProgramListResponse } from "@/types/generated/api-schema";
+import type { TGETCommunitiesPostsRes } from "@/types/generated/communities-types";
 import { cn } from "@/utils/shared/cn";
 
-const COMMUNITY_POST_LIST_SIZE = 100;
+const COMMUNITY_POST_LIST_SIZE = 20;
 
 const PROGRAM_CATEGORY_TO_TYPE: Record<
   ProgramCategoryFilter,
@@ -103,6 +105,7 @@ const CommunityPageContent = () => {
   const [hasFilterChanges, setHasFilterChanges] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isSearchingRef = useRef(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Firebase Auth 상태 추적
@@ -166,28 +169,57 @@ const CommunityPageContent = () => {
       : undefined;
 
   const {
-    data: responseData,
-    isLoading,
+    data: paginatedPostsData,
     error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
     refetch,
-  } = useGetCommunitiesPosts({
-    request: {
-      page: 0,
-      size: COMMUNITY_POST_LIST_SIZE, // 일단 큰 값으로 설정 (페이지네이션은 향후 구현)
-      programType: appliedProgramType,
-      programState: appliedProgramState,
+  } = useInfiniteQuery<TGETCommunitiesPostsRes, Error>({
+    queryKey: [
+      "communitiesPosts",
+      appliedProgramType ?? "ALL",
+      appliedProgramState ?? "ALL",
+      // 필터 변경 시 쿼리 무효화를 위해 검색어와 정렬도 포함
+      // (클라이언트 필터링이지만 쿼리 키에 포함하여 필터 변경 시 리셋)
+      appliedSearchQuery.trim() || "NO_SEARCH",
+      selectedSort,
+      selectedCategories.join(",") || "NO_CATEGORY",
+      onlyMyPrograms ? "MY_PROGRAMS" : "ALL_PROGRAMS",
+    ],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const currentPage =
+        typeof pageParam === "number" && pageParam >= 0 ? pageParam : 0;
+      const response = await getCommunitiesPosts({
+        page: currentPage,
+        size: COMMUNITY_POST_LIST_SIZE,
+        programType: appliedProgramType,
+        programState: appliedProgramState,
+      });
+      return response.data;
     },
-    select: (data) => {
-      if (!data?.posts || !Array.isArray(data.posts)) return [];
-      return data.posts;
+    getNextPageParam: (lastPage) => {
+      if (lastPage?.pagination?.hasNext) {
+        return (lastPage.pagination.pageNumber ?? 0) + 1;
+      }
+      return undefined;
     },
   });
 
   // 변환된 포스트 데이터
-  const posts = useMemo<CommunityPostListItem[]>(
-    () => (responseData ?? []) as CommunityPostListItem[],
-    [responseData]
-  );
+  const posts = useMemo<CommunityPostListItem[]>(() => {
+    if (!paginatedPostsData?.pages) {
+      return [];
+    }
+    return paginatedPostsData.pages.flatMap((page) => {
+      if (!page?.posts || !Array.isArray(page.posts)) {
+        return [];
+      }
+      return page.posts as CommunityPostListItem[];
+    });
+  }, [paginatedPostsData]);
 
   // 초기 로딩만 감지 (데이터가 없고 로딩 중일 때만 true)
   // 데이터가 이미 있으면 브라우저 탭 전환 시에도 캐시된 데이터를 표시
@@ -570,6 +602,38 @@ const CommunityPageContent = () => {
     return { top, rest };
   }, [filteredPosts]);
 
+  const handleFetchNextPage = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) {
+      return;
+    }
+    fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          handleFetchNextPage();
+        }
+      },
+      {
+        rootMargin: "120px",
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleFetchNextPage]);
+
   // 에러 상태 처리
   if (error) {
     return (
@@ -812,6 +876,24 @@ const CommunityPageContent = () => {
             skeletonCount={5}
           />
         </div>
+
+        <div ref={loadMoreRef} aria-hidden="true" className="h-6 w-full" />
+
+        {isFetchingNextPage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-center pb-6 text-sm text-gray-500"
+          >
+            게시글을 더 불러오는 중이에요...
+          </div>
+        )}
+
+        {!hasNextPage && filteredPosts.length > 0 && (
+          <div className="pb-6 text-center text-xs text-gray-400">
+            모든 게시글을 확인했어요
+          </div>
+        )}
 
         {/* 플로팅 작성 버튼 */}
         <FloatingWriteButton
