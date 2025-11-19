@@ -43,6 +43,11 @@ const authGuard = require("../middleware/authGuard");
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "서버 내부 오류가 발생했습니다"
  */
 router.get("/categories", missionController.getCategories);
 
@@ -107,6 +112,11 @@ router.get("/categories", missionController.getCategories);
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "서버 내부 오류가 발생했습니다"
  */
 router.get("/", optionalAuth, missionController.getMissions);
 
@@ -145,6 +155,22 @@ router.get("/", optionalAuth, missionController.getMissions);
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissionNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "존재하지 않는 미션입니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:missionId", optionalAuth, missionController.getMissionById);
 
@@ -164,6 +190,9 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  *         schema:
  *           type: string
  *         description: 미션 ID (Notion 페이지 ID)
+ *     requestBody:
+ *       required: false
+ *       description: 요청 본문은 필요 없습니다. Path 파라미터와 Bearer 토큰만 전송하세요.
  *     responses:
  *       201:
  *         description: 미션 신청 성공
@@ -190,24 +219,55 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingMissionId:
+ *                 value:
+ *                   status: 400
+ *                   message: "미션 ID가 필요합니다."
  *       401:
  *         description: 인증 필요
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingBearer:
+ *                 value:
+ *                   status: 401
+ *                   message: "Bearer 토큰이 필요합니다"
+ *       404:
+ *         description: 미션을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissionNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "존재하지 않는 미션입니다."
  *       409:
  *         description: 신청 제한 초과 혹은 중복 신청
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               DuplicateOrLimited:
+ *                 value:
+ *                   status: 409
+ *                   message: "이미 참여한 미션입니다. 다음 리셋 이후에 다시 신청해주세요."
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "서버 내부 오류가 발생했습니다"
  */
 router.post("/:missionId/apply", authGuard, missionController.applyMission);
 
