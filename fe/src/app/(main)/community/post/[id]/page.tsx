@@ -69,25 +69,6 @@ const PostDetailPage = () => {
   const isAuthor =
     (post as Schema.CommunityPost & { isAuthor?: boolean })?.isAuthor ?? false;
 
-  // 커뮤니티 목록으로 이동하는 URL 생성 (필터 상태 유지)
-  const buildCommunityListUrl = useCallback(() => {
-    const params = new URLSearchParams();
-    const search = searchParams.get("search");
-    const sort = searchParams.get("sort");
-    const state = searchParams.get("state");
-    const categories = searchParams.get("categories");
-    const onlyMyPrograms = searchParams.get("onlyMyPrograms");
-
-    if (search) params.set("search", search);
-    if (sort && sort !== "latest") params.set("sort", sort);
-    if (state && state !== "all") params.set("state", state);
-    if (categories) params.set("categories", categories);
-    if (onlyMyPrograms === "true") params.set("onlyMyPrograms", "true");
-
-    const queryString = params.toString();
-    return queryString ? `/community?${queryString}` : "/community";
-  }, [searchParams]);
-
   // 공유하기 기능
   const handleShare = useCallback(async () => {
     if (!post) return;
@@ -181,21 +162,14 @@ const PostDetailPage = () => {
       // 성공 메시지 표시
       alert(POST_EDIT_CONSTANTS.DELETE_SUCCESS);
 
-      // 커뮤니티 목록으로 이동 (필터 상태 유지)
-      router.replace(buildCommunityListUrl());
+      // 커뮤니티 목록으로 이동 (브라우저 히스토리 활용)
+      router.back();
     } catch (error) {
       debug.error("게시글 삭제 실패:", error);
     } finally {
       setIsDeleteModalOpen(false);
     }
-  }, [
-    postId,
-    communityId,
-    deletePostAsync,
-    queryClient,
-    router,
-    buildCommunityListUrl,
-  ]);
+  }, [postId, communityId, deletePostAsync, queryClient, router]);
 
   // 좋아요 mutation
   const { mutateAsync: toggleLikeAsync } = usePostCommunitiesPostsLikeByTwoIds({
@@ -325,7 +299,7 @@ const PostDetailPage = () => {
             </div>
           )}
           <button
-            onClick={() => router.push(buildCommunityListUrl())}
+            onClick={() => router.back()}
             className="px-4 py-2 text-sm text-blue-600 underline hover:text-blue-800"
           >
             커뮤니티로 돌아가기
