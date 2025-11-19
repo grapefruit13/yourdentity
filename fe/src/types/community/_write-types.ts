@@ -6,4 +6,5 @@ export type WriteFormValues = {
   title: string;
   content: string; // HTML 포함
   category: "한끗루틴" | "TMI 프로젝트" | "월간 소모임";
+  isPublic: boolean;
 };
