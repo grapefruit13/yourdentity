@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import KebabMenu from "@/components/shared/kebab-menu";
@@ -29,11 +29,16 @@ interface CommentItemProps {
   onEditSubmit: (commentId: string) => void;
   replyingTo: { commentId: string; author: string; isReply?: boolean } | null;
   onCancelReply: () => void;
-  onCommentSubmit: (e: FormEvent) => void;
+  onCommentSubmit: (
+    e: FormEvent,
+    customContent?: string
+  ) => void | Promise<void>;
   commentInput: string;
   onCommentInputChange: (value: string) => void;
   openMenuId?: string | null;
   onMenuToggle?: (menuId: string | null) => void;
+  replyToReplyInput?: string;
+  onReplyToReplyInputChange?: (value: string) => void;
 }
 
 /**
@@ -65,23 +70,32 @@ const CommentItem = ({
   onCommentInputChange,
   openMenuId = null,
   onMenuToggle,
+  replyToReplyInput,
+  onReplyToReplyInputChange,
 }: CommentItemProps) => {
   const [isLiked, setIsLiked] = useState(false);
-  // 답글별 좋아요 상태 관리 (답글 ID -> { isLiked, likesCount })
   const [replyLikes, setReplyLikes] = useState<
     Record<string, { isLiked: boolean; likesCount: number }>
   >({});
+  const [localReplyToReplyInput, setLocalReplyToReplyInput] = useState("");
   const queryClient = useQueryClient();
 
   const commentId = comment.id || "";
   const isRootComment = !comment.parentId;
-  // replies가 배열인지 확인하고 유효한 답글만 필터링
-  const rawReplies = comment.replies;
-  const replies = Array.isArray(rawReplies)
-    ? rawReplies.filter((reply) => reply && (reply.id || reply.commentId))
-    : [];
-  const repliesCount = comment.repliesCount ?? replies.length; // repliesCount가 없으면 replies 길이 사용
-  const visibleReplies = isExpanded ? replies : replies.slice(0, 1);
+
+  // replies 배열 정규화 및 메모이제이션
+  const replies = useMemo(() => {
+    const rawReplies = comment.replies;
+    return Array.isArray(rawReplies)
+      ? rawReplies.filter((reply) => reply && (reply.id || reply.commentId))
+      : [];
+  }, [comment.replies]);
+
+  const repliesCount = comment.repliesCount ?? replies.length;
+  const visibleReplies = useMemo(
+    () => (isExpanded ? replies : replies.slice(0, 1)),
+    [isExpanded, replies]
+  );
   const hiddenRepliesCount = Math.max(0, repliesCount - 1);
   const shouldShowMoreButton = repliesCount >= 2 && !isExpanded;
 
@@ -90,43 +104,62 @@ const CommentItem = ({
   const isReplying =
     replyingTo?.commentId === commentId && !replyingTo?.isReply;
 
-  // 메뉴 제어 (외부 제어가 있으면 사용, 없으면 내부 제어)
-  const commentMenuId = `comment-${commentId}`;
+  // 답글에 대한 답글 입력창의 실제 입력값
+  const actualReplyToReplyInput = replyToReplyInput ?? localReplyToReplyInput;
+  const handleReplyToReplyInputChange =
+    onReplyToReplyInputChange ?? setLocalReplyToReplyInput;
+
+  // 답글에 대한 답글 입력창이 닫힐 때 로컬 state 초기화
+  useEffect(() => {
+    if (!replyingTo?.isReply) {
+      // 답글에 대한 답글 입력창이 닫혔고, 로컬 state에 값이 있으면 초기화
+      if (localReplyToReplyInput && !onReplyToReplyInputChange) {
+        setLocalReplyToReplyInput("");
+      }
+    }
+  }, [replyingTo?.isReply, localReplyToReplyInput, onReplyToReplyInputChange]);
+
+  // 답글 작성자 프로필 썸네일 추출 (메모이제이션)
+  const replyThumbnails = useMemo(() => {
+    if (replies.length === 0) return [];
+    if (replies.length === 1) return [replies[0]];
+    // 2개 이상이면 처음 2개 선택 (랜덤 제거로 일관성 유지)
+    return replies.slice(0, 2);
+  }, [replies]);
+
+  // 메뉴 제어
+  const commentMenuId = useMemo(() => `comment-${commentId}`, [commentId]);
   const isCommentMenuOpen = openMenuId === commentMenuId;
-  const handleCommentMenuToggle = () => {
+  const handleCommentMenuToggle = useCallback(() => {
     if (onMenuToggle) {
       onMenuToggle(isCommentMenuOpen ? null : commentMenuId);
     }
-  };
+  }, [onMenuToggle, isCommentMenuOpen, commentMenuId]);
 
   // 좋아요 mutation
   const { mutateAsync: likeCommentAsync } = usePostCommentsLikeById({
     onSuccess: (response, variables) => {
       const result = response.data;
-      const commentId = variables.commentId;
+      const targetCommentId = variables.commentId;
 
-      if (result && commentId) {
-        // 답글인지 확인 (replies 배열에 있는지)
+      if (result && targetCommentId) {
         const isReply = replies.some(
-          (reply) => (reply.id || reply.commentId) === commentId
+          (reply) => (reply.id || reply.commentId) === targetCommentId
         );
 
         if (isReply) {
-          // 답글 좋아요 상태 업데이트
           setReplyLikes((prev) => ({
             ...prev,
-            [commentId]: {
+            [targetCommentId]: {
               isLiked: result.isLiked || false,
               likesCount: result.likesCount || 0,
             },
           }));
-        } else if (commentId === comment.id) {
-          // 원댓글 좋아요 상태 업데이트
+        } else if (targetCommentId === comment.id) {
           setIsLiked(result.isLiked || false);
         }
       }
 
-      // 댓글 목록 refetch (모든 관련 쿼리 무효화)
       queryClient.invalidateQueries({
         queryKey: ["comments", "getCommentsCommunitiesPostsByTwoIds"],
       });
@@ -134,57 +167,82 @@ const CommentItem = ({
   });
 
   // 좋아요 핸들러
-  const handleLike = async () => {
+  const handleLike = useCallback(async () => {
     if (!commentId) return;
     try {
       await likeCommentAsync({ commentId });
-      setIsLiked(!isLiked);
+      // onSuccess에서 상태 업데이트하므로 여기서는 제거
     } catch (error) {
       console.error("좋아요 실패:", error);
     }
-  };
+  }, [commentId, likeCommentAsync]);
 
   // 메뉴 핸들러
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     if (comment.content) {
       onStartEdit(commentId, comment.content);
     }
-  };
+  }, [comment.content, commentId, onStartEdit]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     onDelete(commentId);
-  };
+  }, [commentId, onDelete]);
 
-  const handleReport = () => {
+  const handleReport = useCallback(() => {
     if (onReport) {
       onReport(commentId);
     }
-  };
+  }, [commentId, onReport]);
 
-  // 답글 작성 핸들러
-  const handleReplySubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (isReplying && commentInput.trim()) {
-      onCommentSubmit(e);
+  // 답글에 대한 답글 제출 핸들러
+  const handleReplyToReplySubmit = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      if (!actualReplyToReplyInput.trim()) return;
+
+      try {
+        await onCommentSubmit(e, actualReplyToReplyInput);
+        if (onReplyToReplyInputChange) {
+          handleReplyToReplyInputChange("");
+        } else {
+          setLocalReplyToReplyInput("");
+        }
+      } catch (error) {
+        // 에러는 상위에서 처리됨
+      }
+    },
+    [
+      actualReplyToReplyInput,
+      onCommentSubmit,
+      onReplyToReplyInputChange,
+      handleReplyToReplyInputChange,
+    ]
+  );
+
+  // 답글에 대한 답글 취소 핸들러
+  const handleCancelReplyToReply = useCallback(() => {
+    onCancelReply();
+    if (!onReplyToReplyInputChange) {
+      setLocalReplyToReplyInput("");
     }
-  };
+  }, [onCancelReply, onReplyToReplyInputChange]);
 
-  // 답글 작성자 프로필 썸네일 추출 (랜덤 2개)
-  const getReplyThumbnails = () => {
-    if (replies.length === 0) return [];
-    if (replies.length === 1) return [replies[0]];
-    // 2개 이상이면 랜덤으로 2개 선택
-    const shuffled = [...replies].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 2);
-  };
-
-  const replyThumbnails = getReplyThumbnails();
+  // 답글 좋아요 상태 계산 (메모이제이션)
+  const getReplyLikeState = useCallback(
+    (replyId: string) => {
+      const replyLikeState = replyLikes[replyId];
+      return {
+        isLiked: replyLikeState?.isLiked ?? false,
+        likesCount: replyLikeState?.likesCount ?? 0,
+      };
+    },
+    [replyLikes]
+  );
 
   return (
     <div className="space-y-3">
       {/* 메인 댓글 */}
       <div className="flex gap-3">
-        {/* 프로필 이미지 */}
         <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
 
         <div className="flex-1">
@@ -208,7 +266,6 @@ const CommentItem = ({
                 </Typography>
               )}
             </div>
-            {/* 컨텍스트 메뉴 */}
             {!isEditing && (
               <KebabMenu
                 onEdit={isOwnComment ? handleEdit : undefined}
@@ -335,9 +392,6 @@ const CommentItem = ({
               </div>
             </>
           )}
-
-          {/* 답글 작성 입력칸 - 원댓글에 대한 답글은 하단 입력창에만 표시되므로 CommentItem 내부에서는 표시하지 않음 */}
-          {/* 원댓글에 대한 답글은 하단 입력창에서 처리되므로 여기서는 답글에 대한 답글만 처리 */}
         </div>
       </div>
 
@@ -349,14 +403,11 @@ const CommentItem = ({
               const replyId = reply.id || reply.commentId || "";
               const replyAuthor = reply.author || "익명";
               const isEditingReply = editingCommentId === replyId;
-              // 답글에 대한 답글 입력창 표시 여부
-              // 원댓글에 대한 답글 입력창(isReplying)이 활성화되어 있을 때는 답글 목록 안에 입력창이 나타나지 않도록
               const isReplyingToThisReply =
                 replyingTo?.commentId === replyId &&
                 replyingTo?.isReply === true &&
-                !isReplying; // 원댓글에 대한 답글 입력창이 활성화되어 있지 않을 때만
+                !isReplying;
 
-              // 답글 메뉴 제어
               const replyMenuId = `reply-${replyId}`;
               const isReplyMenuOpen = openMenuId === replyMenuId;
               const handleReplyMenuToggle = () => {
@@ -364,6 +415,11 @@ const CommentItem = ({
                   onMenuToggle(isReplyMenuOpen ? null : replyMenuId);
                 }
               };
+
+              const replyLikeState = getReplyLikeState(replyId);
+              const replyIsLiked = replyLikeState.isLiked;
+              const replyLikesCount =
+                replyLikeState.likesCount || reply.likesCount || 0;
 
               return (
                 <div key={replyId} className="flex gap-3">
@@ -391,7 +447,6 @@ const CommentItem = ({
                           </Typography>
                         )}
                       </div>
-                      {/* 답글 컨텍스트 메뉴 */}
                       {!isReplyingToThisReply && !isEditingReply && (
                         <KebabMenu
                           onEdit={
@@ -501,7 +556,6 @@ const CommentItem = ({
                           />
                         )}
                         <div className="flex items-center gap-4">
-                          {/* 답글에 대한 답글 쓰기 */}
                           {onStartReplyToReply && (
                             <button
                               onClick={() => {
@@ -524,57 +578,39 @@ const CommentItem = ({
                             className="flex items-center gap-1 text-sm transition-opacity hover:opacity-80"
                             type="button"
                           >
-                            {(() => {
-                              const replyLikeState = replyLikes[replyId];
-                              const replyIsLiked =
-                                replyLikeState?.isLiked ?? false;
-                              const replyLikesCount =
-                                replyLikeState?.likesCount ??
-                                reply.likesCount ??
-                                0;
-
-                              return (
-                                <>
-                                  <svg
-                                    className={cn(
-                                      "h-4 w-4 transition-colors",
-                                      replyIsLiked
-                                        ? "fill-red-500 text-red-500"
-                                        : "text-gray-600"
-                                    )}
-                                    fill={
-                                      replyIsLiked ? "currentColor" : "none"
-                                    }
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                    />
-                                  </svg>
-                                  <Typography
-                                    font="noto"
-                                    variant="body2R"
-                                    className={cn(
-                                      "transition-colors",
-                                      replyIsLiked
-                                        ? "text-red-500"
-                                        : "text-gray-600"
-                                    )}
-                                  >
-                                    {replyLikesCount}
-                                  </Typography>
-                                </>
-                              );
-                            })()}
+                            <svg
+                              className={cn(
+                                "h-4 w-4 transition-colors",
+                                replyIsLiked
+                                  ? "fill-red-500 text-red-500"
+                                  : "text-gray-600"
+                              )}
+                              fill={replyIsLiked ? "currentColor" : "none"}
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              />
+                            </svg>
+                            <Typography
+                              font="noto"
+                              variant="body2R"
+                              className={cn(
+                                "transition-colors",
+                                replyIsLiked ? "text-red-500" : "text-gray-600"
+                              )}
+                            >
+                              {replyLikesCount}
+                            </Typography>
                           </button>
                         </div>
                       </>
                     )}
-                    {/* 답글에 대한 답글 입력창 - isReply가 true이고 해당 답글 ID와 일치할 때만 표시 */}
+                    {/* 답글에 대한 답글 입력창 */}
                     {isReplyingToThisReply && (
                       <div className="mt-3 space-y-2">
                         <div className="mb-2 flex items-center justify-between">
@@ -593,7 +629,7 @@ const CommentItem = ({
                           </div>
                           <button
                             type="button"
-                            onClick={onCancelReply}
+                            onClick={handleCancelReplyToReply}
                             className="text-sm text-gray-600 hover:text-gray-800"
                           >
                             <Typography font="noto" variant="body2R">
@@ -602,25 +638,21 @@ const CommentItem = ({
                           </button>
                         </div>
                         <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            if (commentInput.trim()) {
-                              onCommentSubmit(e);
-                            }
-                          }}
+                          onSubmit={handleReplyToReplySubmit}
                           className="relative"
                         >
                           <textarea
-                            value={commentInput}
+                            value={actualReplyToReplyInput}
                             onChange={(e) =>
-                              onCommentInputChange(e.target.value)
+                              handleReplyToReplyInputChange(e.target.value)
                             }
                             placeholder="서로 배려하는 댓글을 남겨요:)"
                             className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
                             rows={
-                              commentInput.trim()
+                              actualReplyToReplyInput.trim()
                                 ? Math.min(
-                                    commentInput.split("\n").length + 1,
+                                    actualReplyToReplyInput.split("\n").length +
+                                      1,
                                     5
                                   )
                                 : 1
@@ -629,10 +661,10 @@ const CommentItem = ({
                           <div className="absolute right-2 bottom-2 flex items-center gap-2">
                             <button
                               type="submit"
-                              disabled={!commentInput.trim()}
+                              disabled={!actualReplyToReplyInput.trim()}
                               className={cn(
                                 "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                                commentInput.trim()
+                                actualReplyToReplyInput.trim()
                                   ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
@@ -641,7 +673,7 @@ const CommentItem = ({
                                 font="noto"
                                 variant="body2M"
                                 className={
-                                  commentInput.trim()
+                                  actualReplyToReplyInput.trim()
                                     ? "text-white"
                                     : "text-gray-400"
                                 }
@@ -658,7 +690,6 @@ const CommentItem = ({
               );
             })
           ) : (
-            // replies 배열이 비어있지만 repliesCount가 있는 경우 (로딩 중이거나 데이터 구조 문제)
             <div className="text-sm text-gray-500">
               <Typography font="noto" variant="body2R">
                 답글을 불러오는 중...
