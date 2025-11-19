@@ -38,7 +38,7 @@ class CommunityController {
    */
   async getAllCommunityPosts(req, res, next) {
     try {
-      const {programType, programTypes, programState} = req.query;
+      const {programType, programTypes, programState, sort} = req.query;
       const page = parseInt(req.query.page, 10) || 0;
       const size = parseInt(req.query.size, 10) || 10;
 
@@ -90,12 +90,15 @@ class CommunityController {
 
       const normalizedProgramState = normalizeProgramState(programState);
 
+      const sortOption = sort === "popular" ? "popular" : "latest";
+      
       const result = await communityService.getAllCommunityPosts(
         {
           programTypes: requestedProgramTypes,
           programState: normalizedProgramState,
           page,
           size,
+          sort: sortOption,
         },
         req.user?.uid || null,
       );

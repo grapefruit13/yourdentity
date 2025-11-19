@@ -451,6 +451,7 @@ class CommunityService {
         programState: programStateOption,
         page = 0,
         size = 10,
+        sort = "latest",
         orderBy = "createdAt",
         orderDirection = "desc",
       } = options;
@@ -631,88 +632,213 @@ class CommunityService {
       };
 
       const postsService = new FirestoreService();
-      const batchSize = Math.max(size, 50);
-      let rawPage = 0;
-      let hasMore = true;
+      
+      let paginatedPosts = [];
+      let totalElements = 0;
+      let totalPages = 0;
+      let hasNextPage = false;
 
-      const startIndex = page * size;
-      const targetEndIndex = (page + 1) * size;
-      let accessibleCount = 0;
-      let hasNextAccessible = false;
-      const pagePosts = [];
+      // 인기순 정렬인 경우 점수 기반 정렬 로직
+      if (sort === "popular") {
+        // 인기순은 더 많은 데이터를 가져와서 점수 계산 후 정렬해야 함
+        const batchSize = 500; // 인기순일 때는 더 많이 가져옴
+        const maxPosts = 1000; // 최신순 게시글 1000개까지 수집
+        let rawPage = 0;
+        let hasMore = true;
+        const allAccessiblePosts = [];
 
-      while (hasMore && !hasNextAccessible) {
-        let result;
-        try {
-          result = await postsService.getCollectionGroup("posts", {
-            page: rawPage,
-            size: batchSize,
-            orderBy,
-            orderDirection,
-            where: whereConditions,
-          });
-        } catch (firestoreError) {
-          if (firestoreError.code === 9 || firestoreError.code === "FAILED_PRECONDITION") {
-            console.error("[COMMUNITY] posts collectionGroup 인덱스 부족, fallback 쿼리 사용", {
-              whereConditions,
-              orderBy,
-              orderDirection,
-              errorMessage: firestoreError.message,
+        // 최신순 게시글부터 수집 (최대 1000개)
+        while (hasMore && allAccessiblePosts.length < maxPosts) {
+          let result;
+          try {
+            result = await postsService.getCollectionGroup("posts", {
+              page: rawPage,
+              size: batchSize,
+              orderBy: "createdAt",
+              orderDirection: "desc",
+              where: whereConditions,
             });
-            result = await postsService.getCollectionGroupWithoutCount("posts", {
+          } catch (firestoreError) {
+            if (firestoreError.code === 9 || firestoreError.code === "FAILED_PRECONDITION") {
+              console.error("[COMMUNITY] posts collectionGroup 인덱스 부족, fallback 쿼리 사용", {
+                whereConditions,
+                orderBy: "createdAt",
+                orderDirection: "desc",
+                errorMessage: firestoreError.message,
+              });
+              result = await postsService.getCollectionGroupWithoutCount("posts", {
+                size: batchSize,
+                orderBy: "createdAt",
+                orderDirection: "desc",
+                where: whereConditions,
+              });
+            } else {
+              throw firestoreError;
+            }
+          }
+
+          const rawPosts = result.content || [];
+          if (rawPosts.length === 0) {
+            break;
+          }
+
+          const communityIdsInBatch = rawPosts
+            .map((post) => post.communityId)
+            .filter(Boolean);
+          await loadCommunities(communityIdsInBatch);
+
+          for (const post of rawPosts) {
+            const community =
+              post.communityId && communityCache.has(post.communityId)
+                ? communityCache.get(post.communityId)
+                : null;
+            
+            if (canViewPost(post) && matchesFilter(post, community)) {
+              allAccessiblePosts.push(post);
+            }
+          }
+
+          hasMore = result.pageable?.hasNext || false;
+          rawPage += 1;
+        }
+
+        // 최신성 점수 계산을 위한 시간 범위 계산
+        if (allAccessiblePosts.length > 0) {
+          const now = Date.now();
+          const postTimes = allAccessiblePosts
+            .map((post) => {
+              const createdAt = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
+              return createdAt ? createdAt.getTime() : 0;
+            })
+            .filter((time) => time > 0);
+
+          const latestTime = postTimes.length > 0 ? Math.max(...postTimes) : now;
+          const oldestTime = postTimes.length > 0 ? Math.min(...postTimes) : now;
+          const timeRange = latestTime - oldestTime || 1; // 0으로 나누기 방지
+
+          // 각 게시글에 점수 계산
+          const postsWithScores = allAccessiblePosts.map((post) => {
+            const likesCount = post.likesCount || 0;
+            const commentsCount = post.commentsCount || 0;
+            const viewCount = post.viewCount || 0;
+            
+            // 최신성 점수 계산 (0~1 사이 값, 최신일수록 1에 가까움)
+            const createdAt = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
+            const postTime = createdAt ? createdAt.getTime() : oldestTime;
+            const recencyScore = timeRange > 0 ? 1 - ((latestTime - postTime) / timeRange) : 0.5;
+
+            // 인기 점수 계산: (좋아요×0.45) + (댓글×0.2) + (조회수×0.1) + (최신성×0.15)
+            const popularityScore = 
+              (likesCount * 0.45) + 
+              (commentsCount * 0.2) + 
+              (viewCount * 0.1) + 
+              (recencyScore * 0.15);
+
+            return {
+              ...post,
+              _popularityScore: popularityScore,
+            };
+          });
+
+          // 점수 높은 순으로 정렬
+          postsWithScores.sort((a, b) => b._popularityScore - a._popularityScore);
+
+          // 페이지네이션 적용
+          totalElements = postsWithScores.length;
+          totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
+          const startIndex = page * size;
+          const endIndex = startIndex + size;
+          paginatedPosts = postsWithScores.slice(startIndex, endIndex);
+          hasNextPage = endIndex < totalElements;
+        } else {
+          totalPages = 0;
+          hasNextPage = false;
+        }
+      } else {
+        // 최신순 정렬 (기존 로직)
+        const batchSize = Math.max(size, 50);
+        let rawPage = 0;
+        let hasMore = true;
+
+        const startIndex = page * size;
+        const targetEndIndex = (page + 1) * size;
+        let accessibleCount = 0;
+        let hasNextAccessible = false;
+        const pagePosts = [];
+
+        while (hasMore && !hasNextAccessible) {
+          let result;
+          try {
+            result = await postsService.getCollectionGroup("posts", {
+              page: rawPage,
               size: batchSize,
               orderBy,
               orderDirection,
               where: whereConditions,
             });
-          } else {
-            throw firestoreError;
+          } catch (firestoreError) {
+            if (firestoreError.code === 9 || firestoreError.code === "FAILED_PRECONDITION") {
+              console.error("[COMMUNITY] posts collectionGroup 인덱스 부족, fallback 쿼리 사용", {
+                whereConditions,
+                orderBy,
+                orderDirection,
+                errorMessage: firestoreError.message,
+              });
+              result = await postsService.getCollectionGroupWithoutCount("posts", {
+                size: batchSize,
+                orderBy,
+                orderDirection,
+                where: whereConditions,
+              });
+            } else {
+              throw firestoreError;
+            }
+          }
+
+          const rawPosts = result.content || [];
+          if (rawPosts.length === 0) {
+            break;
+          }
+
+          const communityIdsInBatch = rawPosts
+            .map((post) => post.communityId)
+            .filter(Boolean);
+          await loadCommunities(communityIdsInBatch);
+
+          for (const post of rawPosts) {
+            const community =
+              post.communityId && communityCache.has(post.communityId)
+                ? communityCache.get(post.communityId)
+                : null;
+            if (canViewPost(post) && matchesFilter(post, community)) {
+              accessibleCount += 1;
+
+              if (accessibleCount > startIndex && pagePosts.length < size) {
+                pagePosts.push(post);
+              }
+
+              if (accessibleCount >= targetEndIndex + 1) {
+                hasNextAccessible = true;
+                break;
+              }
+            }
+          }
+
+          hasMore = result.pageable?.hasNext || false;
+          rawPage += 1;
+
+          if (!hasMore || hasNextAccessible) {
+            break;
           }
         }
 
-        const rawPosts = result.content || [];
-        if (rawPosts.length === 0) {
-          break;
-        }
-
-        const communityIdsInBatch = rawPosts
-          .map((post) => post.communityId)
-          .filter(Boolean);
-        await loadCommunities(communityIdsInBatch);
-
-        for (const post of rawPosts) {
-          const community =
-            post.communityId && communityCache.has(post.communityId)
-              ? communityCache.get(post.communityId)
-              : null;
-          if (canViewPost(post) && matchesFilter(post, community)) {
-            accessibleCount += 1;
-
-            if (accessibleCount > startIndex && pagePosts.length < size) {
-              pagePosts.push(post);
-            }
-
-            if (accessibleCount >= targetEndIndex + 1) {
-              hasNextAccessible = true;
-              break;
-            }
-          }
-        }
-
-        hasMore = result.pageable?.hasNext || false;
-        rawPage += 1;
-
-        if (!hasMore || hasNextAccessible) {
-          break;
-        }
+        totalElements = hasNextAccessible
+          ? startIndex + pagePosts.length + 1
+          : accessibleCount;
+        totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
+        hasNextPage = hasNextAccessible || page < totalPages - 1;
+        paginatedPosts = pagePosts;
       }
-
-      const totalElements = hasNextAccessible
-        ? startIndex + pagePosts.length + 1
-        : accessibleCount;
-      const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
-      const hasNextPage = hasNextAccessible || page < totalPages - 1;
-      const paginatedPosts = pagePosts;
 
       const communityIds = [...new Set(paginatedPosts.map(post => post.communityId).filter(Boolean))];
       const communityMap = {};

@@ -293,6 +293,12 @@ router.get("/", communityController.getCommunities);
  *           type: string
  *           enum: [ongoing, finished]
  *         description: "프로그램 상태 필터 (ongoing=진행 중, finished=종료됨)"
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [popular]
+ *         description: "정렬 기준 (popular=인기순, 미지정 시 최신순)"
  *     responses:
  *       200:
  *         description: 전체 커뮤니티 포스트 조회 성공
