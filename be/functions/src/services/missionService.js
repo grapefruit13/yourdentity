@@ -2,6 +2,7 @@ const { db, Timestamp } = require("../config/database");
 const notionMissionService = require("./notionMissionService");
 
 const USER_MISSIONS_COLLECTION = "userMissions";
+const USER_MISSION_STATS_COLLECTION = "userMissionStats";
 const MAX_ACTIVE_MISSIONS = 3;
 
 const MISSION_STATUS = {
@@ -47,23 +48,37 @@ class MissionService {
     const missionDocId = `${userId}_${missionId}`;
     const missionDocRef = db.collection(USER_MISSIONS_COLLECTION).doc(missionDocId);
     const userMissionsRef = db.collection(USER_MISSIONS_COLLECTION);
+    const userMissionStatsRef = db.collection(USER_MISSION_STATS_COLLECTION).doc(userId);
     const now = Timestamp.now();
 
     await db.runTransaction(async (transaction) => {
+      const statsDoc = await transaction.get(userMissionStatsRef);
+      const statsData = statsDoc.exists
+        ? statsDoc.data()
+        : {
+            userId,
+            activeCount: 0,
+            dailyAppliedCount: 0,
+            dailyCompletedCount: 0,
+            lastAppliedAt: null,
+            updatedAt: now,
+          };
+
+      const dailyAppliedCount = statsData.dailyAppliedCount || 0;
+
       const activeQuery = userMissionsRef
         .where("userId", "==", userId)
         .where("status", "==", MISSION_STATUS.IN_PROGRESS);
-
       const activeSnapshot = await transaction.get(activeQuery);
-      if (activeSnapshot.size >= MAX_ACTIVE_MISSIONS) {
+      const existingDoc = await transaction.get(missionDocRef);
+
+      if (statsData.activeCount >= MAX_ACTIVE_MISSIONS || activeSnapshot.size >= MAX_ACTIVE_MISSIONS) {
         throw buildError(
           "동시에 진행할 수 있는 미션은 최대 3개입니다.",
           "MAX_ACTIVE_MISSIONS_EXCEEDED",
           409,
         );
       }
-
-      const existingDoc = await transaction.get(missionDocRef);
       const existingData = existingDoc.exists ? existingDoc.data() : null;
       if (existingDoc.exists) {
         const currentStatus = existingData?.status;
@@ -88,6 +103,17 @@ class MissionService {
       };
 
       transaction.set(missionDocRef, missionPayload);
+      transaction.set(
+        userMissionStatsRef,
+        {
+          userId,
+          activeCount: (statsData.activeCount || 0) + 1,
+          dailyAppliedCount: dailyAppliedCount + 1,
+          updatedAt: now,
+          lastAppliedAt: now,
+        },
+        { merge: true },
+      );
     });
 
     return {
