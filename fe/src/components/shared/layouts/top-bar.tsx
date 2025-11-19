@@ -69,7 +69,7 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
       }
     >
       {/* Left Slot (홈 페이지 로고 등): leftSlot 지정사항이 없을 때 기본 Back Button 표시 */}
-      <div className="flex flex-shrink-0 items-center">
+      <div className="absolute top-1/2 left-5 flex -translate-y-1/2 items-center">
         {leftSlot || storeLeftSlot || !showBackButton ? (
           <div>{leftSlot || storeLeftSlot}</div>
         ) : (
@@ -85,7 +85,7 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
       </div>
 
       {/* Center Slot - 가장 큰 비율 선점 */}
-      <div className="flex min-w-0 flex-1 items-center justify-center px-2">
+      <div className="flex flex-1 justify-center px-2">
         <Typography
           font="noto"
           variant="body1M"
@@ -96,7 +96,9 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
       </div>
 
       {/* Right Slot */}
-      <div className="flex flex-shrink-0 items-center">{rightSlotEl}</div>
+      <div className="absolute top-1/2 right-5 flex -translate-y-1/2 items-center">
+        {rightSlotEl}
+      </div>
     </div>
   );
 };
