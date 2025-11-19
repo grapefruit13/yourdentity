@@ -479,6 +479,16 @@ class ProgramService {
     const leaderRealNameRollup = getRollupValues(props[NOTION_FIELDS.LEADER_USER_REAL_NAME]);
     const leaderRealName = leaderRealNameRollup?.value?.[0]?.name || null;
     
+    // 커버 이미지 추출
+    let coverImage = null;
+    if (page.cover) {
+      if (page.cover.type === 'external' && page.cover.external?.url) {
+        coverImage = page.cover.external.url;
+      } else if (page.cover.type === 'file' && page.cover.file?.url) {
+        coverImage = page.cover.file.url;
+      }
+    }
+    
     const baseData = {
       id: page.id,
       title: getTextContent(props[NOTION_FIELDS.PROGRAM_TITLE]),
@@ -494,6 +504,7 @@ class ProgramService {
       displayStartDate: getDateValue(props[NOTION_FIELDS.DISPLAY_START_DATE]),
       targetAudience: getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
       thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      coverImage: coverImage,
       linkUrl: getUrlValue(props[NOTION_FIELDS.LINK_URL]),
       isReviewRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
       isBannerRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_BANNER_REGISTERED]),
