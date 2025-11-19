@@ -725,7 +725,18 @@ class ProgramService {
       }
 
       validateNicknameOrThrow(nickname);
-      // 3. 닉네임 중복 체크
+      
+      // 3. 중복 신청 체크 (먼저 확인하여 Notion 중복 저장 방지)
+      const membersService = new FirestoreService(`communities/${normalizedProgramId}/members`);
+      const existingMember = await membersService.getById(applicantId);
+      if (existingMember) {
+        const duplicateError = new Error('같은 프로그램은 또 신청할 수 없습니다.');
+        duplicateError.code = ERROR_CODES.DUPLICATE_APPLICATION;
+        duplicateError.statusCode = 409;
+        throw duplicateError;
+      }
+      
+      // 4. 닉네임 중복 체크
       const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
       if (!isNicknameAvailable) {
         const error = new Error("이미 사용 중인 닉네임입니다");
@@ -734,18 +745,13 @@ class ProgramService {
         throw error;
       }
 
-
-      // 4. Notion 프로그램신청자DB에 저장
-      const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
-
-      // 5. 멤버 추가 (Firestore)
+      // 5. 멤버 추가 (Firestore) - Notion 저장 전에 먼저 처리
       let memberResult;
       try {
         memberResult = await this.communityService.addMemberToCommunity(
           normalizedProgramId, 
           applicantId, 
-          nickname,
-          { applicantsPageId }
+          nickname
         );
       } catch (memberError) {
         if (memberError.code === 'CONFLICT') {
@@ -761,6 +767,19 @@ class ProgramService {
           throw error;
         }
         throw memberError;
+      }
+
+      // 6. Notion 프로그램신청자DB에 저장 (Firestore 성공 후)
+      const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
+      
+      // 7. Notion 페이지 ID를 Firestore 멤버에 업데이트
+      try {
+        await membersService.update(applicantId, {
+          applicantsPageId: applicantsPageId
+        });
+      } catch (updateError) {
+        console.warn('[ProgramService] Notion 페이지 ID 업데이트 실패:', updateError.message);
+        // 업데이트 실패해도 신청은 완료된 것으로 처리
       }
 
       return {
