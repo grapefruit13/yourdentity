@@ -773,7 +773,10 @@ const CommunityPageContent = () => {
 
           {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
           {currentUser && (
-            <div className="flex items-center gap-2 py-2">
+            <div
+              className="flex w-fit cursor-pointer items-center gap-2 py-2"
+              onClick={() => setOnlyMyPrograms(!onlyMyPrograms)}
+            >
               <GrayCheckbox
                 id="only-my-programs"
                 checked={onlyMyPrograms}
