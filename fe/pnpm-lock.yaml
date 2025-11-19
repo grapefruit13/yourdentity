@@ -83,9 +83,6 @@ importers:
       workbox-webpack-plugin:
         specifier: ^7.3.0
         version: 7.3.0(webpack@5.102.1)
-      yourdentity-front:
-        specifier: 'link:'
-        version: 'link:'
       zod:
         specifier: ^3.23.8
         version: 3.25.76
