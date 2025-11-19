@@ -13,4 +13,5 @@ export const TOPBAR_TITLE_MAP: Array<{ prefix: string; label: string }> = [
   { prefix: LINK_URL.SETTINGS, label: "설정" },
   { prefix: LINK_URL.PERSONAL_INFO, label: "개인 정보 관리" },
   { prefix: LINK_URL.MY_PAGE_EDIT, label: "프로필 설정" },
+  { prefix: LINK_URL.NOTIFICATIONS, label: "알림" },
 ];

@@ -51,7 +51,7 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
   const showAlarmButton = isHomePage;
 
   const alarmButtonEl = useMemo(() => {
-    return <AlarmButton variant="topbar" />;
+    return <AlarmButton />;
   }, []);
 
   const rightSlotEl = useMemo(() => {

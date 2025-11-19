@@ -660,7 +660,7 @@ const CommunityPageContent = () => {
                 미션
               </Typography> */}
             </div>
-            <AlarmButton variant="inline" />
+            <AlarmButton />
           </div>
 
           {/* 검색 입력 */}

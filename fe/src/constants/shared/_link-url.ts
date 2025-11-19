@@ -24,4 +24,5 @@ export const LINK_URL = {
   SETTINGS: "/settings",
   PERSONAL_INFO: "/settings/personal-info",
   ANNOUNCEMENTS: "/announcements",
+  NOTIFICATIONS: "/notifications",
 } as const;

@@ -1,28 +1,17 @@
 "use client";
 
-// import { LINK_URL } from "@/constants/shared/_link-url";
-// import { useRouter } from "next/navigation";
-
-type AlarmButtonProps = {
-  className?: string;
-  /**
-   * @description 알람 아이콘의 위치에 따라 스타일을 조정합니다.
-   * - "topbar": 탑바에 사용될 때 (absolute right-4)
-   * - "inline": 인라인으로 사용될 때 (기본값)
-   */
-  variant?: "topbar" | "inline";
-};
+import { useRouter } from "next/navigation";
+import { LINK_URL } from "@/constants/shared/_link-url";
 
 /**
  * @description 알람 아이콘 버튼 컴포넌트
  * 추후 알람 히스토리 페이지로 이동하도록 구현되어 있습니다.
  */
-const AlarmButton = ({ className, variant = "inline" }: AlarmButtonProps) => {
-  //   const router = useRouter();
+const AlarmButton = () => {
+  const router = useRouter();
 
   const handleNotificationClick = () => {
-    // TODO: 알림 페이지로 이동 또는 알림 모달 표시
-    // router.push(LINK_URL.NOTIFICATIONS);
+    router.push(LINK_URL.NOTIFICATIONS);
   };
 
   return (
