@@ -20,6 +20,7 @@ import type * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
+import { shareContent } from "@/utils/shared/share";
 
 /**
  * @description 게시글 상세 페이지
@@ -85,34 +86,11 @@ const PostDetailPage = () => {
       ? `${shareTitle}\n${contentText}...`
       : shareTitle;
 
-    // Web Share API 지원 확인 (모바일/일부 데스크톱 브라우저)
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch (error) {
-        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
-        if ((error as Error).name !== "AbortError") {
-          console.error("공유 실패:", error);
-        } else {
-          // 사용자가 취소한 경우 그냥 종료
-          return;
-        }
-      }
-    }
-
-    // Web Share API를 지원하지 않거나 실패한 경우 클립보드에 복사
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      // TODO: 토스트 메시지 표시 (선택사항)
-      alert("링크가 클립보드에 복사되었습니다.");
-    } catch (error) {
-      alert("링크 복사에 실패했습니다.");
-    }
+    await shareContent({
+      title: shareTitle,
+      text: shareText,
+      url: shareUrl,
+    });
   }, [post, postId, communityId]);
 
   // 탑바 커스텀

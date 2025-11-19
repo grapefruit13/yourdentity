@@ -13,6 +13,7 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetAnnouncementsById } from "@/hooks/generated/announcements-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { getTimeAgo } from "@/utils/shared/date";
+import { shareContent } from "@/utils/shared/share";
 
 /**
  * @description 공지사항 상세 페이지
@@ -49,33 +50,11 @@ const AnnouncementDetailPage = () => {
     const shareTitle = announcementData.title || "공지사항";
     const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
-    // Web Share API 지원 확인 (모바일/일부 데스크톱 브라우저)
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareTitle,
-          url: shareUrl,
-        });
-        return;
-      } catch (error) {
-        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
-        if ((error as Error).name !== "AbortError") {
-          console.error("공유 실패:", error);
-        } else {
-          // 사용자가 취소한 경우 그냥 종료
-          return;
-        }
-      }
-    }
-
-    // Web Share API를 지원하지 않거나 실패한 경우 클립보드에 복사
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      alert("링크가 클립보드에 복사되었습니다.");
-    } catch {
-      alert("링크 복사에 실패했습니다.");
-    }
+    await shareContent({
+      title: shareTitle,
+      text: shareTitle,
+      url: shareUrl,
+    });
   }, [announcementData]);
 
   // 공지사항 데이터 로드 시 TopBar title과 rightSlot 설정

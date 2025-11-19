@@ -20,7 +20,7 @@ import { useGetMissionsById } from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { MissionDetailTabType } from "@/types/mission/tab-types";
-import { copyUrlToClipboard } from "@/utils/shared/clipboard";
+import { shareContent } from "@/utils/shared/share";
 
 /**
  * @description 미션 상세 페이지
@@ -66,30 +66,15 @@ const Page = () => {
 
     // 공유하기 기능
     const handleShare = async () => {
-      const shareTitle = missionTitle;
       const shareUrl =
         typeof window !== "undefined" ? window.location.href : "";
-      const shareText = missionData.notes || shareTitle;
+      const shareText = missionData.notes || missionTitle;
 
-      // Web Share API 지원 확인
-      if (typeof navigator !== "undefined" && navigator.share) {
-        try {
-          await navigator.share({
-            title: shareTitle,
-            text: shareText,
-            url: shareUrl,
-          });
-          return;
-        } catch (shareError) {
-          if ((shareError as Error).name !== "AbortError") {
-            // 공유 실패 시 클립보드로 대체
-            await copyUrlToClipboard(shareUrl);
-          }
-        }
-      } else {
-        // 클립보드에 복사
-        await copyUrlToClipboard(shareUrl);
-      }
+      await shareContent({
+        title: missionTitle,
+        text: shareText,
+        url: shareUrl,
+      });
     };
 
     // 공유하기 버튼
