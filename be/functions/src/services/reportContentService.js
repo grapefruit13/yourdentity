@@ -287,8 +287,7 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
         reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
         reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
         communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
-        //status: props['상태']?.select?.name || null,
-        status : props['상태']?.checkbox || false,
+        status : props['처리 여부']?.checkbox || false,
         reportedAt: props['신고일시']?.date?.start || null,
         syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
         syncNotionFirebase: props['동기화 시간(Firebase)']?.date?.start || null
@@ -350,6 +349,30 @@ async syncReportToNotion(reportData) {
     const reporterName = await getReporterName(reporterId);
 
 
+    // URL 생성 로직
+    let contentUrl = null;
+    if (targetType === 'post') {
+      // 게시글인 경우
+      if (communityId) {
+        contentUrl = `https://yourdentity.vercel.app/community/post/${targetId}?communityId=${communityId}`;
+      }
+    } else if (targetType === 'comment') {
+      // 댓글인 경우 - comments 컬렉션에서 postId 가져오기
+      try {
+        const commentDoc = await db.collection("comments").doc(targetId).get();
+        if (commentDoc.exists) {
+          const commentData = commentDoc.data();
+          const postId = commentData.postId;
+          if (postId && communityId) {
+            contentUrl = `https://yourdentity.vercel.app/community/post/${postId}/comments?communityId=${communityId}`;
+          }
+        }
+      } catch (commentError) {
+        console.error('댓글 데이터 조회 실패:', commentError);
+        // URL 생성 실패해도 계속 진행
+      }
+    }
+
     const notionData = {
       parent: { database_id: this.reportsDatabaseId },
       properties: {
@@ -361,12 +384,14 @@ async syncReportToNotion(reportData) {
         '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
         '신고일시': { date: { start: new Date().toISOString() } },
         '커뮤니티 ID': { rich_text: communityId ? [{ text: { content: communityId } }] : [] },
-        '상태': { checkbox: status },
+        '처리 여부': { checkbox: status },
         '동기화 시간(Firebase)': { 
             date: { 
               start: new Date(new Date().getTime()).toISOString()
             },
           },
+          // URL 필드 추가 (contentUrl이 있을 때만)
+          ...(contentUrl && { 'URL': { url: contentUrl } }),
         }
     };
 
@@ -376,7 +401,6 @@ async syncReportToNotion(reportData) {
     return { success: true, notionPageId: response.id };
   } catch (error) {
     console.error('Notion 동기화 실패:', error);
-    //throw new Error(`Notion 동기화 실패: ${error.message}`);
     const customError = new Error("Notion 동기화 중 오류가 발생했습니다.");
     customError.code = "NOTION_SYNC_FAILED";
     customError.status = 500;
@@ -449,7 +473,7 @@ async syncResolvedReports() {
         const targetType = props['신고 타입']?.title?.[0]?.text?.content || null;
         const targetId = props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null;
         const communityId = props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null;
-        const status = props['상태']?.checkbox || false;
+        const status = props['처리 여부']?.checkbox || false;
         const notionUpdatedAt = new Date().toISOString();
 
         reports.push({
@@ -572,20 +596,6 @@ async syncResolvedReports() {
        // Firebase 동기화 성공 시 Notion 데이터베이스 이동 및 users 컬렉션 reportCount 증가
        if (syncSuccess) {
          try {
-          //  // users 컬렉션의 reportCount 증가 (작성자가 있는 경우만)
-          //  if (targetUserId) {
-          //    try {
-          //      const userRef = db.collection("users").doc(targetUserId);
-          //      await userRef.set({
-          //        reportCount: FieldValue.increment(1)
-          //      }, { merge: true });
-          //      console.log(`[Users] ${targetUserId}의 reportCount 증가 완료`);
-          //    } catch (userError) {
-          //      console.error(`[Users] ${targetUserId}의 reportCount 증가 실패:`, userError.message);
-          //      // users 업데이트 실패는 전체 프로세스를 중단하지 않음
-          //    }
-          //  }
-
            // 원본 페이지의 모든 properties 복사
            const sourceProps = notionPage.properties;
            const backupProperties = {};
@@ -625,13 +635,15 @@ async syncResolvedReports() {
                backupProperties[key] = { last_edited_time: value.last_edited_time || null };
              } else if (value.type === "last_edited_by") {
                backupProperties[key] = { last_edited_by: value.last_edited_by || null };
-             }
+             } else if (value.type === "url") {
+               backupProperties[key] = { url: value.url || null };
+            }
            }
 
            // 상태를 true로 설정 (status=true인 경우만 여기 도달)
-           backupProperties['상태'] = {
-             checkbox: true
-           };
+          backupProperties['처리 여부'] = {
+            checkbox: true
+          };
 
            // 동기화 시간 추가
            backupProperties['동기화 시간(Notion)'] = {

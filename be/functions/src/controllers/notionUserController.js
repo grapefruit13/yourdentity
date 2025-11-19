@@ -26,6 +26,7 @@ class NotionUserController {
   }
 
 
+  //해당 메서드는 초기 개발한 메서드로 만약 사용할 경우 syncSelectedUsers메서드를 참고해서 최신화 필요
   async syncPenaltyUsers(req, res, next) {
     try {
       const result = await notionUserService.syncPenaltyUsers();

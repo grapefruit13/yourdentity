@@ -3,6 +3,10 @@ const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 
 
+// Notion API rate limit 방지를 위한 배치 처리 설정
+const DELAY_MS = 1200; // 지연시간 (밀리초)
+const BATCH_SIZE = 500; // 배치 사이즈
+
 class AdminLogsService {
 
     constructor() {
@@ -14,12 +18,12 @@ class AdminLogsService {
     }
 
 
-    /**
-   * Firebase의 adminLogs 컬렉션에서 데이터 조회 후
-   * Notion 데이터베이스에 동기화
-   * - 관리자ID(컬렉션 ID)를 기준으로 노션에서 해당 페이지를 찾아 업데이트
-   * - 노션에 없으면 새로 생성
-   */
+  //   /**
+  //  * Firebase의 adminLogs 컬렉션에서 데이터 조회 후
+  //  * Notion 데이터베이스에 동기화
+  //  * - 관리자ID(컬렉션 ID)를 기준으로 노션에서 해당 페이지를 찾아 업데이트
+  //  * - 노션에 없으면 새로 생성
+  //  */
   async syncAdminLogs() {
     try {
       console.log('=== 관리자 로그 동기화 시작 ===');
@@ -27,58 +31,141 @@ class AdminLogsService {
       // 1. Firebase adminLogs 컬렉션 전체 조회
       const snapshot = await db.collection("adminLogs").get();
       console.log(`Firebase에서 ${snapshot.docs.length}건의 관리자 로그를 가져왔습니다.`);
-
+  
       // 2. 노션 데이터베이스에서 기존 데이터 조회 (관리자ID 기준)
       const notionAdminLogs = await this.getNotionAdminLogs(this.notionAdminLogDB);
-
+  
       let syncedCount = 0;
       let failedCount = 0;
       const syncedLogIds = [];
       const failedLogIds = [];
-
-      // 3. 각 adminLog 데이터를 노션에 동기화
-      for (const doc of snapshot.docs) {
-        try {
-          const adminLogId = doc.id;
-          const adminLog = doc.data();
-
-          // 노션 데이터 구성
-          const notionPage = this.buildNotionAdminLogPage(adminLog, adminLogId);
-
-          // 노션에 기존 페이지가 있으면 업데이트, 없으면 생성
-          if (notionAdminLogs[adminLogId]) {
-            // 기존 페이지 업데이트
-            await this.notion.pages.update({
-              page_id: notionAdminLogs[adminLogId].pageId,
-              properties: notionPage,
-            });
-            console.log(`[업데이트] 관리자 로그 ${adminLogId} 노션 동기화 완료`);
-          } else {
-            // 새 페이지 생성
-            await this.notion.pages.create({
-              parent: { database_id: this.notionAdminLogDB },
-              properties: notionPage,
-            });
-            console.log(`[생성] 관리자 로그 ${adminLogId} 노션 동기화 완료`);
+  
+      // 3. 각 adminLog 데이터를 배치로 처리
+      for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+        const batch = snapshot.docs.slice(i, i + BATCH_SIZE);
+        console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(snapshot.docs.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, snapshot.docs.length)}번째)`);
+  
+        // 배치 내에서 병렬 처리
+        const batchPromises = batch.map(async (doc) => {
+          try {
+            const adminLogId = doc.id;
+            const adminLog = doc.data();
+  
+            // 노션 데이터 구성
+            const notionPage = this.buildNotionAdminLogPage(adminLog, adminLogId);
+  
+            // 노션에 기존 페이지가 있으면 업데이트, 없으면 생성
+            if (notionAdminLogs[adminLogId]) {
+              // 기존 페이지 업데이트 (retry 로직 사용)
+              await this.updateNotionPageWithRetry(
+                notionAdminLogs[adminLogId].pageId, 
+                notionPage
+              );
+              console.log(`[업데이트] 관리자 로그 ${adminLogId} 노션 동기화 완료`);
+            } else {
+              // 새 페이지 생성 (retry 로직 사용)
+              await this.createNotionPageWithRetry(notionPage);
+              console.log(`[생성] 관리자 로그 ${adminLogId} 노션 동기화 완료`);
+            }
+  
+            syncedCount++;
+            syncedLogIds.push(adminLogId);
+  
+            return { success: true, adminLogId, action: notionAdminLogs[adminLogId] ? 'update' : 'create' };
+          } catch (error) {
+            failedCount++;
+            failedLogIds.push(doc.id);
+            console.error(`[동기화 실패] 관리자 로그 ${doc.id}:`, error.message || error);
+            return { success: false, adminLogId: doc.id, error: error.message };
           }
-
-          syncedCount++;
-          syncedLogIds.push(adminLogId);
-        } catch (error) {
-          failedCount++;
-          failedLogIds.push(doc.id);
-          console.error(`[동기화 실패] 관리자 로그 ${doc.id}:`, error.message || error);
+        });
+  
+        // 배치 결과 처리
+        const batchResults = await Promise.all(batchPromises);
+        const batchSuccess = batchResults.filter(r => r.success).length;
+        const batchFailed = batchResults.filter(r => !r.success).length;
+  
+        console.log(`배치 완료: 성공 ${batchSuccess}건, 실패 ${batchFailed}건 (총 진행률: ${syncedCount + failedCount}/${snapshot.docs.length})`);
+  
+        // 마지막 배치가 아니면 지연
+        if (i + BATCH_SIZE < snapshot.docs.length) {
+          console.log(`${DELAY_MS/1000}초 대기 중...`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
         }
       }
-
+  
       console.log(`=== 관리자 로그 동기화 완료 ===`);
       console.log(`성공: ${syncedCount}건, 실패: ${failedCount}건`);
-
+  
       return { syncedCount, failedCount };
-
+  
     } catch (error) {
       console.error('syncAdminLogs 전체 오류:', error);
       throw error;
+    }
+  }
+
+
+  /**
+   * 재시도 로직이 포함된 Notion 페이지 업데이트
+   */
+  async updateNotionPageWithRetry(pageId, notionPage, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.notion.pages.update({
+          page_id: pageId,
+          properties: notionPage,
+        });
+        return; // 성공하면 종료
+      } catch (error) {
+        // conflict_error인 경우에만 재시도
+        const isConflictError = error.code === 'conflict_error' || 
+                                error.message?.includes('Conflict') ||
+                                error.message?.includes('conflict');
+        
+        if (!isConflictError || attempt === maxRetries) {
+          throw new Error(`Notion 페이지 업데이트 최종 실패 (pageId: ${pageId}): ${error.message}`);
+        }
+        
+        console.warn(`Notion 페이지 업데이트 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
+        
+        // 지수 백오프: 1초, 2초, 4초...
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`${delay/1000}초 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+
+  /**
+   * 재시도 로직이 포함된 Notion 페이지 생성
+   */
+  async createNotionPageWithRetry(notionPage, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.notion.pages.create({
+          parent: { database_id: this.notionAdminLogDB },
+          properties: notionPage,
+        });
+        return; // 성공하면 종료
+      } catch (error) {
+        // conflict_error인 경우에만 재시도
+        const isConflictError = error.code === 'conflict_error' || 
+                                error.message?.includes('Conflict') ||
+                                error.message?.includes('conflict');
+        
+        if (!isConflictError || attempt === maxRetries) {
+          throw new Error(`Notion 페이지 생성 최종 실패: ${error.message}`);
+        }
+        
+        console.warn(`Notion 페이지 생성 시도 ${attempt}/${maxRetries} 실패:`, error.message);
+        
+        // 지수 백오프: 1초, 2초, 4초...
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`${delay/1000}초 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
 
@@ -143,6 +230,17 @@ class AdminLogsService {
       };
     }
 
+    /*
+    - 동기화된 사용자 ID 목록 (텍스트 타입 - 쉼표로 구분) 해당 타입으로 수정하려고 하였으나,
+      노션에서 텍스트 타입에는 최대 2,000자 까지 저장이 가능하여 동기화된 사용자가 많을 경우 오류가 발생
+      따라서 다중성택 타입으로 저장하는 방법을 유지함
+      [참고]
+      + rich_text(텍스트) : 블록당 최대 2,000자
+      + multi_select(다중선택) : 각 옵션 이름 최대 100자, 옵션 개수 제한 없음
+      + title(제목) : 최대 2,000자
+      + url : 제한없음
+      + relation(관계) : 다른 페이지와 관계 연결 
+    */
     // 동기화된 사용자 ID 목록 (다중선택 타입)
     if (syncedUserIds.length > 0) {
       notionPage["동기화된 사용자ID"] = {
