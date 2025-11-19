@@ -445,6 +445,27 @@ const extractLinksFromRichText = (richText) => {
     }));
 };
 
+/**
+ * Notion 페이지의 커버 이미지 URL 추출
+ * @param {Object} page - Notion 페이지 객체
+ * @returns {string|null} 커버 이미지 URL 또는 null
+ */
+const getCoverImageUrl = (page) => {
+  if (!page?.cover) return null;
+  
+  // external 타입 (외부 URL)
+  if (page.cover.type === 'external' && page.cover.external?.url) {
+    return page.cover.external.url;
+  }
+  
+  // file 타입 (Notion 업로드)
+  if (page.cover.type === 'file' && page.cover.file?.url) {
+    return page.cover.file.url;
+  }
+  
+  return null;
+};
+
 module.exports = {
   buildNotionHeaders,
   buildNotionHeadersFromEnv,
@@ -482,6 +503,8 @@ module.exports = {
   formatNotionBlocks,
   extractPlainText,
   extractLinksFromRichText,
+  // Notion 페이지 메타데이터 추출
+  getCoverImageUrl,
 };
 
 
