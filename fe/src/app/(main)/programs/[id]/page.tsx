@@ -164,6 +164,7 @@ const ProgramDetailPage = () => {
   const { data: participatingCommunitiesData } =
     useGetUsersMeParticipatingCommunities({
       enabled: Boolean(currentUser),
+      staleTime: 0,
     });
 
   // 현재 프로그램의 신청 상태 확인
