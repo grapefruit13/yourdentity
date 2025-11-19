@@ -250,11 +250,22 @@ class StoreService {
   formatProductData(page, includeDetails = false) {
     const props = page.properties;
 
+    // 커버 이미지 추출
+    let coverImage = null;
+    if (page.cover) {
+      if (page.cover.type === 'external' && page.cover.external?.url) {
+        coverImage = page.cover.external.url;
+      } else if (page.cover.type === 'file' && page.cover.file?.url) {
+        coverImage = page.cover.file.url;
+      }
+    }
+
     return {
       id: page.id,
       name: getTitleValue(props[NOTION_FIELDS.NAME]),
       description: getTextContent(props[NOTION_FIELDS.DESCRIPTION]),
       thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      coverImage: coverImage,
       requiredPoints: getNumberValue(props[NOTION_FIELDS.REQUIRED_POINTS]) || 0,
       onSale: getCheckboxValue(props[NOTION_FIELDS.ON_SALE]),
       requiresDelivery: getCheckboxValue(props[NOTION_FIELDS.REQUIRES_DELIVERY]),

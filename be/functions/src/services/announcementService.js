@@ -130,6 +130,16 @@ class AnnouncementService {
     const endDate = this.extractEndDate(props[NOTION_FIELDS.END_DATE]);
     const createdBy = getCreatedByValue(props["생성자"]) || page.created_by || null;
     
+    // 커버 이미지 추출
+    let coverImage = null;
+    if (page.cover) {
+      if (page.cover.type === 'external' && page.cover.external?.url) {
+        coverImage = page.cover.external.url;
+      } else if (page.cover.type === 'file' && page.cover.file?.url) {
+        coverImage = page.cover.file.url;
+      }
+    }
+    
     const result = {
       id: page.id,
       title,
@@ -137,6 +147,7 @@ class AnnouncementService {
       pinned,
       startDate,
       endDate,
+      coverImage: coverImage,
       createdAt: page.created_time || new Date().toISOString(),
       updatedAt: page.last_edited_time || new Date().toISOString(),
       isDeleted: false,
