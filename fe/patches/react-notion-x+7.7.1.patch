@@ -1,8 +1,19 @@
 diff --git a/node_modules/react-notion-x/src/styles.css b/node_modules/react-notion-x/src/styles.css
-index 0000000..1111111 100644
+index b6f9ec8139da7f673d5bdba76f8f6a02a384f419..c204786d1860285cd7036d88da469ff746b24c42 100644
 --- a/node_modules/react-notion-x/src/styles.css
 +++ b/node_modules/react-notion-x/src/styles.css
-@@ -1041,7 +1041,8 @@
+@@ -1018,8 +1018,8 @@ svg.notion-page-icon {
+ .notion-column {
+   display: flex;
+   flex-direction: column;
+-  padding-top: 12px;
+-  padding-bottom: 12px;
++  padding-top: 0;
++  padding-bottom: 0;
+ }
+ 
+ .notion-column > *:first-child {
+@@ -1041,7 +1041,8 @@ svg.notion-page-icon {
    max-width: 100%;
  }
  
@@ -12,7 +23,7 @@ index 0000000..1111111 100644
    .notion-row {
      flex-direction: column;
    }
-@@ -1054,7 +1055,7 @@
+@@ -1053,7 +1054,7 @@ svg.notion-page-icon {
    .notion-row .notion-spacer {
      display: none;
    }
