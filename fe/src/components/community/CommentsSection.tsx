@@ -104,7 +104,7 @@ const CommentsSection = ({
   const comments = commentsData?.comments || [];
 
   // 댓글 작성 mutation
-  const { mutateAsync: postCommentAsync } =
+  const { mutateAsync: postCommentAsync, isPending: isPostCommentPending } =
     usePostCommentsCommunitiesPostsByTwoIds({
       onSuccess: () => {
         queryClient.invalidateQueries({
@@ -187,6 +187,7 @@ const CommentsSection = ({
   const handleCommentSubmit = useCallback(
     async (e: FormEvent, customContent?: string) => {
       e.preventDefault();
+      if (isPostCommentPending) return;
       const contentToSubmit = customContent ?? commentInput;
       if (!contentToSubmit.trim() || !communityId || !postId) return;
 
@@ -212,6 +213,7 @@ const CommentsSection = ({
       replyingTo,
       getParentId,
       postCommentAsync,
+      isPostCommentPending,
     ]
   );
 
@@ -395,6 +397,7 @@ const CommentsSection = ({
                 onCommentInputChange={setCommentInput}
                 openMenuId={openMenuId}
                 onMenuToggle={handleMenuToggle}
+                isCommentSubmitting={isPostCommentPending}
               />
             ))}
           </div>
@@ -472,11 +475,15 @@ const CommentsSection = ({
                 <button
                   type="submit"
                   disabled={
-                    !commentInput.trim() || replyingTo?.isReply === true
+                    !commentInput.trim() ||
+                    replyingTo?.isReply === true ||
+                    isPostCommentPending
                   }
                   className={cn(
                     "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                    commentInput.trim() && !replyingTo?.isReply
+                    commentInput.trim() &&
+                      !replyingTo?.isReply &&
+                      !isPostCommentPending
                       ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                       : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                   )}
@@ -485,7 +492,9 @@ const CommentsSection = ({
                     font="noto"
                     variant="body2M"
                     className={
-                      commentInput.trim() && !replyingTo?.isReply
+                      commentInput.trim() &&
+                      !replyingTo?.isReply &&
+                      !isPostCommentPending
                         ? "text-white"
                         : "text-gray-400"
                     }

@@ -39,6 +39,7 @@ interface CommentItemProps {
   onMenuToggle?: (menuId: string | null) => void;
   replyToReplyInput?: string;
   onReplyToReplyInputChange?: (value: string) => void;
+  isCommentSubmitting?: boolean;
 }
 
 /**
@@ -72,6 +73,7 @@ const CommentItem = ({
   onMenuToggle,
   replyToReplyInput,
   onReplyToReplyInputChange,
+  isCommentSubmitting = false,
 }: CommentItemProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [replyLikes, setReplyLikes] = useState<
@@ -198,7 +200,7 @@ const CommentItem = ({
   const handleReplyToReplySubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (!actualReplyToReplyInput.trim()) return;
+      if (!actualReplyToReplyInput.trim() || isCommentSubmitting) return;
 
       try {
         await onCommentSubmit(e, actualReplyToReplyInput);
@@ -216,6 +218,7 @@ const CommentItem = ({
       onCommentSubmit,
       onReplyToReplyInputChange,
       handleReplyToReplyInputChange,
+      isCommentSubmitting,
     ]
   );
 
@@ -658,13 +661,17 @@ const CommentItem = ({
                                 : 1
                             }
                           />
-                          <div className="absolute right-2 bottom-2 flex items-center gap-2">
+                          <div className="absolute right-2 bottom-3 flex items-center gap-2">
                             <button
                               type="submit"
-                              disabled={!actualReplyToReplyInput.trim()}
+                              disabled={
+                                !actualReplyToReplyInput.trim() ||
+                                isCommentSubmitting
+                              }
                               className={cn(
                                 "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                                actualReplyToReplyInput.trim()
+                                actualReplyToReplyInput.trim() &&
+                                  !isCommentSubmitting
                                   ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
@@ -673,7 +680,8 @@ const CommentItem = ({
                                 font="noto"
                                 variant="body2M"
                                 className={
-                                  actualReplyToReplyInput.trim()
+                                  actualReplyToReplyInput.trim() &&
+                                  !isCommentSubmitting
                                     ? "text-white"
                                     : "text-gray-400"
                                 }
