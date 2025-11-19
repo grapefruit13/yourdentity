@@ -1637,6 +1637,13 @@ const options = {
               description: "모집 종료 날짜",
               example: "2024-02-29",
             },
+            displayStartDate: {
+              type: "string",
+              format: "date",
+              nullable: true,
+              description: "표시 시작일자",
+              example: "2024-01-15",
+            },
             orientationDate: {
               type: "string",
               format: "date",
