@@ -186,7 +186,6 @@ const CommunityPageContent = () => {
       if (!data?.posts || !Array.isArray(data.posts)) return [];
       return data.posts;
     },
-    refetchOnWindowFocus: false, // 브라우저 탭 전환 시 refetch 방지
   });
 
   // 변환된 포스트 데이터

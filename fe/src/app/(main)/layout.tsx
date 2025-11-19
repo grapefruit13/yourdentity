@@ -43,8 +43,6 @@ export default function MainLayout({
   // 홈 페이지일 때만 홈 데이터 로드 여부 확인 (스플래시 표시용)
   const { data: homeData, isLoading: isHomeLoading } = useGetHome({
     enabled: isHomePage,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
     select: (data) => {
       // API 응답이 { data: TGETHomeRes } 형태일 경우 unwrap
       if (data && typeof data === "object" && "data" in data) {
