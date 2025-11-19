@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { User, Settings } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
@@ -130,12 +131,15 @@ const MyPageProfileSection = ({
       {/* 상단: 프로필 이미지 + 통계 정보 */}
       <div className="mb-4 flex items-center justify-between">
         {/* 프로필 이미지 */}
-        <div className="flex h-[75px] w-[75px] items-center justify-center overflow-hidden rounded-full bg-pink-100">
+        <div className="relative flex h-[75px] w-[75px] items-center justify-center overflow-hidden rounded-full bg-pink-100">
           {profileImageUrl ? (
-            <img
+            <Image
               src={profileImageUrl}
               alt="프로필 이미지"
+              width={75}
+              height={75}
               className="h-full w-full object-cover"
+              unoptimized={profileImageUrl.startsWith("data:")}
             />
           ) : (
             <User className="h-9 w-9 text-pink-400" strokeWidth={1.5} />

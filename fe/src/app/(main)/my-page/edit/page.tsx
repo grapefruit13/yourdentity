@@ -448,6 +448,7 @@ const ProfileEditPage = () => {
                   alt={PROFILE_EDIT_LABELS.PROFILE_IMAGE_ALT}
                   className="h-full w-full object-cover"
                   fill
+                  unoptimized={profileImageUrl.startsWith("data:")}
                 />
               ) : (
                 <User className="h-12 w-12 text-pink-400" strokeWidth={1.5} />
