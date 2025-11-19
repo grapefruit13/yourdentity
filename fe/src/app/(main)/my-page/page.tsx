@@ -35,6 +35,9 @@ const Page = () => {
     select: (data) => {
       return data?.user;
     },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
   const hasNickname = Boolean(userData?.nickname?.trim());
 
