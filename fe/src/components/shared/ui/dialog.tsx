@@ -22,29 +22,54 @@ interface Props {
  */
 const AlertDialog = ({ isOpen, title, description, children }: Props) => {
   const previousOverflow = useRef<string>("");
+  const previousPosition = useRef<string>("");
+  const previousTop = useRef<string>("");
+  const scrollY = useRef<number>(0);
 
   // 다이얼로그가 열리는 동안 스크롤/터치 스크롤 차단
   useEffect(() => {
     if (!isOpen) return;
 
-    previousOverflow.current = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // 현재 스크롤 위치 저장
+    scrollY.current = window.scrollY;
 
-    const preventTouchScroll = (e: TouchEvent) => {
-      e.preventDefault();
+    // 기존 스타일 저장
+    previousOverflow.current = document.body.style.overflow;
+    previousPosition.current = document.body.style.position;
+    previousTop.current = document.body.style.top;
+
+    // body 스크롤 방지 (모바일 포함)
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY.current}px`;
+    document.body.style.width = "100%";
+
+    // 터치 스크롤 방지 (추가 보안)
+    const preventTouchMove = (e: TouchEvent) => {
+      // 다이얼로그 내부가 아닌 경우에만 preventDefault
+      const target = e.target as HTMLElement;
+      const dialog = target.closest('[role="dialog"]');
+      if (!dialog) {
+        e.preventDefault();
+      }
     };
 
-    // iOS 등 모바일 환경에서의 터치 스크롤 방지
-    document.addEventListener("touchmove", preventTouchScroll, {
+    document.addEventListener("touchmove", preventTouchMove, {
       passive: false,
     });
 
     return () => {
+      // 스타일 복원
       document.body.style.overflow = previousOverflow.current;
-      document.removeEventListener(
-        "touchmove",
-        preventTouchScroll as EventListener
-      );
+      document.body.style.position = previousPosition.current;
+      document.body.style.top = previousTop.current;
+      document.body.style.width = "";
+
+      // 스크롤 위치 복원
+      window.scrollTo(0, scrollY.current);
+
+      // 터치 이벤트 리스너 제거
+      document.removeEventListener("touchmove", preventTouchMove);
     };
   }, [isOpen]);
 

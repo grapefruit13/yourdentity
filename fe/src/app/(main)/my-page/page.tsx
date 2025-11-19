@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import MyPageProfileSection from "@/components/my-page/MyPageProfileSection";
 import MyPageTabs, { TabType } from "@/components/my-page/MyPageTabs";
@@ -27,23 +27,44 @@ const Page = () => {
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   // const [activeFilter, setActiveFilter] = useState<FilterType>("program"); // MVP 범위에서 제외
 
-  const { data: userData, isLoading } = useGetUsersMe({
+  const {
+    data: userData,
+    isLoading,
+    isFetched: isUserFetched,
+  } = useGetUsersMe({
     select: (data) => {
       return data?.user;
     },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
+  const hasNickname = Boolean(userData?.nickname?.trim());
+
+  useEffect(() => {
+    if (isUserFetched && !hasNickname) {
+      router.replace(LINK_URL.MY_PAGE_EDIT);
+    }
+  }, [hasNickname, isUserFetched, router]);
+
+  const shouldQueryMyPageData = isUserFetched && hasNickname;
 
   // 최초 진입 시 posts 탭 데이터만 페칭
   const { data: postsData, isLoading: isLoadingPosts } = useGetUsersMePosts({
     request: { page: 0, size: 20 },
+    enabled: shouldQueryMyPageData,
   });
 
   // posts 로드 완료 여부를 React Query 응답값으로 확인
-  const isPostsLoaded = Boolean(!isLoadingPosts && postsData);
+  const isPostsLoaded = Boolean(
+    shouldQueryMyPageData && !isLoadingPosts && postsData
+  );
 
   // 탭 전환 시점에 다른 탭 데이터 페칭 (탭 클릭 또는 posts 로드 완료 후)
-  const shouldFetchLiked = activeTab === "liked" || isPostsLoaded;
-  const shouldFetchCommented = activeTab === "comments" || isPostsLoaded;
+  const shouldFetchLiked =
+    shouldQueryMyPageData && (activeTab === "liked" || isPostsLoaded);
+  const shouldFetchCommented =
+    shouldQueryMyPageData && (activeTab === "comments" || isPostsLoaded);
 
   const { data: likedPostsData, isLoading: isLoadingLiked } =
     useGetUsersMeLikedPosts({
@@ -75,7 +96,6 @@ const Page = () => {
       authorProfileUrl: "",
       likeCount: post.likesCount || 0,
       commentCount: post.commentsCount || 0,
-      communityId: post.community?.id || "",
     };
   };
 
@@ -106,14 +126,58 @@ const Page = () => {
       .filter((post): post is NonNullable<typeof post> => post !== null);
   }, [currentPostsData]);
 
+  // communityId 추출 헬퍼 (타입 안전 + 폴백 고려)
+  const extractCommunityId = (raw: unknown): string | undefined => {
+    const asAny = raw as {
+      communityId?: unknown;
+      community?: { id?: unknown };
+    };
+    const direct =
+      typeof asAny?.communityId === "string" ? asAny.communityId : undefined;
+    const nested =
+      typeof asAny?.community?.id === "string" ? asAny.community.id : undefined;
+    return direct ?? nested;
+  };
+
+  // raw 데이터에서 postId -> communityId 매핑 생성 (훅은 조건부로 호출되면 안 되므로 early return 위에 둠)
+  const postIdToCommunityIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (currentPostsData || []).forEach((rawPost) => {
+      if (!rawPost) return;
+      // 다양한 위치에서 communityId 추출 시도
+      const candidate = extractCommunityId(rawPost);
+      if (rawPost.id && typeof candidate === "string" && candidate.length > 0) {
+        map.set(rawPost.id, candidate);
+      }
+    });
+    return map;
+  }, [currentPostsData]);
+
+  if (isUserFetched && !hasNickname) {
+    return null;
+  }
+
   // 프로필 편집 버튼 핸들러
   const handleEditProfile = () => {
     router.push(LINK_URL.MY_PAGE_EDIT);
   };
 
   // 게시글 클릭 핸들러
-  const handlePostClick = (postId: string, communityId: string) => {
-    router.push(`/community/post/${postId}?communityId=${communityId}`);
+  const handlePostClick = (postId: string) => {
+    const communityId = postIdToCommunityIdMap.get(postId);
+    if (!communityId) {
+      console.warn(
+        "communityId가 없어 상세 페이지로 이동할 수 없습니다. 커뮤니티 목록으로 이동합니다.",
+        {
+          postId,
+        }
+      );
+      router.push(LINK_URL.COMMUNITY);
+      return;
+    }
+    router.push(
+      `/community/post/${postId}?communityId=${encodeURIComponent(communityId)}`
+    );
   };
 
   return (
@@ -140,7 +204,7 @@ const Page = () => {
       /> */}
 
       {/* 게시글 그리드 */}
-      <div className="grid grid-cols-2 gap-4 pt-4 pb-24">
+      <div className="grid grid-cols-2 gap-4 px-4 pt-4 pb-24">
         {isLoadingCurrentTab ? (
           // 로딩 중일 때 스켈레톤 표시
           Array.from({ length: 4 }).map((_, index) => (
@@ -182,7 +246,7 @@ const Page = () => {
               authorProfileUrl={post.authorProfileUrl}
               likeCount={post.likeCount}
               commentCount={post.commentCount}
-              onClick={() => handlePostClick(post.id, post.communityId)}
+              onClick={() => handlePostClick(post.id)}
             />
           ))
         )}

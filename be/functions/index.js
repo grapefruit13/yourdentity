@@ -17,9 +17,6 @@ const userRoutes = require("./src/routes/users");
 const missionRoutes = require("./src/routes/missions");
 const imageRoutes = require("./src/routes/images");
 const fileRoutes = require("./src/routes/files");
-const routineRoutes = require("./src/routes/routines");
-const gatheringRoutes = require("./src/routes/gatherings");
-const tmiRoutes = require("./src/routes/tmi");
 const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
 const storeRoutes = require("./src/routes/store");
@@ -45,6 +42,12 @@ const {
   createUserDocument,
   deleteUserDocument,
 } = require("./src/triggers/authTrigger");
+
+// Storage Cleanup Scheduler
+const {
+  storageCleanupScheduler,
+  storageCleanupWeeklyScheduler,
+} = require("./src/triggers/storageCleanupScheduler");
 
 // 서울 리전 설정 (1st generation에서는 functions.region 사용)
 
@@ -194,9 +197,6 @@ app.use("/users", userRoutes);
 app.use("/missions", missionRoutes);
 app.use("/images", imageRoutes);
 app.use("/files", fileRoutes);
-app.use("/routines", routineRoutes);
-app.use("/gatherings", gatheringRoutes);
-app.use("/tmis", tmiRoutes);
 app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
@@ -225,3 +225,7 @@ exports.api = onRequest(
 // 1세대 Auth Triggers 내보내기
 exports.createUserDocument = createUserDocument;
 exports.deleteUserDocument = deleteUserDocument;
+
+// Storage Cleanup Scheduler 내보내기
+exports.storageCleanupScheduler = storageCleanupScheduler;
+exports.storageCleanupWeeklyScheduler = storageCleanupWeeklyScheduler;

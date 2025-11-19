@@ -23,7 +23,7 @@ export const WRITE_MESSAGES = {
  * @description 게시글 수정 관련 상수
  */
 export const POST_EDIT_CONSTANTS = {
-  DEFAULT_CATEGORY: "한끗 루틴",
+  DEFAULT_CATEGORY: "한끗루틴",
   NO_CATEGORY: "선택된 카테고리 없음",
   UNKNOWN_ERROR: "알 수 없는 오류",
   POST_NOT_FOUND: "게시글 정보를 찾을 수 없습니다.",

@@ -1,13 +1,14 @@
-const {FieldValue, Timestamp} = require("firebase-admin/firestore");
-const {admin} = require("../config/database");
+const {FieldValue} = require("firebase-admin/firestore");
+const {admin, db} = require("../config/database");
 const FirestoreService = require("./firestoreService");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
-const {AUTH_TYPES, SNS_PROVIDERS} = require("../constants/userConstants");
 const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = require("../constants/kakaoConstants");
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
+const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
+const CommunityService = require("./communityService");
 
 /**
  * User Service (비즈니스 로직 계층)
@@ -23,7 +24,7 @@ class UserService {
   /**
    * 온보딩 업데이트
    * - 허용 필드만 부분 업데이트
-   * - 닉네임 중복 방지(트랜잭션)
+   * - 닉네임 + 사용자 정보 (트랜잭션)
    * @param {Object} params
    * @param {string} params.uid - 사용자 ID
    * @param {Object} params.payload - 업데이트할 데이터
@@ -36,7 +37,7 @@ class UserService {
     // 1) 현재 사용자 문서 조회
     const existing = await this.firestoreService.getById(uid);
     if (!existing) {
-      const e = new Error("User document not found");
+      const e = new Error("사용자 정보를 찾을 수 없습니다.");
       e.code = "NOT_FOUND";
       throw e;
     }
@@ -61,14 +62,10 @@ class UserService {
       throw e;
     }
 
-    // 4) 닉네임 설정
-    const nickname = update.nickname;
-    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
+    // 닉네임 검증 (공백 제외, 한글/영어/숫자만, 최대 8글자)
+    validateNicknameOrThrow(update.nickname);
 
-    if (setNickname) {
-      await this.nicknameService.setNickname(nickname, uid, existing.nickname);
-    }
-
+    // 4) 프로필 이미지 검증
     let newProfileImagePath = null;
     let newProfileImageUrl = update.profileImageUrl !== undefined ? update.profileImageUrl : null;
     let previousProfilePath = existing.profileImagePath || null;
@@ -112,7 +109,10 @@ class UserService {
       }
     }
 
-    // 5) 온보딩 완료 처리
+    // 5) 닉네임 설정 및 사용자 문서 업데이트를 단일 트랜잭션으로 처리
+    const nickname = update.nickname;
+    const setNickname = typeof nickname === "string" && nickname.trim().length > 0;
+
     const userUpdate = {
       ...update,
       lastUpdatedAt: FieldValue.serverTimestamp(),
@@ -126,8 +126,29 @@ class UserService {
       userUpdate.profileImageUrl = newProfileImageUrl;
     }
 
-    // 사용자 문서 업데이트
-    await this.firestoreService.update(uid, userUpdate);
+    // 트랜잭션으로 닉네임 + 사용자 업데이트 원자적 처리
+    await db.runTransaction(async (transaction) => {
+      // 닉네임 중복 체크 및 설정
+      if (setNickname) {
+        const lower = nickname.toLowerCase();
+        const nickRef = db.collection("nicknames").doc(lower);
+        const nickDoc = await transaction.get(nickRef);
+        
+        // 이미 존재하고 다른 사용자가 사용 중인 경우
+        if (nickDoc.exists && nickDoc.data()?.uid !== uid) {
+          const e = new Error("NICKNAME_TAKEN");
+          e.code = "NICKNAME_TAKEN";
+          throw e;
+        }
+        
+        // 닉네임 설정 (트랜잭션 내)
+        this.nicknameService.setNickname(transaction, nickname, uid, existing.nickname);
+      }
+      
+      // 사용자 문서 업데이트 (트랜잭션 내)
+      const userRef = db.collection("users").doc(uid);
+      transaction.update(userRef, userUpdate);
+    });
 
     if (newProfileImagePath && previousProfilePath && previousProfilePath !== newProfileImagePath) {
       try {
@@ -245,10 +266,316 @@ class UserService {
   }
 
   /**
-   * 카카오 API 호출 (타임아웃, 재시도, 실패 시 에러 throw)
+   * 계정 탈퇴 (게시글, 댓글, 프로필 이미지 등 모든 데이터 정리)
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<{success: boolean}>}
+   */
+  async deleteAccount(uid) {
+    try {
+      console.log(`[ACCOUNT_DELETION] 시작: userId=${uid}`);
+
+      // 1. 사용자 정보 조회
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        const e = new Error("사용자를 찾을 수 없습니다");
+        e.code = "NOT_FOUND";
+        throw e;
+      }
+
+      // 2. 게시글 삭제 및 관련 데이터 정리
+      await this._deleteUserPosts(uid);
+
+      // 3. 댓글 삭제 (게시글에 속하지 않은 댓글들)
+      await this._deleteUserComments(uid);
+
+      // 4. 프로필 이미지 삭제
+      if (user.profileImagePath) {
+        try {
+          await fileService.deleteFile(user.profileImagePath, uid);
+          console.log(`[ACCOUNT_DELETION] 프로필 이미지 삭제 완료: ${user.profileImagePath}`);
+        } catch (profileError) {
+          console.error(`[ACCOUNT_DELETION] 프로필 이미지 삭제 실패:`, profileError.message);
+          // 프로필 이미지 삭제 실패해도 계속 진행
+        }
+      }
+
+      // 5. Firebase Auth에서 사용자 삭제
+      await admin.auth().deleteUser(uid);
+
+      // 6. Firestore users 문서 삭제
+      await this.firestoreService.delete(uid);
+
+      console.log(`[ACCOUNT_DELETION] 완료: userId=${uid}`);
+      return {success: true};
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 에러: userId=${uid}`, error.message);
+      if (error.code) {
+        throw error;
+      }
+      const e = new Error("계정 탈퇴 중 오류가 발생했습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
+    }
+  }
+
+  /**
+   * 사용자가 작성한 게시글 삭제 및 관련 데이터 정리
+   * @param {string} uid - 사용자 ID
+   * @private
+   */
+  async _deleteUserPosts(uid) {
+    try {
+      // authoredPosts 서브컬렉션에서 모든 게시글 조회
+      const authoredPostsService = new FirestoreService(`users/${uid}/authoredPosts`);
+      const authoredPosts = await authoredPostsService.getAll();
+
+      if (!authoredPosts || authoredPosts.length === 0) {
+        console.log(`[ACCOUNT_DELETION] 작성한 게시글 없음: userId=${uid}`);
+        return;
+      }
+
+      console.log(`[ACCOUNT_DELETION] 게시글 삭제 시작: ${authoredPosts.length}개`);
+
+      // 각 게시글별로 처리
+      for (const authoredPost of authoredPosts) {
+        const {postId, communityId} = authoredPost;
+        if (!postId || !communityId) continue;
+
+        try {
+          // 1. 해당 게시글의 모든 댓글 조회 (순환 참조 방지를 위해 lazy require)
+          const CommentService = require("./commentService");
+          const commentsService = new CommentService();
+          const comments = await commentsService.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              {field: "postId", operator: "==", value: postId}
+            ]
+          );
+
+          // 2. 각 댓글별로 대댓글 확인 후 삭제 처리
+          if (comments && comments.length > 0) {
+            const batch = db.batch();
+            const softDeleteComments = [];
+            let hardDeleteCount = 0;
+            
+            for (const comment of comments) {
+              // 대댓글 확인
+              const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
+                "comments",
+                [
+                  {field: "parentId", operator: "==", value: comment.id},
+                  {field: "isDeleted", operator: "==", value: false}
+                ]
+              );
+
+              if (replies && replies.length > 0) {
+                // 대댓글이 있으면 소프트 딜리트로 처리 (배치에서 제외)
+                softDeleteComments.push({comment, repliesCount: replies.length});
+              } else {
+                // 대댓글이 없으면 하드 딜리트
+                const commentRef = db.collection("comments").doc(comment.id);
+                batch.delete(commentRef);
+                hardDeleteCount++;
+              }
+            }
+            
+            // 하드 딜리트 배치 실행
+            if (hardDeleteCount > 0) {
+              await batch.commit();
+            }
+            
+            // 소프트 딜리트 처리
+            for (const {comment, repliesCount} of softDeleteComments) {
+              const commentRef = db.collection("comments").doc(comment.id);
+              await commentRef.update({
+                isDeleted: true,
+                author: "알 수 없음",
+                content: "삭제된 댓글입니다",
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+              console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} 소프트 딜리트 (대댓글 ${repliesCount}개)`);
+            }
+            
+            console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 처리 완료: 하드딜리트 ${hardDeleteCount}개, 소프트딜리트 ${softDeleteComments.length}개`);
+          }
+
+          // 3. 게시글 삭제 (이미지 포함, communityService 사용)
+          const communityService = new CommunityService();
+          await communityService.deletePost(communityId, postId, uid);
+
+          // 4. 다른 사용자들의 서브컬렉션에서 제거
+          await this._removePostFromOtherUsersSubCollections(postId);
+
+          console.log(`[ACCOUNT_DELETION] 게시글 삭제 완료: postId=${postId}`);
+        } catch (postError) {
+          console.error(`[ACCOUNT_DELETION] 게시글 삭제 실패: postId=${postId}`, postError.message);
+          // 개별 게시글 삭제 실패해도 계속 진행
+        }
+      }
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 게시글 삭제 중 오류:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 다른 사용자들의 서브컬렉션에서 게시글 제거
+   * @param {string} postId - 게시글 ID
+   * @private
+   */
+  async _removePostFromOtherUsersSubCollections(postId) {
+    try {
+      // likedPosts 서브컬렉션에서 제거
+      const likedPostsQuery = db.collectionGroup("likedPosts")
+        .where("postId", "==", postId)
+        .limit(1000);
+      
+      const likedPostsSnapshot = await likedPostsQuery.get();
+      
+      if (!likedPostsSnapshot.empty) {
+        const batch = db.batch();
+        likedPostsSnapshot.forEach((doc) => {
+          // doc.ref.path에서 userId 추출: users/{userId}/likedPosts/{postId}
+          const pathParts = doc.ref.path.split("/");
+          if (pathParts.length >= 4 && pathParts[0] === "users") {
+            const userId = pathParts[1];
+            const likedPostRef = db.collection(`users/${userId}/likedPosts`).doc(postId);
+            batch.delete(likedPostRef);
+          }
+        });
+        if (!likedPostsSnapshot.empty) {
+          await batch.commit();
+          console.log(`[ACCOUNT_DELETION] 다른 사용자들의 likedPosts에서 ${likedPostsSnapshot.size}개 제거`);
+        }
+      }
+
+      // commentedPosts 서브컬렉션에서 제거
+      const commentedPostsQuery = db.collectionGroup("commentedPosts")
+        .where("postId", "==", postId)
+        .limit(1000);
+      
+      const commentedPostsSnapshot = await commentedPostsQuery.get();
+      
+      if (!commentedPostsSnapshot.empty) {
+        const batch = db.batch();
+        commentedPostsSnapshot.forEach((doc) => {
+          // doc.ref.path에서 userId 추출: users/{userId}/commentedPosts/{postId}
+          const pathParts = doc.ref.path.split("/");
+          if (pathParts.length >= 4 && pathParts[0] === "users") {
+            const userId = pathParts[1];
+            const commentedPostRef = db.collection(`users/${userId}/commentedPosts`).doc(postId);
+            batch.delete(commentedPostRef);
+          }
+        });
+        if (!commentedPostsSnapshot.empty) {
+          await batch.commit();
+          console.log(`[ACCOUNT_DELETION] 다른 사용자들의 commentedPosts에서 ${commentedPostsSnapshot.size}개 제거`);
+        }
+      }
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 다른 사용자 서브컬렉션 정리 실패:`, error.message);
+      // 실패해도 계속 진행
+    }
+  }
+
+  /**
+   * 사용자가 작성한 댓글 삭제 (게시글에 속하지 않은 댓글들)
+   * @param {string} uid - 사용자 ID
+   * @private
+   */
+  async _deleteUserComments(uid) {
+    try {
+      // 순환 참조 방지를 위해 lazy require
+      const CommentService = require("./commentService");
+      const commentsService = new CommentService();
+      
+      // 사용자가 작성한 모든 댓글 조회
+      const comments = await commentsService.firestoreService.getCollectionWhere(
+        "comments",
+        "userId",
+        "==",
+        uid
+      );
+
+      if (!comments || comments.length === 0) {
+        console.log(`[ACCOUNT_DELETION] 작성한 댓글 없음: userId=${uid}`);
+        return;
+      }
+
+      console.log(`[ACCOUNT_DELETION] 댓글 삭제 시작: ${comments.length}개`);
+
+      // 각 댓글별로 처리
+      for (const comment of comments) {
+        try {
+          // 대댓글 확인 (삭제되지 않은 댓글만)
+          const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              {field: "parentId", operator: "==", value: comment.id},
+              {field: "isDeleted", operator: "==", value: false}
+            ]
+          );
+
+          if (replies && replies.length > 0) {
+            // 대댓글이 있으면 소프트 딜리트
+            const commentRef = db.collection("comments").doc(comment.id);
+            await commentRef.update({
+              isDeleted: true,
+              author: "알 수 없음",
+              content: "삭제된 댓글입니다",
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            console.log(`[ACCOUNT_DELETION] 댓글 소프트 딜리트: commentId=${comment.id} (대댓글 ${replies.length}개)`);
+          } else {
+            // 대댓글이 없으면 하드 딜리트
+            await commentsService.firestoreService.runTransaction(async (transaction) => {
+              const commentRef = db.collection("comments").doc(comment.id);
+              const postRef = db.collection(`communities/${comment.communityId}/posts`).doc(comment.postId);
+              const commentedPostRef = db.collection(`users/${uid}/commentedPosts`).doc(comment.postId);
+
+              // 댓글 삭제
+              transaction.delete(commentRef);
+
+              // 게시글 commentsCount 감소
+              transaction.update(postRef, {
+                commentsCount: FieldValue.increment(-1),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+
+              // 해당 게시글에 남은 댓글이 있는지 확인
+              const remainingSnapshot = await transaction.get(
+                db.collection("comments")
+                  .where("postId", "==", comment.postId)
+                  .where("userId", "==", uid)
+              );
+              
+              const remainingCount = remainingSnapshot.docs.filter(
+                (doc) => doc.id !== comment.id
+              ).length;
+
+              // 남은 댓글이 없으면 commentedPosts에서 제거
+              if (remainingCount === 0) {
+                transaction.delete(commentedPostRef);
+              }
+            });
+            console.log(`[ACCOUNT_DELETION] 댓글 하드 딜리트: commentId=${comment.id}`);
+          }
+        } catch (commentError) {
+          console.error(`[ACCOUNT_DELETION] 댓글 삭제 실패: commentId=${comment.id}`, commentError.message);
+          // 개별 댓글 삭제 실패해도 계속 진행
+        }
+      }
+    } catch (error) {
+      console.error(`[ACCOUNT_DELETION] 댓글 삭제 중 오류:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 카카오 API 호출 (타임아웃 설정, 실패 시 에러 throw)
    * @param {string} url - API URL
    * @param {string} accessToken - 카카오 액세스 토큰
-   * @param {number} maxRetries - 총 시도 횟수 (기본 KAKAO_API_MAX_RETRIES)
+   * @param {number} maxRetries - 시도 횟수 (기본 1회, 재시도 없음)
    * @private
    */
   async _fetchKakaoAPI(url, accessToken, maxRetries = KAKAO_API_MAX_RETRIES) {
@@ -268,10 +595,12 @@ class UserService {
    * @return {Promise<{success:boolean}>}
    */
   async syncKakaoProfile(uid, accessToken) {
-    console.log(`[UserService] 카카오 프로필 동기화 시작 (uid: ${uid})`);
+    const startTime = Date.now();
+    console.log(`[KAKAO_SYNC_START] uid=${uid}`);
     
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
     let userinfoJson;
+    let termsData;
 
     // 에뮬레이터 환경: Firebase Auth customClaims에서 더미 데이터 사용
     if (isEmulator && accessToken === "test") {
@@ -283,13 +612,46 @@ class UserService {
         gender: (customClaims.kakaoGender || "male").toLowerCase(),
         birthdate: customClaims.kakaoBirthdate || "2000-01-01",
         phone_number: customClaims.kakaoPhoneNumber || "01012345678",
-        picture: customClaims.kakaoPicture || "",
       };
+      
+      // 에뮬레이터 약관 데이터
+      termsData = await this.termsService.parseEmulatorTerms(uid);
     } else {
-      // 실제 환경: 카카오 API 호출 (타임아웃 + 재시도)
-      const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
-      const userinfoRes = await this._fetchKakaoAPI(userinfoUrl, accessToken);
-      userinfoJson = await userinfoRes.json();
+      // 실제 환경: userinfo + 약관 병렬 호출 (성능 최적화)
+      const parallelStartTime = Date.now();
+      console.log(`[KAKAO_PARALLEL_API_START] uid=${uid}`);
+      
+      try {
+        const userinfoUrl = "https://kapi.kakao.com/v1/oidc/userinfo";
+        
+        // userinfo와 약관 API 동시 호출
+        const [userinfoRes, fetchedTermsData] = await Promise.all([
+          this._fetchKakaoAPI(userinfoUrl, accessToken),
+          this.termsService.fetchKakaoTerms(accessToken),
+        ]);
+        
+        const parallelDuration = Date.now() - parallelStartTime;
+        console.log(`[KAKAO_PARALLEL_API_SUCCESS] uid=${uid}, duration=${parallelDuration}ms`);
+        
+        userinfoJson = await userinfoRes.json();
+        termsData = fetchedTermsData;
+        
+      // 카카오 API 응답 상세 로깅 (디버깅용)
+      console.log(`[UserService][syncKakaoProfile] 카카오 API 응답 필드 확인:`, {
+          hasName: !!userinfoJson.name,
+          hasGender: !!userinfoJson.gender,
+          hasBirthdate: !!userinfoJson.birthdate,
+          hasPhoneNumber: !!userinfoJson.phone_number,
+          hasPicture: !!userinfoJson.picture,
+          rawGender: userinfoJson.gender,
+          rawBirthdate: userinfoJson.birthdate,
+          phoneNumberLength: userinfoJson.phone_number?.length || 0,
+        });
+      } catch (apiError) {
+        const parallelDuration = Date.now() - parallelStartTime;
+        console.error(`[KAKAO_PARALLEL_API_FAILED] uid=${uid}, duration=${parallelDuration}ms, error=${apiError.message}`);
+        throw apiError;
+      }
     }
 
     const name = userinfoJson.name || "";
@@ -298,9 +660,23 @@ class UserService {
     const phoneRaw = userinfoJson.phone_number || "";
     const profileImageUrl = userinfoJson.picture || "";
 
-    // 기본 검증 (카카오 콘솔에서 필수 동의로 설정 가정)
+    // 필수 정보 검증
     if (!genderRaw || !birthdateRaw || !phoneRaw) {
-      const e = new Error("카카오에서 필수 정보를 받아올 수 없습니다");
+      console.error(`[KAKAO_REQUIRED_FIELDS_MISSING] uid=${uid}`, {
+        missingFields: {
+          gender: !genderRaw,
+          birthdate: !birthdateRaw,
+          phoneNumber: !phoneRaw,
+        },
+        receivedData: {
+          name: !!name,
+          gender: genderRaw || "null",
+          birthdate: birthdateRaw || "null",
+          phoneNumber: phoneRaw || "null",
+          picture: !!profileImageUrl,
+        },
+      });
+      const e = new Error("카카오에서 필수 정보(성별, 생년월일, 전화번호)를 받아올 수 없습니다. 카카오 계정 설정에서 정보 제공 동의를 확인해주세요.");
       e.code = "REQUIRE_FIELDS_MISSING";
       throw e;
     }
@@ -330,45 +706,42 @@ class UserService {
       e.code = "INVALID_INPUT";
       throw e;
     }
+    
     // 저장은 정규화된 국내형으로
     const normalizedPhone = normalizeKoreanPhoneNumber(String(phoneRaw));
 
-    // 2. 서비스 약관 동의 내역 조회 (실패해도 계속 진행)
-    console.log(`[UserService] 약관 동기화 호출`);
-    try {
-      await this.termsService.syncFromKakao(uid, accessToken);
-      console.log(`[UserService] 약관 동기화 성공`);
-    } catch (termsError) {
-      console.warn(`[UserService] 약관 동기화 실패 (기본값으로 계속 진행):`, termsError.message);
-      // 약관 동기화 실패해도 사용자 기본 정보는 저장
-    }
+    // 2. 약관 정보 처리
+    this.termsService.validateTermsData(termsData, uid);
+    const termsUpdate = this.termsService.prepareTermsUpdate(termsData, uid);
 
-    // 3. Firestore 업데이트 준비
+    // 3. Firestore 사용자 문서 생성
     const update = {
       name: name || null,
       birthDate,
       gender,
       phoneNumber: normalizedPhone,
       profileImageUrl,
+      ...termsUpdate,
       lastLoginAt: FieldValue.serverTimestamp(),
       lastUpdatedAt: FieldValue.serverTimestamp(),
     };
 
-    // 4. 문서 존재 여부 확인 후 upsert
+    console.log(`[USER_DOCUMENT_UPDATE_START] uid=${uid}`);
+    
+    // 안전 체크: 문서가 없으면 에러 (정상적인 경우 발생하지 않아야 함)
     const existing = await this.firestoreService.getById(uid);
     if (!existing) {
-      await this.firestoreService.create({
-        nickname: "",
-        authType: AUTH_TYPES.SNS,
-        snsProvider: SNS_PROVIDERS.KAKAO,
-        createdAt: FieldValue.serverTimestamp(),
-        ...update,
-      }, uid);
-    } else {
-      await this.firestoreService.update(uid, update);
+      console.error(`[ERROR] 사용자 문서가 없음! authTrigger 실행 확인 필요: uid=${uid}`);
+      const e = new Error("사용자 기본 정보가 없습니다. 다시 로그인해주세요.");
+      e.code = "USER_DOCUMENT_NOT_FOUND";
+      throw e;
     }
+    
+    // 카카오 상세 정보로 업데이트
+    await this.firestoreService.update(uid, update);
+    console.log(`[USER_DOCUMENT_UPDATED] uid=${uid} (카카오 정보 + 약관 포함)`)
 
-    // 5. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
+    // 4. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
     const notionUserService = require("./notionUserService");
     notionUserService.syncSingleUserToNotion(uid)
       .then(result => {
@@ -382,7 +755,8 @@ class UserService {
         console.error(`Notion 동기화 오류: ${uid}`, error);
       });
 
-
+    const totalDuration = Date.now() - startTime;
+    console.log(`[KAKAO_SYNC_SUCCESS] uid=${uid}, totalDuration=${totalDuration}ms`);
     return {success: true};
   }
 
@@ -687,7 +1061,7 @@ class UserService {
       )];
 
       const emptyGrouped = () => ({
-        "routine": {label: "한끗 루틴", items: []},
+        "routine": {label: "한끗루틴", items: []},
         "gathering": {label: "월간 소모임", items: []},
         "tmi": {label: "TMI", items: []}
       });
@@ -710,7 +1084,7 @@ class UserService {
       const communities = communitiesChunked.flat();
 
       const PROGRAM_TYPE_ALIASES = {
-        ROUTINE: ["ROUTINE", "한끗루틴", "한끗 루틴", "루틴"],
+        ROUTINE: ["ROUTINE", "한끗루틴", "루틴"],
         GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
         TMI: ["TMI", "티엠아이"],
       };
@@ -748,7 +1122,7 @@ class UserService {
       };
 
       const programTypeMapping = {
-        ROUTINE: {key: "routine", label: "한끗 루틴"},
+        ROUTINE: {key: "routine", label: "한끗루틴"},
         GATHERING: {key: "gathering", label: "월간 소모임"},
         TMI: {key: "tmi", label: "TMI"},
       };

@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { User, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
+import ProfileImage from "@/components/shared/ui/profile-image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINK_URL } from "@/constants/shared/_link-url";
 
@@ -96,12 +97,12 @@ const MyPageProfileSection = ({
     return (
       <div className="flex flex-col bg-white pt-7 pb-6">
         {/* 상단: 프로필 이미지 + 통계 정보 */}
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           {/* 프로필 이미지 스켈레톤 */}
           <Skeleton className="h-[75px] w-[75px] rounded-full" />
 
           {/* 통계 정보 스켈레톤 */}
-          <div className="flex w-[280px] justify-between">
+          <div className="flex w-[280px] justify-center gap-12">
             {Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="flex flex-col items-center gap-2">
                 <Skeleton className="h-6 w-8" />
@@ -144,10 +145,12 @@ const MyPageProfileSection = ({
           ) : (
             <User className="h-9 w-9 text-pink-400" strokeWidth={1.5} />
           )}
+        <div className="h-[75px] w-[75px]">
+          <ProfileImage src={profileImageUrl} size="h-full w-full" />
         </div>
 
         {/* 통계 정보 */}
-        <div className="flex w-[280px] justify-between">
+        <div className="flex w-[280px] justify-center gap-12">
           {/* 인증 글 */}
           <div className="flex flex-col items-center gap-2">
             <Typography font="noto" variant="body2B" className="text-gray-950">

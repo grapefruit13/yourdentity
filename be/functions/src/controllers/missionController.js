@@ -1,148 +1,136 @@
-const missionService = require("../services/missionService");
+const notionMissionService = require("../services/notionMissionService");
 
 class MissionController {
-  async createMission(req, res) {
+  constructor() {
+    // 메서드 바인딩
+    this.getCategories = this.getCategories.bind(this);
+    this.getMissions = this.getMissions.bind(this);
+    this.getMissionById = this.getMissionById.bind(this);
+    this.getParticipatedMissionIds = this.getParticipatedMissionIds.bind(this);
+  }
+
+  /**
+   * 미션 카테고리 목록 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getCategories(req, res, next) {
     try {
-      const {userId} = req.params;
-      const {missionId, status = "ONGOING"} = req.body;
+      const result = await notionMissionService.getCategories();
+
+      res.success({
+        categories: result.categories
+      });
+
+    } catch (error) {
+      console.error("[MissionController] 카테고리 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 목록 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   * 
+   * @note MVP: 전체 미션 반환 (페이지네이션 없음)
+   * @note 정렬: latest(최신순), popular(인기순)
+   * @note 필터: category(카테고리), excludeParticipated(참여 미션 제외)
+   */
+  async getMissions(req, res, next) {
+    try {
+      const { 
+        category, 
+        sortBy = 'latest',
+        excludeParticipated 
+      } = req.query;
+      
+      const userId = req.user?.uid; // optionalAuth에서 가져옴
+
+      // 필터 조건 구성
+      const filters = {
+        sortBy, // 'latest' or 'popular'
+      };
+      
+      if (category) {
+        filters.category = category;
+      }
+
+      // 노션에서 미션 조회
+      let result = await notionMissionService.getMissions(filters);
+
+      // 참여 미션 제외 (로그인 유저 & 옵션 활성화 시)
+      if (userId && excludeParticipated === 'true') {
+        const participatedIds = await this.getParticipatedMissionIds(userId);
+        result.missions = result.missions.filter(
+          mission => !participatedIds.includes(mission.id)
+        );
+        result.totalCount = result.missions.length;
+      }
+
+      res.success({
+        missions: result.missions,
+        totalCount: result.totalCount
+      });
+
+    } catch (error) {
+      console.error("[MissionController] 미션 목록 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 참여한 미션 ID 조회 (헬퍼 함수)
+   * @private
+   */
+  async getParticipatedMissionIds(userId) {
+    const { db } = require('../config/database');
+    
+    try {
+      const snapshot = await db.collection('userMissions')
+        .where('userId', '==', userId)
+        .where('status', 'in', ['IN_PROGRESS', 'QUIT']) // 완료는 재참여 가능
+        .select('missionNotionPageId')
+        .get();
+      
+      return snapshot.docs.map(doc => doc.data().missionNotionPageId);
+    } catch (error) {
+      console.warn('[MissionController] 참여 미션 조회 오류:', error.message);
+      return []; // 오류 시 빈 배열 (필터링 안 함)
+    }
+  }
+
+  /**
+   * 미션 상세 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getMissionById(req, res, next) {
+    try {
+      const { missionId } = req.params;
 
       if (!missionId) {
-        return res.status(400).json({
-          status: 400,
-          error: "missionId is required",
-        });
+        const error = new Error("미션 ID가 필요합니다.");
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
       }
 
-      const validStatuses = ["ONGOING", "COMPLETED", "EXPIRED", "RETRY"];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({
-          status: 400,
-          error: "Invalid status. Must be one of: " + validStatuses.join(", "),
-        });
-      }
+      const mission = await notionMissionService.getMissionById(missionId);
 
-      const result = await missionService.createMission(userId, missionId, status);
-
-      res.json({
-        status: 200,
-        data: {
-          ...result,
-          startedAt: new Date().toISOString(),
-          completedAt: status === "COMPLETED" ? new Date().toISOString() : null,
-        },
+      res.success({
+        mission
       });
+
     } catch (error) {
-      res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
+      console.error("[MissionController] 미션 상세 조회 오류:", error.message);
+      return next(error);
     }
   }
 
-  async getUserMissions(req, res) {
-    try {
-      const {userId} = req.params;
-      const {status} = req.query;
-
-      const missions = await missionService.getUserMissions(userId, status);
-
-      res.json({
-        status: 200,
-        data: missions,
-        count: missions.length,
-      });
-    } catch (error) {
-      res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
-    }
-  }
-
-  async getMissionById(req, res) {
-    try {
-      const {userId, missionId} = req.params;
-
-      const mission = await missionService.getMissionById(userId, missionId);
-
-      if (!mission) {
-        return res.status(404).json({
-          status: 404,
-          error: "Mission not found",
-        });
-      }
-
-      res.json({
-        status: 200,
-        data: mission,
-      });
-    } catch (error) {
-      res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
-    }
-  }
-
-  async updateMission(req, res) {
-    try {
-      const {userId, missionId} = req.params;
-      const {status, certified, review} = req.body;
-
-      const updateData = {};
-
-      if (status) {
-        const validStatuses = ["ONGOING", "COMPLETED", "EXPIRED", "RETRY"];
-        if (!validStatuses.includes(status)) {
-          return res.status(400).json({
-            status: 400,
-            error: "Invalid status. Must be one of: " + validStatuses.join(", "),
-          });
-        }
-        updateData.status = status;
-      }
-
-      if (certified !== undefined) updateData.certified = certified;
-      if (review !== undefined) updateData.review = review;
-
-      if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-          status: 400,
-          error: "No valid fields to update",
-        });
-      }
-
-      const result = await missionService.updateMission(userId, missionId, updateData);
-
-      res.json({
-        status: 200,
-        data: result,
-      });
-    } catch (error) {
-      res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
-    }
-  }
-
-  async deleteMission(req, res) {
-    try {
-      const {userId, missionId} = req.params;
-
-      await missionService.deleteMission(userId, missionId);
-
-      res.json({
-        status: 200,
-        message: "Mission deleted successfully",
-      });
-    } catch (error) {
-      res.status(500).json({
-        status: 500,
-        error: error.message,
-      });
-    }
-  }
 }
 
 module.exports = new MissionController();

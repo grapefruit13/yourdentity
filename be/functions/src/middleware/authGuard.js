@@ -1,4 +1,5 @@
 const admin = require("firebase-admin");
+const authService = require("../services/authService");
 
 // Admin 초기화
 if (!admin.apps.length) {
@@ -50,6 +51,21 @@ const authGuard = async (req, res, next) => {
 
         return res.error(401, "토큰이 무효화되었습니다 (로그아웃됨)");
       }
+    }
+
+    // 자격정지 상태 체크
+    const suspensionStatus = await authService.checkSuspensionStatus(decodedToken.uid);
+    
+    if (suspensionStatus.isSuspended) {
+      console.log("자격정지된 사용자 감지:", {
+        uid: decodedToken.uid,
+        reason: suspensionStatus.suspensionReason,
+        endAt: suspensionStatus.suspensionEndAt,
+      });
+
+      return res.error(403, suspensionStatus.suspensionReason || "계정이 자격정지 상태입니다", {
+        suspensionEndAt: suspensionStatus.suspensionEndAt,
+      });
     }
 
     // req.user에 사용자 정보 저장

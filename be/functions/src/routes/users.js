@@ -23,9 +23,6 @@ const router = express.Router();
  *         message:
  *           type: string
  *           example: 잘못된 요청입니다
- *         code:
- *           type: string
- *           example: BAD_REQUEST
  *     StandardResponse:
  *       type: object
  *       properties:
@@ -806,14 +803,14 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                   properties:
  *                     routine:
  *                       type: object
- *                       description: 한끗 루틴 그룹
+ *                       description: 한끗루틴 그룹
  *                       properties:
  *                         label:
  *                           type: string
- *                           example: "한끗 루틴"
+ *                           example: "한끗루틴"
  *                         items:
  *                           type: array
- *                           description: 한끗 루틴 커뮤니티 목록
+ *                           description: 한끗루틴 커뮤니티 목록
  *                           items:
  *                             type: object
  *                             properties:
@@ -883,7 +880,7 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *               status: 200
  *               data:
  *                 routine:
- *                   label: "한끗 루틴"
+ *                   label: "한끗루틴"
  *                   items:
  *                     - id: "CP:G7C66H69GK"
  *                       name: "15일 동안 음악 일기 쓰기"
@@ -951,11 +948,11 @@ router.get("/me/participating-communities", authGuard, userController.getMyParti
  *                   properties:
  *                     routine:
  *                       type: object
- *                       description: 한끗 루틴 그룹
+ *                       description: 한끗루틴 그룹
  *                       properties:
  *                         label:
  *                           type: string
- *                           example: "한끗 루틴"
+ *                           example: "한끗루틴"
  *                         items:
  *                           type: array
  *                           items:
@@ -1383,7 +1380,7 @@ router.put("/:userId", userController.updateUser);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:userId", userController.deleteUser);
+router.delete("/:userId", authGuard, userController.deleteUser);
 
 module.exports = router;
 

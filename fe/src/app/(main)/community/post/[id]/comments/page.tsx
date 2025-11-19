@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { FormEvent } from "react";
+import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentItem from "@/components/community/CommentItem";
@@ -10,6 +11,7 @@ import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { commentsKeys } from "@/constants/generated/query-keys";
 import { communitiesKeys } from "@/constants/generated/query-keys";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
 import {
   useGetCommentsCommunitiesPostsByTwoIds,
   usePostCommentsCommunitiesPostsByTwoIds,
@@ -17,6 +19,7 @@ import {
   useDeleteCommentsById,
 } from "@/hooks/generated/comments-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
 import { debug } from "@/utils/shared/debugger";
 
@@ -45,13 +48,24 @@ const CommentsPage = () => {
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
     new Set()
   );
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const bottomTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const setTitle = useTopBarStore((state) => state.setTitle);
+  const setLeftSlot = useTopBarStore((state) => state.setLeftSlot);
+  const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+  const resetTopBar = useTopBarStore((state) => state.reset);
 
   // 현재 사용자 정보
   const { data: userData } = useGetUsersMe({
     select: (data) => data?.user,
   });
   const currentUserNickname = userData?.nickname || "";
+
+  // 뒤로가기 핸들러
+  const handleBack = useCallback(() => {
+    // 게시글 상세 페이지로 명시적으로 이동
+    router.push(`/community/post/${postId}?communityId=${communityId}`);
+  }, [router, postId, communityId]);
 
   // 댓글 데이터 가져오기
   const { data: commentsData, isLoading: isCommentsLoading } =
@@ -64,6 +78,46 @@ const CommentsPage = () => {
     });
 
   const comments = commentsData?.comments || [];
+
+  // 전체 댓글 개수 계산 (원댓글 + 답글)
+  const totalCommentsCount = useMemo(() => {
+    return comments.reduce((total, comment) => {
+      const repliesCount = comment.repliesCount ?? comment.replies?.length ?? 0;
+      return total + 1 + repliesCount; // 원댓글 1개 + 답글 개수
+    }, 0);
+  }, [comments]);
+
+  // TopBar 초기 설정 (마운트 시 한 번만)
+  useEffect(() => {
+    // 커스텀 뒤로가기 버튼 설정
+    const backButton = (
+      <button
+        onClick={handleBack}
+        className="hover:cursor-pointer"
+        aria-label="뒤로가기"
+      >
+        <Image
+          src={IMAGE_URL.ICON.chevron.left.url}
+          alt={IMAGE_URL.ICON.chevron.left.alt}
+          width={24}
+          height={24}
+        />
+      </button>
+    );
+    setLeftSlot(backButton);
+
+    // 게시글 관련 컨텍스트 메뉴 숨기기
+    setRightSlot(null);
+
+    return () => {
+      resetTopBar();
+    };
+  }, [handleBack, setLeftSlot, setRightSlot, resetTopBar]);
+
+  // TopBar 제목 업데이트 (댓글 개수 변경 시)
+  useEffect(() => {
+    setTitle(`댓글 ${totalCommentsCount}`);
+  }, [totalCommentsCount, setTitle]);
 
   // 댓글 작성 mutation
   const { mutateAsync: postCommentAsync } =
@@ -123,12 +177,6 @@ const CommentsPage = () => {
       setDeleteTargetId(null);
     },
   });
-
-  // 뒤로가기 핸들러
-  const handleBack = () => {
-    // 게시글 상세 페이지로 명시적으로 이동
-    router.push(`/community/post/${postId}?communityId=${communityId}`);
-  };
 
   // 댓글 제출 핸들러
   const handleCommentSubmit = async (e: FormEvent) => {
@@ -251,6 +299,11 @@ const CommentsPage = () => {
     });
   };
 
+  // 메뉴 토글 핸들러 (한 번에 하나의 메뉴만 열리도록 제어)
+  const handleMenuToggle = (menuId: string | null) => {
+    setOpenMenuId((prev) => (prev === menuId ? null : menuId));
+  };
+
   // 로딩 중
   if (isCommentsLoading) {
     return (
@@ -258,7 +311,7 @@ const CommentsPage = () => {
         <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
           <Skeleton className="h-6 w-16" />
         </div>
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 pb-48">
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
               <div key={`comment-skeleton-${index}`} className="flex gap-3">
@@ -280,35 +333,9 @@ const CommentsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* 헤더 */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-        >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
-        <Typography font="noto" variant="heading2B" className="text-gray-800">
-          댓글 {comments.length}
-        </Typography>
-        <div className="w-10" /> {/* 중앙 정렬을 위한 공간 */}
-      </div>
-
+    <div className="min-h-screen bg-white pt-12">
       {/* 댓글 목록 */}
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 pb-48">
         {comments.length > 0 ? (
           <div className="space-y-4">
             {comments.map((comment) => (
@@ -329,6 +356,7 @@ const CommentsPage = () => {
                 onReport={(commentId) => {
                   // TODO: 신고 기능 구현
                   console.log("신고:", commentId);
+                  alert("구현 예정 기능입니다");
                 }}
                 editingCommentId={editingCommentId}
                 editingContent={editingContent}
@@ -351,6 +379,8 @@ const CommentsPage = () => {
                     : ""
                 }
                 onCommentInputChange={setCommentInput}
+                openMenuId={openMenuId}
+                onMenuToggle={handleMenuToggle}
               />
             ))}
           </div>
@@ -362,26 +392,30 @@ const CommentsPage = () => {
           </div>
         )}
 
-        {/* 하단 댓글 작성칸 - 원댓글에 대한 답글일 때만 표시 (답글에 대한 답글일 때는 숨김) */}
-        {!editingCommentId && (!replyingTo || !replyingTo.isReply) && (
-          <div className="fixed right-0 bottom-20 left-0 z-30 border-t border-gray-100 bg-white px-4 py-3">
+        {/* 하단 댓글 작성칸 - 항상 표시하되, 답글에 대한 답글일 때는 비활성화 */}
+        {!editingCommentId && (
+          <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[470px] -translate-x-1/2 border-t border-gray-100 bg-white px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-gray-300"></div>
                 <Typography
                   font="noto"
                   variant="body2M"
-                  className="text-gray-800"
+                  className={cn(
+                    "text-gray-800",
+                    replyingTo?.isReply && "text-gray-400"
+                  )}
                 >
                   {currentUserNickname || "익명"}
                 </Typography>
                 {replyingTo && !replyingTo.isReply && (
                   <Typography
                     font="noto"
-                    variant="caption1R"
+                    variant="body2R"
                     className="text-gray-500"
                   >
-                    @ {replyingTo.author}에게 답글
+                    <span className="text-main-500">@{replyingTo.author}</span>
+                    에게 답글
                   </Typography>
                 )}
               </div>
@@ -407,7 +441,13 @@ const CommentsPage = () => {
                     ? `${replyingTo.author}에게 답글 남기기`
                     : "서로 배려하는 댓글을 남겨요:)"
                 }
-                className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
+                disabled={replyingTo?.isReply === true}
+                className={cn(
+                  "w-full resize-none rounded-lg border p-3 pr-20 pb-12 text-sm focus:outline-none",
+                  replyingTo?.isReply
+                    ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400"
+                    : "focus:ring-main-400 border-gray-200 focus:ring-2"
+                )}
                 rows={
                   commentInput.trim()
                     ? Math.min(commentInput.split("\n").length + 1, 5)
@@ -417,10 +457,12 @@ const CommentsPage = () => {
               <div className="absolute right-2 bottom-3 flex items-center gap-2">
                 <button
                   type="submit"
-                  disabled={!commentInput.trim()}
+                  disabled={
+                    !commentInput.trim() || replyingTo?.isReply === true
+                  }
                   className={cn(
                     "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                    commentInput.trim()
+                    commentInput.trim() && !replyingTo?.isReply
                       ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                       : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                   )}
@@ -429,7 +471,9 @@ const CommentsPage = () => {
                     font="noto"
                     variant="body2M"
                     className={
-                      commentInput.trim() ? "text-white" : "text-gray-400"
+                      commentInput.trim() && !replyingTo?.isReply
+                        ? "text-white"
+                        : "text-gray-400"
                     }
                   >
                     등록

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import Image from "next/image";
+import ProfileImage from "@/components/shared/ui/profile-image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { isValidImageUrl } from "@/utils/shared/url";
+import { Typography } from "../shared/typography";
 
 interface PostFeedProps {
   posts: CommunityPostListItem[];
@@ -46,8 +48,6 @@ const PostFeed = ({
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-gray-100 text-gray-600";
     switch (category) {
-      // CHECK: 카테고리 구분을 코드 구분으로 안하고 있어 띄어쓰기 주의가 필요... (한끗루틴, 한끗 루틴)
-      case "한끗 루틴":
       case "한끗루틴":
       case "월간 소모임":
       case "TMI":
@@ -68,11 +68,11 @@ const PostFeed = ({
   // 로딩 중일 때 스켈레톤 표시
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div>
         {Array.from({ length: skeletonCount }).map((_, index) => (
           <div
             key={`skeleton-${index}`}
-            className="relative rounded-lg bg-white p-4 shadow-sm"
+            className="relative border-b border-gray-200 bg-white py-5"
           >
             <div className="flex gap-3">
               {/* 텍스트 컨텐츠 영역 */}
@@ -93,32 +93,27 @@ const PostFeed = ({
                   <Skeleton className="h-4 w-5/6" />
                 </div>
 
-                {/* 유저 정보 및 액션 아이콘들 스켈레톤 - 좌우 배치 */}
-                <div className="mb-3 flex items-center justify-between">
-                  {/* 작성자/시간 스켈레톤 (왼쪽) */}
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-3 w-16" />
-                    <Skeleton className="h-3 w-1" />
-                    <Skeleton className="h-3 w-12" />
-                  </div>
-
-                  {/* 액션 아이콘들 스켈레톤 (오른쪽) */}
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-4 w-8" />
-                    <Skeleton className="h-4 w-8" />
-                  </div>
+                {/* 작성자/시간 스켈레톤 */}
+                <div className="flex items-center gap-2">
+                  {/* 프로필 이미지 스켈레톤 */}
+                  <Skeleton className="h-6 w-6 rounded-full" />
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-12" />
                 </div>
               </div>
 
-              {/* 썸네일 이미지 스켈레톤 */}
-              <div className="mt-2 flex-shrink-0">
-                <Skeleton className="h-20 w-20 rounded-lg" />
+              {/* 우측 영역 - 썸네일 및 좋아요/코멘트 */}
+              <div className="mb-3 flex flex-col items-end justify-between">
+                {/* 썸네일 이미지 스켈레톤 */}
+                <div className="flex justify-end">
+                  <Skeleton className="h-20 w-20 rounded-lg" />
+                </div>
+                {/* 액션 아이콘들 스켈레톤 */}
+                <div className="flex gap-4">
+                  <Skeleton className="h-4 w-8" />
+                  <Skeleton className="h-4 w-8" />
+                </div>
               </div>
-            </div>
-
-            {/* 점 3개 메뉴 스켈레톤 */}
-            <div className="absolute right-4 bottom-4">
-              <Skeleton className="h-4 w-4" />
             </div>
           </div>
         ))}
@@ -127,11 +122,14 @@ const PostFeed = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       {posts.map((post) => (
         <div
           key={post.id}
-          className="relative cursor-pointer rounded-lg bg-white p-4 shadow-sm transition-colors hover:bg-gray-50"
+          className={cn(
+            "relative cursor-pointer border-b border-gray-200 bg-white py-5 transition-colors hover:bg-gray-50",
+            post === posts[posts.length - 1] && "border-b-0"
+          )}
           onClick={() => handlePostClick(post)}
         >
           <div className="flex gap-3">
@@ -162,69 +160,81 @@ const PostFeed = ({
                   {post.preview.description}
                 </p>
               )}
-
-              {/* 작성자/시간 */}
-              <div className="mb-3 text-xs text-gray-500">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {post.author || "(알 수 없는 사용자)"}
-                  </span>
-                  <span>•</span>
-                  {post.createdAt && <span>{getTimeAgo(post.createdAt)}</span>}
-                </div>
-              </div>
             </div>
 
-            {/* 우측 영역 - 썸네일 및 좋아요/코멘트 */}
-            <div className="mb-3 flex flex-col items-end justify-between">
-              {/* 썸네일 이미지 - 우상단 */}
-              <div className="flex justify-end">
-                {post.preview?.thumbnail?.url &&
-                  isValidImageUrl(post.preview.thumbnail.url) && (
-                    <PostThumbnail
-                      src={post.preview.thumbnail.url}
-                      alt={post.title || ""}
-                    />
-                  )}
+            {/* 우측 영역 - 썸네일 */}
+            <div className="mb-3">
+              {post.preview?.thumbnail?.url &&
+                isValidImageUrl(post.preview.thumbnail.url) && (
+                  <PostThumbnail
+                    src={post.preview.thumbnail.url}
+                    alt={post.title || ""}
+                  />
+                )}
+            </div>
+          </div>
+          {/* 하단 섹션 - 작성자/시간/게시물카운트 데이터 표시부 */}
+          <div className="flex justify-between">
+            <div className="flex items-center gap-1">
+              {/* 유저 프로필사진 */}
+              <ProfileImage
+                src={post.profileImageUrl}
+                alt={post.author || ""}
+                size="h-4 w-4"
+              />
+              <Typography
+                font="noto"
+                variant="label2R"
+                className="text-gray-400"
+              >
+                {post.author || "(알 수 없는 사용자)"}
+              </Typography>
+              <span className="h-[6px] w-px bg-gray-200" />
+              {post.createdAt && (
+                <Typography
+                  font="noto"
+                  variant="label2R"
+                  className="text-gray-400"
+                >
+                  {getTimeAgo(post.createdAt)}
+                </Typography>
+              )}
+            </div>
+            {/* 카운트 표시부 - 좋아요/댓글 */}
+            <div className="flex gap-4">
+              <div className="flex items-center gap-1">
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+                <span className="text-xs text-gray-400">{post.likesCount}</span>
               </div>
-              {/* 액션 아이콘들 - 우하단 고정 */}
-              <div className="flex gap-4">
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                  <span className="text-xs text-gray-400">
-                    {post.likesCount}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <span className="text-xs text-gray-400">
-                    {post.commentsCount}
-                  </span>
-                </div>
+              <div className="flex items-center gap-1">
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                <span className="text-xs text-gray-400">
+                  {post.commentsCount}
+                </span>
               </div>
             </div>
           </div>
@@ -234,4 +244,4 @@ const PostFeed = ({
   );
 };
 
-export default PostFeed;
+export default memo(PostFeed);

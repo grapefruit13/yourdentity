@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import { Checkbox } from "@/components/ui/checkbox";
-import { KOREAN_REGIONS } from "@/constants/shared/korean-regions";
+import { useSidoList, useSigunguList } from "@/hooks/shared/useRegions";
 import { cn } from "@/utils/shared/cn";
 import type { ActivityApplicationFormData } from "./types";
 
@@ -84,60 +84,111 @@ export const ActivityPickerBottomSheet = ({
     }
   }, [pickerType]);
 
+  // 시도 목록 조회
+  const { data: sidoList = [], isLoading: isLoadingSido } = useSidoList();
+
+  // 선택된 시도 코드로 시군구 목록 조회
+  const { data: sigunguList = [], isLoading: isLoadingSigungu } =
+    useSigunguList(selectedRegionCode ?? null);
+
   // 지역 선택 바텀시트 컨텐츠
-  const renderRegionContent = () => (
-    <div className="flex max-h-[60vh] gap-4 overflow-hidden">
-      {/* 시/도 목록 */}
-      <div className="flex-1 overflow-y-auto">
-        {KOREAN_REGIONS.map((region) => (
-          <button
-            key={region.code}
-            onClick={() => {
-              onRegionCodeSelect?.(region.code);
-              if (region.districts.length === 0) {
-                onRegionSelect?.(region.name, "");
-              }
-            }}
-            className={cn(
-              "w-full rounded-lg px-4 py-3 text-left transition-colors",
-              selectedRegionCode === region.code
-                ? "bg-pink-100 text-pink-700"
-                : "bg-white text-gray-900 hover:bg-gray-50"
-            )}
-          >
-            <Typography font="noto" variant="body2R">
-              {region.name}
-            </Typography>
-          </button>
-        ))}
-      </div>
-      {/* 구/군 목록 */}
-      {selectedRegionCode && (
-        <div className="flex-1 overflow-y-auto border-l border-gray-200 pl-4">
-          {KOREAN_REGIONS.find(
-            (r) => r.code === selectedRegionCode
-          )?.districts.map((district) => (
-            <button
-              key={district.code}
-              onClick={() => {
-                const region = KOREAN_REGIONS.find(
-                  (r) => r.code === selectedRegionCode
-                );
-                if (region) {
-                  onRegionSelect?.(region.name, district.name);
-                }
-              }}
-              className="w-full rounded-lg bg-white px-4 py-3 text-left text-gray-900 transition-colors hover:bg-gray-50"
-            >
-              <Typography font="noto" variant="body2R">
-                {district.name}
-              </Typography>
-            </button>
-          ))}
+  const renderRegionContent = () => {
+    // 로딩 중
+    if (isLoadingSido) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Typography font="noto" variant="body2R" className="text-gray-400">
+            지역 정보를 불러오는 중...
+          </Typography>
         </div>
-      )}
-    </div>
-  );
+      );
+    }
+
+    // 선택된 시도 정보 찾기
+    const selectedSido = sidoList.find(
+      (sido) => sido.code === selectedRegionCode
+    );
+
+    // 시도에 구/군이 없는 경우 (세종특별자치시 등)
+    const hasNoDistricts =
+      selectedSido && sigunguList.length === 0 && !isLoadingSigungu;
+
+    return (
+      <div className="flex max-h-[60vh] gap-4 overflow-hidden">
+        {/* 시/도 목록 */}
+        <div className="flex-1 overflow-y-auto">
+          {sidoList.map((sido) => {
+            // 세종특별자치시는 구/군이 없으므로 바로 선택 가능
+            const isSejong = sido.code === "36"; // 세종특별자치시 코드
+
+            return (
+              <button
+                key={sido.code}
+                onClick={() => {
+                  onRegionCodeSelect?.(sido.code);
+                  if (isSejong) {
+                    onRegionSelect?.(sido.name, "");
+                  }
+                }}
+                className={cn(
+                  "w-full rounded-lg px-4 py-3 text-left transition-colors",
+                  selectedRegionCode === sido.code
+                    ? "bg-pink-100 text-pink-700"
+                    : "bg-white text-gray-900 hover:bg-gray-50"
+                )}
+              >
+                <Typography font="noto" variant="body2R">
+                  {sido.name}
+                </Typography>
+              </button>
+            );
+          })}
+        </div>
+        {/* 구/군 목록 */}
+        {selectedRegionCode && (
+          <div className="flex-1 overflow-y-auto border-l border-gray-200 pl-4">
+            {isLoadingSigungu ? (
+              <div className="flex items-center justify-center py-8">
+                <Typography
+                  font="noto"
+                  variant="body2R"
+                  className="text-gray-400"
+                >
+                  구/군 정보를 불러오는 중...
+                </Typography>
+              </div>
+            ) : hasNoDistricts ? (
+              <div className="flex items-center justify-center py-8">
+                <Typography
+                  font="noto"
+                  variant="body2R"
+                  className="text-gray-400"
+                >
+                  구/군이 없습니다
+                </Typography>
+              </div>
+            ) : (
+              sigunguList.map((sigungu) => (
+                <button
+                  key={sigungu.code}
+                  onClick={() => {
+                    if (selectedSido) {
+                      onRegionSelect?.(selectedSido.name, sigungu.name);
+                    }
+                  }}
+                  className="w-full rounded-lg bg-white px-4 py-3 text-left text-gray-900 transition-colors hover:bg-gray-50"
+                >
+                  <Typography font="noto" variant="body2R">
+                    {sigungu.name}
+                  </Typography>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // 현재 상황 선택 바텀시트 컨텐츠
   const renderSituationContent = () => {

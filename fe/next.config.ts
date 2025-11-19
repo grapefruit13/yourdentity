@@ -8,7 +8,6 @@ loadEnvConfig(process.cwd());
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: true,
   register: true,
   cacheOnFrontEndNav: true, // 페이지 네비게이션 시 캐싱 활성화
   cacheStartUrl: true, // start_url 캐싱

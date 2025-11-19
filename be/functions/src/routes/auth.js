@@ -64,7 +64,15 @@ const router = express.Router();
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: 토큰이 만료되었습니다
+ *                   description: |
+ *                     인증 실패 사유에 따른 메시지:
+ *                     - "Bearer 토큰이 필요합니다"
+ *                     - "잘못된 인증 헤더 형식입니다"
+ *                     - "토큰이 무효화되었습니다 (로그아웃됨)"
+ *                     - "토큰이 만료되었습니다"
+ *                     - "유효하지 않은 토큰입니다"
+ *                     - "인증에 실패했습니다"
+ *                   example: "토큰이 만료되었습니다"
  *       500:
  *         description: 서버 오류
  *         content:
@@ -131,7 +139,15 @@ router.post("/logout", authGuard, authController.logout);
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: 토큰이 만료되었습니다
+ *                   description: |
+ *                     인증 실패 사유에 따른 메시지:
+ *                     - "Bearer 토큰이 필요합니다"
+ *                     - "잘못된 인증 헤더 형식입니다"
+ *                     - "토큰이 무효화되었습니다 (로그아웃됨)"
+ *                     - "토큰이 만료되었습니다"
+ *                     - "유효하지 않은 토큰입니다"
+ *                     - "인증에 실패했습니다"
+ *                   example: "토큰이 만료되었습니다"
  */
 router.get("/verify", authGuard, authController.verifyToken);
 
@@ -145,13 +161,15 @@ router.get("/verify", authGuard, authController.verifyToken);
  *       
  *       **작동 방식:**
  *       1. 카카오 로그인 사용자인 경우 카카오 연결 해제
- *       2. Firestore 개인정보 가명처리 (생년월일 월/일 마스킹, 이메일/전화번호 등 제거)
+ *       2. Firestore 개인정보 가명처리 (닉네임 삭제, 생년월일 월/일 마스킹, 모든 필드 null 처리)
  *       3. Firebase Auth 사용자 삭제
  *       
  *       **개인정보 처리:**
- *       - 제거: 이름, 이메일, 전화번호, 주소, 프로필 이미지
+ *       - 닉네임 삭제: nicknames 컬렉션에서 해당 사용자의 닉네임 문서 삭제
+ *       - 제거: 생년월일(가명처리), deletedAt, lastUpdatedAt을 제외한 모든 필드를 null로 처리
+ *         (이름, 이메일, 전화번호, 닉네임, 주소, 프로필 이미지, 자기소개, rewards, profileImagePath 등 모든 필드)
  *       - 가명처리: 생년월일 (YYYY-**-** 형태)
- *       - 유지: 통계용 데이터 (레벨, 리워드, 게시글 수)
+ *       - 유지: 가명처리된 생년월일, 삭제일시(deletedAt), 마지막 업데이트 일자(lastUpdatedAt)만 유지
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -208,7 +226,15 @@ router.get("/verify", authGuard, authController.verifyToken);
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: 토큰이 만료되었습니다
+ *                   description: |
+ *                     인증 실패 사유에 따른 메시지:
+ *                     - "Bearer 토큰이 필요합니다"
+ *                     - "잘못된 인증 헤더 형식입니다"
+ *                     - "토큰이 무효화되었습니다 (로그아웃됨)"
+ *                     - "토큰이 만료되었습니다"
+ *                     - "유효하지 않은 토큰입니다"
+ *                     - "인증에 실패했습니다"
+ *                   example: "토큰이 만료되었습니다"
  *       500:
  *         description: 서버 오류
  *         content:

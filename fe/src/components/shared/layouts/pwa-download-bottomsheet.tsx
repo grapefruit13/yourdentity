@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { MouseEvent, TouchEvent } from "react";
+import type { MouseEvent, TouchEvent as ReactTouchEvent } from "react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { cn } from "@/utils/shared/cn";
@@ -28,6 +28,9 @@ const PwaDownloadBottomSheet = ({
   const dragStartY = useRef<number>(0);
   const currentTranslateY = useRef<number>(0);
   const isDragging = useRef<boolean>(false);
+  const previousBodyOverflow = useRef<string>("");
+  const previousHtmlOverflow = useRef<string>("");
+  const scrollY = useRef<number>(0);
 
   useEffect(() => {
     setMounted(true);
@@ -37,22 +40,59 @@ const PwaDownloadBottomSheet = ({
   useEffect(() => {
     if (isOpen) {
       setIsAnimating(true);
+
+      // 현재 스크롤 위치 저장
+      scrollY.current = window.scrollY;
+
+      // 기존 스타일 저장
+      previousBodyOverflow.current = document.body.style.overflow;
+      previousHtmlOverflow.current = document.documentElement.style.overflow;
+
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+
+      // 터치 스크롤 방지 (추가 보안)
+      const preventTouchMove = (e: globalThis.TouchEvent) => {
+        // 바텀시트 내부가 아닌 경우에만 preventDefault
+        const target = e.target as HTMLElement;
+        const bottomSheet = target.closest('[role="dialog"]');
+        if (!bottomSheet) {
+          e.preventDefault();
+        }
+      };
+
+      document.addEventListener("touchmove", preventTouchMove, {
+        passive: false,
+      });
+
+      return () => {
+        // 스타일 복원
+        document.body.style.overflow = previousBodyOverflow.current;
+        document.documentElement.style.overflow = previousHtmlOverflow.current;
+
+        // 스크롤 위치 복원
+        window.scrollTo(0, scrollY.current);
+
+        // 터치 이벤트 리스너 제거
+        document.removeEventListener("touchmove", preventTouchMove);
+      };
     } else {
       const timer = setTimeout(() => {
         setIsAnimating(false);
-        document.body.style.overflow = "";
+        // 스타일 복원
+        document.body.style.overflow = previousBodyOverflow.current;
+        document.documentElement.style.overflow = previousHtmlOverflow.current;
       }, ANIMATION_DURATION_MS);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
-  const handleTouchStart = (e: TouchEvent) => {
+  const handleTouchStart = (e: ReactTouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
     isDragging.current = true;
   };
 
-  const handleTouchMove = (e: TouchEvent) => {
+  const handleTouchMove = (e: ReactTouchEvent) => {
     if (!isDragging.current || !sheetRef.current) return;
 
     const currentY = e.touches[0].clientY;

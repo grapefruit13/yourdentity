@@ -1,8 +1,10 @@
 const { Client } = require('@notionhq/client');
-const fcmHelper = require('../utils/fcmHelper');
+// fcmHelper는 순환 참조 방지를 위해 lazy require로 변경
+// const fcmHelper = require('../utils/fcmHelper');
 const { getRelationValues, getTitleValue, getTextContent, getSelectValue, getNumberValue, getDateValue } = require('../utils/notionHelper');
 const FirestoreService = require('./firestoreService');
 const RewardService = require('./rewardService');
+const {FieldValue} = require('../config/database');
 
 // 에러 코드 정의
 const ERROR_CODES = {
@@ -82,6 +84,7 @@ class NotificationService {
     this.templateDatabaseId = NOTION_NOTIFICATION_TEMPLATE_DB_ID;
     this.firestoreService = new FirestoreService("users");
     this.rewardService = new RewardService();
+    this.notificationFirestoreService = new FirestoreService("notifications");
   }
 
   /**
@@ -486,6 +489,54 @@ class NotificationService {
           }
           throw rewardError;
         }
+      } else if (nadumAmount < 0) {
+        try {
+          const rewardPromises = userIds.map(async (userId) => {
+            const historyId = `additional_point_${pageId}_${userId}`;
+            try {
+              const { isDuplicate, deducted } = await this.rewardService.deductRewardFromUser(
+                userId,
+                Math.abs(nadumAmount),
+                'additional_point',
+                historyId,
+                null,  // actionTimestamp: 서버 시간 사용
+                true,
+                null
+              );
+              
+              if (isDuplicate) {
+                console.log(`[나다움 중복 차감 방지] userId=${userId}, pageId=${pageId}`);
+                return { userId, success: true, duplicate: true, deducted: 0 };
+              }
+              
+              return { userId, success: true, deducted };
+            } catch (error) {
+              console.error(`[나다움 차감 실패] userId=${userId}:`, error.message);
+              return { userId, success: false, error: error.message };
+            }
+          });
+
+          rewardResults = await Promise.allSettled(rewardPromises);
+          rewardedUserIds = rewardResults
+            .filter(result => result.status === 'fulfilled' && result.value.success)
+            .map(result => result.value.userId);
+
+          const rewardSuccessCount = rewardedUserIds.length;
+          const rewardFailureCount = userIds.length - rewardSuccessCount;
+          console.log(`[나다움 차감 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${rewardSuccessCount}, 실패=${rewardFailureCount}`);
+
+          // 차감은 실패해도 알림 자체는 진행 가능하게 유지(정책에 따라 조정)
+          paymentResult = rewardSuccessCount > 0 ? PAYMENT_RESULT.COMPLETED : PAYMENT_RESULT.FAILED;
+        } catch (rewardError) {
+          paymentResult = PAYMENT_RESULT.FAILED;
+          rewardFailed = true;
+          console.error("나다움 차감 처리 실패:", rewardError.message);
+          if (!rewardError.code) {
+            rewardError.code = ERROR_CODES.REWARD_FAILED;
+            rewardError.statusCode = 500;
+          }
+          throw rewardError;
+        }
       } else {
         rewardedUserIds = userIds;
         // 나다움 지급이 없으면 지급 결과 업데이트 불필요
@@ -494,6 +545,8 @@ class NotificationService {
       // 알림 전송 (나다움 지급 성공한 사용자에게만)
       let sendResult;
       try {
+        // 순환 참조 방지를 위해 lazy require
+        const fcmHelper = require('../utils/fcmHelper');
         sendResult = await fcmHelper.sendNotificationToUsers(
           rewardedUserIds,
           title,
@@ -845,6 +898,228 @@ class NotificationService {
       const serviceError = new Error(`Notion 필드 배치 업데이트에 실패했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.STATUS_UPDATE_FAILED;
       serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 알림 저장 (FCM 전송 시 호출)
+   * @param {string} userId - 알림을 받는 사용자 ID
+   * @param {Object} notificationData - 알림 데이터
+   * @param {string} notificationData.title - 알림 제목
+   * @param {string} notificationData.message - 알림 내용
+   * @param {string} notificationData.type - 알림 타입 (POST_LIKE, COMMENT_LIKE, COMMENT 등)
+   * @param {string} notificationData.postId - 게시글 ID
+   * @param {string} notificationData.communityId - 커뮤니티 ID (선택)
+   * @return {Promise<string>} 저장된 알림 문서 ID
+   */
+  async saveNotification(userId, notificationData) {
+    try {
+      const {title, message, type, postId, communityId, commentId} = notificationData;
+
+      if (!userId || !title || !message || !type) {
+        const error = new Error("필수 알림 데이터가 누락되었습니다");
+        error.code = "INVALID_NOTIFICATION_DATA";
+        throw error;
+      }
+
+      const notification = {
+        userId,
+        title,
+        message,
+        type,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      // 타입별 필드 추가
+      const isPostRelated = type === "POST_LIKE" || type === "COMMENT_LIKE" || type === "COMMENT";
+      const isCommentRelated = type === "COMMENT_LIKE" || type === "COMMENT";
+
+      if (isPostRelated) {
+        // 게시글 관련 알림은 postId 필수
+        if (!postId || postId === "") {
+          return null;
+        }
+        notification.postId = postId;
+        
+        if (communityId) {
+          notification.communityId = communityId;
+        }
+        
+        // 댓글 관련 알림은 commentId 추가
+        if (isCommentRelated && commentId && commentId !== "") {
+          notification.commentId = commentId;
+        }
+      }
+      // announcement 타입은 기본 필드만 저장 (추가 필드 없음)
+
+      const docRef = await this.notificationFirestoreService.create(notification);
+      return docRef.id;
+    } catch (error) {
+      console.error("알림 저장 실패:", error);
+      // 알림 저장 실패해도 FCM 전송은 계속 진행
+      return null;
+    }
+  }
+
+  /**
+   * 알림 목록 조회 (읽지 않은 개수 포함)
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @param {number} options.page - 페이지 번호 (기본값: 0)
+   * @param {number} options.size - 페이지 크기 (기본값: 20)
+   * @return {Promise<Object>} 알림 목록 및 읽지 않은 개수
+   */
+  async getNotifications(userId, options = {}) {
+    try {
+      const {page = 0, size = 20} = options;
+
+      // 알림 목록 조회 (페이지네이션)
+      const notificationsResult = await this.notificationFirestoreService.getWithPagination({
+        where: [
+          {field: "userId", operator: "==", value: userId}
+        ],
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        page: parseInt(page),
+        size: parseInt(size),
+      });
+
+      const notifications = notificationsResult?.content || [];
+      const pageable = notificationsResult?.pageable || {};
+      
+      // userId 필드 제거
+      const notificationsWithoutUserId = notifications.map(({userId, ...rest}) => rest);
+      
+      // 페이지네이션 정보 변환 (pageable -> pagination)
+      const pagination = {
+        page: pageable.pageNumber ?? parseInt(page),
+        size: pageable.pageSize ?? parseInt(size),
+        total: pageable.totalElements ?? 0,
+        totalPages: pageable.totalPages ?? 0,
+        hasNext: pageable.hasNext ?? false,
+      };
+
+      // 읽지 않은 알림 개수 조회 (전체 개수)
+      const unreadNotifications = await this.notificationFirestoreService.getCollectionWhereMultiple(
+        "notifications",
+        [
+          {field: "userId", operator: "==", value: userId},
+          {field: "isRead", operator: "==", value: false}
+        ]
+      );
+      const unreadCount = unreadNotifications?.length || 0;
+
+      return {
+        notifications: notificationsWithoutUserId,
+        pagination,
+        unreadCount,
+      };
+    } catch (error) {
+      console.error("알림 목록 조회 실패:", error);
+      const serviceError = new Error("알림 목록 조회에 실패했습니다");
+      serviceError.code = "NOTIFICATION_GET_FAILED";
+      serviceError.statusCode = 500;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 전체 읽음 처리
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>} 업데이트된 알림 개수
+   */
+  async markAllAsRead(userId) {
+    try {
+      // 읽지 않은 알림 조회
+      const unreadNotifications = await this.notificationFirestoreService.getCollectionWhereMultiple(
+        "notifications",
+        [
+          {field: "userId", operator: "==", value: userId},
+          {field: "isRead", operator: "==", value: false}
+        ]
+      );
+
+      if (!unreadNotifications || unreadNotifications.length === 0) {
+        return { updatedCount: 0 };
+      }
+
+      // 각 알림을 개별적으로 업데이트
+      const updatePromises = unreadNotifications.map(notification =>
+        this.notificationFirestoreService.update(notification.id, {
+          isRead: true,
+          updatedAt: FieldValue.serverTimestamp()
+        })
+      );
+
+      await Promise.all(updatePromises);
+      const updatedCount = unreadNotifications.length;
+
+      return { updatedCount };
+    } catch (error) {
+      console.error("전체 읽음 처리 실패:", error);
+      const serviceError = new Error("전체 읽음 처리에 실패했습니다");
+      serviceError.code = "NOTIFICATION_MARK_ALL_READ_FAILED";
+      serviceError.statusCode = 500;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 개별 알림 읽음 처리
+   * @param {string} userId - 사용자 ID
+   * @param {string} notificationId - 알림 ID
+   * @return {Promise<Object>} 업데이트 결과
+   */
+  async markAsRead(userId, notificationId) {
+    try {
+      if (!notificationId) {
+        const error = new Error("알림 ID가 필요합니다");
+        error.code = "INVALID_NOTIFICATION_ID";
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // 알림 조회
+      const notification = await this.notificationFirestoreService.getById(notificationId);
+
+      if (!notification) {
+        const error = new Error("알림을 찾을 수 없습니다");
+        error.code = "NOTIFICATION_NOT_FOUND";
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // 사용자 소유 확인
+      if (notification.userId !== userId) {
+        const error = new Error("권한이 없습니다");
+        error.code = "NOTIFICATION_UNAUTHORIZED";
+        error.statusCode = 403;
+        throw error;
+      }
+
+      // 이미 읽은 알림인지 확인
+      if (notification.isRead === true) {
+        return { message: "이미 읽음 처리된 알림입니다", updated: false };
+      }
+
+      // 읽음 처리
+      await this.notificationFirestoreService.update(notificationId, {
+        isRead: true,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+
+      return { message: "알림이 읽음 처리되었습니다", updated: true };
+    } catch (error) {
+      console.error("개별 읽음 처리 실패:", error);
+      if (error.code && error.statusCode) {
+        throw error;
+      }
+      const serviceError = new Error("개별 읽음 처리에 실패했습니다");
+      serviceError.code = "NOTIFICATION_MARK_READ_FAILED";
+      serviceError.statusCode = 500;
       throw serviceError;
     }
   }

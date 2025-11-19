@@ -294,6 +294,10 @@ class FirestoreService {
   async getCollectionWhereIn(collectionName, field, values) {
     if (!values || values.length === 0) return [];
 
+    const {FieldPath} = require("firebase-admin/firestore");
+    const isDocumentIdQuery = field === "__name__" || (field && field.constructor && field.constructor.name === "FieldPath");
+    const queryField = isDocumentIdQuery ? FieldPath.documentId() : field;
+
     // Firestore의 'in' 쿼리는 최대 10개 값만 지원
     if (values.length > 10) {
       // 10개씩 나누어서 처리
@@ -306,7 +310,7 @@ class FirestoreService {
       for (const chunk of chunks) {
         const snapshot = await db
             .collection(collectionName)
-            .where(field, "in", chunk)
+            .where(queryField, "in", chunk)
             .get();
 
         snapshot.forEach((doc) => {
@@ -326,7 +330,7 @@ class FirestoreService {
 
     const snapshot = await db
         .collection(collectionName)
-        .where(field, "in", values)
+        .where(queryField, "in", values)
         .get();
 
     const items = [];

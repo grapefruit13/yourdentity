@@ -2,6 +2,10 @@
 
 import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
+import {
+  GENDER_MAPPING,
+  type GenderKey,
+} from "@/constants/my-page/_gender-mapping";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -21,7 +25,7 @@ const PersonalInfoPage = () => {
   // Firebase User에서 가져올 수 있는 정보
   const displayName = user?.displayName || userData?.nickname || "";
   const email = user?.email || "";
-  const phoneNumber = user?.phoneNumber || "";
+  const phoneNumber = userData?.phoneNumber || "";
   const birthDate = userData?.birthDate || "";
   const gender = userData?.gender || "";
 
@@ -60,7 +64,9 @@ const PersonalInfoPage = () => {
               성별
             </Typography>
             <Input
-              value={gender || "-"}
+              value={
+                gender ? (GENDER_MAPPING[gender as GenderKey] ?? gender) : "-"
+              }
               readOnly
               className="bg-gray-50 text-gray-900"
               placeholder="성별 정보가 없습니다"

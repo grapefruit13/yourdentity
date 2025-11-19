@@ -18,6 +18,7 @@ import {
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
 import { getNotionCoverImage } from "@/utils/shared/getNotionCoverImage";
+import { shareContent } from "@/utils/shared/share";
 
 /**
  * @description 수량 선택 팝업 컴포넌트
@@ -205,31 +206,11 @@ const StoreProductDetailPage = () => {
     const shareUrl = typeof window !== "undefined" ? window.location.href : "";
     const shareText = productData.description || shareTitle;
 
-    // Web Share API 지원 확인
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          console.error("공유 실패:", error);
-        } else {
-          return;
-        }
-      }
-    }
-
-    // 클립보드에 복사
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      alert("링크가 클립보드에 복사되었습니다.");
-    } catch (error) {
-      alert("링크 복사에 실패했습니다.");
-    }
+    await shareContent({
+      title: shareTitle,
+      text: shareText,
+      url: shareUrl,
+    });
   }, [productData]);
 
   // 상품 데이터 로드 시 TopBar title과 rightSlot 설정

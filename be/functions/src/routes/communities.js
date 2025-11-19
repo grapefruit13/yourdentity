@@ -949,4 +949,58 @@ router.post(
     communityController.togglePostLike,
 );
 
+// 커뮤니티 멤버 닉네임 가용성 확인
+/**
+ * @swagger
+ * /communities/{communityId}/nickname-availability:
+ *   get:
+ *     summary: 커뮤니티 멤버 닉네임 가용성 확인
+ *     description: 특정 커뮤니티의 멤버 컬렉션에서 닉네임 중복 여부를 확인합니다.
+ *     tags: [Communities]
+ *     parameters:
+ *       - in: path
+ *         name: communityId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 커뮤니티 ID
+ *       - in: query
+ *         name: nickname
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 확인할 닉네임
+ *     responses:
+ *       200:
+ *         description: 가용성 확인 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     available:
+ *                       type: boolean
+ *                       example: true
+ *                       description: "닉네임 사용 가능 여부 (true: 사용 가능, false: 중복)"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/:communityId/nickname-availability", communityController.checkNicknameAvailability);
+
 module.exports = router;

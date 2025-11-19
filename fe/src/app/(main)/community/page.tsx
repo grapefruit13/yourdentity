@@ -1,54 +1,279 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import FilterButtons from "@/components/community/FilterButtons";
+import {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+  type ChangeEvent,
+  Suspense,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { User } from "firebase/auth";
+import { getCommunitiesPosts } from "@/api/generated/communities-api";
+import FilterChipsSection from "@/components/community/FilterChipsSection";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
 import PostFeed from "@/components/community/PostFeed";
+import ProgramFilterBottomSheet, {
+  type ProgramCategoryFilter,
+  type ProgramSortOption,
+  type ProgramStateFilter,
+} from "@/components/community/ProgramFilterBottomSheet";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
-import UserImageCarouselSection from "@/components/community/UserImageCarouselSection";
-import { userImages } from "@/constants/community/sampleData"; // TODO: 삭제 예정
-import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
+import AlarmButton from "@/components/shared/AlarmButton";
+import GrayCheckbox from "@/components/shared/GrayCheckbox";
+import { Typography } from "@/components/shared/typography";
+import Icon from "@/components/shared/ui/icon";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { useGetPrograms } from "@/hooks/generated/programs-hooks";
+import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
+import type { ProgramListResponse } from "@/types/generated/api-schema";
+import type { TGETCommunitiesPostsRes } from "@/types/generated/communities-types";
+import { cn } from "@/utils/shared/cn";
 
-const COMMUNITY_POST_LIST_SIZE = 100;
+const COMMUNITY_POST_LIST_SIZE = 20;
+
+const PROGRAM_CATEGORY_TO_TYPE: Record<
+  ProgramCategoryFilter,
+  "ROUTINE" | "GATHERING" | "TMI"
+> = {
+  한끗루틴: "ROUTINE",
+  월간소모임: "GATHERING",
+  TMI: "TMI",
+};
+
+const PROGRAM_STATE_LABELS: Record<ProgramStateFilter, string> = {
+  all: "전체",
+  ongoing: "진행중",
+  finished: "종료됨",
+};
+
+const PROGRAM_SORT_LABELS: Record<ProgramSortOption, string> = {
+  latest: "최신순",
+  popular: "인기순",
+};
 
 /**
- * @description 커뮤니티 페이지
+ * @description 커뮤니티 페이지 컨텐츠 (useSearchParams 사용)
  */
-const Page = () => {
+const CommunityPageContent = () => {
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState("전체");
+  const searchParams = useSearchParams();
+
+  // 쿼리스트링에서 필터 상태 복원
+  const getInitialSearchQuery = () => searchParams.get("search") || "";
+  const getInitialAppliedSearchQuery = () => searchParams.get("search") || "";
+  const getInitialSort = (): ProgramSortOption => {
+    const sort = searchParams.get("sort");
+    return sort === "popular" ? "popular" : "latest";
+  };
+  const getInitialProgramState = (): ProgramStateFilter => {
+    const state = searchParams.get("state");
+    return state === "ongoing" || state === "finished" ? state : "all";
+  };
+  const getInitialCategories = (): ProgramCategoryFilter[] => {
+    const categories = searchParams.get("categories");
+    if (!categories) return [];
+    return categories.split(",").filter((cat): cat is ProgramCategoryFilter => {
+      return ["한끗루틴", "월간소모임", "TMI"].includes(cat);
+    });
+  };
+  const getInitialOnlyMyPrograms = () => {
+    return searchParams.get("onlyMyPrograms") === "true";
+  };
+
+  const [searchQuery, setSearchQuery] = useState(getInitialSearchQuery);
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState(
+    getInitialAppliedSearchQuery
+  );
+  const [selectedSort, setSelectedSort] =
+    useState<ProgramSortOption>(getInitialSort);
+  const [selectedProgramState, setSelectedProgramState] =
+    useState<ProgramStateFilter>(getInitialProgramState);
+  const [selectedCategories, setSelectedCategories] =
+    useState<ProgramCategoryFilter[]>(getInitialCategories);
+  const [onlyMyPrograms, setOnlyMyPrograms] = useState(
+    getInitialOnlyMyPrograms
+  );
   const [isProgramSelectSheetOpen, setIsProgramSelectSheetOpen] =
     useState(false);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [hasFilterChanges, setHasFilterChanges] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const isSearchingRef = useRef(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // 커뮤니티 포스트 데이터 관리 - 실제 API 연동
-  // 자동 생성된 hook 사용 (useGetCommunitiesPosts)
-  const {
-    data: responseData,
-    isLoading,
-    error,
-    refetch,
-  } = useGetCommunitiesPosts({
-    request: {
-      page: 0,
-      size: COMMUNITY_POST_LIST_SIZE, // 일단 큰 값으로 설정 (페이지네이션은 향후 구현)
-      programType: undefined, // TODO: 필터 적용
-      programState: undefined, // TODO: 필터 적용
-    },
+  // Firebase Auth 상태 추적
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 로그인된 사용자일 때만 API 호출
+  const { data: participatingCommunities } =
+    useGetUsersMeParticipatingCommunities({
+      enabled: Boolean(currentUser),
+    });
+
+  // 프로그램 목록 조회 (추천 섹션용)
+  const { data: programsData } = useGetPrograms({
+    request: { pageSize: 20 },
     select: (data) => {
-      if (!data?.posts || !Array.isArray(data.posts)) return [];
-      return data.posts;
+      if (!data || typeof data !== "object") {
+        return [];
+      }
+      const responseData = data as ProgramListResponse["data"];
+      if (
+        responseData &&
+        "programs" in responseData &&
+        Array.isArray(responseData.programs)
+      ) {
+        return responseData.programs || [];
+      }
+      return [];
     },
-    refetchOnWindowFocus: false, // 브라우저 탭 전환 시 refetch 방지
+  });
+
+  const participatingCommunityIdSet = useMemo(() => {
+    const set = new Set<string>();
+    if (!participatingCommunities) {
+      return set;
+    }
+
+    const routineItems = participatingCommunities.routine?.items ?? [];
+    const gatheringItems = participatingCommunities.gathering?.items ?? [];
+    const tmiItems = participatingCommunities.tmi?.items ?? [];
+
+    [...routineItems, ...gatheringItems, ...tmiItems].forEach((item) => {
+      if (item?.id) {
+        set.add(item.id);
+      }
+    });
+    return set;
+  }, [participatingCommunities]);
+
+  const appliedProgramState =
+    selectedProgramState === "all" ? undefined : selectedProgramState;
+
+  const appliedProgramType =
+    selectedCategories.length === 1
+      ? PROGRAM_CATEGORY_TO_TYPE[selectedCategories[0]]
+      : undefined;
+
+  const {
+    data: paginatedPostsData,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteQuery<TGETCommunitiesPostsRes, Error>({
+    queryKey: [
+      "communitiesPosts",
+      appliedProgramType ?? "ALL",
+      appliedProgramState ?? "ALL",
+      // 필터 변경 시 쿼리 무효화를 위해 검색어와 정렬도 포함
+      // (클라이언트 필터링이지만 쿼리 키에 포함하여 필터 변경 시 리셋)
+      appliedSearchQuery.trim() || "NO_SEARCH",
+      selectedSort,
+      selectedCategories.join(",") || "NO_CATEGORY",
+      onlyMyPrograms ? "MY_PROGRAMS" : "ALL_PROGRAMS",
+    ],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const currentPage =
+        typeof pageParam === "number" && pageParam >= 0 ? pageParam : 0;
+      const response = await getCommunitiesPosts({
+        page: currentPage,
+        size: COMMUNITY_POST_LIST_SIZE,
+        programType: appliedProgramType,
+        programState: appliedProgramState,
+      });
+      return response.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage?.pagination?.hasNext) {
+        return (lastPage.pagination.pageNumber ?? 0) + 1;
+      }
+      return undefined;
+    },
   });
 
   // 변환된 포스트 데이터
-  const posts = responseData || [];
+  const posts = useMemo<CommunityPostListItem[]>(() => {
+    if (!paginatedPostsData?.pages) {
+      return [];
+    }
+    return paginatedPostsData.pages.flatMap((page) => {
+      if (!page?.posts || !Array.isArray(page.posts)) {
+        return [];
+      }
+      return page.posts as CommunityPostListItem[];
+    });
+  }, [paginatedPostsData]);
 
   // 초기 로딩만 감지 (데이터가 없고 로딩 중일 때만 true)
   // 데이터가 이미 있으면 브라우저 탭 전환 시에도 캐시된 데이터를 표시
   const isInitialLoading = isLoading && posts.length === 0;
+
+  // 필터 상태를 쿼리스트링에 업데이트하는 함수
+  const updateQueryParams = useCallback(
+    (filters: {
+      search?: string;
+      sort?: ProgramSortOption;
+      state?: ProgramStateFilter;
+      categories?: ProgramCategoryFilter[];
+      onlyMyPrograms?: boolean;
+    }) => {
+      const params = new URLSearchParams();
+
+      // 검색어
+      if (filters.search && filters.search.trim()) {
+        params.set("search", filters.search.trim());
+      }
+
+      // 정렬
+      if (filters.sort && filters.sort !== "latest") {
+        params.set("sort", filters.sort);
+      }
+
+      // 프로그램 상태
+      if (filters.state && filters.state !== "all") {
+        params.set("state", filters.state);
+      }
+
+      // 카테고리
+      if (filters.categories && filters.categories.length > 0) {
+        params.set("categories", filters.categories.join(","));
+      }
+
+      // 내가 참여중인 프로그램만 보기
+      if (filters.onlyMyPrograms) {
+        params.set("onlyMyPrograms", "true");
+      }
+
+      // 현재 쿼리스트링과 비교하여 변경된 경우에만 업데이트
+      const newQueryString = params.toString();
+      const currentQueryString = searchParams.toString();
+
+      if (newQueryString !== currentQueryString) {
+        const newUrl = newQueryString
+          ? `/community?${newQueryString}`
+          : "/community";
+        router.replace(newUrl, { scroll: false });
+      }
+    },
+    [router, searchParams]
+  );
 
   const handlePostClick = (post: CommunityPostListItem) => {
     // CommunityPostListItem을 Schema.CommunityPost로 확장하여 communityId 추출
@@ -68,64 +293,346 @@ const Page = () => {
 
     const postId = post.id;
     if (postId && communityId) {
-      // communityId를 쿼리 파라미터로 전달
-      router.push(`/community/post/${postId}?communityId=${communityId}`);
+      // 현재 필터 상태를 쿼리스트링에 포함하여 상세 페이지로 이동
+      const params = new URLSearchParams();
+      params.set("communityId", communityId);
+
+      // 필터 상태 추가
+      if (appliedSearchQuery.trim()) {
+        params.set("search", appliedSearchQuery.trim());
+      }
+      if (selectedSort !== "latest") {
+        params.set("sort", selectedSort);
+      }
+      if (selectedProgramState !== "all") {
+        params.set("state", selectedProgramState);
+      }
+      if (selectedCategories.length > 0) {
+        params.set("categories", selectedCategories.join(","));
+      }
+      if (onlyMyPrograms) {
+        params.set("onlyMyPrograms", "true");
+      }
+
+      router.push(`/community/post/${postId}?${params.toString()}`);
     } else {
       alert("게시물 정보를 찾을 수 없습니다.");
     }
   };
 
-  const handleFilterChange = (filter: string) => {
-    setActiveFilter(filter);
-  };
+  const normalizedSearchKeyword = appliedSearchQuery.trim().toLowerCase();
 
-  // TEMP: 월별 필터링 로직
-  const getMonthRange = (filter: string): number[] => {
-    switch (filter) {
-      case "10월~12월":
-        return [10, 11, 12];
-      case "1월~3월":
-        return [1, 2, 3];
-      case "4월~6월":
-        return [4, 5, 6];
-      case "7월~9월":
-        return [7, 8, 9];
-      default:
-        return [];
-    }
-  };
+  const handleSearch = useCallback(() => {
+    if (isSearchingRef.current) return;
+    isSearchingRef.current = true;
+    setAppliedSearchQuery(searchQuery);
+    // 다음 이벤트 루프에서 플래그 리셋
+    setTimeout(() => {
+      isSearchingRef.current = false;
+    }, 0);
+    // 쿼리스트링 업데이트
+    updateQueryParams({
+      search: searchQuery,
+      sort: selectedSort,
+      state: selectedProgramState,
+      categories: selectedCategories,
+      onlyMyPrograms,
+    });
+  }, [
+    searchQuery,
+    selectedSort,
+    selectedProgramState,
+    selectedCategories,
+    onlyMyPrograms,
+    updateQueryParams,
+  ]);
 
-  // 필터링된 포스트
-  const filteredPosts = useMemo(() => {
-    // 초기 로딩 중이거나 데이터가 없을 때만 빈 배열 반환
-    if (isInitialLoading || !posts.length) return [];
+  const handleSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        searchInputRef.current?.blur();
+        handleSearch();
+      }
+    },
+    [handleSearch]
+  );
 
-    if (activeFilter === "전체") {
-      return posts;
-    }
-    if (activeFilter === "참여중") {
-      // TODO: 실제 API 연동 시 users/{userId}/commentedPosts, likedPosts, authoredPosts 조회
-      // 현재는 임시로 빈 배열 반환
-      return [];
-    }
+  const handleSearchBlur = useCallback(() => {
+    // blur 이벤트는 약간의 지연 후 실행하여 엔터키로 인한 blur와 구분
+    setTimeout(() => {
+      if (
+        !isSearchingRef.current &&
+        document.activeElement !== searchInputRef.current
+      ) {
+        handleSearch();
+      }
+    }, 100);
+  }, [handleSearch]);
 
-    const monthRange = getMonthRange(activeFilter);
-    if (monthRange.length > 0) {
-      return posts.filter((post) => {
-        if (!post.createdAt) return false;
-        // ISO 문자열에서 월 추출 (1-12)
-        const createdDate = new Date(post.createdAt);
-        const month = createdDate.getMonth() + 1; // 0-based → 1-based
-        return monthRange.includes(month);
+  const extractCommunityId = useCallback((post: CommunityPostListItem) => {
+    const postWithCommunity = post as CommunityPostListItem & {
+      communityId?: string;
+      communityPath?: string;
+      community?: { id?: string };
+    };
+
+    return (
+      postWithCommunity.communityId ||
+      postWithCommunity.community?.id ||
+      (postWithCommunity.communityPath
+        ? postWithCommunity.communityPath.replace("communities/", "")
+        : "")
+    );
+  }, []);
+
+  const filterChips = useMemo(() => {
+    const chips: {
+      id: string;
+      label: string;
+      onRemove: () => void;
+    }[] = [];
+
+    // 정렬 옵션 (초기값이 아닌 경우만 추가)
+    if (selectedSort !== "latest") {
+      chips.push({
+        id: `sort-${selectedSort}`,
+        label: PROGRAM_SORT_LABELS[selectedSort],
+        onRemove: () => setSelectedSort("latest"),
       });
     }
 
-    return posts;
-  }, [posts, activeFilter, isInitialLoading]);
+    // 프로그램 상태 (초기값이 아닌 경우만 추가)
+    if (selectedProgramState !== "all") {
+      chips.push({
+        id: `state-${selectedProgramState}`,
+        label: PROGRAM_STATE_LABELS[selectedProgramState],
+        onRemove: () => setSelectedProgramState("all"),
+      });
+    }
 
-  // 상위 3개와 나머지 포스트 분리 - useMemo로 메모이제이션하여 안정적인 참조 유지
-  const topPosts = useMemo(() => filteredPosts.slice(0, 3), [filteredPosts]);
-  const remainingPosts = useMemo(() => filteredPosts.slice(3), [filteredPosts]);
+    // 카테고리
+    selectedCategories.forEach((category) => {
+      chips.push({
+        id: `category-${category}`,
+        label: category,
+        onRemove: () =>
+          setSelectedCategories((prev) =>
+            prev.filter((item) => item !== category)
+          ),
+      });
+    });
+
+    // 검색어
+    if (normalizedSearchKeyword) {
+      chips.push({
+        id: "search",
+        label: `검색: "${appliedSearchQuery.trim()}"`,
+        onRemove: () => {
+          setSearchQuery("");
+          setAppliedSearchQuery("");
+        },
+      });
+    }
+
+    return chips;
+  }, [
+    normalizedSearchKeyword,
+    appliedSearchQuery,
+    selectedCategories,
+    selectedProgramState,
+    selectedSort,
+  ]);
+
+  const handleSearchInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleFilterApply = ({
+    sort,
+    programState,
+    categories,
+  }: {
+    sort: ProgramSortOption;
+    programState: ProgramStateFilter;
+    categories: ProgramCategoryFilter[];
+  }) => {
+    const hasChanges =
+      sort !== "latest" || programState !== "all" || categories.length > 0;
+    setSelectedSort(sort);
+    setSelectedProgramState(programState);
+    setSelectedCategories(categories);
+    setHasFilterChanges(hasChanges);
+    setIsFilterSheetOpen(false);
+    // 쿼리스트링 업데이트
+    updateQueryParams({
+      search: appliedSearchQuery,
+      sort,
+      state: programState,
+      categories,
+      onlyMyPrograms,
+    });
+  };
+
+  useEffect(() => {
+    const hasChanges =
+      selectedSort !== "latest" ||
+      selectedProgramState !== "all" ||
+      selectedCategories.length > 0 ||
+      normalizedSearchKeyword.length > 0;
+    setHasFilterChanges(hasChanges);
+  }, [
+    selectedSort,
+    selectedProgramState,
+    selectedCategories,
+    normalizedSearchKeyword,
+  ]);
+
+  // 필터 상태 변경 시 쿼리스트링 업데이트 (초기 로드 제외)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    // 초기 마운트 시에는 쿼리스트링에서 복원한 상태이므로 업데이트하지 않음
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    updateQueryParams({
+      search: appliedSearchQuery,
+      sort: selectedSort,
+      state: selectedProgramState,
+      categories: selectedCategories,
+      onlyMyPrograms,
+    });
+  }, [
+    selectedSort,
+    selectedProgramState,
+    selectedCategories,
+    onlyMyPrograms,
+    appliedSearchQuery,
+    updateQueryParams,
+  ]);
+
+  const filteredPosts = useMemo(() => {
+    if (isInitialLoading || !posts.length) return [];
+
+    let currentPosts = [...posts];
+
+    if (onlyMyPrograms) {
+      if (participatingCommunityIdSet.size === 0) {
+        return [];
+      }
+
+      currentPosts = currentPosts.filter((post) => {
+        const communityId = extractCommunityId(post);
+        return communityId && participatingCommunityIdSet.has(communityId);
+      });
+    }
+
+    if (selectedCategories.length > 0) {
+      currentPosts = currentPosts.filter((post) => {
+        const normalizedCategory = post.category?.replace(/\s/g, "");
+        const normalizedTags = post.tags?.map((tag) => tag.replace(/\s/g, ""));
+        return selectedCategories.some((category) => {
+          const target = category.replace(/\s/g, "");
+          if (normalizedCategory && normalizedCategory === target) {
+            return true;
+          }
+          return normalizedTags?.some((tag) => tag === target);
+        });
+      });
+    }
+
+    if (normalizedSearchKeyword) {
+      currentPosts = currentPosts.filter((post) => {
+        const title = (post.title || "").toLowerCase();
+        const description =
+          (post.preview?.description || "").toLowerCase() || "";
+        const tagMatch = post.tags?.some((tag) =>
+          tag.toLowerCase().includes(normalizedSearchKeyword)
+        );
+
+        return (
+          title.includes(normalizedSearchKeyword) ||
+          description.includes(normalizedSearchKeyword) ||
+          Boolean(tagMatch)
+        );
+      });
+    }
+
+    const sortByLatest = (
+      a: CommunityPostListItem,
+      b: CommunityPostListItem
+    ) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    };
+
+    const sortByPopularity = (
+      a: CommunityPostListItem,
+      b: CommunityPostListItem
+    ) => {
+      const likesDiff = (b.likesCount ?? 0) - (a.likesCount ?? 0);
+      if (likesDiff !== 0) return likesDiff;
+      const commentsDiff = (b.commentsCount ?? 0) - (a.commentsCount ?? 0);
+      if (commentsDiff !== 0) return commentsDiff;
+      return sortByLatest(a, b);
+    };
+
+    currentPosts.sort((a, b) =>
+      selectedSort === "popular" ? sortByPopularity(a, b) : sortByLatest(a, b)
+    );
+
+    return currentPosts;
+  }, [
+    extractCommunityId,
+    isInitialLoading,
+    normalizedSearchKeyword,
+    onlyMyPrograms,
+    participatingCommunityIdSet,
+    posts,
+    selectedCategories,
+    selectedSort,
+  ]);
+
+  const segmentedPosts = useMemo(() => {
+    const top = filteredPosts.slice(0, 4);
+    const rest = filteredPosts.slice(4);
+    return { top, rest };
+  }, [filteredPosts]);
+
+  const handleFetchNextPage = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) {
+      return;
+    }
+    fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          handleFetchNextPage();
+        }
+      },
+      {
+        rootMargin: "120px",
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleFetchNextPage]);
 
   // 에러 상태 처리
   if (error) {
@@ -152,72 +659,282 @@ const Page = () => {
 
   return (
     <div className="relative min-h-full bg-white">
-      <div className="px-5 pb-20">
-        {/* 미션 프로그램 섹션 */}
-        {/* <div className="mb-5">
-          <div className="mb-5 flex items-center gap-4">
-            <span className="text-lg font-bold text-gray-500">미션</span>
-            <span className="text-lg font-bold text-black">프로그램</span>
+      {/* 검색 & 필터 섹션 */}
+      <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5">
+        <div className="relative">
+          <div className="flex h-12 items-center justify-between bg-white">
+            <div className="flex items-center gap-4">
+              <Typography font="noto" variant="title4" className="text-black">
+                프로그램
+              </Typography>
+              {/* <Typography font="noto" variant="title4" className="text-black">
+                미션
+              </Typography> */}
+            </div>
+            <AlarmButton />
           </div>
-        </div> */}
 
-        {/* 필터 버튼들 - 스티키 */}
-        <div className="sticky top-0 z-40 mt-3 mb-6 bg-white pt-2">
-          <FilterButtons
-            activeFilter={activeFilter}
-            onFilterChange={handleFilterChange}
-          />
+          {/* 검색 입력 */}
+          <div className="flex items-center gap-[10px]">
+            <div className="my-3 flex h-[40px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3">
+              <input
+                ref={searchInputRef}
+                id="community-search-input"
+                type="text"
+                value={searchQuery}
+                onChange={handleSearchInputChange}
+                onKeyDown={handleSearchKeyDown}
+                onBlur={handleSearchBlur}
+                placeholder="관심있는 키워드를 검색해보세요."
+                className="flex-1 bg-transparent text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleSearch}
+                aria-label="검색"
+                className="flex items-center justify-center"
+              >
+                <Icon
+                  src={IMAGE_URL.ICON.search.url}
+                  aria-hidden="true"
+                  className="text-gray-800"
+                  width={20}
+                  height={20}
+                />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFilterSheetOpen(true)}
+              className={cn(
+                "flex size-10 items-center justify-center rounded-[6px] border border-gray-100 transition-colors",
+                hasFilterChanges
+                  ? "border-main-500 bg-main-50 text-main-500"
+                  : "border-gray-200 text-gray-700"
+              )}
+            >
+              <Icon
+                src={IMAGE_URL.ICON.filter.url}
+                aria-hidden="true"
+                className={hasFilterChanges ? "text-main-500" : "text-gray-700"}
+                width={20}
+                height={20}
+              />
+            </button>
+          </div>
+
+          {/* 선택된 필터 칩 */}
+          <FilterChipsSection chips={filterChips} />
+
+          {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
+          {currentUser && (
+            <div
+              className="flex w-fit cursor-pointer items-center gap-2 py-[9px]"
+              onClick={() => setOnlyMyPrograms(!onlyMyPrograms)}
+            >
+              <GrayCheckbox
+                id="only-my-programs"
+                checked={onlyMyPrograms}
+                aria-label="내가 참여중인 프로그램 게시글만 보기"
+                onCheckedChange={(checked) => setOnlyMyPrograms(checked)}
+              />
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-500"
+              >
+                내가 참여중인 프로그램만 보기
+              </Typography>
+            </div>
+          )}
         </div>
+      </div>
 
+      <div className="px-5 pb-32">
         {/* 전체 포스트가 없을 때 - 로딩 완료 후에만 표시 */}
-        {!isInitialLoading && filteredPosts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-4xl">📭</div>
-            <p className="mb-2 text-base font-medium text-gray-900">
-              아직 게시글이 없어요
-            </p>
-            <p className="text-sm text-gray-500">
-              첫 번째 이야기를 공유해보세요!
-            </p>
-          </div>
-        )}
+        {!isInitialLoading &&
+          segmentedPosts.top.length + segmentedPosts.rest.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-4xl">📭</div>
+              <p className="mb-2 text-base font-medium text-gray-900">
+                아직 게시글이 없어요
+              </p>
+              <p className="text-sm text-gray-500">
+                첫 번째 이야기를 공유해보세요!
+              </p>
+            </div>
+          )}
 
-        {/* 상위 3개 포스트 */}
-        <div className="mb-6">
+        {/* 상위 4개 포스트 */}
+        <div>
           <PostFeed
-            posts={topPosts}
+            posts={segmentedPosts.top}
             onPostClick={handlePostClick}
             isLoading={isInitialLoading}
-            skeletonCount={3}
+            skeletonCount={4}
           />
         </div>
-
-        {topPosts.length > 0 && (
+        {/*
+        {segmentedPosts.top.length > 0 && (
           <UserImageCarouselSection images={userImages} />
+        )}
+        */}
+
+        {/* 이런 프로그램은 어때요? 섹션 */}
+        {programsData && programsData.length > 0 && (
+          <div className="py-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Typography
+                as="h2"
+                font="noto"
+                variant="title4"
+                className="text-black"
+              >
+                이런 프로그램은 어때요?
+              </Typography>
+              <span className="text-xl">❤️</span>
+            </div>
+            <div className="scrollbar-hide flex gap-3 overflow-x-auto">
+              {programsData.slice(0, 10).map((program) => {
+                const getProgramBgColor = (programType?: string): string => {
+                  switch (programType) {
+                    case "ROUTINE":
+                      return "bg-pink-100";
+                    case "TMI":
+                      return "bg-green-100";
+                    case "GATHERING":
+                      return "bg-orange-100";
+                    default:
+                      return "bg-blue-100";
+                  }
+                };
+
+                const getProgramIcon = (programType?: string): string => {
+                  switch (programType) {
+                    case "ROUTINE":
+                      return "🎵";
+                    case "TMI":
+                      return "🍿";
+                    case "GATHERING":
+                      return "✂️";
+                    default:
+                      return "📋";
+                  }
+                };
+
+                return (
+                  <div
+                    key={program.id}
+                    onClick={() => {
+                      if (program.id) {
+                        router.push(`/programs/${program.id}`);
+                      }
+                    }}
+                    className="flex w-[335px] flex-shrink-0 cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex h-[100px]">
+                      {/* 이미지/일러스트 영역 */}
+                      <div
+                        className={`flex w-[100px] flex-shrink-0 items-center justify-center ${getProgramBgColor(program.programType)}`}
+                      >
+                        <div className="text-4xl">
+                          {getProgramIcon(program.programType)}
+                        </div>
+                      </div>
+                      {/* 텍스트 영역 */}
+                      <div className="flex flex-1 flex-col justify-center px-3 py-2">
+                        <Typography
+                          as="h3"
+                          font="noto"
+                          variant="heading3B"
+                          className="mb-1 line-clamp-1"
+                        >
+                          {program.title || program.programName || "-"}
+                        </Typography>
+                        <Typography
+                          font="noto"
+                          variant="body3R"
+                          className="line-clamp-2 text-gray-600"
+                        >
+                          {program.description || "-"}
+                        </Typography>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* 나머지 포스트 */}
         <div className="mb-6">
           <PostFeed
-            posts={remainingPosts}
+            posts={segmentedPosts.rest}
             onPostClick={handlePostClick}
             isLoading={isInitialLoading}
             skeletonCount={5}
           />
         </div>
+
+        <div ref={loadMoreRef} aria-hidden="true" className="h-6 w-full" />
+
+        {isFetchingNextPage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-center pb-6 text-sm text-gray-500"
+          >
+            게시글을 더 불러오는 중이에요...
+          </div>
+        )}
+
+        {!hasNextPage && filteredPosts.length > 0 && (
+          <div className="pb-6 text-center text-xs text-gray-400">
+            모든 게시글을 확인했어요
+          </div>
+        )}
+
+        {/* 플로팅 작성 버튼 */}
+        <FloatingWriteButton
+          onOpenBottomSheet={() => setIsProgramSelectSheetOpen(true)}
+        />
+
+        {/* 프로그램 선택 바텀시트 */}
+        <ProgramSelectBottomSheet
+          isOpen={isProgramSelectSheetOpen}
+          onClose={() => setIsProgramSelectSheetOpen(false)}
+        />
+
+        <ProgramFilterBottomSheet
+          isOpen={isFilterSheetOpen}
+          onClose={() => setIsFilterSheetOpen(false)}
+          selectedSort={selectedSort}
+          selectedProgramState={selectedProgramState}
+          selectedCategories={selectedCategories}
+          onApply={handleFilterApply}
+        />
       </div>
-
-      {/* 플로팅 작성 버튼 */}
-      <FloatingWriteButton
-        onOpenBottomSheet={() => setIsProgramSelectSheetOpen(true)}
-      />
-
-      {/* 프로그램 선택 바텀시트 */}
-      <ProgramSelectBottomSheet
-        isOpen={isProgramSelectSheetOpen}
-        onClose={() => setIsProgramSelectSheetOpen(false)}
-      />
     </div>
+  );
+};
+
+const Page = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <div className="p-4">
+            <div className="animate-pulse space-y-4">
+              <div className="h-12 rounded bg-gray-200" />
+              <div className="h-40 rounded bg-gray-200" />
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CommunityPageContent />
+    </Suspense>
   );
 };
 

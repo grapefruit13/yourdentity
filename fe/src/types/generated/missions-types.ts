@@ -5,45 +5,25 @@
 
 import type * as Schema from "./api-schema";
 
-export interface TPOSTUsersMissionsByIdReq {
-  userId: string;
-  data: {
-    missionId: string;
-    status?: "ONGOING" | "COMPLETED" | "EXPIRED" | "RETRY";
-  };
+export type TGETMissionsCategoriesRes = {
+  categories?: string[];
+};
+
+export interface TGETMissionsReq {
+  sortBy?: "latest" | "popular";
+  category?: string;
+  excludeParticipated?: boolean;
 }
 
-export type TPOSTUsersMissionsByIdRes = { user?: Schema.Mission };
+export type TGETMissionsRes = {
+  missions?: Schema.Mission[];
+  totalCount?: number;
+};
 
-export interface TGETUsersMissionsByIdReq {
-  userId: string;
-  status?: "ONGOING" | "COMPLETED" | "EXPIRED" | "RETRY";
-}
-
-export type TGETUsersMissionsByIdRes = Schema.Mission[];
-
-export interface TGETUsersMissionsByTwoIdsReq {
-  userId: string;
+export interface TGETMissionsByIdReq {
   missionId: string;
 }
 
-export type TGETUsersMissionsByTwoIdsRes = { user?: Schema.Mission };
-
-export interface TPUTUsersMissionsByTwoIdsReq {
-  userId: string;
-  missionId: string;
-  data: {
-    status?: "ONGOING" | "COMPLETED" | "EXPIRED" | "RETRY";
-    certified?: boolean;
-    review?: string;
-  };
-}
-
-export type TPUTUsersMissionsByTwoIdsRes = { user?: Schema.Mission };
-
-export interface TDELETEUsersMissionsByTwoIdsReq {
-  userId: string;
-  missionId: string;
-}
-
-export type TDELETEUsersMissionsByTwoIdsRes = Schema.Success;
+export type TGETMissionsByIdRes = {
+  mission?: Schema.Mission;
+};

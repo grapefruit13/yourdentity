@@ -6,47 +6,14 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/missions-types";
 
-export const postUsersMissionsById = (
-  request: Types.TPOSTUsersMissionsByIdReq
-) => {
-  const { userId, ...data } = request;
-  return post<Types.TPOSTUsersMissionsByIdRes>(
-    `/users/${request.userId}/missions`,
-    data.data ?? data
-  );
+export const getMissionsCategories = () => {
+  return get<Types.TGETMissionsCategoriesRes>(`/missions/categories`);
 };
 
-export const getUsersMissionsById = (
-  request: Types.TGETUsersMissionsByIdReq
-) => {
-  return get<Types.TGETUsersMissionsByIdRes>(
-    `/users/${request.userId}/missions`,
-    { params: request }
-  );
+export const getMissions = (request: Types.TGETMissionsReq) => {
+  return get<Types.TGETMissionsRes>(`/missions`, { params: request });
 };
 
-export const getUsersMissionsByTwoIds = (
-  request: Types.TGETUsersMissionsByTwoIdsReq
-) => {
-  return get<Types.TGETUsersMissionsByTwoIdsRes>(
-    `/users/${request.userId}/missions/${request.missionId}`
-  );
-};
-
-export const putUsersMissionsByTwoIds = (
-  request: Types.TPUTUsersMissionsByTwoIdsReq
-) => {
-  const { userId, missionId, ...data } = request;
-  return put<Types.TPUTUsersMissionsByTwoIdsRes>(
-    `/users/${request.userId}/missions/${request.missionId}`,
-    data.data ?? data
-  );
-};
-
-export const deleteUsersMissionsByTwoIds = (
-  request: Types.TDELETEUsersMissionsByTwoIdsReq
-) => {
-  return del<Types.TDELETEUsersMissionsByTwoIdsRes>(
-    `/users/${request.userId}/missions/${request.missionId}`
-  );
+export const getMissionsById = (request: Types.TGETMissionsByIdReq) => {
+  return get<Types.TGETMissionsByIdRes>(`/missions/${request.missionId}`);
 };

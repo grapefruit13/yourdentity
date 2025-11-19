@@ -2,6 +2,7 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const FirestoreService = require("./firestoreService");
 const {FieldValue} = require("../config/database");
+const NotificationService = require("./notificationService");
 
 let fcmAdmin = admin;
 if (!admin.apps.find((app) => app.name === "fcm-app")) {
@@ -25,6 +26,7 @@ class FCMService {
   constructor() {
     this.firestoreService = new FirestoreService("users");
     this.maxTokensPerUser = 5;
+    this.notificationService = new NotificationService();
   }
 
   /**
@@ -153,6 +155,20 @@ class FCMService {
       const tokenList = tokens.map((t) => t.token);
       const result = await this.sendToTokens(tokenList, notification);
 
+      // FCM 전송 성공 시 알림 저장 (비동기, 실패해도 FCM 전송 결과는 반환)
+      if (result.successCount > 0) {
+        this.notificationService.saveNotification(userId, {
+          title: notification.title,
+          message: notification.message,
+          type: notification.type || "general",
+          postId: notification.postId || undefined,
+          communityId: notification.communityId || undefined,
+          commentId: notification.commentId && notification.commentId !== "" ? notification.commentId : undefined,
+        }).catch(err => {
+          console.error("알림 저장 실패 (FCM 전송은 성공):", err);
+        });
+      }
+
       return {
         sentCount: result.successCount,
         failedCount: result.failureCount,
@@ -183,6 +199,26 @@ class FCMService {
       }
 
       const result = await this.sendToTokens(allTokens, notification);
+
+      // FCM 전송 성공 시 각 사용자별로 알림 저장 (비동기, 실패해도 FCM 전송 결과는 반환)
+      if (result.successCount > 0) {
+        const savePromises = userIds.map(userId =>
+          this.notificationService.saveNotification(userId, {
+            title: notification.title,
+            message: notification.message,
+            type: notification.type || "general",
+            postId: notification.postId || undefined,
+            communityId: notification.communityId || undefined,
+            commentId: notification.commentId && notification.commentId !== "" ? notification.commentId : undefined,
+          }).catch(err => {
+            console.error(`알림 저장 실패 (userId: ${userId}):`, err);
+          })
+        );
+        Promise.all(savePromises).catch(err => {
+          console.error("다중 사용자 알림 저장 중 오류:", err);
+        });
+      }
+
       return {
         sentCount: result.successCount,
         failedCount: result.failureCount,
@@ -215,7 +251,9 @@ class FCMService {
         },
         data: {
           type: notification.type || "general",
-          relatedId: notification.relatedId || "",
+          postId: notification.postId || "",
+          commentId: notification.commentId || "",
+          communityId: notification.communityId || "",
           link: notification.link || "",
         },
         tokens: tokens,

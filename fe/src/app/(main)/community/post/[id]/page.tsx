@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { User } from "lucide-react";
-import ShareModal from "@/components/community/ShareModal";
+import CommentsSection from "@/components/community/CommentsSection";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
@@ -21,6 +21,7 @@ import type * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
+import { shareContent } from "@/utils/shared/share";
 
 /**
  * @description 게시글 상세 페이지
@@ -35,19 +36,12 @@ const PostDetailPage = () => {
   const communityId = searchParams.get("communityId") || "";
 
   const queryClient = useQueryClient();
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [currentOrigin, setCurrentOrigin] = useState<string>("");
   const [imageLoadError, setImageLoadError] = useState(false);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
-
-  // 클라이언트 사이드에서만 origin 가져오기
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentOrigin(window.location.origin);
-    }
-  }, []);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const focusCommentInputRef = useRef<(() => void) | null>(null);
 
   // API 연동 - useGetCommunitiesPostsByTwoIds 사용 (communityId와 postId 모두 필요)
   const {
@@ -75,13 +69,35 @@ const PostDetailPage = () => {
   const isAuthor =
     (post as Schema.CommunityPost & { isAuthor?: boolean })?.isAuthor ?? false;
 
+  // 공유하기 기능
+  const handleShare = useCallback(async () => {
+    if (!post) return;
+
+    const shareTitle = post.title || "게시글";
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`
+        : "";
+
+    // content가 문자열인 경우에만 텍스트 추출 (실제로는 HTML 문자열로 사용됨)
+    const contentString = post.content as unknown as string | undefined;
+    const contentText =
+      contentString && typeof contentString === "string"
+        ? contentString.replace(/<[^>]*>/g, "").substring(0, 100)
+        : "";
+    const shareText = contentText
+      ? `${shareTitle}\n${contentText}...`
+      : shareTitle;
+
+    await shareContent({
+      title: shareTitle,
+      text: shareText,
+      url: shareUrl,
+    });
+  }, [post, postId, communityId]);
+
   // 탑바 커스텀
   useEffect(() => {
-    // 공유 클릭
-    const handleShareClick = () => {
-      setIsShareModalOpen(true);
-    };
-
     // 수정 클릭
     const handleEditClick = () => {
       if (!postId || !communityId) return;
@@ -95,17 +111,30 @@ const PostDetailPage = () => {
 
     setRightSlot(
       <KebabMenu
-        onShare={handleShareClick}
+        onShare={handleShare}
         onEdit={isAuthor ? handleEditClick : undefined}
         onDelete={isAuthor ? handleDeleteClick : undefined}
       />
     );
-  }, [setRightSlot, communityId, postId, router, isAuthor]);
+  }, [setRightSlot, communityId, postId, router, isAuthor, handleShare]);
+
+  // 좋아요 상태 확인 (페이지 로드 시)
+  useEffect(() => {
+    if (postId) {
+      // localStorage에서 좋아요 상태 확인
+      const likedPosts = JSON.parse(localStorage.getItem("likedPosts") || "{}");
+      setIsLiked(likedPosts[postId] || false);
+    }
+  }, [postId, postData]);
+
+  // 삭제 mutation
+  const { mutateAsync: deletePostAsync, isPending: isDeleting } =
+    useDeleteCommunitiesPostsByTwoIds();
 
   /**
    * 게시글 삭제 핸들러
    */
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!postId || !communityId) return;
 
     try {
@@ -133,27 +162,14 @@ const PostDetailPage = () => {
       // 성공 메시지 표시
       alert(POST_EDIT_CONSTANTS.DELETE_SUCCESS);
 
-      // 커뮤니티 목록으로 이동
-      router.replace("/community");
+      // 커뮤니티 목록으로 이동 (브라우저 히스토리 활용)
+      router.back();
     } catch (error) {
       debug.error("게시글 삭제 실패:", error);
     } finally {
       setIsDeleteModalOpen(false);
     }
-  };
-
-  // 좋아요 상태 확인 (페이지 로드 시)
-  useEffect(() => {
-    if (postId) {
-      // localStorage에서 좋아요 상태 확인
-      const likedPosts = JSON.parse(localStorage.getItem("likedPosts") || "{}");
-      setIsLiked(likedPosts[postId] || false);
-    }
-  }, [postId, postData]);
-
-  // 삭제 mutation
-  const { mutateAsync: deletePostAsync, isPending: isDeleting } =
-    useDeleteCommunitiesPostsByTwoIds();
+  }, [postId, communityId, deletePostAsync, queryClient, router]);
 
   // 좋아요 mutation
   const { mutateAsync: toggleLikeAsync } = usePostCommunitiesPostsLikeByTwoIds({
@@ -204,6 +220,23 @@ const PostDetailPage = () => {
       debug.error("좋아요 실패:", error);
     }
   };
+
+  // 댓글 버튼 클릭 핸들러 - 입력창으로 스크롤 및 포커스
+  const handleCommentClick = useCallback(() => {
+    // CommentsSection의 포커스 핸들러가 있으면 사용 (답글 상태 초기화 포함)
+    if (focusCommentInputRef.current) {
+      focusCommentInputRef.current();
+    } else {
+      // 없으면 기본 동작
+      setTimeout(() => {
+        commentInputRef.current?.focus();
+        commentInputRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }
+  }, []);
 
   // 로딩 중 - 스켈레톤 표시
   if (isLoading || !communityId) {
@@ -266,7 +299,7 @@ const PostDetailPage = () => {
             </div>
           )}
           <button
-            onClick={() => router.push("/community")}
+            onClick={() => router.back()}
             className="px-4 py-2 text-sm text-blue-600 underline hover:text-blue-800"
           >
             커뮤니티로 돌아가기
@@ -280,7 +313,6 @@ const PostDetailPage = () => {
     <div className="bg-white pt-12">
       {/* 메인 콘텐츠 */}
       <div className="px-5 py-5">
-        {/* 활동 후기 헤더 */}
         <Typography
           as="h1"
           font="noto"
@@ -300,7 +332,7 @@ const PostDetailPage = () => {
         </Typography>
 
         {/* 프로필 섹션 */}
-        <div className="mb-6 flex items-center">
+        <div className="mb-6 flex items-center border-b border-gray-200 pb-5">
           {post?.profileImageUrl && !imageLoadError ? (
             <img
               src={post.profileImageUrl}
@@ -366,78 +398,72 @@ const PostDetailPage = () => {
         {/* 태그 섹션 */}
         {/* TODO: tags는 generated CommunityPost에 없으므로 추후 확장 타입으로 처리 필요 */}
       </div>
-
-      {/* 하단 스티키 액션 바 (하단 네비게이션 위) */}
-      <div className="fixed right-0 bottom-[77px] left-0 z-40 mx-auto flex h-[48px] w-full max-w-[470px] items-center justify-between border-t border-gray-100 bg-white px-4 py-3">
-        <div className="flex items-center gap-6">
-          <button
-            onClick={handleLike}
+      {/* 좋아요/댓글 액션 바 */}
+      <div className="flex items-center gap-6 border-t border-gray-200 p-4">
+        <button
+          onClick={handleLike}
+          className={cn(
+            "flex items-center gap-2 transition-opacity hover:opacity-80"
+          )}
+        >
+          <svg
             className={cn(
-              "flex items-center gap-2 transition-opacity hover:opacity-80"
+              "h-5 w-5 transition-colors",
+              isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
+            )}
+            fill={isLiked ? "currentColor" : "none"}
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+            />
+          </svg>
+          <Typography
+            font="noto"
+            variant="body2R"
+            className={cn(
+              "transition-colors",
+              isLiked ? "text-main-500" : "text-gray-600"
             )}
           >
-            <svg
-              className={cn(
-                "h-5 w-5 transition-colors",
-                isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
-              )}
-              fill={isLiked ? "currentColor" : "none"}
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className={cn(
-                "transition-colors",
-                isLiked ? "text-main-500" : "text-gray-600"
-              )}
-            >
-              {post?.likesCount || 0}
-            </Typography>
-          </button>
-          <button
-            onClick={() =>
-              router.push(
-                `/community/post/${postId}/comments?communityId=${communityId}`
-              )
-            }
-            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+            {post?.likesCount || 0}
+          </Typography>
+        </button>
+        <button
+          onClick={handleCommentClick}
+          className="flex items-center gap-2 transition-opacity hover:opacity-80"
+        >
+          <svg
+            className="h-5 w-5 text-gray-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-5 w-5 text-gray-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-            <Typography font="noto" variant="body2R" className="text-gray-600">
-              {post?.commentsCount || 0}
-            </Typography>
-          </button>
-        </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+          <Typography font="noto" variant="body2R" className="text-gray-600">
+            {post?.commentsCount || 0}
+          </Typography>
+        </button>
       </div>
-
-      {/* 공유 모달 */}
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        postTitle={post?.title}
-        postUrl={`${currentOrigin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`}
-      />
+      {/* 댓글 섹션 */}
+      {postId && communityId && (
+        <CommentsSection
+          postId={postId}
+          communityId={communityId}
+          commentInputRef={commentInputRef}
+          onFocusRequestRef={focusCommentInputRef}
+        />
+      )}
 
       {/* 삭제 확인 모달 */}
       <Modal

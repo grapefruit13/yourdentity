@@ -182,13 +182,16 @@ class CommentService {
       const created = await this.firestoreService.getDocument("comments", commentId);
 
       if (post.authorId !== userId) {
+        const commenterName = author !== "익명" ? author : "사용자";
         fcmHelper.sendNotification(
           post.authorId,
           "새로운 댓글이 달렸습니다",
-          `게시글 "${post.title}"에 새로운 댓글이 달렸습니다.`,
-          "community",
+          `${commenterName}님이 게시글 "${post.title}"에 댓글을 남겼습니다.`,
+          "COMMENT",
           postId,
-          `/community/${communityId}/posts/${postId}`
+          communityId,
+          "",
+          commentId
         ).catch(error => {
           console.error("댓글 알림 전송 실패:", error);
         });
@@ -204,14 +207,18 @@ class CommentService {
           commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..." : 
           commentPreview;
 
+        // author는 이미 게시글 isPublic에 따라 올바르게 설정됨
+        const commenterName = author !== "익명" ? author : "사용자";
         console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
         fcmHelper.sendNotification(
           parentComment.userId,
           "새로운 답글이 달렸습니다",
-          `"${preview}"에 새로운 답글이 달렸습니다.`,
-          "community",
-          commentId,
-          `/community/${communityId}/posts/${postId}`
+          `${commenterName}님이 "${preview}"에 답글을 남겼습니다.`,
+          "COMMENT",
+          postId,
+          communityId,
+          "",
+          commentId
         ).catch(error => {
           console.error("대댓글 알림 전송 실패:", error);
         });
@@ -265,8 +272,7 @@ class CommentService {
         orderDirection: "desc",
         where: [
           { field: "postId", operator: "==", value: postId },
-          { field: "parentId", operator: "==", value: null },
-          { field: "isDeleted", operator: "==", value: false }
+          { field: "parentId", operator: "==", value: null }
         ]
       });
 
@@ -287,8 +293,7 @@ class CommentService {
         const allReplies = await this.firestoreService.getCollectionWhereMultiple(
           "comments",
           [
-            { field: "parentId", operator: "in", value: parentIds },
-            { field: "isDeleted", operator: "==", value: false }
+            { field: "parentId", operator: "in", value: parentIds }
           ]
         );
 
@@ -320,9 +325,10 @@ class CommentService {
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .slice(0, 50)
             .map(reply => {
-              const { isDeleted, media, userId: _userId, ...replyWithoutDeleted } = reply;
+              const { media, userId: _userId, ...replyWithoutDeleted } = reply;
               const replyResult = {
                 ...replyWithoutDeleted,
+                isDeleted: reply.isDeleted || false,
               };
               if (viewerId) {
                 replyResult.isLiked = likedCommentIds.has(reply.id);
@@ -330,10 +336,11 @@ class CommentService {
               return replyResult;
             });
 
-          const { isDeleted, media, userId: _userId, ...commentWithoutDeleted } = comment;
+          const { media, userId: _userId, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
+            isDeleted: comment.isDeleted || false,
             replies: sortedReplies,
             repliesCount: replies.length, 
           };
@@ -509,7 +516,27 @@ class CommentService {
         throw error;
       }
 
-      await this.firestoreService.runTransaction(async (transaction) => {
+      // 대댓글 확인 (삭제되지 않은 댓글만)
+      const replies = await this.firestoreService.getCollectionWhereMultiple(
+        "comments",
+        [
+          {field: "parentId", operator: "==", value: commentId},
+          {field: "isDeleted", operator: "==", value: false}
+        ]
+      );
+
+      if (replies && replies.length > 0) {
+        // 대댓글이 있으면 소프트 딜리트
+        const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
+        await commentRef.update({
+          isDeleted: true,
+          author: "알 수 없음",
+          content: "삭제된 댓글입니다",
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      } else {
+        // 대댓글이 없으면 하드 딜리트
+        await this.firestoreService.runTransaction(async (transaction) => {
         const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
         const postRef = this.firestoreService.db.collection(
           `communities/${comment.communityId}/posts`
@@ -542,6 +569,7 @@ class CommentService {
           transaction.delete(commentedPostRef);
         }
       });
+      }
     } catch (error) {
       console.error("Delete comment error:", error.message);
       if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
@@ -626,8 +654,39 @@ class CommentService {
 
         if (comment.userId !== userId) {
           try {
-            const liker = await this.userService.getUserById(userId);
-            const likerName = liker?.name || "사용자";
+            // 게시글 정보 가져오기 (isPublic 확인용)
+            const post = await this.firestoreService.getDocument(
+              `communities/${comment.communityId}/posts`,
+              comment.postId
+            );
+            const isPrivatePost = post?.isPublic === false;
+            let likerName = "사용자";
+
+            if (isPrivatePost) {
+              // 비공개 게시글: members 컬렉션에서 가져오기
+              const members = await this.firestoreService.getCollectionWhere(
+                `communities/${comment.communityId}/members`,
+                "userId",
+                "==",
+                userId
+              );
+              const memberData = members && members[0];
+              if (memberData) {
+                likerName = memberData.nickname || "사용자";
+              }
+            } else {
+              // 공개 게시글: nicknames 컬렉션에서 가져오기
+              const nicknames = await this.firestoreService.getCollectionWhere(
+                "nicknames",
+                "uid",
+                "==",
+                userId
+              );
+              const nicknameDoc = nicknames && nicknames[0];
+              if (nicknameDoc) {
+                likerName = nicknameDoc.id || nicknameDoc.nickname || "사용자";
+              }
+            }
 
             const textOnly = typeof comment.content === 'string' 
               ? comment.content.replace(/<[^>]*>/g, '') 
@@ -643,9 +702,11 @@ class CommentService {
                 comment.userId,
                 "댓글에 좋아요가 달렸습니다",
                 `${likerName}님이 "${preview}" 댓글에 좋아요를 눌렀습니다`,
-                "community",
-                comment.id,
-                `/community/${comment.communityId}/posts/${comment.postId}`
+                "COMMENT_LIKE",
+                comment.postId,
+                comment.communityId,
+                "",
+                comment.id
               )
               .catch((error) => {
                 console.error("댓글 좋아요 알림 전송 실패:", error);

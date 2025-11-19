@@ -3,6 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+
 import {
   useQuery,
   useMutation,
@@ -27,6 +28,78 @@ export const useGetNotificationsSendAllPending = <
       const response = await Api.getNotificationsSendAllPending();
       return response.data;
     },
+    ...options,
+  });
+};
+
+export const useGetNotifications = <TData = Types.TGETNotificationsRes>(
+  options: {
+    request: Types.TGETNotificationsReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETNotificationsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETNotificationsRes, Error, TData>({
+    queryKey: notificationsKeys.getNotifications(request),
+    queryFn: async () => {
+      const response = await Api.getNotifications(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const usePatchNotificationsReadAll = <
+  TContext = unknown,
+  TVariables = void,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.patchNotificationsReadAll>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.patchNotificationsReadAll>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (_variables: TVariables) => Api.patchNotificationsReadAll(),
+    ...options,
+  });
+};
+
+export const usePatchNotificationsReadById = <
+  TContext = unknown,
+  TVariables = Types.TPATCHNotificationsReadByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.patchNotificationsReadById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.patchNotificationsReadById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.patchNotificationsReadById(
+        variables as Types.TPATCHNotificationsReadByIdReq
+      ),
     ...options,
   });
 };

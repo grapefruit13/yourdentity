@@ -99,6 +99,22 @@ const ICON = {
     url: "/icons/check-complete.svg",
     alt: "신청 완료",
   },
+  filter: {
+    url: "/icons/filter.svg",
+    alt: "필터",
+  },
+  refresh: {
+    url: "/icons/refresh.svg",
+    alt: "새로고침",
+  },
+  search: {
+    url: "/icons/search.svg",
+    alt: "검색",
+  },
+  avatar: {
+    url: "/icons/avatar.svg",
+    alt: "기본 프로필 이미지",
+  },
 };
 
 const IMG = {

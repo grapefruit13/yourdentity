@@ -14,7 +14,6 @@ const PROGRAM_TYPE_ALIASES = {
   [PROGRAM_TYPES.ROUTINE]: [
     "ROUTINE",
     "한끗루틴",
-    "한끗 루틴",
     "루틴",
   ],
   [PROGRAM_TYPES.GATHERING]: [
@@ -498,6 +497,7 @@ class CommunityService {
       }
 
       const communityCache = new Map();
+      const userProfileCache = new Map();
 
       const loadCommunities = async (communityIds = []) => {
         if (!communityIds || communityIds.length === 0) {
@@ -526,6 +526,55 @@ class CommunityService {
           .forEach((community) => {
             communityCache.set(community.id, community);
           });
+      };
+
+      const loadUserProfiles = async (authorIds = []) => {
+        if (!authorIds || authorIds.length === 0) {
+          return {};
+        }
+        
+        // 중복 제거 및 유효한 ID만 필터링
+        const uniqueAuthorIds = Array.from(new Set(authorIds.filter((id) => id)));
+        if (uniqueAuthorIds.length === 0) {
+          return {};
+        }
+
+        // 이미 캐시에 없는 유저 ID만 조회 대상으로 선정
+        const uncachedIds = uniqueAuthorIds.filter((id) => !userProfileCache.has(id));
+        
+        // 문서 ID로 배치 조회 (성능 최적화: 1개 쿼리로 여러 문서 조회)
+        if (uncachedIds.length > 0) {
+          try {
+            // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
+            const chunks = [];
+            for (let i = 0; i < uncachedIds.length; i += 10) {
+              chunks.push(uncachedIds.slice(i, i + 10));
+            }
+
+            const userResults = await Promise.all(
+              chunks.map((chunk) =>
+                this.firestoreService.getCollectionWhereIn("users", "__name__", chunk),
+              ),
+            );
+            userResults
+              .flat()
+              .filter((user) => user?.id)
+              .forEach((user) => {
+                // 프로필 이미지가 있으면 저장, 없으면 null로 저장하여 재조회 방지
+                const profileImageUrl = user.profileImageUrl || null;
+                userProfileCache.set(user.id, profileImageUrl);
+              });
+          } catch (error) {
+            console.warn("[COMMUNITY] 작성자 프로필 이미지 배치 조회 실패:", error.message);
+          }
+        }
+
+        // 요청한 모든 authorId에 대한 결과 반환 (캐시에서 조회)
+        const result = {};
+        uniqueAuthorIds.forEach((id) => {
+          result[id] = userProfileCache.get(id) || null;
+        });
+        return result;
       };
 
       const matchesFilter = (post, community) => {
@@ -676,6 +725,10 @@ class CommunityService {
         });
       }
 
+      // 작성자 프로필 이미지 배치 조회 (캐시 활용)
+      const authorIds = [...new Set(paginatedPosts.map(post => post.authorId).filter(Boolean))];
+      const profileImageMap = authorIds.length > 0 ? await loadUserProfiles(authorIds) : {};
+
       const processPost = (post) => {
         const {authorId: _ignored, content: _content, media: _media, communityId, ...rest} = post;
         const createdAtDate = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
@@ -704,6 +757,7 @@ class CommunityService {
             id: communityId,
             name: communityMap[communityId].name,
           } : null,
+          profileImageUrl: post.authorId ? (profileImageMap[post.authorId] || null) : null,
         };
         processed.programType = resolvedProgramType;
         processed.isReview = resolvedIsReview;
@@ -992,7 +1046,17 @@ class CommunityService {
         const memberData = members && members[0];
         if (memberData) {
           if (resolvedProgramType === PROGRAM_TYPES.TMI) {
-            author = memberData.name || "익명";
+            // TMI 타입: users 컬렉션에서 name 가져오기
+            try {
+              const userProfile = await this.firestoreService.getDocument("users", userId);
+              author = userProfile?.name || "익명";
+            } catch (userError) {
+              console.warn("[COMMUNITY][createPost] 사용자 정보 조회 실패", {
+                userId,
+                error: userError.message,
+              });
+              author = "익명";
+            }
           } else {
             author = memberData.nickname || "익명";
           }
@@ -1034,7 +1098,7 @@ class CommunityService {
         type: resolvedType,
         programType: resolvedProgramType,
         isReview: resolvedIsReview,
-        channel: channel || community.channel || "general",
+        channel: channel || community.name || "general",
         category: category || null,
         scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
         isLocked: false,
@@ -1583,16 +1647,43 @@ class CommunityService {
     
         if (isLiked && post.authorId !== userId) {
           try {
-            const liker = await this.getUserService().getUserById(userId);
-            const likerName = liker?.name || "사용자";
+            // 게시글 isPublic에 따라 닉네임 가져오기
+            const isPrivatePost = post.isPublic === false;
+            let likerName = "사용자";
+
+            if (isPrivatePost) {
+              // 비공개 게시글: members 컬렉션에서 가져오기
+              const members = await this.firestoreService.getCollectionWhere(
+                `communities/${communityId}/members`,
+                "userId",
+                "==",
+                userId
+              );
+              const memberData = members && members[0];
+              if (memberData) {
+                likerName = memberData.nickname || "사용자";
+              }
+            } else {
+              // 공개 게시글: nicknames 컬렉션에서 가져오기
+              const nicknames = await this.firestoreService.getCollectionWhere(
+                "nicknames",
+                "uid",
+                "==",
+                userId
+              );
+              const nicknameDoc = nicknames && nicknames[0];
+              if (nicknameDoc) {
+                likerName = nicknameDoc.id || nicknameDoc.nickname || "사용자";
+              }
+            }
 
             fcmHelper.sendNotification(
               post.authorId,
               "게시글에 좋아요가 달렸습니다",
               `${likerName}님이 "${post.title}"에 좋아요를 눌렀습니다`,
-              "community",
+              "POST_LIKE",
               postId,
-              `/community/${communityId}/posts/${postId}`
+              communityId
             ).catch((err) => {
               console.error("게시글 좋아요 알림 전송 실패:", err);
             });

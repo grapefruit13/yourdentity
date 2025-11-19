@@ -62,12 +62,26 @@ export interface User {
 }
 
 export interface Mission {
-  missionId?: string;
-  userId: string;
-  title: string;
-  description: string;
-  status?: "pending" | "in_progress" | "completed" | "cancelled";
-  dueDate?: string;
+  id?: string;
+  title?: string;
+  detailPageUrl?: string;
+  isRecruiting?: boolean;
+  isUnlimited?: boolean;
+  applicationDeadline?: string;
+  certificationDeadline?: string;
+  categories?: string[];
+  detailTags?: string;
+  targetAudience?: string;
+  notes?: string;
+  certificationMethod?: string;
+  reactionCount?: number;
+  faqRelation?: {
+    relations?: {
+      id?: string;
+    }[];
+    has_more?: boolean;
+  };
+  isReviewRegistered?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -161,9 +175,6 @@ export interface StandardResponse {
 export interface ErrorResponse {
   status: number;
   message: string;
-  success?: boolean;
-  code?: string;
-  statusCode?: number;
 }
 
 export interface PaginatedResponse {
@@ -304,6 +315,7 @@ export interface CommunityPostListItem {
   commentsCount?: number;
   createdAt?: string;
   timeAgo?: string;
+  profileImageUrl?: string;
 }
 
 export interface CommunityPost {
@@ -580,6 +592,8 @@ export interface Program {
   createdAt?: string;
   updatedAt?: string;
   notionPageTitle?: string;
+  leaderNickname?: string;
+  leaderRealName?: string;
 }
 
 export interface ProgramDetail extends Schema.Program {
@@ -648,11 +662,6 @@ export interface Success {
   data?: any;
 }
 
-export interface Error {
-  status: number;
-  message: string;
-}
-
 export interface CommunityMember {
   id?: string;
   userId?: string;
@@ -666,7 +675,17 @@ export interface CommunityMember {
 
 export interface ProgramApplicationRequest {
   applicantId: string;
-  nickname: string;
+  activityNickname: string;
+  activityPhoneNumber?: string;
+  email?: string;
+  region?: {
+    city?: string;
+    district?: string;
+  };
+  currentSituation?: string;
+  applicationSource?: string;
+  applicationMotivation?: string;
+  canAttendEvents?: boolean;
 }
 
 export interface ProgramApplicationResponse {

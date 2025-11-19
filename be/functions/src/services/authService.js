@@ -1,4 +1,4 @@
-const {admin} = require("../config/database");
+const {admin, db} = require("../config/database");
 
 /**
  * 로그아웃 - Refresh Token 무효화
@@ -47,9 +47,11 @@ const logout = async (uid) => {
  * 2. Firebase Auth 사용자 삭제 (가명처리는 onDelete 트리거에서 수행)
  *
  * **개인정보 처리:**
- * - 제거: 이름, 이메일, 전화번호, 주소, 프로필 이미지
+ * - 닉네임 삭제: nicknames 컬렉션에서 해당 사용자의 닉네임 문서 삭제 (onDelete 트리거에서 처리)
+ * - 제거: 생년월일(가명처리), deletedAt, lastUpdatedAt을 제외한 모든 필드를 null로 처리
+ *   (이름, 이메일, 전화번호, 닉네임, 주소, 프로필 이미지, 자기소개, rewards, profileImagePath 등 모든 필드)
  * - 가명처리: 생년월일 (YYYY-**-** 형태로 마스킹)
- * - 유지: 통계용 데이터 (레벨, 리워드, 게시글 수 등)
+ * - 유지: 가명처리된 생년월일, 삭제일시(deletedAt), 마지막 업데이트 일자(lastUpdatedAt)만 유지
  *
  * @param {string} uid - 사용자 UID
  * @param {string} kakaoAccessToken - 카카오 액세스 토큰 (카카오 로그인 사용자인 경우 필수)
@@ -110,8 +112,59 @@ const deleteAccount = async (uid, kakaoAccessToken) => {
   }
 };
 
+/**
+ * 자격정지 상태 체크
+ *
+ * @description
+ * Firestore에서 사용자의 자격정지 정보를 조회하여 현재 정지 상태인지 확인
+ * - suspensionStartAt, suspensionEndAt 기간 내에 있는지 체크
+ * - 정지 중이면 정지 사유와 종료일 반환
+ *
+ * @param {string} uid - 사용자 UID
+ * @return {Promise<{isSuspended: boolean, suspensionReason?: string, suspensionEndAt?: string}>}
+ */
+const checkSuspensionStatus = async (uid) => {
+  try {
+    const userDoc = await db.collection("users").doc(uid).get();
+    
+    if (!userDoc.exists) {
+      // 사용자 문서가 없으면 정지되지 않은 것으로 간주
+      return {isSuspended: false};
+    }
+
+    const userData = userDoc.data();
+    const {suspensionStartAt, suspensionEndAt, suspensionReason} = userData;
+
+    // 자격정지 기간 체크
+    if (!suspensionStartAt || !suspensionEndAt) {
+      // 자격정지 정보가 없으면 정지되지 않은 것으로 간주
+      return {isSuspended: false};
+    }
+
+    const now = new Date();
+    // Firestore Timestamp 객체를 Date로 변환 (toDate 메서드가 있으면 사용, 없으면 new Date 사용)
+    const startDate = suspensionStartAt?.toDate?.() || new Date(suspensionStartAt);
+    const endDate = suspensionEndAt?.toDate?.() || new Date(suspensionEndAt);
+
+    // 현재 시간이 자격정지 기간 내인지 확인
+    const isSuspended = now >= startDate && now < endDate;
+
+    return {
+      isSuspended,
+      suspensionReason: isSuspended ? (suspensionReason || "자격정지 상태입니다") : undefined,
+      // 이미 변환된 endDate를 ISO 문자열로 반환 (타입 일관성 보장)
+      suspensionEndAt: isSuspended ? endDate.toISOString() : undefined,
+    };
+  } catch (error) {
+    console.error("❌ AuthService: 자격정지 체크 실패:", error.message);
+    // 에러 발생 시 정지되지 않은 것으로 간주 (안전한 실패)
+    return {isSuspended: false};
+  }
+};
+
 module.exports = {
   logout,
   deleteAccount,
+  checkSuspensionStatus,
 };
 

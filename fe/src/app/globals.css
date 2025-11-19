@@ -87,3 +87,16 @@
 .notion {
   --notion-font: var(--font-noto-sans-kr), system-ui, sans-serif;
 }
+
+/* react-notion-x 이미지 wrapper 오버라이드 */
+/* Asset 컴포넌트가 block_height를 받아서 div의 height를 고정하는데, 이를 오버라이드하여 이미지 원본 크기에 맞춤 */
+.notion-asset-wrapper-image > div {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.notion-asset-wrapper-image img {
+  height: auto !important;
+  object-fit: unset !important;
+  max-height: none !important;
+}

@@ -110,6 +110,13 @@ export const communitiesKeys = {
       path: { communityId: request.communityId, postId: request.postId },
       query: {},
     }),
+  getCommunitiesNicknameAvailabilityById: (
+    request: communitiesTypes.TGETCommunitiesNicknameAvailabilityByIdReq
+  ) =>
+    __buildKey("communities", "getCommunitiesNicknameAvailabilityById", {
+      path: { communityId: request.communityId },
+      query: { nickname: request.nickname },
+    }),
 } as const;
 
 // FAQs Query Keys
@@ -162,16 +169,19 @@ export const imagesKeys = {} as const;
 
 // Missions Query Keys
 export const missionsKeys = {
-  getUsersMissionsById: (request: missionsTypes.TGETUsersMissionsByIdReq) =>
-    __buildKey("missions", "getUsersMissionsById", {
-      path: { userId: request.userId },
-      query: { status: request.status },
+  getMissionsCategories: __buildKey("missions", "getMissionsCategories"),
+  getMissions: (request: missionsTypes.TGETMissionsReq) =>
+    __buildKey("missions", "getMissions", {
+      path: {},
+      query: {
+        sortBy: request.sortBy,
+        category: request.category,
+        excludeParticipated: request.excludeParticipated,
+      },
     }),
-  getUsersMissionsByTwoIds: (
-    request: missionsTypes.TGETUsersMissionsByTwoIdsReq
-  ) =>
-    __buildKey("missions", "getUsersMissionsByTwoIds", {
-      path: { userId: request.userId, missionId: request.missionId },
+  getMissionsById: (request: missionsTypes.TGETMissionsByIdReq) =>
+    __buildKey("missions", "getMissionsById", {
+      path: { missionId: request.missionId },
       query: {},
     }),
 } as const;
@@ -182,6 +192,11 @@ export const notificationsKeys = {
     "notifications",
     "getNotificationsSendAllPending"
   ),
+  getNotifications: (request: notificationsTypes.TGETNotificationsReq) =>
+    __buildKey("notifications", "getNotifications", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
 } as const;
 
 // NotionUsers Query Keys

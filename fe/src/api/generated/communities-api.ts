@@ -60,3 +60,12 @@ export const postCommunitiesPostsLikeByTwoIds = (
     `/communities/${request.communityId}/posts/${request.postId}/like`
   );
 };
+
+export const getCommunitiesNicknameAvailabilityById = (
+  request: Types.TGETCommunitiesNicknameAvailabilityByIdReq
+) => {
+  return get<Types.TGETCommunitiesNicknameAvailabilityByIdRes>(
+    `/communities/${request.communityId}/nickname-availability`,
+    { params: request }
+  );
+};
