@@ -85,10 +85,18 @@ class ReportContentController {
   async syncNotionReports(req, res, next) {
     try {
       const syncedReports = await reportContentService.syncResolvedReports();
-      res.success({ 
-        message: "동기화가 완료되었습니다.", 
-        count: syncedReports.length 
-      });
+      // res.success({ 
+      //   message: "동기화가 완료되었습니다.", 
+      //   count: syncedReports.length 
+      // });
+      res.success({
+           message: "동기화가 완료되었습니다.",
+           total: syncedReports.total,
+           synced: syncedReports.synced,
+           failed: syncedReports.failed,
+           errorCounts: syncedReports.errorCounts,
+           errors: syncedReports.errors
+         });
     } catch (error) {
       console.error("Notion -> Firebase 동기화 실패:", error);
       next(error);

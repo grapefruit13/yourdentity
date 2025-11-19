@@ -450,6 +450,13 @@ async clearNotionDatabase() {
 async syncResolvedReports() {
   let cursor = undefined;
   const reports = [];
+  const errorDetails = [];
+  const errorCounts = {
+    firebaseNotFound: 0,
+    notionMoveFailed: 0,
+    userUpdateFailed: 0,
+    unknown: 0,
+  };
 
   try {
     // 1. Notion에서 데이터 조회
@@ -572,6 +579,11 @@ async syncResolvedReports() {
          await db.runTransaction(async (t) => {
            const postSnap = await t.get(postRef);
 
+           if (!postSnap.exists) {
+               const err = new Error("POST_NOT_FOUND");
+               err.code = "POST_NOT_FOUND";
+               throw err;
+            }
            // status=true이므로 항상 isLocked: true로 설정
            t.update(postRef, { isLocked: true });
 
@@ -585,6 +597,11 @@ async syncResolvedReports() {
          await db.runTransaction(async (t) => {
            const commentSnap = await t.get(commentRef);
 
+           if (!commentSnap.exists) {
+                 const err = new Error("COMMENT_NOT_FOUND");
+                 err.code = "COMMENT_NOT_FOUND";
+                 throw err;
+           }
            // status=true이므로 항상 isLocked: true로 설정
            t.update(commentRef, { isLocked: true });
 
@@ -677,6 +694,13 @@ async syncResolvedReports() {
             } catch (userError) {
               console.error(`[Users] ${targetUserId}의 reportCount 증가 실패:`, userError.message);
               // users 업데이트 실패는 전체 프로세스를 중단하지 않음
+              errorCounts.userUpdateFailed++;
+              errorDetails.push({
+                targetId,
+                targetType,
+                stage: "USER_UPDATE",
+                message: userError.message
+              });
             }
           }
 
@@ -685,6 +709,13 @@ async syncResolvedReports() {
          } catch (notionError) {
            console.error(`[Notion 이동 실패] ${targetId}:`, notionError.message);
            failedCount++;
+           errorCounts.notionMoveFailed++;
+          errorDetails.push({
+            targetId,
+            targetType,
+            stage: "NOTION_MOVE",
+            message: notionError.message
+          });
          }
        } else {
          failedCount++;
@@ -693,6 +724,17 @@ async syncResolvedReports() {
      } catch (err) {
        console.error(`동기화 중 오류 (targetId: ${report.targetId}):`, err);
        failedCount++;
+       if (err.code === "POST_NOT_FOUND" || err.code === "COMMENT_NOT_FOUND") {
+             errorCounts.firebaseNotFound++;
+       } else {
+             errorCounts.unknown++;
+       }
+             errorDetails.push({
+               targetId: report.targetId,
+               targetType: report.targetType,
+               stage: "FIREBASE_SYNC",
+               message: err.message || String(err)
+             });
      }
    }
 
@@ -701,7 +743,9 @@ async syncResolvedReports() {
       total: reports.length, 
       synced: syncedCount, 
       failed: failedCount,
-      reports: processedReports
+      reports: processedReports,
+      errorCounts,
+      errors: errorDetails
     };
   } catch (error) {
     console.error("Notion 데이터 가져오기 실패:", error);
