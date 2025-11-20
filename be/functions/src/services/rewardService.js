@@ -708,16 +708,25 @@ class RewardService {
         const data = doc.data();
         const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
         
-        // 만료일 계산 (createdAt + 120일)
-        // 차감 내역은 만료일이 없으므로 null 처리
-        const expiresAt = data.changeType === 'deduct' ? null : (() => {
-          const expiry = new Date(createdAt);
-          expiry.setDate(expiry.getDate() + DEFAULT_EXPIRY_DAYS);
-          return expiry;
-        })();
+        const expiresAt = data.changeType === 'deduct'
+          ? null
+          : (() => {
+              if (data.expiresAt?.toDate) {
+                return data.expiresAt.toDate();
+              }
+              if (data.expiresAt) {
+                const parsed = new Date(data.expiresAt);
+                if (!Number.isNaN(parsed.getTime())) {
+                  return parsed;
+                }
+              }
+              const expiry = new Date(createdAt);
+              expiry.setDate(expiry.getDate() + DEFAULT_EXPIRY_DAYS);
+              return expiry;
+            })();
         
         // 만료 여부 확인 (차감 내역은 항상 false)
-        const isExpired = data.changeType === 'deduct' ? false : (expiresAt <= now);
+        const isExpired = data.changeType === 'deduct' ? false : (expiresAt && expiresAt <= now);
         
         return {
           id: doc.id,
