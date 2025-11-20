@@ -86,11 +86,6 @@ export interface Mission {
   updatedAt?: string;
 }
 
-export interface MissionApplicationResult {
-  missionId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "QUIT";
-}
-
 export interface ImageUpload {
   image: string;
 }
@@ -200,6 +195,99 @@ export interface CreatedResponse {
   data: Record<string, any>;
 }
 
+export interface RoutineListItem {
+  id?: string;
+  name?: string;
+  description?: string;
+  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
+  price?: number;
+  currency?: string;
+  stockCount?: number;
+  soldCount?: number;
+  viewCount?: number;
+  buyable?: boolean;
+  sellerId?: string;
+  sellerName?: string;
+  deadline?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RoutineDetail {
+  id?: string;
+  name?: string;
+  description?: string;
+  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
+  price?: number;
+  currency?: string;
+  stockCount?: number;
+  soldCount?: number;
+  viewCount?: number;
+  buyable?: boolean;
+  sellerId?: string;
+  sellerName?: string;
+  content?: Record<string, any>[];
+  media?: Record<string, any>[];
+  options?: Record<string, any>[];
+  primaryDetails?: Record<string, any>[];
+  variants?: Record<string, any>[];
+  customFields?: Record<string, any>[];
+  deadline?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  qna?: Schema.QnAItem[];
+  communityPosts?: Schema.CommunityPost[];
+}
+
+export interface ApplicationResponse {
+  applicationId?: string;
+  type?: string;
+  targetId?: string;
+  userId?: string;
+  status?: string;
+  selectedVariant?: string;
+  quantity?: number;
+  customFieldsRequest?: Record<string, any>;
+  activityNickname?: string;
+  activityPhoneNumber?: string;
+  region?: {
+    city?: string;
+    district?: string;
+  };
+  currentSituation?: string;
+  applicationSource?: string;
+  applicationMotivation?: string;
+  canAttendEvents?: boolean;
+  appliedAt?: string;
+  targetName?: string;
+  targetPrice?: number;
+}
+
+export interface Review {
+  reviewId?: string;
+  type?: "ROUTINE" | "GATHERING";
+  targetId?: string;
+  userId?: string;
+  content?: string;
+  images?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface QnAItem {
+  id?: string;
+  content?: Record<string, any>[];
+  media?: Record<string, any>[];
+  answerContent?: Record<string, any>[];
+  answerMedia?: Record<string, any>[];
+  answerUserId?: string;
+  askedBy?: string;
+  answeredBy?: string;
+  askedAt?: string;
+  answeredAt?: string;
+  likesCount?: number;
+}
+
 export interface CommunityPostListItem {
   id?: string;
   type?: string;
@@ -226,7 +314,6 @@ export interface CommunityPostListItem {
   commentsCount?: number;
   createdAt?: string;
   timeAgo?: string;
-  profileImageUrl?: string;
 }
 
 export interface CommunityPost {
@@ -294,6 +381,50 @@ export interface Comment {
   isOriginalAuthor?: boolean;
 }
 
+export interface GatheringListItem {
+  id?: string;
+  name?: string;
+  description?: string;
+  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
+  price?: number;
+  currency?: string;
+  stockCount?: number;
+  soldCount?: number;
+  viewCount?: number;
+  buyable?: boolean;
+  sellerId?: string;
+  sellerName?: string;
+  deadline?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GatheringDetail {
+  id?: string;
+  name?: string;
+  description?: string;
+  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
+  price?: number;
+  currency?: string;
+  stockCount?: number;
+  soldCount?: number;
+  viewCount?: number;
+  buyable?: boolean;
+  sellerId?: string;
+  sellerName?: string;
+  content?: Record<string, any>[];
+  media?: Record<string, any>[];
+  options?: Record<string, any>[];
+  primaryDetails?: Record<string, any>[];
+  variants?: Record<string, any>[];
+  customFields?: Record<string, any>[];
+  deadline?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  qna?: Schema.QnAItem[];
+  communityPosts?: Schema.CommunityPost[];
+}
+
 export interface Community {
   id?: string;
   name?: string;
@@ -345,6 +476,13 @@ export interface ActivityResponse {
 
 export interface LikeToggleResponse {
   routineId?: string;
+  userId?: string;
+  isLiked?: boolean;
+  likesCount?: number;
+}
+
+export interface QnALikeToggleResponse {
+  qnaId?: string;
   userId?: string;
   isLiked?: boolean;
   likesCount?: number;
@@ -434,6 +572,7 @@ export interface Program {
     url?: string;
     type?: string;
   }[];
+  coverImage?: string;
   linkUrl?: string;
   isReviewRegistered?: boolean;
   isBannerRegistered?: boolean;
@@ -519,6 +658,11 @@ export interface ProgramSearchResponse {
 export interface Success {
   status: number;
   data?: any;
+}
+
+export interface Error {
+  status: number;
+  message: string;
 }
 
 export interface CommunityMember {
