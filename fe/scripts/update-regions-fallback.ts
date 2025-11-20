@@ -11,7 +11,7 @@
  * 환경 변수 SGIS_API_DOMAIN으로 도메인을 설정할 수 있습니다.
  */
 
-const SGIS_API_DOMAIN = process.env.SGIS_API_DOMAIN || "sgisapi.mods.go.kr";
+const SGIS_API_DOMAIN = process.env.SGIS_API_DOMAIN;
 const SGIS_API_BASE_URL = `https://${SGIS_API_DOMAIN}/OpenAPI3`;
 const SGIS_AUTH_URL = `${SGIS_API_BASE_URL}/auth/authentication.json`;
 const SGIS_ADDR_STAGE_URL = `${SGIS_API_BASE_URL}/addr/stage.json`;
