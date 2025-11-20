@@ -814,6 +814,7 @@ class RewardService {
           id: doc.id,
           amount: data.amount || 0,
           reason: data.reason || '',
+          changeType: data.changeType || 'deduct',
           createdAt: createdAt.toISOString(),
         };
       });
