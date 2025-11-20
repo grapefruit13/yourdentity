@@ -139,45 +139,58 @@ const CommentItem = ({
   }, [onMenuToggle, isCommentMenuOpen, commentMenuId]);
 
   // 좋아요 mutation
-  const { mutateAsync: likeCommentAsync } = usePostCommentsLikeById({
-    onSuccess: (response, variables) => {
-      const result = response.data;
-      const targetCommentId = variables.commentId;
+  const { mutateAsync: likeCommentAsync, isPending: isLikePending } =
+    usePostCommentsLikeById({
+      onSuccess: (response, variables) => {
+        const result = response.data;
+        const targetCommentId = variables.commentId;
 
-      if (result && targetCommentId) {
-        const isReply = replies.some(
-          (reply) => (reply.id || reply.commentId) === targetCommentId
-        );
+        if (result && targetCommentId) {
+          const isReply = replies.some(
+            (reply) => (reply.id || reply.commentId) === targetCommentId
+          );
 
-        if (isReply) {
-          setReplyLikes((prev) => ({
-            ...prev,
-            [targetCommentId]: {
-              isLiked: result.isLiked || false,
-              likesCount: result.likesCount || 0,
-            },
-          }));
-        } else if (targetCommentId === comment.id) {
-          setIsLiked(result.isLiked || false);
+          if (isReply) {
+            setReplyLikes((prev) => ({
+              ...prev,
+              [targetCommentId]: {
+                isLiked: result.isLiked || false,
+                likesCount: result.likesCount || 0,
+              },
+            }));
+          } else if (targetCommentId === comment.id) {
+            setIsLiked(result.isLiked || false);
+          }
         }
-      }
 
-      queryClient.invalidateQueries({
-        queryKey: ["comments", "getCommentsCommunitiesPostsByTwoIds"],
-      });
-    },
-  });
+        queryClient.invalidateQueries({
+          queryKey: ["comments", "getCommentsCommunitiesPostsByTwoIds"],
+        });
+      },
+    });
 
   // 좋아요 핸들러
   const handleLike = useCallback(async () => {
-    if (!commentId) return;
+    if (!commentId || isLikePending) return;
     try {
       await likeCommentAsync({ commentId });
       // onSuccess에서 상태 업데이트하므로 여기서는 제거
     } catch (error) {
       console.error("좋아요 실패:", error);
     }
-  }, [commentId, likeCommentAsync]);
+  }, [commentId, likeCommentAsync, isLikePending]);
+
+  const handleReplyLike = useCallback(
+    async (targetReplyId: string) => {
+      if (!targetReplyId || isLikePending) return;
+      try {
+        await likeCommentAsync({ commentId: targetReplyId });
+      } catch (error) {
+        console.error("답글 좋아요 실패:", error);
+      }
+    },
+    [isLikePending, likeCommentAsync]
+  );
 
   // 메뉴 핸들러
   const handleEdit = useCallback(() => {
@@ -574,9 +587,7 @@ const CommentItem = ({
                           )}
                           <button
                             onClick={() => {
-                              if (replyId) {
-                                likeCommentAsync({ commentId: replyId });
-                              }
+                              handleReplyLike(replyId);
                             }}
                             className="flex items-center gap-1 text-sm transition-opacity hover:opacity-80"
                             type="button"

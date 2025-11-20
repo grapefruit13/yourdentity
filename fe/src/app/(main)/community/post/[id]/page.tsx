@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { User } from "lucide-react";
@@ -37,7 +37,6 @@ const PostDetailPage = () => {
 
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -57,7 +56,27 @@ const PostDetailPage = () => {
   });
 
   // postData를 Schema.CommunityPost 타입으로 변환
-  const post = postData as Schema.CommunityPost;
+  const post = postData as Schema.CommunityPost & { isLiked?: boolean };
+  const postQueryKey = useMemo(
+    () =>
+      communitiesKeys.getCommunitiesPostsByTwoIds({
+        communityId: communityId || "",
+        postId,
+      }),
+    [communityId, postId]
+  );
+  const postsListQueryKey = useMemo(
+    () =>
+      communitiesKeys.getCommunitiesPosts({
+        page: undefined,
+        size: undefined,
+        programType: undefined,
+        programState: undefined,
+      }),
+    []
+  );
+  const isLiked = post?.isLiked ?? false;
+  const likesCount = post?.likesCount ?? 0;
 
   // postData 변경 시 이미지 에러 상태 리셋
   useEffect(() => {
@@ -118,15 +137,6 @@ const PostDetailPage = () => {
     );
   }, [setRightSlot, communityId, postId, router, isAuthor, handleShare]);
 
-  // 좋아요 상태 확인 (페이지 로드 시)
-  useEffect(() => {
-    if (postId) {
-      // localStorage에서 좋아요 상태 확인
-      const likedPosts = JSON.parse(localStorage.getItem("likedPosts") || "{}");
-      setIsLiked(likedPosts[postId] || false);
-    }
-  }, [postId, postData]);
-
   // 삭제 mutation
   const { mutateAsync: deletePostAsync, isPending: isDeleting } =
     useDeleteCommunitiesPostsByTwoIds();
@@ -172,45 +182,44 @@ const PostDetailPage = () => {
   }, [postId, communityId, deletePostAsync, queryClient, router]);
 
   // 좋아요 mutation
-  const { mutateAsync: toggleLikeAsync } = usePostCommunitiesPostsLikeByTwoIds({
-    onSuccess: (response) => {
-      // API 응답 구조: { data: { isLiked, likesCount, ... } }
-      const result = response.data;
-      if (result) {
-        const newIsLiked = result.isLiked || false;
-        setIsLiked(newIsLiked);
-
-        // localStorage에 좋아요 상태 저장
-        if (postId) {
-          const likedPosts = JSON.parse(
-            localStorage.getItem("likedPosts") || "{}"
+  const { mutateAsync: toggleLikeAsync, isPending: isToggleLikePending } =
+    usePostCommunitiesPostsLikeByTwoIds({
+      onSuccess: (response) => {
+        // API 응답 구조: { data: { isLiked, likesCount, ... } }
+        const result = response.data;
+        if (result) {
+          queryClient.setQueryData<Schema.CommunityPost | undefined>(
+            postQueryKey,
+            (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                likesCount:
+                  typeof result.likesCount === "number"
+                    ? result.likesCount
+                    : prev.likesCount,
+                isLiked:
+                  typeof result.isLiked === "boolean"
+                    ? result.isLiked
+                    : prev.isLiked,
+              };
+            }
           );
-          likedPosts[postId] = newIsLiked;
-          localStorage.setItem("likedPosts", JSON.stringify(likedPosts));
         }
-      }
-      // 게시글 상세 정보 refetch
-      queryClient.invalidateQueries({
-        queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
-          communityId: communityId || "",
-          postId,
-        }),
-      });
-      // 게시글 목록도 refetch (목록에서도 카운트 반영)
-      queryClient.invalidateQueries({
-        queryKey: communitiesKeys.getCommunitiesPosts({
-          page: undefined,
-          size: undefined,
-          programType: undefined,
-          programState: undefined,
-        }),
-      });
-    },
-  });
+        // 게시글 상세 정보 refetch
+        queryClient.invalidateQueries({
+          queryKey: postQueryKey,
+        });
+        // 게시글 목록도 refetch (목록에서도 카운트 반영)
+        queryClient.invalidateQueries({
+          queryKey: postsListQueryKey,
+        });
+      },
+    });
 
   // 좋아요 핸들러
   const handleLike = async () => {
-    if (!communityId || !postId) return;
+    if (!communityId || !postId || isToggleLikePending) return;
     try {
       await toggleLikeAsync({
         communityId,
