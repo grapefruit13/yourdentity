@@ -159,7 +159,7 @@ class UserService {
     }
 
 
-    // 4. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
+    // Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
     const notionUserService = require("./notionUserService");
     notionUserService.syncSingleUserToNotion(uid)
         .then(result => {
