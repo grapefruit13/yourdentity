@@ -788,17 +788,14 @@ class RewardService {
       
       const query = rewardsHistoryRef
         .where('changeType', '==', 'deduct')
-        .where('reason', '!=', '리워드 만료')
         .orderBy('createdAt', 'desc');
       
-      // 전체 조회 후 메모리에서 필터링 (reason에 "구매" 포함)
       const totalSnapshot = await query.get();
       
-      // 스토어 구매만 필터링 (reason에 "구매" 포함)
       const purchaseHistory = totalSnapshot.docs.filter((doc) => {
         const data = doc.data();
         const reason = data.reason || '';
-        return reason.includes('구매');
+        return reason.includes('구매') && reason !== '리워드 만료';
       });
       
       const totalElements = purchaseHistory.length;
