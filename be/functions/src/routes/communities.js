@@ -600,9 +600,51 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *                     - $ref: '#/components/schemas/CommunityPost'
  *                     - type: object
  *                       properties:
- *                         replies:
- *                           type: array
- *                           description: 댓글 목록
+ *                         preview:
+ *                           type: object
+ *                           description: 게시글 미리보기
+ *                           properties:
+ *                             description:
+ *                               type: string
+ *                               description: 미리보기 텍스트
+ *                               example: "오늘도 화이팅!"
+ *                             thumbnail:
+ *                               type: object
+ *                               nullable: true
+ *                               description: 썸네일 이미지
+ *                               properties:
+ *                                 url:
+ *                                   type: string
+ *                                   description: 이미지 URL
+ *                                   example: "https://example.com/image.jpg"
+ *                                 blurHash:
+ *                                   type: string
+ *                                   nullable: true
+ *                                   description: 블러 해시
+ *                                   example: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                                 width:
+ *                                   type: number
+ *                                   nullable: true
+ *                                   description: 이미지 너비
+ *                                   example: 1080
+ *                                 height:
+ *                                   type: number
+ *                                   nullable: true
+ *                                   description: 이미지 높이
+ *                                   example: 1080
+ *                         programType:
+ *                           type: string
+ *                           enum: [ROUTINE, GATHERING, TMI]
+ *                           description: 프로그램 타입
+ *                           example: "ROUTINE"
+ *                         isReview:
+ *                           type: boolean
+ *                           description: 후기 글 여부
+ *                           example: false
+ *                         isAuthor:
+ *                           type: boolean
+ *                           description: 작성자 여부 (본인 게시글인지)
+ *                           example: false
  *       404:
  *         description: 게시글을 찾을 수 없음
  *       500:

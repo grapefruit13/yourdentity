@@ -61,6 +61,10 @@ const optionalAuth = require("../middleware/optionalAuth");
  *         isOriginalAuthor:
  *           type: boolean
  *           description: 원글 작성자 여부
+ *         isLiked:
+ *           type: boolean
+ *           nullable: true
+ *           description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  */
 
 // 댓글 목록 조회
@@ -148,6 +152,10 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             type: boolean
  *                             description: 잠금 여부
  *                             example: false
+ *                           isDeleted:
+ *                             type: boolean
+ *                             description: 삭제 여부
+ *                             example: false
  *                           likesCount:
  *                             type: number
  *                             description: 좋아요 수
@@ -175,6 +183,62 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             description: 대댓글 목록
  *                             items:
  *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                   description: 댓글 ID
+ *                                   example: "comment_456"
+ *                                 communityId:
+ *                                   type: string
+ *                                   description: 커뮤니티 ID
+ *                                   example: "tmi-community"
+ *                                 postId:
+ *                                   type: string
+ *                                   description: 게시글 ID
+ *                                   example: "post_123"
+ *                                 author:
+ *                                   type: string
+ *                                   description: 작성자 닉네임
+ *                                   example: "사용자닉네임2"
+ *                                 content:
+ *                                   type: string
+ *                                   description: 댓글 HTML 내용
+ *                                   example: "<p>대댓글 내용입니다!</p>"
+ *                                 parentId:
+ *                                   type: string
+ *                                   description: 부모 댓글 ID
+ *                                   example: "comment_123"
+ *                                 depth:
+ *                                   type: number
+ *                                   description: 댓글 깊이
+ *                                   example: 1
+ *                                 isLocked:
+ *                                   type: boolean
+ *                                   description: 잠금 여부
+ *                                   example: false
+ *                                 isDeleted:
+ *                                   type: boolean
+ *                                   description: 삭제 여부
+ *                                   example: false
+ *                                 likesCount:
+ *                                   type: number
+ *                                   description: 좋아요 수
+ *                                   example: 0
+ *                                 isLiked:
+ *                                   type: boolean
+ *                                   nullable: true
+ *                                   description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
+ *                                   example: false
+ *                                 createdAt:
+ *                                   type: string
+ *                                   format: date-time
+ *                                   description: 생성일시
+ *                                   example: "2025-10-03T17:20:07.862Z"
+ *                                 updatedAt:
+ *                                   type: string
+ *                                   format: date-time
+ *                                   description: 수정일시
+ *                                   example: "2025-10-03T17:20:07.862Z"
  *                     pagination:
  *                       type: object
  *                       properties:
