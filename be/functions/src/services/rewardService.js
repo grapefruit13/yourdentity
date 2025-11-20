@@ -650,6 +650,95 @@ class RewardService {
       return { totalDeducted: 0, count: 0, error: error.message };
     }
   }
+
+  /**
+   * 지급받은 나다움 목록 조회
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @param {number} options.page - 페이지 번호 (기본값: 0)
+   * @param {number} options.size - 페이지 크기 (기본값: 20)
+   * @return {Promise<Object>} 조회 결과 { history, pagination }
+   */
+  async getRewardsEarned(userId, options = {}) {
+    const { page = 0, size = 20 } = options;
+    
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+
+    try {
+      const rewardsHistoryRef = db.collection(`users/${userId}/rewardsHistory`);
+      const now = new Date();
+      
+      const query = rewardsHistoryRef
+        .where('changeType', '==', 'add')
+        .orderBy('createdAt', 'desc');
+      
+      const totalSnapshot = await query.get();
+      const totalElements = totalSnapshot.size;
+      const totalPages = Math.ceil(totalElements / size);
+      
+      const startIndex = page * size;
+      let paginatedQuery = query.limit(size);
+      
+      if (startIndex > 0) {
+        const offsetSnapshot = await query.limit(startIndex).get();
+        if (!offsetSnapshot.empty) {
+          const lastDoc = offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
+          paginatedQuery = query.startAfter(lastDoc).limit(size);
+        }
+      }
+      
+      const snapshot = await paginatedQuery.get();
+      
+      const history = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        
+        const expiresAt = new Date(createdAt);
+        expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
+        
+
+        const isExpired = expiresAt <= now;
+        
+        return {
+          id: doc.id,
+          amount: data.amount || 0,
+          reason: data.reason || '리워드 적립',
+          actionKey: data.actionKey || null,
+          createdAt: createdAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          isProcessed: data.isProcessed || false,
+          isExpired,
+        };
+      });
+
+      return {
+        history,
+        pagination: {
+          pageNumber: page,
+          pageSize: size,
+          totalElements,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+        },
+      };
+    } catch (error) {
+      console.error('[REWARD HISTORY ERROR] getRewardsEarned:', error.message, {
+        userId,
+        options,
+        stack: error.stack,
+      });
+      
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
+      
+      throw error;
+    }
+  }
 }
 
 module.exports = RewardService;

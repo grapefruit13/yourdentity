@@ -1029,6 +1029,126 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
 
 /**
  * @swagger
+ * /users/me/rewards-earned:
+ *   get:
+ *     summary: 지급받은 나다움 목록 조회
+ *     description: 본인이 지급받은 나다움 내역을 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호 (0부터 시작)
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: 히스토리 ID
+ *                             example: "COMMENT-abc123"
+ *                           amount:
+ *                             type: number
+ *                             description: 지급된 나다움 포인트
+ *                             example: 10
+ *                           reason:
+ *                             type: string
+ *                             description: 지급 사유
+ *                             example: "댓글 작성"
+ *                           actionKey:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 액션 키
+ *                             example: "comment"
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 지급 일시
+ *                             example: "2024-01-01T00:00:00Z"
+ *                           expiresAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 만료 일시 (createdAt + 120일)
+ *                             example: "2024-05-01T00:00:00Z"
+ *                           isProcessed:
+ *                             type: boolean
+ *                             description: 스토어에서 사용되었는지 여부
+ *                             example: false
+ *                           isExpired:
+ *                             type: boolean
+ *                             description: 만료되었는지 여부
+ *                             example: false
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: number
+ *                           example: 0
+ *                         pageSize:
+ *                           type: number
+ *                           example: 20
+ *                         totalElements:
+ *                           type: number
+ *                           example: 100
+ *                         totalPages:
+ *                           type: number
+ *                           example: 5
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: false
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/me/rewards-earned", authGuard, userController.getRewardsEarned);
+
+/**
+ * @swagger
  * /users/nickname-availability:
  *   get:
  *     summary: 닉네임 가용성 확인
