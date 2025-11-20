@@ -87,7 +87,6 @@ exports.createUserDocument = functions
 
         console.log("✅ Auth Trigger: 새 사용자 문서 생성 완료", {uid});
 
-
         // Notion에 새 사용자 동기화
         try {
           const result = await notionUserService.syncSingleUserToNotion(uid);
