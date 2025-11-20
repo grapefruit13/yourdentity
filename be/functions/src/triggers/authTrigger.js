@@ -87,19 +87,15 @@ exports.createUserDocument = functions
 
         console.log("✅ Auth Trigger: 새 사용자 문서 생성 완료", {uid});
 
-
-        // Notion에 새 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
-        notionUserService.syncSingleUserToNotion(uid)
-            .then((result) => {
-              if (result.success) {
-                console.log(`Notion 동기화 완료: ${uid}`);
-              } else {
-                console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
-              }
-            })
-            .catch((error) => {
-              console.error(`Notion 동기화 오류: ${uid}`, error);
-            });
+        // Notion에 새 사용자 동기화
+        try {
+          const result = await notionUserService.syncSingleUserToNotion(uid);
+          if (!result.success) {
+            console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
+          }
+        } catch (error) {
+          console.error(`Notion 동기화 오류: ${uid}`, error);
+        }
 
         return {success: true, uid};
       } catch (error) {

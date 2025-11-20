@@ -786,11 +786,11 @@ async createNotionPageWithRetry(notionPage, maxRetries = 3, databaseId = null) {
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const page = await this.notion.pages.create({
+      await this.notion.pages.create({
         parent: parent,
         properties: properties,
       });
-      return page; // 생성된 페이지 객체 반환
+      return; // 성공하면 종료
     } catch (error) {
       console.warn(`Notion 페이지 생성 시도 ${attempt}/${maxRetries} 실패:`, error.message);
       
@@ -1990,8 +1990,8 @@ async syncSingleUserToNotion(userId) {
     const user = userDoc.data();
     const now = new Date();
 
-    //노션 페이지ID
-    const notionPageId = user.notionPageId || null;
+    // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
+    const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
 
     // 날짜 변환
     const createdAtIso = safeDateToIso(user.createdAt);
@@ -2063,27 +2063,21 @@ async syncSingleUserToNotion(userId) {
       "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
     };
 
-
-    try {
-      if (notionPageId) {
-        await this.updateNotionPageWithRetry(notionPageId, notionPage);
-        await db.collection("users").doc(userId).update({
-          lastUpdated: lastUpdatedIso,
-          notionSyncLockedAt: FieldValue.delete(),
-        });
-      } else {
-        const page = await this.createNotionPageWithRetry(notionPage);
-        await db.collection("users").doc(userId).update({
-          notionPageId: page.id,
-          lastUpdated: lastUpdatedIso,
-            notionSyncLockedAt: FieldValue.delete(),
-          });
-        }
-    } catch (error) {
-      console.error(`[Notion 동기화 실패] 사용자 ${userId}:`, error.message || error);
-      return { success: false, userId, error: error.message };
+    // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
+    if (notionUsers[userId]) {
+      // 기존 페이지 업데이트
+      await this.updateNotionPageWithRetry(notionUsers[userId].pageId, notionPage);
+      console.log(`[Notion 동기화] 사용자 ${userId} 업데이트 완료`);
+    } else {
+      // 새 페이지 생성
+      await this.createNotionPageWithRetry(notionPage);
+      console.log(`[Notion 동기화] 사용자 ${userId} 생성 완료`);
     }
 
+    // Firebase lastUpdated 업데이트
+    await db.collection("users").doc(userId).update({
+      lastUpdated: lastUpdatedIso,
+    });
 
     return { success: true, userId };
   } catch (error) {
