@@ -121,19 +121,21 @@
       ]
     },
     {
-      "collectionGroup": "files",
+      "collectionGroup": "qna",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isUsed", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "pageId", "order": "ASCENDING" },
+        { "fieldPath": "parentId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "files",
+      "collectionGroup": "qna",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "attachedTo", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "parentId", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     }
   ],
