@@ -2063,17 +2063,22 @@ async syncSingleUserToNotion(userId) {
       "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
     };
 
+    
     if (notionPageId) {
       await this.updateNotionPageWithRetry(notionPageId, notionPage);
-      console.log(`[Notion 동기화] 사용자 ${userId} 업데이트 완료`);
+      await db.collection("users").doc(userId).update({
+        lastUpdated: lastUpdatedIso,
+        notionSyncLockedAt: FieldValue.delete(),
+      });
     } else {
       const page = await this.createNotionPageWithRetry(notionPage);
-      await db.collection("users").doc(userId).update({ notionPageId: page.id }, { merge: true });
+      await db.collection("users").doc(userId).update({
+        notionPageId: page.id,
+        lastUpdated: lastUpdatedIso,
+        notionSyncLockedAt: FieldValue.delete(),
+      });
     }
-    await db.collection("users").doc(userId).update({
-      lastUpdated: lastUpdatedIso,
-      notionSyncLockedAt: FieldValue.delete(),
-    }, { merge: true });
+
 
     return { success: true, userId };
   } catch (error) {
