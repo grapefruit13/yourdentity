@@ -8,6 +8,7 @@ const {
   getNumberValue,
   getFileUrls,
   getRelationValues,
+  getRollupValues,
   getPhoneNumberValue,
   formatNotionBlocks,
   getCoverImageUrl,
@@ -50,7 +51,8 @@ const NOTION_FIELDS = {
 
 // Notion 스토어 구매신청 필드명 상수
 const PURCHASE_FIELDS = {
-  ORDERER_ID: "주문자 ID",
+  TITLE: "제목", // title 타입
+  ORDERER_ID: "주문자 ID", // rich_text 타입으로 변경됨
   ORDERER_NICKNAME: "주문자 기본 닉네임",
   PRODUCT_NAME: "주문한 상품명",
   QUANTITY: "개수",
@@ -60,6 +62,8 @@ const PURCHASE_FIELDS = {
   RECIPIENT_PHONE: "수령인 전화번호",
   DELIVERY_COMPLETED: "지급 완료 여부",
   ORDER_DATE: "주문 완료 일시",
+  REQUIRED_POINTS_ROLLUP: "필요한 나다움", // rollup 타입
+  REQUIRES_DELIVERY_ROLLUP: "배송 필요 여부", // rollup 타입
 };
 
 /**
@@ -679,11 +683,17 @@ class StoreService {
       });
 
       // 5. Notion 페이지 생성 (보상 트랜잭션 포함)
+      // 제목 생성: "상품명 - 주문자닉네임 - 주문일시"
+      const orderTitle = `${product.name} - ${userNickname} - ${new Date().toLocaleDateString('ko-KR')}`;
+      
       const notionData = {
         parent: {database_id: STORE_PURCHASE_DB_ID},
         properties: {
+          [PURCHASE_FIELDS.TITLE]: {
+            title: [{text: {content: orderTitle}}],
+          },
           [PURCHASE_FIELDS.ORDERER_ID]: {
-            title: [{text: {content: userId}}],
+            rich_text: [{text: {content: userId}}],
           },
           [PURCHASE_FIELDS.ORDERER_NICKNAME]: {
             rich_text: [{text: {content: userNickname || ""}}],
@@ -708,6 +718,9 @@ class StoreService {
           },
           [PURCHASE_FIELDS.DELIVERY_COMPLETED]: {
             checkbox: false,
+          },
+          [PURCHASE_FIELDS.ORDER_DATE]: {
+            date: {start: new Date().toISOString()},
           },
         },
       };
@@ -813,7 +826,7 @@ class StoreService {
         page_size: normalizePageSize(pageSize),
         filter: {
           property: PURCHASE_FIELDS.ORDERER_ID,
-          title: {
+          rich_text: {
             equals: userId,
           },
         },
@@ -879,18 +892,49 @@ class StoreService {
       productRelation.relations[0].id :
       null;
 
+    // 주문 완료 일시 추출 (date 필드 또는 created_time 사용)
+    const orderDateField = props[PURCHASE_FIELDS.ORDER_DATE];
+    const orderDate = orderDateField?.date?.start || page.created_time;
+
+    // Rollup 필드 추출 (상품의 "필요한 나다움"과 "배송 필요 여부")
+    const requiredPointsRollup = getRollupValues(props[PURCHASE_FIELDS.REQUIRED_POINTS_ROLLUP]);
+    const requiresDeliveryRollup = getRollupValues(props[PURCHASE_FIELDS.REQUIRES_DELIVERY_ROLLUP]);
+
+    // "필요한 나다움" 값 추출 (숫자 또는 첫 번째 배열 값)
+    let requiredPoints = null;
+    if (requiredPointsRollup.type === 'array' && requiredPointsRollup.value?.length > 0) {
+      const firstValue = requiredPointsRollup.value[0].name;
+      requiredPoints = firstValue ? Number(firstValue) : null;
+    } else if (requiredPointsRollup.value !== null && requiredPointsRollup.value !== undefined) {
+      requiredPoints = Number(requiredPointsRollup.value);
+    }
+
+    // "배송 필요 여부" 값 추출 (체크박스 또는 첫 번째 배열 값)
+    let requiresDelivery = false;
+    if (requiresDeliveryRollup.type === 'array' && requiresDeliveryRollup.value?.length > 0) {
+      const firstValue = requiresDeliveryRollup.value[0].name;
+      requiresDelivery = firstValue === 'true' || firstValue === '✓' || firstValue === 'Yes';
+    } else if (requiresDeliveryRollup.value !== null && requiresDeliveryRollup.value !== undefined) {
+      requiresDelivery = requiresDeliveryRollup.value === 'true' || 
+                         requiresDeliveryRollup.value === true ||
+                         requiresDeliveryRollup.value === '✓';
+    }
+
     return {
       purchaseId: page.id,
-      userId: getTitleValue(props[PURCHASE_FIELDS.ORDERER_ID]),
+      title: getTitleValue(props[PURCHASE_FIELDS.TITLE]),
+      userId: getTextContent(props[PURCHASE_FIELDS.ORDERER_ID]), // rich_text로 변경됨
       userNickname: getTextContent(props[PURCHASE_FIELDS.ORDERER_NICKNAME]),
       productId: productId,
       quantity: getNumberValue(props[PURCHASE_FIELDS.QUANTITY]) || 1,
+      requiredPoints: requiredPoints, // 상품의 필요한 나다움 (rollup)
+      requiresDelivery: requiresDelivery, // 상품의 배송 필요 여부 (rollup)
       recipientName: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_NAME]),
       recipientAddress: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_ADDRESS]),
       recipientDetailAddress: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_DETAIL_ADDRESS]),
       recipientPhone: getPhoneNumberValue(props[PURCHASE_FIELDS.RECIPIENT_PHONE]),
       deliveryCompleted: getCheckboxValue(props[PURCHASE_FIELDS.DELIVERY_COMPLETED]),
-      orderDate: page.created_time,
+      orderDate: orderDate,
       lastEditedTime: page.last_edited_time,
     };
   }

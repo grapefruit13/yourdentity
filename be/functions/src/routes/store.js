@@ -174,6 +174,74 @@ const authGuard = require("../middleware/authGuard");
  *           type: string
  *           format: date-time
  *           description: 구매일
+ *
+ *     StorePurchase:
+ *       type: object
+ *       description: 스토어 구매신청 내역 (Notion DB 기반)
+ *       properties:
+ *         purchaseId:
+ *           type: string
+ *           description: 구매신청 ID (Notion 페이지 ID)
+ *           example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *         title:
+ *           type: string
+ *           description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
+ *           example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
+ *         userId:
+ *           type: string
+ *           description: 사용자 ID (Firebase UID)
+ *           example: "firebase-uid-123"
+ *         userNickname:
+ *           type: string
+ *           description: 주문자 닉네임
+ *           example: "나다움123"
+ *         productId:
+ *           type: string
+ *           description: 상품 ID (Notion 페이지 ID)
+ *           example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
+ *         quantity:
+ *           type: integer
+ *           description: 구매 개수
+ *           example: 2
+ *         requiredPoints:
+ *           type: number
+ *           nullable: true
+ *           description: 상품의 필요한 나다움 포인트 (Rollup 필드)
+ *           example: 500
+ *         requiresDelivery:
+ *           type: boolean
+ *           description: 상품의 배송 필요 여부 (Rollup 필드)
+ *           example: true
+ *         recipientName:
+ *           type: string
+ *           description: 수령인 이름
+ *           example: "홍길동"
+ *         recipientAddress:
+ *           type: string
+ *           description: 수령인 주소지
+ *           example: "서울시 강남구 테헤란로 123"
+ *         recipientDetailAddress:
+ *           type: string
+ *           description: 수령인 상세 주소지
+ *           example: "456호"
+ *         recipientPhone:
+ *           type: string
+ *           description: 수령인 전화번호
+ *           example: "010-1234-5678"
+ *         deliveryCompleted:
+ *           type: boolean
+ *           description: 지급 완료 여부
+ *           example: false
+ *         orderDate:
+ *           type: string
+ *           format: date-time
+ *           description: 주문 완료 일시
+ *           example: "2025-11-06T15:28:00.000Z"
+ *         lastEditedTime:
+ *           type: string
+ *           format: date-time
+ *           description: 마지막 수정 일시
+ *           example: "2025-11-06T15:30:00.000Z"
  */
 
 // 스토어 상품 목록 조회
@@ -408,28 +476,50 @@ router.get("/products/:productId", storeController.getProductById);
  *                       type: string
  *                       description: 구매신청 ID
  *                       example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *                     title:
+ *                       type: string
+ *                       description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
+ *                       example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
  *                     userId:
  *                       type: string
  *                       description: 사용자 ID
  *                       example: "firebase-uid-123"
+ *                     userNickname:
+ *                       type: string
+ *                       description: 주문자 닉네임
+ *                       example: "나다움123"
  *                     productId:
  *                       type: string
  *                       description: 상품 ID
  *                       example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
  *                     quantity:
  *                       type: integer
+ *                       description: 구매 개수
  *                       example: 2
+ *                     requiredPoints:
+ *                       type: number
+ *                       nullable: true
+ *                       description: 상품의 필요한 나다움 포인트 (Rollup 필드)
+ *                       example: 500
+ *                     requiresDelivery:
+ *                       type: boolean
+ *                       description: 상품의 배송 필요 여부 (Rollup 필드)
+ *                       example: true
  *                     recipientName:
  *                       type: string
+ *                       description: 수령인 이름
  *                       example: "홍길동"
  *                     recipientAddress:
  *                       type: string
+ *                       description: 수령인 주소지
  *                       example: "서울시 강남구 테헤란로 123"
  *                     recipientDetailAddress:
  *                       type: string
+ *                       description: 수령인 상세 주소지
  *                       example: "456호"
  *                     recipientPhone:
  *                       type: string
+ *                       description: 수령인 전화번호
  *                       example: "010-1234-5678"
  *                     orderDate:
  *                       type: string
@@ -438,7 +528,13 @@ router.get("/products/:productId", storeController.getProductById);
  *                       example: "2025-11-06T15:28:00.000Z"
  *                     deliveryCompleted:
  *                       type: boolean
+ *                       description: 지급 완료 여부
  *                       example: false
+ *                     lastEditedTime:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 마지막 수정 일시
+ *                       example: "2025-11-06T15:30:00.000Z"
  *       400:
  *         description: 잘못된 요청
  *         content:
@@ -531,6 +627,10 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             type: string
  *                             description: 구매신청 ID
  *                             example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *                           title:
+ *                             type: string
+ *                             description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
+ *                             example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
  *                           userId:
  *                             type: string
  *                             description: 사용자 ID
@@ -545,29 +645,46 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
  *                           quantity:
  *                             type: integer
+ *                             description: 구매 개수
  *                             example: 2
+ *                           requiredPoints:
+ *                             type: number
+ *                             nullable: true
+ *                             description: 상품의 필요한 나다움 포인트 (Rollup 필드)
+ *                             example: 500
+ *                           requiresDelivery:
+ *                             type: boolean
+ *                             description: 상품의 배송 필요 여부 (Rollup 필드)
+ *                             example: true
  *                           recipientName:
  *                             type: string
+ *                             description: 수령인 이름
  *                             example: "홍길동"
  *                           recipientAddress:
  *                             type: string
+ *                             description: 수령인 주소지
  *                             example: "서울시 강남구 테헤란로 123"
  *                           recipientDetailAddress:
  *                             type: string
+ *                             description: 수령인 상세 주소지
  *                             example: "456호"
  *                           recipientPhone:
  *                             type: string
+ *                             description: 수령인 전화번호
  *                             example: "010-1234-5678"
  *                           deliveryCompleted:
  *                             type: boolean
+ *                             description: 지급 완료 여부
  *                             example: false
  *                           orderDate:
  *                             type: string
  *                             format: date-time
+ *                             description: 주문 완료 일시
  *                             example: "2025-11-06T15:28:00.000Z"
  *                           lastEditedTime:
  *                             type: string
  *                             format: date-time
+ *                             description: 마지막 수정 일시
  *                             example: "2025-11-06T15:30:00.000Z"
  *                     pagination:
  *                       type: object
