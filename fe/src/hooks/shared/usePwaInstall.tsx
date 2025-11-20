@@ -63,11 +63,6 @@ export const usePwaInstall = () => {
 
     // 3초 후 이벤트 감지 여부 로그
     const timeoutId = setTimeout(() => {
-      debug.log("[PWA Install] 3초 경과 - 현재 상태:", {
-        isInstallable,
-        hasDeferredPrompt: !!currentPrompt,
-      });
-
       if (!currentPrompt) {
         debug.warn(
           "[PWA Install] beforeinstallprompt 이벤트가 발생하지 않았습니다.\n" +
@@ -86,7 +81,6 @@ export const usePwaInstall = () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const promptInstall = async (): Promise<{

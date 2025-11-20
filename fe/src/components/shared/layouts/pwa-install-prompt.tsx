@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { usePwaInstall } from "@/hooks/shared/usePwaInstall";
 import useToggle from "@/hooks/shared/useToggle";
 import { debug } from "@/utils/shared/debugger";
+import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 import PwaDownloadBottomSheet from "./pwa-download-bottomsheet";
+
+// react-ios-pwa-prompt는 클라이언트 사이드에서만 동작하므로 dynamic import
+const PWAPrompt = dynamic(
+  () => import("react-ios-pwa-prompt").then((mod) => mod.default),
+  { ssr: false }
+);
 
 const PWA_PROMPT_DISMISSED_KEY = "pwa_prompt_dismissed";
 const PWA_PROMPT_DISMISSED_UNTIL_KEY = "pwa_prompt_dismissed_until";
@@ -20,9 +28,80 @@ const PwaInstallPrompt = () => {
   const { isInstallable, isInstalled, promptInstall } = usePwaInstall();
   const { isOpen, open, close } = useToggle();
 
+  // iOS 기기 여부 확인 (상태 없이 매번 체크)
+  const isIOSDeviceCheck = isIOSDevice();
+  const isStandaloneCheck = isStandalone();
+
+  // iOS 프롬프트 표시 여부 확인
+  const shouldShowIOSPrompt = (): boolean => {
+    if (!isIOSDeviceCheck || isInstalled || isStandaloneCheck) {
+      return false;
+    }
+
+    // 사용자가 이전에 "다음에 하기"를 눌렀는지 확인
+    const dismissedUntilStr = localStorage.getItem(
+      PWA_PROMPT_DISMISSED_UNTIL_KEY
+    );
+
+    if (dismissedUntilStr) {
+      const dismissedUntil = parseInt(dismissedUntilStr, 10);
+      const now = Date.now();
+      const dismissedUntilDate = new Date(dismissedUntil);
+      const nowDate = new Date(now);
+
+      console.log("dismissedUntilStr (원본):", dismissedUntilStr);
+      console.log("dismissedUntil (타임스탬프):", dismissedUntil);
+      console.log(
+        "dismissedUntil (날짜):",
+        dismissedUntilDate.toLocaleString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
+      console.log("Date.now() (타임스탬프):", now);
+      console.log(
+        "Date.now() (날짜):",
+        nowDate.toLocaleString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
+      console.log(
+        "비교 결과 (dismissedUntil < Date.now()):",
+        dismissedUntil < now,
+        `| 현재 시간이 ${dismissedUntil < now ? "더 늦음" : "더 이른"} (프롬프트 ${dismissedUntil < now ? "표시 가능" : "표시 안 함"})`
+      );
+
+      if (now < dismissedUntil) {
+        return false;
+      }
+      localStorage.removeItem(PWA_PROMPT_DISMISSED_UNTIL_KEY);
+    }
+
+    // 영구적으로 거부했는지 확인
+    const isDismissedPermanently = localStorage.getItem(
+      PWA_PROMPT_DISMISSED_KEY
+    );
+
+    if (isDismissedPermanently === "true") {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Android/Chrome용 프롬프트 표시 여부 결정
   useEffect(() => {
-    // 이미 설치되었거나 설치 불가능한 경우 표시하지 않음
-    if (isInstalled || !isInstallable) {
+    // iOS가 아니고, 이미 설치되었거나 설치 불가능한 경우 표시하지 않음
+    if (isIOSDeviceCheck || isInstalled || !isInstallable) {
       return;
     }
 
@@ -54,7 +133,7 @@ const PwaInstallPrompt = () => {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [isInstallable, isInstalled, open]);
+  }, [isIOSDeviceCheck, isInstallable, isInstalled, open]);
 
   const handleInstall = async () => {
     try {
@@ -83,10 +162,13 @@ const PwaInstallPrompt = () => {
     }
   };
 
+  /**
+   * @description 프롬프트 닫기 처리 (1일 후에 다시 표시)
+   */
   const handleDismiss = () => {
     close();
 
-    // 7일 후에 다시 표시
+    // 1일 후에 다시 표시
     const dismissedUntil = Date.now() + DISMISS_DURATION_MS;
     localStorage.setItem(
       PWA_PROMPT_DISMISSED_UNTIL_KEY,
@@ -94,6 +176,28 @@ const PwaInstallPrompt = () => {
     );
   };
 
+  // iOS 기기인 경우 react-ios-pwa-prompt 사용
+  if (isIOSDeviceCheck) {
+    if (!shouldShowIOSPrompt() || isInstalled) {
+      return null;
+    }
+
+    return (
+      <PWAPrompt
+        delay={1000}
+        copyTitle="홈 화면에 추가"
+        copySubtitle="유스-잇"
+        copyDescription="홈 화면에 유스-잇을 추가하고 간편하게 이용해보세요!"
+        copyShareStep="하단 메뉴 바에서 '공유' 버튼을 누르세요"
+        copyMoreStep="'더 보기' 버튼을 누르세요"
+        copyAddToHomeScreenStep="'홈 화면에 추가'를 누르세요"
+        appIconPath="/icons/favicon/180x180.png"
+        onClose={handleDismiss}
+      />
+    );
+  }
+
+  // Android/Chrome 기기인 경우 기존 바텀시트 사용
   if (!isInstallable || isInstalled) {
     return null;
   }

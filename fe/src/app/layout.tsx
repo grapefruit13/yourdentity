@@ -25,12 +25,12 @@ export const metadata: Metadata = {
     { rel: "icon", url: "/icons/favicon/16x16.png", sizes: "16x16" },
     { rel: "icon", url: "/icons/favicon/32x32.png", sizes: "32x32" },
     { rel: "icon", url: "/icons/favicon/48x48.png", sizes: "48x48" },
-    { rel: "icon", url: "/icons/app/app-icon-192x192.png", sizes: "192x192" },
-    { rel: "icon", url: "/icons/app/app-icon-512x512.png", sizes: "512x512" },
+    { rel: "icon", url: "/icons/favicon/180x180.png", sizes: "192x192" },
+    { rel: "icon", url: "/icons/favicon/180x180.png", sizes: "512x512" },
     {
       rel: "apple-touch-icon",
-      url: "/icons/app/app-icon-192x192.png",
-      sizes: "192x192",
+      url: "/icons/favicon/180x180.png",
+      sizes: "180x180",
     },
   ],
 

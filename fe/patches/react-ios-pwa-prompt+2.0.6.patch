@@ -1,0 +1,127 @@
+diff --git a/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.d.ts b/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.d.ts
+index b2e44a355f41dcca90f9704cb9a9abb2b6f5ea59..3a56410cf01f2e9970a88ed03739ca8356727926 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.d.ts
++++ b/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.d.ts
+@@ -2,11 +2,12 @@ type Props = {
+     appIconPath: string;
+     copyAddToHomeScreenStep: string;
+     copyDescription: string;
++    copyMoreStep?: string;
+     copyShareStep: string;
+     copySubtitle: string;
+     copyTitle: string;
+     delay: number;
+     onClose: (evt: React.MouseEvent<HTMLElement>) => void;
+ };
+-export declare const Container: ({ appIconPath, copyAddToHomeScreenStep, copyDescription, copyShareStep, copySubtitle, copyTitle, delay, onClose, }: Props) => import("react/jsx-runtime").JSX.Element;
++export declare const Container: ({ appIconPath, copyAddToHomeScreenStep, copyDescription, copyShareStep, copyMoreStep, copySubtitle, copyTitle, delay, onClose, }: Props) => import("react/jsx-runtime").JSX.Element;
+ export {};
+diff --git a/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.js b/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.js
+index 632c62869dd7b57d8cbb72324b34bf763d511605..838ff082e90ed580662350268af589a8db89e4d8 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.js
++++ b/node_modules/react-ios-pwa-prompt/dist/components/Container/Container.js
+@@ -14,6 +14,7 @@ import '../../assets/Container.css';const h = "_container_1w4ni_1", j = "_noScro
+   copyAddToHomeScreenStep: p,
+   copyDescription: d,
+   copyShareStep: u,
++  copyMoreStep: M,
+   copySubtitle: S,
+   copyTitle: _,
+   delay: e,
+@@ -50,7 +51,8 @@ import '../../assets/Container.css';const h = "_container_1w4ni_1", j = "_noScro
+         O,
+         {
+           copyShareStep: u,
+-          copyAddToHomeScreenStep: p
++          copyAddToHomeScreenStep: p,
++          copyMoreStep: M
+         }
+       )
+     ] })
+diff --git a/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.d.ts b/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.d.ts
+index d2d606e8c43a4427492e039fc9c5c36720bbb831..43c370f72bcff491783a45324df956651af48e29 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.d.ts
++++ b/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.d.ts
+@@ -1,6 +1,7 @@
+ type Props = {
+     copyAddToHomeScreenStep: string;
+     copyShareStep: string;
++    copyMoreStep?: string;
+ };
+-export declare const StepList: ({ copyAddToHomeScreenStep, copyShareStep }: Props) => import("react/jsx-runtime").JSX.Element;
++export declare const StepList: ({ copyAddToHomeScreenStep, copyShareStep, copyMoreStep }: Props) => import("react/jsx-runtime").JSX.Element;
+ export {};
+diff --git a/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.js b/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.js
+index 7849af2782989491e5d6a6bfa40e75e2561ee1fc..09b4e7c5b3cd76b8a7af77837104dc041e4c4d70 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.js
++++ b/node_modules/react-ios-pwa-prompt/dist/components/StepList/StepList.js
+@@ -2,10 +2,16 @@ import { jsxs as e, jsx as o } from "react/jsx-runtime";
+ import { IconAddToHomeScreen as c } from "../IconAddToHomeScreen/IconAddToHomeScreen.js";
+ import { IconShare as i } from "../IconShare/IconShare.js";
+ import { StepItem as t } from "../StepItem/StepItem.js";
++import '../../assets/IconShare.css';
+ import '../../assets/StepList.css';const m = "_list_13twy_1", n = {
+   list: m
+-}, f = ({ copyAddToHomeScreenStep: s, copyShareStep: r }) => /* @__PURE__ */ e("ol", { className: `${n.list} iOSPWA-stepList`, children: [
++}, IconMore = () => /* @__PURE__ */ o("svg", { viewBox: "0 0 18 18", className: "_icon_1rnxv_1", children: [
++  /* @__PURE__ */ o("circle", { cx: "4.5", cy: "9", r: "1.5" }),
++  /* @__PURE__ */ o("circle", { cx: "9", cy: "9", r: "1.5" }),
++  /* @__PURE__ */ o("circle", { cx: "13.5", cy: "9", r: "1.5" })
++] }), f = ({ copyAddToHomeScreenStep: s, copyShareStep: r, copyMoreStep: a }) => /* @__PURE__ */ e("ol", { className: `${n.list} iOSPWA-stepList`, children: [
+   /* @__PURE__ */ o(t, { copy: r, Icon: /* @__PURE__ */ o(i, {}) }),
++  a ? /* @__PURE__ */ o(t, { copy: a, Icon: /* @__PURE__ */ o(IconMore, {}) }) : null,
+   /* @__PURE__ */ o(t, { copy: s, Icon: /* @__PURE__ */ o(c, {}) })
+ ] });
+ export {
+diff --git a/node_modules/react-ios-pwa-prompt/dist/hooks/useNumberOfVisits.js b/node_modules/react-ios-pwa-prompt/dist/hooks/useNumberOfVisits.js
+index fc54822643965a80100435a61107be169627755e..368b07eee8abe5d79065a27162530c1e49b5e088 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/hooks/useNumberOfVisits.js
++++ b/node_modules/react-ios-pwa-prompt/dist/hooks/useNumberOfVisits.js
+@@ -9,9 +9,12 @@ const p = () => {
+     var t;
+     const m = ((t = i("iosPwaPrompt")) == null ? void 0 : t.visits) ?? 0;
+     r(m);
+-  }, []), { numberOfVisits: s, incrementNumberOfVisits: () => {
+-    e("iosPwaPrompt", { isValidOS: o, visits: (s ?? 0) + 1 });
+-  } };
++  }, []), {
++    numberOfVisits: s,
++    incrementNumberOfVisits: () => {
++      // 패치: 방문 카운트를 증가시키지 않음
++    }
++  };
+ };
+ export {
+   p as useNumberOfVisits
+diff --git a/node_modules/react-ios-pwa-prompt/dist/index.d.ts b/node_modules/react-ios-pwa-prompt/dist/index.d.ts
+index 454bab988973e578c7b15bb3ee2754cce92532cf..a9356b4c79943886b70d2224a0161905161288cc 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/index.d.ts
++++ b/node_modules/react-ios-pwa-prompt/dist/index.d.ts
+@@ -2,6 +2,7 @@ type Props = {
+     appIconPath?: string;
+     copyAddToHomeScreenStep?: string;
+     copyDescription?: string;
++    copyMoreStep?: string;
+     copyShareStep?: string;
+     copySubtitle?: string;
+     copyTitle?: string;
+diff --git a/node_modules/react-ios-pwa-prompt/dist/index.js b/node_modules/react-ios-pwa-prompt/dist/index.js
+index 4523a2695789e24df39abc630bd798277426624f..8decee4cbccd236d3d621f5350f3c3dd8c083868 100644
+--- a/node_modules/react-ios-pwa-prompt/dist/index.js
++++ b/node_modules/react-ios-pwa-prompt/dist/index.js
+@@ -8,6 +8,7 @@ const j = ({
+   appIconPath: e = `https://s2.googleusercontent.com/s2/favicons?domain=${((l) => (l = window == null ? void 0 : window.location) == null ? void 0 : l.origin)()}`,
+   copyAddToHomeScreenStep: t = "Press 'Add to Home Screen'",
+   copyDescription: i = "This website has app functionality. Add it to your home screen to use it in fullscreen and while offline.",
++  copyMoreStep: M,
+   copyShareStep: r = "Press the 'Share' button on the menu bar below",
+   copySubtitle: n = String(((a) => (a = window == null ? void 0 : window.location) == null ? void 0 : a.href)()),
+   copyTitle: s = "Add to Home Screen",
+@@ -34,6 +35,7 @@ const j = ({
+       copyDescription: i,
+       copyShareStep: r,
+       copyAddToHomeScreenStep: t,
++      copyMoreStep: M,
+       onClose: u,
+       appIconPath: e
+     }
