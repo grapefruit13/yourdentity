@@ -107,6 +107,8 @@ const EditPageContent = () => {
         ? post.media.map((item) => {
             // string이면 그대로, object면 fileName이나 path 추출
             if (typeof item === "string") return item;
+            // @grapefruit 아래 사항 확인해주시구 정리해주세요~
+            // @ts-expect-error - item is MediaItem
             return item?.fileName || item?.path || item?.url || "";
           })
         : [];
