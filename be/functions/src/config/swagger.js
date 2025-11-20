@@ -1285,6 +1285,12 @@ const options = {
               description: "작성자",
               example: "사용자닉네임",
             },
+            profileImageUrl: {
+              type: "string",
+              nullable: true,
+              description: "작성자 프로필 이미지 URL",
+              example: "https://example.com/profile.jpg",
+            },
             title: {
               type: "string",
               description: "제목",
