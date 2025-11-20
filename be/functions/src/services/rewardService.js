@@ -786,9 +786,9 @@ class RewardService {
     try {
       const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
       
-      // 차감 내역만 조회 (changeType: "deduct")
       const query = rewardsHistoryRef
         .where('changeType', '==', 'deduct')
+        .where('reason', '!=', '리워드 만료')
         .orderBy('createdAt', 'desc');
       
       // 전체 조회 후 메모리에서 필터링 (reason에 "구매" 포함)
