@@ -7,14 +7,14 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/files-types";
 
+export const deleteFilesById = (request: Types.TDELETEFilesByIdReq) => {
+  return del<any>(`/files/${request.filePath}`);
+};
+
 export const postFilesUploadMultiple = (formData: FormData) => {
   return post<Types.TPOSTFilesUploadMultipleRes>(
     `/files/upload-multiple`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
   );
-};
-
-export const deleteFilesById = (request: Types.TDELETEFilesByIdReq) => {
-  return del<any>(`/files/${request.filePath}`);
 };

@@ -11,24 +11,8 @@ export const getPrograms = (request: Types.TGETProgramsReq) => {
   return get<Types.TGETProgramsRes>(`/programs`, { params: request });
 };
 
-export const getProgramsSearch = (request: Types.TGETProgramsSearchReq) => {
-  return get<Types.TGETProgramsSearchRes>(`/programs/search`, {
-    params: request,
-  });
-};
-
 export const getProgramsById = (request: Types.TGETProgramsByIdReq) => {
   return get<Types.TGETProgramsByIdRes>(`/programs/${request.programId}`);
-};
-
-export const postProgramsApplyById = (
-  request: Types.TPOSTProgramsApplyByIdReq
-) => {
-  const { programId, ...data } = request;
-  return post<Types.TPOSTProgramsApplyByIdRes>(
-    `/programs/${request.programId}/apply`,
-    data.data ?? data
-  );
 };
 
 export const getProgramsApplicationsApproveByTwoIds = (
@@ -45,4 +29,20 @@ export const getProgramsApplicationsRejectByTwoIds = (
   return get<any>(
     `/programs/${request.programId}/applications/${request.applicationId}/reject`
   );
+};
+
+export const postProgramsApplyById = (
+  request: Types.TPOSTProgramsApplyByIdReq
+) => {
+  const { programId, ...data } = request;
+  return post<Types.TPOSTProgramsApplyByIdRes>(
+    `/programs/${request.programId}/apply`,
+    data.data ?? data
+  );
+};
+
+export const getProgramsSearch = (request: Types.TGETProgramsSearchReq) => {
+  return get<Types.TGETProgramsSearchRes>(`/programs/search`, {
+    params: request,
+  });
 };

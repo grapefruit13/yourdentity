@@ -10,10 +10,10 @@ export const postFcmToken = (request: Types.TPOSTFcmTokenReq) => {
   return post<Types.TPOSTFcmTokenRes>(`/fcm/token`, request.data ?? request);
 };
 
-export const getFcmTokens = () => {
-  return get<Types.TGETFcmTokensRes>(`/fcm/tokens`);
-};
-
 export const deleteFcmTokenById = (request: Types.TDELETEFcmTokenByIdReq) => {
   return del<Types.TDELETEFcmTokenByIdRes>(`/fcm/token/${request.deviceId}`);
+};
+
+export const getFcmTokens = () => {
+  return get<Types.TGETFcmTokensRes>(`/fcm/tokens`);
 };

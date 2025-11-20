@@ -3,7 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
   useQuery,
   useMutation,
@@ -26,6 +26,24 @@ export const useGetNotionusersSyncActive = <
     queryKey: notionusersKeys.getNotionusersSyncActive,
     queryFn: async () => {
       const response = await Api.getNotionusersSyncActive();
+      return response.data;
+    },
+    ...options,
+  });
+};
+
+export const useGetNotionusersSyncAllUsersRollback = <
+  TData = Types.TGETNotionUsersSyncAllUsersRollbackRes,
+>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETNotionUsersSyncAllUsersRollbackRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETNotionUsersSyncAllUsersRollbackRes, Error, TData>({
+    queryKey: notionusersKeys.getNotionusersSyncAllUsersRollback,
+    queryFn: async () => {
+      const response = await Api.getNotionusersSyncAllUsersRollback();
       return response.data;
     },
     ...options,
@@ -80,24 +98,6 @@ export const useGetNotionusersSyncSelected = <
     queryKey: notionusersKeys.getNotionusersSyncSelected,
     queryFn: async () => {
       const response = await Api.getNotionusersSyncSelected();
-      return response.data;
-    },
-    ...options,
-  });
-};
-
-export const useGetNotionusersSyncAllUsersRollback = <
-  TData = Types.TGETNotionUsersSyncAllUsersRollbackRes,
->(
-  options?: Omit<
-    UseQueryOptions<Types.TGETNotionUsersSyncAllUsersRollbackRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery<Types.TGETNotionUsersSyncAllUsersRollbackRes, Error, TData>({
-    queryKey: notionusersKeys.getNotionusersSyncAllUsersRollback,
-    queryFn: async () => {
-      const response = await Api.getNotionusersSyncAllUsersRollback();
       return response.data;
     },
     ...options,

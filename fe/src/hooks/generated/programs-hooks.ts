@@ -33,25 +33,6 @@ export const useGetPrograms = <TData = Types.TGETProgramsRes>(
   });
 };
 
-export const useGetProgramsSearch = <TData = Types.TGETProgramsSearchRes>(
-  options: {
-    request: Types.TGETProgramsSearchReq;
-  } & Omit<
-    UseQueryOptions<Types.TGETProgramsSearchRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETProgramsSearchRes, Error, TData>({
-    queryKey: programsKeys.getProgramsSearch(request),
-    queryFn: async () => {
-      const response = await Api.getProgramsSearch(request);
-      return response.data;
-    },
-    ...queryOptions,
-  });
-};
-
 export const useGetProgramsById = <TData = Types.TGETProgramsByIdRes>(
   options: {
     request: Types.TGETProgramsByIdReq;
@@ -65,6 +46,39 @@ export const useGetProgramsById = <TData = Types.TGETProgramsByIdRes>(
     queryKey: programsKeys.getProgramsById(request),
     queryFn: async () => {
       const response = await Api.getProgramsById(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetProgramsApplicationsApproveByTwoIds = <TData = any>(
+  options: {
+    request: Types.TGETProgramsApplicationsApproveByTwoIdsReq;
+  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<any, Error, TData>({
+    queryKey: programsKeys.getProgramsApplicationsApproveByTwoIds(request),
+    queryFn: async () => {
+      const response =
+        await Api.getProgramsApplicationsApproveByTwoIds(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetProgramsApplicationsRejectByTwoIds = <TData = any>(
+  options: {
+    request: Types.TGETProgramsApplicationsRejectByTwoIdsReq;
+  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<any, Error, TData>({
+    queryKey: programsKeys.getProgramsApplicationsRejectByTwoIds(request),
+    queryFn: async () => {
+      const response = await Api.getProgramsApplicationsRejectByTwoIds(request);
       return response.data;
     },
     ...queryOptions,
@@ -97,33 +111,19 @@ export const usePostProgramsApplyById = <
   });
 };
 
-export const useGetProgramsApplicationsApproveByTwoIds = <TData = any>(
+export const useGetProgramsSearch = <TData = Types.TGETProgramsSearchRes>(
   options: {
-    request: Types.TGETProgramsApplicationsApproveByTwoIdsReq;
-  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+    request: Types.TGETProgramsSearchReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETProgramsSearchRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<any, Error, TData>({
-    queryKey: programsKeys.getProgramsApplicationsApproveByTwoIds(request),
+  return useQuery<Types.TGETProgramsSearchRes, Error, TData>({
+    queryKey: programsKeys.getProgramsSearch(request),
     queryFn: async () => {
-      const response =
-        await Api.getProgramsApplicationsApproveByTwoIds(request);
-      return response.data;
-    },
-    ...queryOptions,
-  });
-};
-
-export const useGetProgramsApplicationsRejectByTwoIds = <TData = any>(
-  options: {
-    request: Types.TGETProgramsApplicationsRejectByTwoIdsReq;
-  } & Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
-) => {
-  const { request, ...queryOptions } = options;
-  return useQuery<any, Error, TData>({
-    queryKey: programsKeys.getProgramsApplicationsRejectByTwoIds(request),
-    queryFn: async () => {
-      const response = await Api.getProgramsApplicationsRejectByTwoIds(request);
+      const response = await Api.getProgramsSearch(request);
       return response.data;
     },
     ...queryOptions,

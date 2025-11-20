@@ -11,10 +11,13 @@ export const getCommunities = (request: Types.TGETCommunitiesReq) => {
   return get<Types.TGETCommunitiesRes>(`/communities`, { params: request });
 };
 
-export const getCommunitiesPosts = (request: Types.TGETCommunitiesPostsReq) => {
-  return get<Types.TGETCommunitiesPostsRes>(`/communities/posts`, {
-    params: request,
-  });
+export const getCommunitiesNicknameAvailabilityById = (
+  request: Types.TGETCommunitiesNicknameAvailabilityByIdReq
+) => {
+  return get<Types.TGETCommunitiesNicknameAvailabilityByIdRes>(
+    `/communities/${request.communityId}/nickname-availability`,
+    { params: request }
+  );
 };
 
 export const postCommunitiesPostsById = (
@@ -24,6 +27,14 @@ export const postCommunitiesPostsById = (
   return post<Types.TPOSTCommunitiesPostsByIdRes>(
     `/communities/${request.communityId}/posts`,
     data.data ?? data
+  );
+};
+
+export const deleteCommunitiesPostsByTwoIds = (
+  request: Types.TDELETECommunitiesPostsByTwoIdsReq
+) => {
+  return del<any>(
+    `/communities/${request.communityId}/posts/${request.postId}`
   );
 };
 
@@ -45,14 +56,6 @@ export const putCommunitiesPostsByTwoIds = (
   );
 };
 
-export const deleteCommunitiesPostsByTwoIds = (
-  request: Types.TDELETECommunitiesPostsByTwoIdsReq
-) => {
-  return del<any>(
-    `/communities/${request.communityId}/posts/${request.postId}`
-  );
-};
-
 export const postCommunitiesPostsLikeByTwoIds = (
   request: Types.TPOSTCommunitiesPostsLikeByTwoIdsReq
 ) => {
@@ -61,11 +64,8 @@ export const postCommunitiesPostsLikeByTwoIds = (
   );
 };
 
-export const getCommunitiesNicknameAvailabilityById = (
-  request: Types.TGETCommunitiesNicknameAvailabilityByIdReq
-) => {
-  return get<Types.TGETCommunitiesNicknameAvailabilityByIdRes>(
-    `/communities/${request.communityId}/nickname-availability`,
-    { params: request }
-  );
+export const getCommunitiesPosts = (request: Types.TGETCommunitiesPostsReq) => {
+  return get<Types.TGETCommunitiesPostsRes>(`/communities/posts`, {
+    params: request,
+  });
 };

@@ -5,6 +5,16 @@
 
 import type * as Schema from "./api-schema";
 
+export interface TDELETEAuthDeleteAccountReq {
+  data: {
+    kakaoAccessToken?: string;
+  };
+}
+
+export type TDELETEAuthDeleteAccountRes = {
+  message?: string;
+};
+
 export type TPOSTAuthLogoutRes = {
   message?: string;
   revokedAt?: string;
@@ -17,14 +27,4 @@ export type TGETAuthVerifyRes = {
     email?: string;
     emailVerified?: boolean;
   };
-};
-
-export interface TDELETEAuthDeleteAccountReq {
-  data: {
-    kakaoAccessToken?: string;
-  };
-}
-
-export type TDELETEAuthDeleteAccountRes = {
-  message?: string;
 };

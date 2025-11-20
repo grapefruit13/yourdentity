@@ -380,6 +380,7 @@ export interface Comment {
   hasAuthorReply?: boolean;
   hasAuthorVote?: boolean;
   isOriginalAuthor?: boolean;
+  isLiked?: boolean;
 }
 
 export interface GatheringListItem {
@@ -701,6 +702,23 @@ export interface ProgramApplicationResponse {
   notionPageId?: string;
 }
 
+export interface QnA {
+  id?: string;
+  pageId?: string;
+  pageType?: "program" | "announcement" | "store";
+  author?: string;
+  content?: string;
+  parentId?: string;
+  depth?: number;
+  isLocked?: boolean;
+  likesCount?: number;
+  isLiked?: boolean;
+  repliesCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  replies?: Record<string, any>[];
+}
+
 export interface Report {
   id?: string;
   targetType: "post" | "comment";
@@ -770,4 +788,22 @@ export interface Purchase {
   totalPrice?: number;
   status?: "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
   createdAt?: string;
+}
+
+export interface StorePurchase {
+  purchaseId?: string;
+  title?: string;
+  userId?: string;
+  userNickname?: string;
+  productId?: string;
+  quantity?: number;
+  requiredPoints?: number;
+  requiresDelivery?: boolean;
+  recipientName?: string;
+  recipientAddress?: string;
+  recipientDetailAddress?: string;
+  recipientPhone?: string;
+  deliveryCompleted?: boolean;
+  orderDate?: string;
+  lastEditedTime?: string;
 }

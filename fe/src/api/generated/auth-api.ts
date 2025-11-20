@@ -6,18 +6,18 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/auth-types";
 
-export const postAuthLogout = () => {
-  return post<Types.TPOSTAuthLogoutRes>(`/auth/logout`);
-};
-
-export const getAuthVerify = () => {
-  return get<Types.TGETAuthVerifyRes>(`/auth/verify`);
-};
-
 export const deleteAuthDeleteAccount = (
   request: Types.TDELETEAuthDeleteAccountReq
 ) => {
   return del<Types.TDELETEAuthDeleteAccountRes>(`/auth/delete-account`, {
     data: request.data ?? request,
   });
+};
+
+export const postAuthLogout = () => {
+  return post<Types.TPOSTAuthLogoutRes>(`/auth/logout`);
+};
+
+export const getAuthVerify = () => {
+  return get<Types.TGETAuthVerifyRes>(`/auth/verify`);
 };

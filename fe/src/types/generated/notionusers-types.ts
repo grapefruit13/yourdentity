@@ -7,10 +7,10 @@ import type * as Schema from "./api-schema";
 
 export type TGETNotionUsersSyncActiveRes = string;
 
+export type TGETNotionUsersSyncAllUsersRollbackRes = string;
+
 export type TGETNotionUsersSyncFullRes = string;
 
 export type TGETNotionUsersSyncPenaltyRes = string;
 
 export type TGETNotionUsersSyncSelectedRes = string;
-
-export type TGETNotionUsersSyncAllUsersRollbackRes = string;

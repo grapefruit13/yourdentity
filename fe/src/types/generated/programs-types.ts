@@ -15,29 +15,11 @@ export interface TGETProgramsReq {
 
 export type TGETProgramsRes = Schema.ProgramListResponse;
 
-export interface TGETProgramsSearchReq {
-  q: string;
-  recruitmentStatus?: "before" | "ongoing" | "completed" | "cancelled";
-  programStatus?: "before" | "ongoing" | "completed" | "cancelled";
-  programType?: "ROUTINE" | "TMI" | "GATHERING";
-  pageSize?: number;
-  cursor?: string;
-}
-
-export type TGETProgramsSearchRes = Schema.ProgramSearchResponse;
-
 export interface TGETProgramsByIdReq {
   programId: string;
 }
 
 export type TGETProgramsByIdRes = Schema.ProgramDetailResponse;
-
-export interface TPOSTProgramsApplyByIdReq {
-  programId: string;
-  data: Schema.ProgramApplicationRequest;
-}
-
-export type TPOSTProgramsApplyByIdRes = Schema.ProgramApplicationResponse;
 
 export interface TGETProgramsApplicationsApproveByTwoIdsReq {
   programId: string;
@@ -48,3 +30,21 @@ export interface TGETProgramsApplicationsRejectByTwoIdsReq {
   programId: string;
   applicationId: string;
 }
+
+export interface TPOSTProgramsApplyByIdReq {
+  programId: string;
+  data: Schema.ProgramApplicationRequest;
+}
+
+export type TPOSTProgramsApplyByIdRes = Schema.ProgramApplicationResponse;
+
+export interface TGETProgramsSearchReq {
+  q: string;
+  recruitmentStatus?: "before" | "ongoing" | "completed" | "cancelled";
+  programStatus?: "before" | "ongoing" | "completed" | "cancelled";
+  programType?: "ROUTINE" | "TMI" | "GATHERING";
+  pageSize?: number;
+  cursor?: string;
+}
+
+export type TGETProgramsSearchRes = Schema.ProgramSearchResponse;

@@ -5,22 +5,6 @@
 
 import type * as Schema from "./api-schema";
 
-export type TGETNotificationsSendAllPendingRes = {
-  success?: boolean;
-  message?: string;
-  total?: number;
-  successCount?: number;
-  errorCount?: number;
-  results?: {
-    pageId?: string;
-    success?: boolean;
-    title?: string;
-    totalUsers?: number;
-    successCount?: number;
-    failureCount?: number;
-  }[];
-};
-
 export interface TGETNotificationsReq {
   page?: number;
   size?: number;
@@ -49,11 +33,6 @@ export type TGETNotificationsRes = {
   unreadCount?: number;
 };
 
-export type TPATCHNotificationsReadAllRes = {
-  message?: string;
-  updatedCount?: number;
-};
-
 export interface TPATCHNotificationsReadByIdReq {
   notificationId: string;
 }
@@ -61,4 +40,25 @@ export interface TPATCHNotificationsReadByIdReq {
 export type TPATCHNotificationsReadByIdRes = {
   message?: string;
   updated?: boolean;
+};
+
+export type TPATCHNotificationsReadAllRes = {
+  message?: string;
+  updatedCount?: number;
+};
+
+export type TGETNotificationsSendAllPendingRes = {
+  success?: boolean;
+  message?: string;
+  total?: number;
+  successCount?: number;
+  errorCount?: number;
+  results?: {
+    pageId?: string;
+    success?: boolean;
+    title?: string;
+    totalUsers?: number;
+    successCount?: number;
+    failureCount?: number;
+  }[];
 };

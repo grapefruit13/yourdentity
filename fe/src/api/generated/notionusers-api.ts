@@ -10,6 +10,12 @@ export const getNotionusersSyncActive = () => {
   return get<Types.TGETNotionUsersSyncActiveRes>(`/notionUsers/sync/active`);
 };
 
+export const getNotionusersSyncAllUsersRollback = () => {
+  return get<Types.TGETNotionUsersSyncAllUsersRollbackRes>(
+    `/notionUsers/sync/allUsersRollback`
+  );
+};
+
 export const getNotionusersSyncFull = () => {
   return get<Types.TGETNotionUsersSyncFullRes>(`/notionUsers/sync/full`);
 };
@@ -21,11 +27,5 @@ export const getNotionusersSyncPenalty = () => {
 export const getNotionusersSyncSelected = () => {
   return get<Types.TGETNotionUsersSyncSelectedRes>(
     `/notionUsers/sync/selected`
-  );
-};
-
-export const getNotionusersSyncAllUsersRollback = () => {
-  return get<Types.TGETNotionUsersSyncAllUsersRollbackRes>(
-    `/notionUsers/sync/allUsersRollback`
   );
 };

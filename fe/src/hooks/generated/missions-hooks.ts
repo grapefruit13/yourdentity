@@ -3,7 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
   useQuery,
   useMutation,
@@ -13,24 +13,6 @@ import {
 import * as Api from "@/api/generated/missions-api";
 import { missionsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/missions-types";
-
-export const useGetMissionsCategories = <
-  TData = Types.TGETMissionsCategoriesRes,
->(
-  options?: Omit<
-    UseQueryOptions<Types.TGETMissionsCategoriesRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery<Types.TGETMissionsCategoriesRes, Error, TData>({
-    queryKey: missionsKeys.getMissionsCategories,
-    queryFn: async () => {
-      const response = await Api.getMissionsCategories();
-      return response.data;
-    },
-    ...options,
-  });
-};
 
 export const useGetMissions = <TData = Types.TGETMissionsRes>(
   options: {
@@ -92,6 +74,24 @@ export const usePostMissionsApplyById = <
   >({
     mutationFn: (variables: TVariables) =>
       Api.postMissionsApplyById(variables as Types.TPOSTMissionsApplyByIdReq),
+    ...options,
+  });
+};
+
+export const useGetMissionsCategories = <
+  TData = Types.TGETMissionsCategoriesRes,
+>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETMissionsCategoriesRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETMissionsCategoriesRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsCategories,
+    queryFn: async () => {
+      const response = await Api.getMissionsCategories();
+      return response.data;
+    },
     ...options,
   });
 };

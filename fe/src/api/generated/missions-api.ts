@@ -6,10 +6,6 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/missions-types";
 
-export const getMissionsCategories = () => {
-  return get<Types.TGETMissionsCategoriesRes>(`/missions/categories`);
-};
-
 export const getMissions = (request: Types.TGETMissionsReq) => {
   return get<Types.TGETMissionsRes>(`/missions`, { params: request });
 };
@@ -24,4 +20,8 @@ export const postMissionsApplyById = (
   return post<Types.TPOSTMissionsApplyByIdRes>(
     `/missions/${request.missionId}/apply`
   );
+};
+
+export const getMissionsCategories = () => {
+  return get<Types.TGETMissionsCategoriesRes>(`/missions/categories`);
 };

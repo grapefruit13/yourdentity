@@ -5,10 +5,6 @@
 
 import type * as Schema from "./api-schema";
 
-export type TGETMissionsCategoriesRes = {
-  categories?: string[];
-};
-
 export interface TGETMissionsReq {
   sortBy?: "latest" | "popular";
   category?: string;
@@ -35,4 +31,8 @@ export interface TPOSTMissionsApplyByIdReq {
 export type TPOSTMissionsApplyByIdRes = {
   missionId?: string;
   status?: string;
+};
+
+export type TGETMissionsCategoriesRes = {
+  categories?: string[];
 };

@@ -6,18 +6,8 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/notifications-types";
 
-export const getNotificationsSendAllPending = () => {
-  return get<Types.TGETNotificationsSendAllPendingRes>(
-    `/notifications/send-all-pending`
-  );
-};
-
 export const getNotifications = (request: Types.TGETNotificationsReq) => {
   return get<Types.TGETNotificationsRes>(`/notifications`, { params: request });
-};
-
-export const patchNotificationsReadAll = () => {
-  return patch<Types.TPATCHNotificationsReadAllRes>(`/notifications/read-all`);
 };
 
 export const patchNotificationsReadById = (
@@ -25,5 +15,15 @@ export const patchNotificationsReadById = (
 ) => {
   return patch<Types.TPATCHNotificationsReadByIdRes>(
     `/notifications/${request.notificationId}/read`
+  );
+};
+
+export const patchNotificationsReadAll = () => {
+  return patch<Types.TPATCHNotificationsReadAllRes>(`/notifications/read-all`);
+};
+
+export const getNotificationsSendAllPending = () => {
+  return get<Types.TGETNotificationsSendAllPendingRes>(
+    `/notifications/send-all-pending`
   );
 };
