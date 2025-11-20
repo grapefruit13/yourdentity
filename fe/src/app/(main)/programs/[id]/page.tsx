@@ -165,21 +165,23 @@ const ProgramDetailPage = () => {
     useGetUsersMeParticipatingCommunities({
       enabled: Boolean(currentUser),
       staleTime: 0,
+      refetchOnWindowFocus: true,
     });
 
   // 현재 프로그램의 신청 상태 확인
   const isApplied = (() => {
     if (!participatingCommunitiesData || !programDetailData) return false;
-
     const programType = programDetailData.programType?.toLowerCase();
     let targetGroup:
       | { items?: Array<{ id?: string; status?: string }> }
       | undefined;
 
     switch (programType) {
+      case "한끗루틴":
       case "routine":
         targetGroup = participatingCommunitiesData.routine;
         break;
+      case "월간소모임":
       case "gathering":
         targetGroup = participatingCommunitiesData.gathering;
         break;
