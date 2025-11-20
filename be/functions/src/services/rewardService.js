@@ -730,7 +730,7 @@ class RewardService {
         
         return {
           id: doc.id,
-          amount: data.changeType === 'deduct' ? -(data.amount || 0) : (data.amount || 0), // 차감은 음수로 표시
+          amount: data.amount || 0, 
           reason: data.reason || (data.changeType === 'deduct' ? '나다움 차감' : '리워드 적립'),
           actionKey: data.actionKey || null,
           changeType: data.changeType, // 지급/차감 구분을 위해 추가
