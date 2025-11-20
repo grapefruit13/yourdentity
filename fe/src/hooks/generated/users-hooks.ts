@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   useQuery,
   useMutation,
@@ -190,6 +189,48 @@ export const useGetUsersMeCompletedCommunities = <
       return response.data;
     },
     ...options,
+  });
+};
+
+export const useGetUsersMeRewardsEarned = <
+  TData = Types.TGETUsersMeRewardsEarnedRes,
+>(
+  options: {
+    request: Types.TGETUsersMeRewardsEarnedReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETUsersMeRewardsEarnedRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETUsersMeRewardsEarnedRes, Error, TData>({
+    queryKey: usersKeys.getUsersMeRewardsEarned(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMeRewardsEarned(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetUsersMeRewardsUsed = <
+  TData = Types.TGETUsersMeRewardsUsedRes,
+>(
+  options: {
+    request: Types.TGETUsersMeRewardsUsedReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETUsersMeRewardsUsedRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETUsersMeRewardsUsedRes, Error, TData>({
+    queryKey: usersKeys.getUsersMeRewardsUsed(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMeRewardsUsed(request);
+      return response.data;
+    },
+    ...queryOptions,
   });
 };
 

@@ -62,6 +62,22 @@ export const getUsersMeCompletedCommunities = () => {
   );
 };
 
+export const getUsersMeRewardsEarned = (
+  request: Types.TGETUsersMeRewardsEarnedReq
+) => {
+  return get<Types.TGETUsersMeRewardsEarnedRes>(`/users/me/rewards-earned`, {
+    params: request,
+  });
+};
+
+export const getUsersMeRewardsUsed = (
+  request: Types.TGETUsersMeRewardsUsedReq
+) => {
+  return get<Types.TGETUsersMeRewardsUsedRes>(`/users/me/rewards-used`, {
+    params: request,
+  });
+};
+
 export const getUsersNicknameAvailability = (
   request: Types.TGETUsersNicknameAvailabilityReq
 ) => {

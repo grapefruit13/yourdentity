@@ -252,6 +252,56 @@ export type TGETUsersMeCompletedCommunitiesRes = {
   };
 };
 
+export interface TGETUsersMeRewardsEarnedReq {
+  page?: number;
+  size?: number;
+}
+
+export type TGETUsersMeRewardsEarnedRes = {
+  history?: {
+    id?: string;
+    amount?: number;
+    reason?: string;
+    actionKey?: string;
+    changeType?: "add" | "deduct";
+    createdAt?: string;
+    expiresAt?: string;
+    isProcessed?: boolean;
+    isExpired?: boolean;
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+  };
+};
+
+export interface TGETUsersMeRewardsUsedReq {
+  page?: number;
+  size?: number;
+}
+
+export type TGETUsersMeRewardsUsedRes = {
+  history?: {
+    id?: string;
+    amount?: number;
+    reason?: string;
+    changeType?: "deduct";
+    createdAt?: string;
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+  };
+};
+
 export interface TGETUsersNicknameAvailabilityReq {
   nickname: string;
 }
