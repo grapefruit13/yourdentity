@@ -381,9 +381,9 @@ const ProgramDetailPage = () => {
             alt={program.title || program.programName || "프로그램 썸네일"}
             className="h-full w-full object-cover"
           />
-        ) : (program as { coverImage?: string }).coverImage ? (
+        ) : program.coverImage ? (
           <img
-            src={(program as { coverImage?: string }).coverImage}
+            src={program.coverImage}
             alt={program.title || program.programName || "프로그램 커버 이미지"}
             className="h-full w-full object-cover"
           />
