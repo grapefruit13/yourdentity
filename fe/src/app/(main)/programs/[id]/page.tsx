@@ -371,7 +371,7 @@ const ProgramDetailPage = () => {
   }> = []; // TODO: QnA API 연동 필요
 
   return (
-    <div className="min-h-screen bg-white pt-12">
+    <div className="min-h-screen bg-white pt-12 pb-24">
       {/* 썸네일 영역 - 상하좌우 패딩/마진 없이 꽉 채움 */}
       <div className="relative aspect-square w-full max-w-[470px] overflow-hidden">
         {/* TEMP: 썸네일 사진으로 반영해야 함 */}
