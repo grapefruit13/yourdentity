@@ -9,7 +9,7 @@ import { MOCK_TMIS } from "@/constants/shared/tmis-mock";
  */
 const TmisPage = () => {
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="mt-12 min-h-screen bg-white p-4">
       <div className="space-y-4">
         {MOCK_TMIS.map((tmi) => (
           <Link

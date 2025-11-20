@@ -9,7 +9,7 @@ import { MOCK_GATHERINGS } from "@/constants/shared/gatherings-mock";
  */
 const GatheringsPage = () => {
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="mt-12 min-h-screen bg-white p-4">
       <div className="space-y-4">
         {MOCK_GATHERINGS.map((gathering) => (
           <Link
