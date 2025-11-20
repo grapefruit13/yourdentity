@@ -650,6 +650,199 @@ class RewardService {
       return { totalDeducted: 0, count: 0, error: error.message };
     }
   }
+
+  /**
+   * 지급받은 나다움 목록 조회
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @param {number} options.page - 페이지 번호 (기본값: 0)
+   * @param {number} options.size - 페이지 크기 (기본값: 20)
+   * @return {Promise<Object>} 조회 결과 { history, pagination }
+   */
+  async getRewardsEarned(userId, options = {}) {
+    const { page = 0, size = 20 } = options;
+    
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+  
+
+    try {
+      const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
+      const now = new Date();
+      
+      // 1. 지급 내역 조회 (changeType: "add")
+      const addQuery = rewardsHistoryRef
+        .where('changeType', '==', 'add')
+        .orderBy('createdAt', 'desc');
+      
+      const addSnapshot = await addQuery.get();
+      
+      // 2. 노션 알림 차감 내역 조회 (changeType: "deduct" && actionKey: "additional_point")
+      const deductQuery = rewardsHistoryRef
+        .where('changeType', '==', 'deduct')
+        .where('actionKey', '==', 'additional_point')
+        .orderBy('createdAt', 'desc');
+      
+      const deductSnapshot = await deductQuery.get();
+      
+      // 3. 두 결과 합치기 및 정렬 (메모리에서)
+      const allDocs = [
+        ...addSnapshot.docs.map(doc => ({ doc, createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt) })),
+        ...deductSnapshot.docs.map(doc => ({ doc, createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt) }))
+      ];
+      
+      // createdAt 기준 내림차순 정렬
+      allDocs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      const totalElements = allDocs.length;
+      const totalPages = Math.ceil(totalElements / size);
+      
+      // 4. 페이지네이션 적용
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedDocs = allDocs.slice(startIndex, endIndex);
+      
+      const history = paginatedDocs.map(({ doc }) => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        
+        const expiresAt = data.changeType === 'deduct'
+          ? null
+          : (() => {
+              if (data.expiresAt?.toDate) {
+                return data.expiresAt.toDate();
+              }
+              if (data.expiresAt) {
+                const parsed = new Date(data.expiresAt);
+                if (!Number.isNaN(parsed.getTime())) {
+                  return parsed;
+                }
+              }
+              const expiry = new Date(createdAt);
+              expiry.setDate(expiry.getDate() + DEFAULT_EXPIRY_DAYS);
+              return expiry;
+            })();
+        
+        // 만료 여부 확인 (차감 내역은 항상 false)
+        const isExpired = data.changeType === 'deduct' ? false : (expiresAt && expiresAt <= now);
+        
+        return {
+          id: doc.id,
+          amount: data.changeType === 'deduct' ? -(data.amount || 0) : (data.amount || 0), // 차감은 음수로 표시
+          reason: data.reason || (data.changeType === 'deduct' ? '나다움 차감' : '리워드 적립'),
+          actionKey: data.actionKey || null,
+          changeType: data.changeType, // 지급/차감 구분을 위해 추가
+          createdAt: createdAt.toISOString(),
+          expiresAt: expiresAt ? expiresAt.toISOString() : null,
+          isProcessed: data.isProcessed || false,
+          isExpired,
+        };
+      });
+
+      return {
+        history,
+        pagination: {
+          pageNumber: page,
+          pageSize: size,
+          totalElements,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+        },
+      };
+    } catch (error) {
+      console.error('[REWARD HISTORY ERROR] getRewardsEarned:', error.message, {
+        userId,
+        options,
+        stack: error.stack,
+      });
+      
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * 사용한 나다움 목록 조회 (스토어 구매만)
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @param {number} options.page - 페이지 번호 (기본값: 0)
+   * @param {number} options.size - 페이지 크기 (기본값: 20)
+   * @return {Promise<Object>} 조회 결과 { history, pagination }
+   */
+  async getRewardsUsed(userId, options = {}) {
+    const { page = 0, size = 20 } = options;
+    
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+
+    try {
+      const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
+      
+      const query = rewardsHistoryRef
+        .where('changeType', '==', 'deduct')
+        .orderBy('createdAt', 'desc');
+      
+      const totalSnapshot = await query.get();
+      
+      const purchaseHistory = totalSnapshot.docs.filter((doc) => {
+        const data = doc.data();
+        const reason = data.reason || '';
+        return reason.includes('구매') && reason !== '리워드 만료';
+      });
+      
+      const totalElements = purchaseHistory.length;
+      const totalPages = Math.ceil(totalElements / size);
+      
+      // 페이지네이션 적용 (메모리에서)
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedHistory = purchaseHistory.slice(startIndex, endIndex);
+      
+      const history = paginatedHistory.map((doc) => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        
+        return {
+          id: doc.id,
+          amount: data.amount || 0,
+          reason: data.reason || '',
+          createdAt: createdAt.toISOString(),
+        };
+      });
+
+      return {
+        history,
+        pagination: {
+          pageNumber: page,
+          pageSize: size,
+          totalElements,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+        },
+      };
+    } catch (error) {
+      console.error('[REWARD HISTORY ERROR] getRewardsUsed:', error.message, {
+        userId,
+        options,
+        stack: error.stack,
+      });
+      
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
+      
+      throw error;
+    }
+  }
 }
 
 module.exports = RewardService;
