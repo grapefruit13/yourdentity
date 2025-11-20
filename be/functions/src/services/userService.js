@@ -158,6 +158,21 @@ class UserService {
       }
     }
 
+
+    // Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
+    const notionUserService = require("./notionUserService");
+    notionUserService.syncSingleUserToNotion(uid)
+        .then(result => {
+          if (result.success) {
+            console.log(`Notion 동기화 완료: ${uid}`);
+          } else {
+            console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
+          }
+        })
+        .catch(error => {
+          console.error(`Notion 동기화 오류: ${uid}`, error);
+        });
+
     return {success: true};
   }
 
@@ -740,20 +755,6 @@ class UserService {
     // 카카오 상세 정보로 업데이트
     await this.firestoreService.update(uid, update);
     console.log(`[USER_DOCUMENT_UPDATED] uid=${uid} (카카오 정보 + 약관 포함)`)
-
-    // 4. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
-    const notionUserService = require("./notionUserService");
-    notionUserService.syncSingleUserToNotion(uid)
-      .then(result => {
-        if (result.success) {
-          console.log(`Notion 동기화 완료: ${uid}`);
-        } else {
-          console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
-        }
-      })
-      .catch(error => {
-        console.error(`Notion 동기화 오류: ${uid}`, error);
-      });
 
     const totalDuration = Date.now() - startTime;
     console.log(`[KAKAO_SYNC_SUCCESS] uid=${uid}, totalDuration=${totalDuration}ms`);
