@@ -672,49 +672,61 @@ class RewardService {
       const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
       const now = new Date();
       
-      // 지급 내역만 조회 (changeType: "add")
-      const query = rewardsHistoryRef
+      // 1. 지급 내역 조회 (changeType: "add")
+      const addQuery = rewardsHistoryRef
         .where('changeType', '==', 'add')
         .orderBy('createdAt', 'desc');
       
-      // 전체 개수 조회
-      const totalSnapshot = await query.get();
-      const totalElements = totalSnapshot.size;
+      const addSnapshot = await addQuery.get();
+      
+      // 2. 노션 알림 차감 내역 조회 (changeType: "deduct" && actionKey: "additional_point")
+      const deductQuery = rewardsHistoryRef
+        .where('changeType', '==', 'deduct')
+        .where('actionKey', '==', 'additional_point')
+        .orderBy('createdAt', 'desc');
+      
+      const deductSnapshot = await deductQuery.get();
+      
+      // 3. 두 결과 합치기 및 정렬 (메모리에서)
+      const allDocs = [
+        ...addSnapshot.docs.map(doc => ({ doc, createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt) })),
+        ...deductSnapshot.docs.map(doc => ({ doc, createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt) }))
+      ];
+      
+      // createdAt 기준 내림차순 정렬
+      allDocs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      const totalElements = allDocs.length;
       const totalPages = Math.ceil(totalElements / size);
       
-      // 페이지네이션 적용
+      // 4. 페이지네이션 적용
       const startIndex = page * size;
-      let paginatedQuery = query.limit(size);
+      const endIndex = startIndex + size;
+      const paginatedDocs = allDocs.slice(startIndex, endIndex);
       
-      if (startIndex > 0) {
-        // 이전 페이지의 마지막 문서를 찾아서 startAfter에 사용
-        const offsetSnapshot = await query.limit(startIndex).get();
-        if (!offsetSnapshot.empty) {
-          const lastDoc = offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
-          paginatedQuery = query.startAfter(lastDoc).limit(size);
-        }
-      }
-      
-      const snapshot = await paginatedQuery.get();
-      
-      const history = snapshot.docs.map((doc) => {
+      const history = paginatedDocs.map(({ doc }) => {
         const data = doc.data();
         const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
         
         // 만료일 계산 (createdAt + 120일)
-        const expiresAt = new Date(createdAt);
-        expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
+        // 차감 내역은 만료일이 없으므로 null 처리
+        const expiresAt = data.changeType === 'deduct' ? null : (() => {
+          const expiry = new Date(createdAt);
+          expiry.setDate(expiry.getDate() + DEFAULT_EXPIRY_DAYS);
+          return expiry;
+        })();
         
-        // 만료 여부 확인
-        const isExpired = expiresAt <= now;
+        // 만료 여부 확인 (차감 내역은 항상 false)
+        const isExpired = data.changeType === 'deduct' ? false : (expiresAt <= now);
         
         return {
           id: doc.id,
-          amount: data.amount || 0,
-          reason: data.reason || '리워드 적립',
+          amount: data.changeType === 'deduct' ? -(data.amount || 0) : (data.amount || 0), // 차감은 음수로 표시
+          reason: data.reason || (data.changeType === 'deduct' ? '나다움 차감' : '리워드 적립'),
           actionKey: data.actionKey || null,
+          changeType: data.changeType, // 지급/차감 구분을 위해 추가
           createdAt: createdAt.toISOString(),
-          expiresAt: expiresAt.toISOString(),
+          expiresAt: expiresAt ? expiresAt.toISOString() : null,
           isProcessed: data.isProcessed || false,
           isExpired,
         };

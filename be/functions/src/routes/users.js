@@ -1031,8 +1031,8 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  * @swagger
  * /users/me/rewards-earned:
  *   get:
- *     summary: 지급받은 나다움 목록 조회
- *     description: 본인이 지급받은 나다움 내역을 조회합니다.
+ *     summary: 지급/차감(관리자)받은 나다움 목록 조회
+ *     description: 본인이 지급/차감(관리자)받은 나다움 내역을 조회합니다.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
