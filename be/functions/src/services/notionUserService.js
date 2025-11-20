@@ -1990,7 +1990,7 @@ async syncSingleUserToNotion(userId) {
     const user = userDoc.data();
     const now = new Date();
 
-    // // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
+    //노션 페이지ID
     const notionPageId = user.notionPageId || null;
 
     // 날짜 변환
@@ -2063,20 +2063,25 @@ async syncSingleUserToNotion(userId) {
       "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
     };
 
-    
-    if (notionPageId) {
-      await this.updateNotionPageWithRetry(notionPageId, notionPage);
-      await db.collection("users").doc(userId).update({
-        lastUpdated: lastUpdatedIso,
-        notionSyncLockedAt: FieldValue.delete(),
-      });
-    } else {
-      const page = await this.createNotionPageWithRetry(notionPage);
-      await db.collection("users").doc(userId).update({
-        notionPageId: page.id,
-        lastUpdated: lastUpdatedIso,
-        notionSyncLockedAt: FieldValue.delete(),
-      });
+
+    try {
+      if (notionPageId) {
+        await this.updateNotionPageWithRetry(notionPageId, notionPage);
+        await db.collection("users").doc(userId).update({
+          lastUpdated: lastUpdatedIso,
+          notionSyncLockedAt: FieldValue.delete(),
+        });
+      } else {
+        const page = await this.createNotionPageWithRetry(notionPage);
+        await db.collection("users").doc(userId).update({
+          notionPageId: page.id,
+          lastUpdated: lastUpdatedIso,
+            notionSyncLockedAt: FieldValue.delete(),
+          });
+        }
+    } catch (error) {
+      console.error(`[Notion 동기화 실패] 사용자 ${userId}:`, error.message || error);
+      return { success: false, userId, error: error.message };
     }
 
 
