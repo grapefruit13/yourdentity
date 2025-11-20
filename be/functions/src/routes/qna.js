@@ -33,7 +33,7 @@ const optionalAuth = require("../middleware/optionalAuth");
  *           description: 부모 QnA ID (답글인 경우)
  *         depth:
  *           type: integer
- *           description: QnA 깊이 (0: 문의, 1: 답글)
+ *           description: "QnA 깊이 (0: 문의, 1: 답글)"
  *         isLocked:
  *           type: boolean
  *           description: 잠금 여부
