@@ -18,10 +18,10 @@ import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
-import type * as usersTypes from "@/types/generated/users-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
 import type * as storeTypes from "@/types/generated/store-types";
+import type * as usersTypes from "@/types/generated/users-types";
 
 function __normalizeQuery(obj: Record<string, unknown>) {
   const normalized: Record<string, unknown> = {};

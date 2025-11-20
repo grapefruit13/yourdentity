@@ -292,6 +292,7 @@ export interface CommunityPostListItem {
   id?: string;
   type?: string;
   author?: string;
+  profileImageUrl?: string;
   title?: string;
   preview?: {
     description?: string;
