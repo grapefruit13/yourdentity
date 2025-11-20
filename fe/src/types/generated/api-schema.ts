@@ -86,6 +86,11 @@ export interface Mission {
   updatedAt?: string;
 }
 
+export interface MissionApplicationResult {
+  missionId: string;
+  status: "IN_PROGRESS" | "COMPLETED" | "QUIT";
+}
+
 export interface ImageUpload {
   image: string;
 }
@@ -195,100 +200,6 @@ export interface CreatedResponse {
   data: Record<string, any>;
 }
 
-export interface RoutineListItem {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  deadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface RoutineDetail {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  content?: Record<string, any>[];
-  media?: Record<string, any>[];
-  options?: Record<string, any>[];
-  primaryDetails?: Record<string, any>[];
-  variants?: Record<string, any>[];
-  customFields?: Record<string, any>[];
-  deadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  qna?: Schema.QnAItem[];
-  communityPosts?: Schema.CommunityPost[];
-}
-
-export interface ApplicationResponse {
-  applicationId?: string;
-  type?: string;
-  targetId?: string;
-  userId?: string;
-  status?: string;
-  selectedVariant?: string;
-  quantity?: number;
-  customFieldsRequest?: Record<string, any>;
-  activityNickname?: string;
-  activityPhoneNumber?: string;
-  region?: {
-    city?: string;
-    district?: string;
-  };
-  currentSituation?: string;
-  applicationSource?: string;
-  applicationMotivation?: string;
-  canAttendEvents?: boolean;
-  appliedAt?: string;
-  targetName?: string;
-  targetPrice?: number;
-}
-
-export interface Review {
-  reviewId?: string;
-  type?: "ROUTINE" | "GATHERING";
-  targetId?: string;
-  userId?: string;
-  content?: string;
-  images?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface QnAItem {
-  id?: string;
-  content?: Record<string, any>[];
-  media?: Record<string, any>[];
-  answerContent?: Record<string, any>[];
-  answerMedia?: Record<string, any>[];
-  answerUserId?: string;
-  askedBy?: string;
-  answeredBy?: string;
-  askedAt?: string;
-  answeredAt?: string;
-  likesCount?: number;
-  userId?: string;
-}
-
 export interface CommunityPostListItem {
   id?: string;
   type?: string;
@@ -323,8 +234,8 @@ export interface CommunityPost {
   type?: string;
   author?: string;
   title?: string;
-  content?: Record<string, any>[];
-  media?: Record<string, any>[];
+  content?: string;
+  media?: string[];
   channel?: string;
   isLocked?: boolean;
   isPublic?: boolean;
@@ -346,8 +257,6 @@ export interface CommunityPost {
     id?: string;
     name?: string;
   };
-  authorId?: string;
-  visibility?: string;
 }
 
 export interface Comment {
@@ -383,50 +292,6 @@ export interface Comment {
   hasAuthorReply?: boolean;
   hasAuthorVote?: boolean;
   isOriginalAuthor?: boolean;
-}
-
-export interface GatheringListItem {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  deadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface GatheringDetail {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  content?: Record<string, any>[];
-  media?: Record<string, any>[];
-  options?: Record<string, any>[];
-  primaryDetails?: Record<string, any>[];
-  variants?: Record<string, any>[];
-  customFields?: Record<string, any>[];
-  deadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  qna?: Schema.QnAItem[];
-  communityPosts?: Schema.CommunityPost[];
 }
 
 export interface Community {
@@ -480,13 +345,6 @@ export interface ActivityResponse {
 
 export interface LikeToggleResponse {
   routineId?: string;
-  userId?: string;
-  isLiked?: boolean;
-  likesCount?: number;
-}
-
-export interface QnALikeToggleResponse {
-  qnaId?: string;
   userId?: string;
   isLiked?: boolean;
   likesCount?: number;
@@ -567,6 +425,7 @@ export interface Program {
   endDate?: string;
   recruitmentStartDate?: string;
   recruitmentEndDate?: string;
+  displayStartDate?: string;
   orientationDate?: string;
   shareMeetingDate?: string;
   targetAudience?: string;
@@ -766,69 +625,4 @@ export interface Purchase {
   totalPrice?: number;
   status?: "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
   createdAt?: string;
-}
-
-export interface TmiProjectListItem {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "OPEN" | "CLOSED" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  deadline?: {
-    _seconds?: number;
-    _nanoseconds?: number;
-  };
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface TmiProject {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
-  options?: Record<string, any>[];
-  primaryDetails?: Record<string, any>[];
-  variants?: Record<string, any>[];
-  customFields?: Record<string, any>[];
-  deadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  qna?: Schema.QnAItem[];
-  communityPosts?: {
-    id?: string;
-    type?: string;
-    author?: string;
-    title?: string;
-    content?: Schema.ContentItem[];
-    media?: Schema.MediaItem[];
-    channel?: string;
-    isLocked?: boolean;
-    visibility?: string;
-    likesCount?: number;
-    commentsCount?: number;
-    createdAt?: string;
-    updatedAt?: string;
-    community?: {
-      id?: string;
-      name?: string;
-    };
-  }[];
 }

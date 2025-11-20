@@ -69,3 +69,29 @@ export const useGetMissionsById = <TData = Types.TGETMissionsByIdRes>(
     ...queryOptions,
   });
 };
+
+export const usePostMissionsApplyById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsApplyByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsApplyById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsApplyById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsApplyById(variables as Types.TPOSTMissionsApplyByIdReq),
+    ...options,
+  });
+};

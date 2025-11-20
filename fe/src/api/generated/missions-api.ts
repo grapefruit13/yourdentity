@@ -17,3 +17,11 @@ export const getMissions = (request: Types.TGETMissionsReq) => {
 export const getMissionsById = (request: Types.TGETMissionsByIdReq) => {
   return get<Types.TGETMissionsByIdRes>(`/missions/${request.missionId}`);
 };
+
+export const postMissionsApplyById = (
+  request: Types.TPOSTMissionsApplyByIdReq
+) => {
+  return post<Types.TPOSTMissionsApplyByIdRes>(
+    `/missions/${request.missionId}/apply`
+  );
+};

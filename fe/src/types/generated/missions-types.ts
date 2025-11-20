@@ -27,3 +27,12 @@ export interface TGETMissionsByIdReq {
 export type TGETMissionsByIdRes = {
   mission?: Schema.Mission;
 };
+
+export interface TPOSTMissionsApplyByIdReq {
+  missionId: string;
+}
+
+export type TPOSTMissionsApplyByIdRes = {
+  missionId?: string;
+  status?: string;
+};

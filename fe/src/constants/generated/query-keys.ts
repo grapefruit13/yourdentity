@@ -13,7 +13,6 @@ import type * as communitiesTypes from "@/types/generated/communities-types";
 import type * as faqsTypes from "@/types/generated/faqs-types";
 import type * as fcmTypes from "@/types/generated/fcm-types";
 import type * as filesTypes from "@/types/generated/files-types";
-import type * as gatheringsTypes from "@/types/generated/gatherings-types";
 import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
@@ -21,9 +20,7 @@ import type * as notificationsTypes from "@/types/generated/notifications-types"
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
-import type * as routinesTypes from "@/types/generated/routines-types";
 import type * as storeTypes from "@/types/generated/store-types";
-import type * as tmiTypes from "@/types/generated/tmi-types";
 import type * as usersTypes from "@/types/generated/users-types";
 
 function __normalizeQuery(obj: Record<string, unknown>) {
@@ -101,6 +98,7 @@ export const communitiesKeys = {
         size: request.size,
         programType: request.programType,
         programState: request.programState,
+        sort: request.sort,
       },
     }),
   getCommunitiesPostsByTwoIds: (
@@ -144,20 +142,6 @@ export const fcmKeys = {
 
 // Files Query Keys
 export const filesKeys = {} as const;
-
-// Gatherings Query Keys
-export const gatheringsKeys = {
-  getGatherings: (request: gatheringsTypes.TGETGatheringsReq) =>
-    __buildKey("gatherings", "getGatherings", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getGatheringsById: (request: gatheringsTypes.TGETGatheringsByIdReq) =>
-    __buildKey("gatherings", "getGatheringsById", {
-      path: { gatheringId: request.gatheringId },
-      query: {},
-    }),
-} as const;
 
 // Home Query Keys
 export const homeKeys = {
@@ -324,20 +308,6 @@ export const reportsKeys = {
   ),
 } as const;
 
-// Routines Query Keys
-export const routinesKeys = {
-  getRoutines: (request: routinesTypes.TGETRoutinesReq) =>
-    __buildKey("routines", "getRoutines", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getRoutinesById: (request: routinesTypes.TGETRoutinesByIdReq) =>
-    __buildKey("routines", "getRoutinesById", {
-      path: { routineId: request.routineId },
-      query: {},
-    }),
-} as const;
-
 // Store Query Keys
 export const storeKeys = {
   getStoreProducts: (request: storeTypes.TGETStoreProductsReq) =>
@@ -358,19 +328,5 @@ export const storeKeys = {
     __buildKey("store", "getStorePurchases", {
       path: {},
       query: { pageSize: request.pageSize, cursor: request.cursor },
-    }),
-} as const;
-
-// TMI Query Keys
-export const tmiKeys = {
-  getTmis: (request: tmiTypes.TGETTmisReq) =>
-    __buildKey("tmi", "getTmis", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getTmisById: (request: tmiTypes.TGETTmisByIdReq) =>
-    __buildKey("tmi", "getTmisById", {
-      path: { projectId: request.projectId },
-      query: {},
     }),
 } as const;

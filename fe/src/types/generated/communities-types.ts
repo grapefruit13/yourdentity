@@ -31,6 +31,7 @@ export interface TGETCommunitiesPostsReq {
   size?: number;
   programType?: "ROUTINE" | "GATHERING" | "TMI";
   programState?: "ongoing" | "finished";
+  sort?: "popular";
 }
 
 export type TGETCommunitiesPostsRes = {
