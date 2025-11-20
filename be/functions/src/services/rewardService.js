@@ -666,23 +666,28 @@ class RewardService {
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
       throw new Error('유효하지 않은 userId입니다');
     }
+  
 
     try {
-      const rewardsHistoryRef = db.collection(`users/${userId}/rewardsHistory`);
+      const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
       const now = new Date();
       
+      // 지급 내역만 조회 (changeType: "add")
       const query = rewardsHistoryRef
         .where('changeType', '==', 'add')
         .orderBy('createdAt', 'desc');
       
+      // 전체 개수 조회
       const totalSnapshot = await query.get();
       const totalElements = totalSnapshot.size;
       const totalPages = Math.ceil(totalElements / size);
       
+      // 페이지네이션 적용
       const startIndex = page * size;
       let paginatedQuery = query.limit(size);
       
       if (startIndex > 0) {
+        // 이전 페이지의 마지막 문서를 찾아서 startAfter에 사용
         const offsetSnapshot = await query.limit(startIndex).get();
         if (!offsetSnapshot.empty) {
           const lastDoc = offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
@@ -696,10 +701,11 @@ class RewardService {
         const data = doc.data();
         const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
         
+        // 만료일 계산 (createdAt + 120일)
         const expiresAt = new Date(createdAt);
         expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
         
-
+        // 만료 여부 확인
         const isExpired = expiresAt <= now;
         
         return {
@@ -727,6 +733,86 @@ class RewardService {
       };
     } catch (error) {
       console.error('[REWARD HISTORY ERROR] getRewardsEarned:', error.message, {
+        userId,
+        options,
+        stack: error.stack,
+      });
+      
+      if (!error.code) {
+        error.code = 'INTERNAL_ERROR';
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * 사용한 나다움 목록 조회 (스토어 구매만)
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @param {number} options.page - 페이지 번호 (기본값: 0)
+   * @param {number} options.size - 페이지 크기 (기본값: 20)
+   * @return {Promise<Object>} 조회 결과 { history, pagination }
+   */
+  async getRewardsUsed(userId, options = {}) {
+    const { page = 0, size = 20 } = options;
+    
+    // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new Error('유효하지 않은 userId입니다');
+    }
+
+    try {
+      const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
+      
+      // 차감 내역만 조회 (changeType: "deduct")
+      const query = rewardsHistoryRef
+        .where('changeType', '==', 'deduct')
+        .orderBy('createdAt', 'desc');
+      
+      // 전체 조회 후 메모리에서 필터링 (reason에 "구매" 포함)
+      const totalSnapshot = await query.get();
+      
+      // 스토어 구매만 필터링 (reason에 "구매" 포함)
+      const purchaseHistory = totalSnapshot.docs.filter((doc) => {
+        const data = doc.data();
+        const reason = data.reason || '';
+        return reason.includes('구매');
+      });
+      
+      const totalElements = purchaseHistory.length;
+      const totalPages = Math.ceil(totalElements / size);
+      
+      // 페이지네이션 적용 (메모리에서)
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedHistory = purchaseHistory.slice(startIndex, endIndex);
+      
+      const history = paginatedHistory.map((doc) => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        
+        return {
+          id: doc.id,
+          amount: data.amount || 0,
+          reason: data.reason || '',
+          createdAt: createdAt.toISOString(),
+        };
+      });
+
+      return {
+        history,
+        pagination: {
+          pageNumber: page,
+          pageSize: size,
+          totalElements,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+        },
+      };
+    } catch (error) {
+      console.error('[REWARD HISTORY ERROR] getRewardsUsed:', error.message, {
         userId,
         options,
         stack: error.stack,
