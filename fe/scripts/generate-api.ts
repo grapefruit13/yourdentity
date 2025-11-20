@@ -183,6 +183,58 @@ export interface PaginationResponse {
 function getTypeScriptType(schema: any): string {
   if (!schema) return "any";
 
+  // allOf 처리 (상속/확장)
+  if (schema.allOf) {
+    const extendsTypes: string[] = [];
+    const additionalProps: Array<[string, string, boolean]> = [];
+
+    schema.allOf.forEach((subSchema: any) => {
+      if (subSchema.$ref) {
+        // $ref를 통한 상속
+        const refName = subSchema.$ref.split("/").pop();
+        if (refName) {
+          // availableSchemaNames 체크를 하지 않고 항상 Schema.${refName}으로 참조
+          // (실제 타입이 없으면 TypeScript 컴파일 시 에러가 발생하므로 안전)
+          extendsTypes.push(`Schema.${refName}`);
+        }
+      } else if (subSchema.properties) {
+        // 추가 프로퍼티 수집
+        Object.entries(subSchema.properties).forEach(
+          ([propName, propSchema]: [string, any]) => {
+            const type = getTypeScriptType(propSchema);
+            const optional = subSchema.required?.includes(propName)
+              ? false
+              : true;
+            additionalProps.push([propName, type, optional]);
+          }
+        );
+      }
+    });
+
+    // 타입 생성
+    if (extendsTypes.length > 0 && additionalProps.length === 0) {
+      // extends만 있는 경우
+      return extendsTypes.join(" & ");
+    } else if (extendsTypes.length > 0 && additionalProps.length > 0) {
+      // extends + 추가 프로퍼티
+      let typeStr = `(${extendsTypes.join(" & ")}) & {\n`;
+      additionalProps.forEach(([propName, type, optional]) => {
+        typeStr += `    ${propName}${optional ? "?" : ""}: ${type};\n`;
+      });
+      typeStr += "  }";
+      return typeStr;
+    } else if (additionalProps.length > 0) {
+      // 추가 프로퍼티만 있는 경우
+      let typeStr = "{\n";
+      additionalProps.forEach(([propName, type, optional]) => {
+        typeStr += `    ${propName}${optional ? "?" : ""}: ${type};\n`;
+      });
+      typeStr += "  }";
+      return typeStr;
+    }
+    return "any";
+  }
+
   if (schema.type === "string") {
     if (schema.enum) {
       return schema.enum.map((v: string) => `"${v}"`).join(" | ");
