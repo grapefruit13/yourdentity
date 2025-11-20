@@ -93,7 +93,9 @@ export interface TGETCommunitiesPostsByTwoIdsReq {
   postId: string;
 }
 
-export type TGETCommunitiesPostsByTwoIdsRes = any;
+export type TGETCommunitiesPostsByTwoIdsRes = Schema.CommunityPost & {
+  replies?: any[];
+};
 
 export interface TPUTCommunitiesPostsByTwoIdsReq {
   communityId: string;
