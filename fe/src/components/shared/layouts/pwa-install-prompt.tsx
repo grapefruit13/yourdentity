@@ -46,39 +46,6 @@ const PwaInstallPrompt = () => {
     if (dismissedUntilStr) {
       const dismissedUntil = parseInt(dismissedUntilStr, 10);
       const now = Date.now();
-      const dismissedUntilDate = new Date(dismissedUntil);
-      const nowDate = new Date(now);
-
-      console.log("dismissedUntilStr (원본):", dismissedUntilStr);
-      console.log("dismissedUntil (타임스탬프):", dismissedUntil);
-      console.log(
-        "dismissedUntil (날짜):",
-        dismissedUntilDate.toLocaleString("ko-KR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      );
-      console.log("Date.now() (타임스탬프):", now);
-      console.log(
-        "Date.now() (날짜):",
-        nowDate.toLocaleString("ko-KR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      );
-      console.log(
-        "비교 결과 (dismissedUntil < Date.now()):",
-        dismissedUntil < now,
-        `| 현재 시간이 ${dismissedUntil < now ? "더 늦음" : "더 이른"} (프롬프트 ${dismissedUntil < now ? "표시 가능" : "표시 안 함"})`
-      );
 
       if (now < dismissedUntil) {
         return false;
@@ -178,21 +145,24 @@ const PwaInstallPrompt = () => {
 
   // iOS 기기인 경우 react-ios-pwa-prompt 사용
   if (isIOSDeviceCheck) {
-    if (!shouldShowIOSPrompt() || isInstalled) {
+    const shouldRenderIOSPrompt = shouldShowIOSPrompt();
+
+    if (!shouldRenderIOSPrompt || isInstalled) {
       return null;
     }
 
     return (
       <PWAPrompt
         delay={1000}
-        copyTitle="홈 화면에 추가"
-        copySubtitle="유스-잇"
+        copySubtitle="홈 화면에 추가"
+        copyTitle="유스-잇"
         copyDescription="홈 화면에 유스-잇을 추가하고 간편하게 이용해보세요!"
         copyShareStep="하단 메뉴 바에서 '공유' 버튼을 누르세요"
         copyMoreStep="'더 보기' 버튼을 누르세요"
         copyAddToHomeScreenStep="'홈 화면에 추가'를 누르세요"
         appIconPath="/icons/favicon/180x180.png"
         onClose={handleDismiss}
+        isShown={shouldRenderIOSPrompt}
       />
     );
   }
