@@ -1087,6 +1087,11 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  *                             nullable: true
  *                             description: 액션 키
  *                             example: "comment"
+ *                           changeType:
+ *                             type: string
+ *                             enum: [add, deduct]
+ *                             description: 변경 타입 (add=지급, deduct=차감)
+ *                             example: "add"
  *                           createdAt:
  *                             type: string
  *                             format: date-time
@@ -1202,6 +1207,11 @@ router.get("/me/rewards-earned", authGuard, userController.getRewardsEarned);
  *                             type: string
  *                             description: 사용 사유 (상품명)
  *                             example: "기프티콘 구매"
+ *                           changeType:
+ *                             type: string
+ *                             enum: [deduct]
+ *                             description: 변경 타입 (항상 deduct)
+ *                             example: "deduct"
  *                           createdAt:
  *                             type: string
  *                             format: date-time
