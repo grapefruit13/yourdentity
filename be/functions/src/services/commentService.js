@@ -329,10 +329,8 @@ class CommentService {
               const replyResult = {
                 ...replyWithoutDeleted,
                 isDeleted: reply.isDeleted || false,
+                isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
               };
-              if (viewerId) {
-                replyResult.isLiked = likedCommentIds.has(reply.id);
-              }
               return replyResult;
             });
 
@@ -342,11 +340,9 @@ class CommentService {
             ...commentWithoutDeleted,
             isDeleted: comment.isDeleted || false,
             replies: sortedReplies,
-            repliesCount: replies.length, 
+            repliesCount: replies.length,
+            isLiked: viewerId ? likedCommentIds.has(comment.id) : false,
           };
-          if (viewerId) {
-            processedComment.isLiked = likedCommentIds.has(comment.id);
-          }
 
           commentsWithReplies.push(processedComment);
         }
