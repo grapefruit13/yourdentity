@@ -15,6 +15,7 @@ import TabButton from "@/components/shared/ui/tab-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MOCK_FAQ_ITEMS } from "@/constants/mission/_mock-faq";
 import { MOCK_REVIEW_ITEMS } from "@/constants/mission/_mock-reviews";
+import { MISSION_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetMissionsById } from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
@@ -155,21 +156,14 @@ const Page = () => {
 
       {/* 탭메뉴 */}
       <div className="flex bg-white px-5 pt-5">
-        <TabButton
-          label="미션 설명"
-          isActive={activeTab === "description"}
-          onClick={() => setActiveTab("description")}
-        />
-        <TabButton
-          label="미션 후기"
-          isActive={activeTab === "reviews"}
-          onClick={() => setActiveTab("reviews")}
-        />
-        <TabButton
-          label="자주 묻는 질문"
-          isActive={activeTab === "faq"}
-          onClick={() => setActiveTab("faq")}
-        />
+        {MISSION_DETAIL_TABS.map((tab) => (
+          <TabButton
+            key={tab.id}
+            label={tab.label}
+            isActive={activeTab === tab.id}
+            onClick={() => setActiveTab(tab.id)}
+          />
+        ))}
       </div>
 
       {/* 탭 컨텐츠 */}
