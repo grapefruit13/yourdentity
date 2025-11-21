@@ -115,7 +115,7 @@ class MissionService {
   }
 
   /**
-   * 사용자 미션 목록 조회 (진행 중인 미션만)
+   * 사용자 미션 목록 조회
    * @param {Object} params
    * @param {string} params.userId
    * @param {string} [params.status=MISSION_STATUS.IN_PROGRESS]
@@ -127,44 +127,30 @@ class MissionService {
       throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
     }
 
-    // 진행 중인 미션만 조회
-    const queryStatus = status || MISSION_STATUS.IN_PROGRESS;
-    if (queryStatus !== MISSION_STATUS.IN_PROGRESS) {
-      throw buildError("진행 중인 미션만 조회할 수 있습니다.", "BAD_REQUEST", 400);
+    const normalizedStatus = status && status !== "ALL" ? status : null;
+
+    let query = db.collection(USER_MISSIONS_COLLECTION).where("userId", "==", userId);
+
+    if (normalizedStatus) {
+      query = query.where("status", "==", normalizedStatus);
     }
 
-    const queryLimit = Math.min(limit * 3, 100);
-    const snapshot = await db
-      .collection(USER_MISSIONS_COLLECTION)
-      .where("userId", "==", userId)
-      .where("status", "==", MISSION_STATUS.IN_PROGRESS)
-      .limit(queryLimit)
+    // NOTE: Firestore composite index required:
+    // collection=userMissions, fields: userId ASC, status ASC, lastActivityAt DESC
+    const snapshot = await query
+      .orderBy("lastActivityAt", "desc")
+      .limit(limit)
       .get();
 
-    const missions = [];
-
-    const docs = snapshot.docs
-      .map((doc) => ({ doc, data: doc.data() }))
-      .sort((a, b) => {
-        const aTime = a.data.lastActivityAt?.toMillis?.() || 0;
-        const bTime = b.data.lastActivityAt?.toMillis?.() || 0;
-        return bTime - aTime;
-      });
-
-    docs.forEach(({ doc, data }) => {
-      if (missions.length >= limit) {
-        return;
-      }
-
-      missions.push({
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
         id: doc.id,
         missionNotionPageId: data.missionNotionPageId,
         missionTitle: data.missionTitle,
         startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
-      });
+      };
     });
-
-    return missions;
   }
 }
 
