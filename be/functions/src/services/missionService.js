@@ -135,22 +135,27 @@ class MissionService {
       query = query.where("status", "==", normalizedStatus);
     }
 
-    // NOTE: Firestore composite index required:
-    // collection=userMissions, fields: userId ASC, status ASC, lastActivityAt DESC
     const snapshot = await query
       .orderBy("lastActivityAt", "desc")
       .limit(limit)
       .get();
 
-    return snapshot.docs.map((doc) => {
+    const missions = [];
+    for (const doc of snapshot.docs) {
+      if (missions.length >= limit) {
+        break;
+      }
+
       const data = doc.data();
-      return {
+      missions.push({
         id: doc.id,
         missionNotionPageId: data.missionNotionPageId,
         missionTitle: data.missionTitle,
         startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
-      };
-    });
+      });
+    }
+
+    return missions;
   }
 }
 
