@@ -189,9 +189,7 @@ const CommentsPage = () => {
       if (replyingTo?.isReply && replyingTo.commentId) {
         // 답글에 대한 답글: 원댓글의 id를 parentId로 사용
         const parentComment = comments.find((comment) =>
-          comment.replies?.some(
-            (r) => (r.id || r.commentId) === replyingTo.commentId
-          )
+          comment.replies?.some((r) => r.id === replyingTo.commentId)
         );
         parentId = parentComment?.id;
       } else if (replyingTo?.commentId) {
@@ -372,9 +370,7 @@ const CommentsPage = () => {
                     !replyingTo?.isReply) ||
                   // 답글에 대한 답글인 경우
                   (replyingTo?.isReply &&
-                    comment.replies?.some(
-                      (r) => (r.id || r.commentId) === replyingTo.commentId
-                    ))
+                    comment.replies?.some((r) => r.id === replyingTo.commentId))
                     ? commentInput
                     : ""
                 }

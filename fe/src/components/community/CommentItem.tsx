@@ -89,7 +89,7 @@ const CommentItem = ({
   const replies = useMemo(() => {
     const rawReplies = comment.replies;
     return Array.isArray(rawReplies)
-      ? rawReplies.filter((reply) => reply && (reply.id || reply.commentId))
+      ? rawReplies.filter((reply) => reply && reply.id)
       : [];
   }, [comment.replies]);
 
@@ -146,9 +146,7 @@ const CommentItem = ({
         const targetCommentId = variables.commentId;
 
         if (result && targetCommentId) {
-          const isReply = replies.some(
-            (reply) => (reply.id || reply.commentId) === targetCommentId
-          );
+          const isReply = replies.some((reply) => reply.id === targetCommentId);
 
           if (isReply) {
             setReplyLikes((prev) => ({
@@ -416,7 +414,7 @@ const CommentItem = ({
         <div className="ml-11 space-y-3">
           {visibleReplies.length > 0 ? (
             visibleReplies.map((reply) => {
-              const replyId = reply.id || reply.commentId || "";
+              const replyId = reply.id || "";
               const replyAuthor = reply.author || "익명";
               const isEditingReply = editingCommentId === replyId;
               const isReplyingToThisReply =

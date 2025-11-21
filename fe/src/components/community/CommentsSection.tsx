@@ -167,9 +167,7 @@ const CommentsSection = ({
 
       if (replyingToState.isReply && replyingToState.commentId) {
         const parentComment = comments.find((comment) =>
-          comment.replies?.some(
-            (r) => (r.id || r.commentId) === replyingToState.commentId
-          )
+          comment.replies?.some((r) => r.id === replyingToState.commentId)
         );
         return parentComment?.id;
       }
@@ -330,9 +328,7 @@ const CommentsSection = ({
         replyingTo?.isReply &&
         comments
           .find((c) => c.id === commentId)
-          ?.replies?.some(
-            (r) => (r.id || r.commentId) === replyingTo.commentId
-          );
+          ?.replies?.some((r) => r.id === replyingTo.commentId);
 
       return isReplyingToThisComment || isReplyingToThisCommentReply
         ? commentInput
