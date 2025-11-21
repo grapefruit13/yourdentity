@@ -127,28 +127,42 @@ class MissionService {
       throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
     }
 
-    let query = db
+    const queryLimit = Math.min(limit * 3, 100);
+    const snapshot = await db
       .collection(USER_MISSIONS_COLLECTION)
       .where("userId", "==", userId)
-      .orderBy("lastActivityAt", "desc")
-      .limit(limit);
+      .limit(queryLimit)
+      .get();
 
-    if (status && status !== "ALL") {
-      query = query.where("status", "==", status);
-    }
+    const missions = [];
 
-    const snapshot = await query.get();
+    const docs = snapshot.docs
+      .map((doc) => ({ doc, data: doc.data() }))
+      .sort((a, b) => {
+        const aTime = a.data.lastActivityAt?.toMillis?.() || 0;
+        const bTime = b.data.lastActivityAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
 
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
+    docs.forEach(({ doc, data }) => {
+      if (missions.length >= limit) {
+        return;
+      }
+
+      if (status && status !== "ALL" && data.status !== status) {
+        return;
+      }
+
+      missions.push({
         id: doc.id,
         missionNotionPageId: data.missionNotionPageId,
         missionTitle: data.missionTitle,
         startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-      };
+      });
     });
+
+    return missions;
   }
 }
 
