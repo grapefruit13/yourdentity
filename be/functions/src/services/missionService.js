@@ -1,20 +1,12 @@
 const { db, Timestamp } = require("../config/database");
 const notionMissionService = require("./notionMissionService");
-
-const USER_MISSIONS_COLLECTION = "userMissions";
-const USER_MISSION_STATS_COLLECTION = "userMissionStats";
-const MAX_ACTIVE_MISSIONS = 3;
-
-const MISSION_STATUS = {
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "COMPLETED",
-  QUIT: "QUIT",
-};
-
-const BLOCKED_STATUSES = [
-  MISSION_STATUS.IN_PROGRESS,
-  MISSION_STATUS.COMPLETED,
-];
+const {
+  USER_MISSIONS_COLLECTION,
+  USER_MISSION_STATS_COLLECTION,
+  MISSION_STATUS,
+  BLOCKED_STATUSES,
+  MAX_ACTIVE_MISSIONS,
+} = require("../constants/missionConstants");
 
 function buildError(message, code, statusCode) {
   const error = new Error(message);
