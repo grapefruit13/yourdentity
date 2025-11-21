@@ -271,6 +271,128 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  */
 router.post("/:missionId/apply", authGuard, missionController.applyMission);
 
+/**
+ * @swagger
+ * /missions/{missionId}/posts:
+ *   post:
+ *     summary: 미션 인증 글 작성 (완료 처리)
+ *     description: 미션 인증 글을 작성하면서 해당 미션을 완료 상태로 전환합니다.
+ *     tags: [Missions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: missionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 ID (Notion 페이지 ID)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: 인증 글 제목
+ *                 example: "미션 인증 완료!"
+ *               content:
+ *                 type: string
+ *                 description: 인증 내용 (HTML 허용)
+ *                 example: "<p>오늘의 미션을 이렇게 수행했어요.</p>"
+ *               media:
+ *                 type: array
+ *                 description: 업로드된 파일 경로 배열
+ *                 items:
+ *                   type: string
+ *                 example: ["files/abc123/sample.png"]
+ *               postType:
+ *                 type: string
+ *                 description: 게시글 유형 (기본 CERT)
+ *                 example: "CERT"
+ *     responses:
+ *       201:
+ *         description: 인증 글 작성 및 미션 완료 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     missionId:
+ *                       type: string
+ *                       example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
+ *                     postId:
+ *                       type: string
+ *                       example: "mission-post-123"
+ *                     status:
+ *                       type: string
+ *                       example: "COMPLETED"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               InvalidPayload:
+ *                 value:
+ *                   status: 400
+ *                   message: "제목, 내용 또는 미디어 중 최소 한 가지는 필요합니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingBearer:
+ *                 value:
+ *                   status: 401
+ *                   message: "Bearer 토큰이 필요합니다"
+ *       404:
+ *         description: 미션 신청 기록 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissionNotApplied:
+ *                 value:
+ *                   status: 404
+ *                   message: "미션 신청 기록을 찾을 수 없습니다."
+ *       409:
+ *         description: 이미 완료된 미션
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               AlreadyCompleted:
+ *                 value:
+ *                   status: 409
+ *                   message: "이미 완료되었거나 종료된 미션입니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "서버 내부 오류가 발생했습니다"
+ */
+router.post("/:missionId/posts", authGuard, missionController.createMissionPost);
+
 module.exports = router;
 
 
