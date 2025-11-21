@@ -1,6 +1,7 @@
 const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
+const { MISSION_STATUS } = require("../constants/missionConstants");
 
 class MissionController {
   constructor() {
@@ -51,7 +52,7 @@ class MissionController {
   async getMyMissions(req, res, next) {
     try {
       const userId = req.user?.uid;
-      const { status = "IN_PROGRESS", limit } = req.query;
+      const { status = MISSION_STATUS.IN_PROGRESS, limit } = req.query;
 
       const missions = await missionService.getUserMissions({
         userId,

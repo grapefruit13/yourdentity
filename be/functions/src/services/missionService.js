@@ -115,7 +115,7 @@ class MissionService {
   }
 
   /**
-   * 사용자 미션 목록 조회
+   * 사용자 미션 목록 조회 (진행 중인 미션만)
    * @param {Object} params
    * @param {string} params.userId
    * @param {string} [params.status=MISSION_STATUS.IN_PROGRESS]
@@ -127,10 +127,17 @@ class MissionService {
       throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
     }
 
+    // 진행 중인 미션만 조회
+    const queryStatus = status || MISSION_STATUS.IN_PROGRESS;
+    if (queryStatus !== MISSION_STATUS.IN_PROGRESS) {
+      throw buildError("진행 중인 미션만 조회할 수 있습니다.", "BAD_REQUEST", 400);
+    }
+
     const queryLimit = Math.min(limit * 3, 100);
     const snapshot = await db
       .collection(USER_MISSIONS_COLLECTION)
       .where("userId", "==", userId)
+      .where("status", "==", MISSION_STATUS.IN_PROGRESS)
       .limit(queryLimit)
       .get();
 
@@ -149,16 +156,11 @@ class MissionService {
         return;
       }
 
-      if (status && status !== "ALL" && data.status !== status) {
-        return;
-      }
-
       missions.push({
         id: doc.id,
         missionNotionPageId: data.missionNotionPageId,
         missionTitle: data.missionTitle,
         startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
-        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
       });
     });
 

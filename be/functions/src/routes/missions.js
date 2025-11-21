@@ -124,19 +124,12 @@ router.get("/", optionalAuth, missionController.getMissions);
  * @swagger
  * /missions/me:
  *   get:
- *     summary: 내 미션 목록 조회
+ *     summary: 내 진행 중인 미션 목록 조회
  *     description: 로그인한 사용자가 진행 중인 미션 목록을 조회합니다.
  *     tags: [Missions]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [IN_PROGRESS]
- *           default: IN_PROGRESS
- *         description: 조회할 미션 상태
  *       - in: query
  *         name: limit
  *         schema:
@@ -173,9 +166,6 @@ router.get("/", optionalAuth, missionController.getMissions);
  *                           startedAt:
  *                             type: string
  *                             format: date-time
- *                           createdAt:
- *                             type: string
- *                             format: date-time
  *             example:
  *               status: 200
  *               data:
@@ -184,7 +174,6 @@ router.get("/", optionalAuth, missionController.getMissions);
  *                     missionNotionPageId: "2a645f52-4cd0-803b-8da5-e9fb9d16d263"
  *                     missionTitle: "친구와 함께 요리하기"
  *                     startedAt: "2025-11-21T10:13:31.809Z"
- *                     createdAt: "2025-11-21T10:13:31.809Z"
  *       401:
  *         description: 인증 필요
  *         content:
@@ -483,90 +472,6 @@ router.post("/:missionId/apply", authGuard, missionController.applyMission);
  */
 router.post("/:missionId/posts", authGuard, missionController.createMissionPost);
 
-/**
- * @swagger
- * /missions/me:
- *   get:
- *     summary: 내 미션 목록 조회
- *     description: 로그인한 사용자가 진행 중인 미션 목록을 조회합니다.
- *     tags: [Missions]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [IN_PROGRESS]
- *           default: IN_PROGRESS
- *         description: 조회할 미션 상태
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *           minimum: 1
- *           maximum: 50
- *         description: 최대 조회 개수
- *     responses:
- *       200:
- *         description: 미션 목록 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     missions:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: string
- *                           missionNotionPageId:
- *                             type: string
- *                           missionTitle:
- *                             type: string
- *                           startedAt:
- *                             type: string
- *                             format: date-time
- *             example:
- *               status: 200
- *               data:
- *                 missions:
- *                   - id: "mission-test-user_2a645f52-4cd0-803b-8da5-e9fb9d16d263"
- *                     missionNotionPageId: "2a645f52-4cd0-803b-8da5-e9fb9d16d263"
- *                     missionTitle: "친구와 함께 요리하기"
- *                     startedAt: "2025-11-21T10:13:31.809Z"
- *       401:
- *         description: 인증 필요
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *             examples:
- *               MissingBearer:
- *                 value:
- *                   status: 401
- *                   message: "Bearer 토큰이 필요합니다"
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *             examples:
- *               ServerError:
- *                 value:
- *                   status: 500
- *                   message: "서버 내부 오류가 발생했습니다"
- */
 module.exports = router;
 
 
