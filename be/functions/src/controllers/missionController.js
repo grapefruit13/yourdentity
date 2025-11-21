@@ -1,6 +1,7 @@
 const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
+const { MISSION_STATUS } = require("../constants/missionConstants");
 
 class MissionController {
   constructor() {
@@ -11,6 +12,7 @@ class MissionController {
     this.getMissionById = this.getMissionById.bind(this);
     this.getParticipatedMissionIds = this.getParticipatedMissionIds.bind(this);
     this.createMissionPost = this.createMissionPost.bind(this);
+    this.getMyMissions = this.getMyMissions.bind(this);
   }
 
   /**
@@ -40,6 +42,27 @@ class MissionController {
 
     } catch (error) {
       console.error("[MissionController] 미션 신청 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 내 미션 목록 조회
+   */
+  async getMyMissions(req, res, next) {
+    try {
+      const userId = req.user?.uid;
+      const { status = MISSION_STATUS.IN_PROGRESS, limit } = req.query;
+
+      const missions = await missionService.getUserMissions({
+        userId,
+        status,
+        limit: limit ? Number(limit) : 20,
+      });
+
+      return res.success({ missions });
+    } catch (error) {
+      console.error("[MissionController] 내 미션 조회 오류:", error.message);
       return next(error);
     }
   }
