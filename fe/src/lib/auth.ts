@@ -169,8 +169,11 @@ export const signInWithKakao = async (): Promise<{
     return { isNewUser, kakaoAccessToken };
   } catch (error) {
     debug.warn("카카오 로그인 실패:", error);
+    // TEMP
+    alert("KAKAO ERROR:" + JSON.stringify(error));
 
     if (error instanceof FirebaseError) {
+      alert("firebase Error:" + JSON.stringify(error));
       throw handleKakaoAuthError(error);
     }
 
