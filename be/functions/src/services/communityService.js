@@ -218,6 +218,14 @@ class CommunityService {
     return this._userService;
   }
 
+  getRewardService() {
+    if (!this._rewardService) {
+      const RewardService = require("./rewardService");
+      this._rewardService = new RewardService();
+    }
+    return this._rewardService;
+  }
+
   /**
    * 사용자가 참여 중인 커뮤니티 ID 목록 조회
    * @param {string} userId
@@ -1659,6 +1667,7 @@ class CommunityService {
         throw error;
       }
 
+      // 파일 삭제 (Storage 작업이라 트랜잭션 밖에서 처리)
       if (post.media && post.media.length > 0) {
         const deletePromises = post.media.map(async (filePath) => {
           try {
@@ -1670,28 +1679,38 @@ class CommunityService {
         await Promise.all(deletePromises);
       }
 
-      await postsService.delete(postId);
+      // 리워드 차감 + 게시글 삭제를 하나의 트랜잭션으로 처리
+      await this.firestoreService.runTransaction(async (transaction) => {
+        // 리워드 차감 처리
+        await this.getRewardService().handleRewardOnPostDeletion(
+          userId,
+          postId,
+          post.type,
+          post.media,
+          transaction
+        );
 
-      try {
+        // 게시글 삭제
+        const postRef = this.firestoreService.db
+          .collection(`communities/${communityId}/posts`)
+          .doc(postId);
+        transaction.delete(postRef);
+
+        // authoredPosts에서 제거
         const authoredPostRef = this.firestoreService.db
           .collection(`users/${userId}/authoredPosts`)
           .doc(postId);
-        await authoredPostRef.delete();
-      } catch (error) {
-        console.error("[COMMUNITY] authoredPosts 문서 삭제 실패:", error);
-      }
+        transaction.delete(authoredPostRef);
 
-      if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
-        try {
+        // certificationPosts 카운트 감소
+        if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
-          await userRef.update({
+          transaction.update(userRef, {
             certificationPosts: FieldValue.increment(-1),
             updatedAt: FieldValue.serverTimestamp(),
           });
-        } catch (error) {
-          console.error("certificationPosts 카운트 감소 실패:", error);
         }
-      }
+      });
     } catch (error) {
       console.error("[COMMUNITY] 게시글 삭제 실패:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
