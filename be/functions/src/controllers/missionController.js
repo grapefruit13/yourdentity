@@ -1,5 +1,6 @@
 const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
+const missionPostService = require("../services/missionPostService");
 
 class MissionController {
   constructor() {
@@ -9,6 +10,7 @@ class MissionController {
     this.getMissions = this.getMissions.bind(this);
     this.getMissionById = this.getMissionById.bind(this);
     this.getParticipatedMissionIds = this.getParticipatedMissionIds.bind(this);
+    this.createMissionPost = this.createMissionPost.bind(this);
   }
 
   /**
@@ -38,6 +40,32 @@ class MissionController {
 
     } catch (error) {
       console.error("[MissionController] 미션 신청 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증 글 작성 (완료 처리)
+   */
+  async createMissionPost(req, res, next) {
+    try {
+      const { missionId } = req.params;
+      const userId = req.user?.uid;
+      const postData = req.body || {};
+
+      const result = await missionPostService.createPost({
+        userId,
+        missionId,
+        postData,
+      });
+
+      return res.created({
+        missionId: result.missionId,
+        postId: result.postId,
+        status: result.status,
+      });
+    } catch (error) {
+      console.error("[MissionController] 미션 인증 작성 오류:", error.message);
       return next(error);
     }
   }
