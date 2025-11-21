@@ -113,6 +113,43 @@ class MissionService {
       status: MISSION_STATUS.IN_PROGRESS,
     };
   }
+
+  /**
+   * 사용자 미션 목록 조회
+   * @param {Object} params
+   * @param {string} params.userId
+   * @param {string} [params.status=MISSION_STATUS.IN_PROGRESS]
+   * @param {number} [params.limit=20]
+   * @returns {Promise<Array>}
+   */
+  async getUserMissions({ userId, status = MISSION_STATUS.IN_PROGRESS, limit = 20 }) {
+    if (!userId) {
+      throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
+    }
+
+    let query = db
+      .collection(USER_MISSIONS_COLLECTION)
+      .where("userId", "==", userId)
+      .orderBy("lastActivityAt", "desc")
+      .limit(limit);
+
+    if (status && status !== "ALL") {
+      query = query.where("status", "==", status);
+    }
+
+    const snapshot = await query.get();
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        missionNotionPageId: data.missionNotionPageId,
+        missionTitle: data.missionTitle,
+        startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+      };
+    });
+  }
 }
 
 module.exports = new MissionService();
