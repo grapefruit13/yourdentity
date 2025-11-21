@@ -17,7 +17,10 @@ import { MOCK_FAQ_ITEMS } from "@/constants/mission/_mock-faq";
 import { MOCK_REVIEW_ITEMS } from "@/constants/mission/_mock-reviews";
 import { MISSION_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { useGetMissionsById } from "@/hooks/generated/missions-hooks";
+import {
+  useGetMissionsById,
+  usePostMissionsApplyById,
+} from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { MissionDetailTabType } from "@/types/mission/tab-types";
@@ -53,6 +56,19 @@ const Page = () => {
     open: openConfirmModal,
     close: closeConfirmModal,
   } = useToggle();
+
+  // 미션 신청 API
+  const { mutate: applyMission, isPending: isApplying } =
+    usePostMissionsApplyById({
+      onSuccess: () => {
+        alert("미션이 시작되었어요!");
+        closeConfirmModal();
+        router.push(LINK_URL.MISSION);
+      },
+      onError: () => {
+        alert("미션 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
+      },
+    });
 
   // TopBar 설정
   useEffect(() => {
@@ -245,29 +261,29 @@ const Page = () => {
       )}
 
       {/* 하단 액션 바 */}
-      {missionData.certificationDeadline && (
-        <MissionDetailActionBar
-          deadline={new Date(missionData.certificationDeadline)}
-          isLiked={isLiked}
-          onLikeClick={() => {
-            setIsLiked((prev) => !prev);
-            // TODO: 실제 찜하기 API 호출
-          }}
-          onStartClick={openConfirmModal}
-        />
-      )}
+      <MissionDetailActionBar
+        deadline={
+          missionData?.certificationDeadline
+            ? new Date(missionData.certificationDeadline)
+            : undefined
+        }
+        isLiked={isLiked}
+        onLikeClick={() => {
+          setIsLiked((prev) => !prev);
+          // TODO: 실제 찜하기 API 호출
+        }}
+        onStartClick={openConfirmModal}
+      />
 
       {/* 미션 시작 확인 모달 */}
       <Modal
         isOpen={isConfirmModalOpen}
         title="미션을 시작할까요?"
         description={`${missionData.title}\n미션을 시작해 볼까요?`}
-        confirmText="시작하기"
+        confirmText={isApplying ? "신청 중..." : "시작하기"}
         cancelText="취소"
         onConfirm={() => {
-          // TODO: 미션 시작하기 로직
-          closeConfirmModal();
-          router.push(LINK_URL.MISSION);
+          applyMission({ missionId });
         }}
         onClose={closeConfirmModal}
         variant="primary"
