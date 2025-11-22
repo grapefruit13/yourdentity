@@ -511,6 +511,18 @@ const ProfileEditPage = () => {
             className="relative disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={PROFILE_EDIT_LABELS.PROFILE_IMAGE_CHANGE}
           >
+            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-pink-100">
+              {profileImageUrl ? (
+                <Image
+                  src={profileImageUrl}
+                  alt={PROFILE_EDIT_LABELS.PROFILE_IMAGE_ALT}
+                  className="h-full w-full object-cover"
+                  fill
+                  unoptimized={profileImageUrl.startsWith("data:")}
+                />
+              ) : (
+                <User className="h-12 w-12 text-pink-400" strokeWidth={1.5} />
+              )}
             <div className="relative h-24 w-24">
               <ProfileImage src={profileImageUrl} size="h-full w-full" />
             </div>

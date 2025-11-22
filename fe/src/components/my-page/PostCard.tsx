@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Heart, MessageCircle, User } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 
@@ -53,10 +54,12 @@ const PostCard = ({
       {/* 게시글 이미지 */}
       <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
         {imageUrl ? (
-          <img
+          <Image
             src={imageUrl}
             alt={title}
             className="h-full w-full object-cover"
+            fill
+            unoptimized={imageUrl.startsWith("data:")}
           />
         ) : (
           <div className="h-full w-full" />
@@ -83,12 +86,15 @@ const PostCard = ({
         <div className="flex items-center justify-between">
           {/* 작성자 정보 */}
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-pink-100">
+            <div className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-pink-100">
               {authorProfileUrl ? (
-                <img
+                <Image
                   src={authorProfileUrl}
                   alt={authorName}
+                  width={24}
+                  height={24}
                   className="h-full w-full object-cover"
+                  unoptimized={authorProfileUrl.startsWith("data:")}
                 />
               ) : (
                 <User className="h-3 w-3 text-pink-400" />
