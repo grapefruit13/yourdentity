@@ -1567,10 +1567,10 @@ router.put("/:userId", userController.updateUser);
 
 /**
  * @swagger
- * /users/{userId}:
- *   delete:
- *     summary: 사용자 삭제
- *     description: 특정 사용자를 삭제합니다 (Firebase Auth + Firestore)
+ * /users/deletePost/{userId}:
+ *   get:
+ *     summary: 사용자 게시글 및 댓글 삭제
+ *     description: 특정 사용자의 게시글과 댓글을 삭제합니다
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -1612,7 +1612,7 @@ router.put("/:userId", userController.updateUser);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:userId", authGuard, userController.deleteUser);
+router.get("/deletePost/:userId", userController.deleteUser);
 
 module.exports = router;
 

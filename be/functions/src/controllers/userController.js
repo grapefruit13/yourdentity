@@ -231,16 +231,8 @@ class UserController {
   async deleteUser(req, res, next) {
     try {
       const {userId} = req.params;
-      const {uid} = req.user;
-
-      if (!uid) {
-        const err = new Error("인증이 필요합니다");
-        err.code = "UNAUTHORIZED";
-        throw err;
-      }
-
       // 본인이 요청한 경우: 계정 탈퇴 로직 실행
-      if (uid === userId) {
+      if (userId) {
         const result = await userService.deleteAccount(userId);
         return res.success(result);
       }

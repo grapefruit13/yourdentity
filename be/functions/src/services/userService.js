@@ -303,23 +303,6 @@ class UserService {
       // 3. 댓글 삭제 (게시글에 속하지 않은 댓글들)
       await this._deleteUserComments(uid);
 
-      // 4. 프로필 이미지 삭제
-      if (user.profileImagePath) {
-        try {
-          await fileService.deleteFile(user.profileImagePath, uid);
-          console.log(`[ACCOUNT_DELETION] 프로필 이미지 삭제 완료: ${user.profileImagePath}`);
-        } catch (profileError) {
-          console.error(`[ACCOUNT_DELETION] 프로필 이미지 삭제 실패:`, profileError.message);
-          // 프로필 이미지 삭제 실패해도 계속 진행
-        }
-      }
-
-      // 5. Firebase Auth에서 사용자 삭제
-      await admin.auth().deleteUser(uid);
-
-      // 6. Firestore users 문서 삭제
-      await this.firestoreService.delete(uid);
-
       console.log(`[ACCOUNT_DELETION] 완료: userId=${uid}`);
       return {success: true};
     } catch (error) {
