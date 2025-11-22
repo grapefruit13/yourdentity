@@ -844,6 +844,171 @@ class RewardService {
       throw error;
     }
   }
+
+  /**
+   * 댓글 삭제 시 리워드 차감 처리
+   * @param {string} userId - 사용자 ID
+   * @param {string} commentId - 댓글 ID
+   * @param {Object} transaction - Firestore 트랜잭션 객체
+   * @return {Promise<void>}
+   */
+  async handleRewardOnCommentDeletion(userId, commentId, transaction) {
+    try {
+      const historyId = `COMMENT-${commentId}`;
+      const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
+      const historyDoc = await transaction.get(historyRef);
+
+      if (!historyDoc.exists) {
+        return; // 리워드 히스토리가 없으면 스킵
+      }
+
+      const historyData = historyDoc.data();
+      
+      // 조건 확인: isProcessed === false && changeType === 'add'
+      if (!historyData.isProcessed && historyData.changeType === 'add') {
+        const amount = historyData.amount || 0;
+        
+        if (amount > 0) {
+          // 현재 리워드 조회 (음수 방지)
+          const userRef = db.collection('users').doc(userId);
+          const userDoc = await transaction.get(userRef);
+          const currentRewards = userDoc.exists && typeof userDoc.data().rewards === 'number'
+            ? userDoc.data().rewards
+            : 0;
+          
+          // 실제 차감할 금액 결정 (0 미만 방지)
+          const deducted = Math.min(currentRewards, amount);
+          
+          if (deducted > 0) {
+            // ① 원본 히스토리 isProcessed = true로 업데이트
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
+
+            // ② 사용자 리워드 차감 (0 미만 방지)
+            transaction.update(userRef, {
+              rewards: FieldValue.increment(-deducted),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+
+            // ③ 차감 히스토리 추가 (무작위 ID)
+            const deductHistoryRef = db.collection(`users/${userId}/rewardsHistory`).doc();
+            transaction.set(deductHistoryRef, {
+              amount: deducted,
+              changeType: 'deduct',
+              reason: '댓글 삭제',
+              actionKey: historyData.actionKey || 'comment_deletion',
+              isProcessed: true,
+              createdAt: FieldValue.serverTimestamp()
+            });
+          } else {
+            // 차감할 금액이 없어도 원본 히스토리는 처리 완료로 표시
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[REWARD] 댓글 삭제 시 리워드 차감 실패:', error.message, {
+        userId,
+        commentId
+      });
+      // 에러가 발생해도 삭제 프로세스는 계속 진행되도록 에러를 throw하지 않음
+    }
+  }
+
+  /**
+   * 게시글 삭제 시 리워드 차감 처리
+   * @param {string} userId - 사용자 ID
+   * @param {string} postId - 게시글 ID
+   * @param {string} postType - 게시글 타입 (예: 'ROUTINE_CERT', 'GATHERING_REVIEW')
+   * @param {Array} postMedia - 게시글 미디어 배열
+   * @param {Object} transaction - Firestore 트랜잭션 객체
+   * @return {Promise<void>}
+   */
+  async handleRewardOnPostDeletion(userId, postId, postType, postMedia, transaction) {
+    try {
+      // TYPE_CODE 결정
+      let typeCode;
+      if (postType === 'ROUTINE_CERT') {
+        typeCode = 'ROUTINE-POST';
+      } else if (postType === 'ROUTINE_REVIEW') {
+        typeCode = 'ROUTINE-REVIEW';
+      } else if (postType === 'GATHERING_REVIEW') {
+        // media 필드만 확인
+        const hasMedia = Array.isArray(postMedia) && postMedia.length > 0;
+        typeCode = hasMedia ? 'GATHERING-MEDIA' : 'GATHERING-TEXT';
+      } else if (postType === 'TMI_REVIEW' || postType === 'TMI') {
+        typeCode = 'TMI';
+      } else {
+        return; // 리워드 대상이 아닌 타입
+      }
+
+      const historyId = `${typeCode}-${postId}`;
+      const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
+      const historyDoc = await transaction.get(historyRef);
+
+      if (!historyDoc.exists) {
+        return; // 리워드 히스토리가 없으면 스킵
+      }
+
+      const historyData = historyDoc.data();
+      
+      // 조건 확인: isProcessed === false && changeType === 'add'
+      if (!historyData.isProcessed && historyData.changeType === 'add') {
+        const amount = historyData.amount || 0;
+        
+        if (amount > 0) {
+          // 현재 리워드 조회 (음수 방지)
+          const userRef = db.collection('users').doc(userId);
+          const userDoc = await transaction.get(userRef);
+          const currentRewards = userDoc.exists && typeof userDoc.data().rewards === 'number'
+            ? userDoc.data().rewards
+            : 0;
+          
+          // 실제 차감할 금액 결정 (0 미만 방지)
+          const deducted = Math.min(currentRewards, amount);
+          
+          if (deducted > 0) {
+            // ① 원본 히스토리 isProcessed = true로 업데이트
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
+
+            // ② 사용자 리워드 차감 (0 미만 방지)
+            transaction.update(userRef, {
+              rewards: FieldValue.increment(-deducted),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+
+            // ③ 차감 히스토리 추가 (무작위 ID)
+            const deductHistoryRef = db.collection(`users/${userId}/rewardsHistory`).doc();
+            transaction.set(deductHistoryRef, {
+              amount: deducted,
+              changeType: 'deduct',
+              reason: '게시글 삭제',
+              actionKey: historyData.actionKey || 'post_deletion',
+              isProcessed: true,
+              createdAt: FieldValue.serverTimestamp()
+            });
+          } else {
+            // 차감할 금액이 없어도 원본 히스토리는 처리 완료로 표시
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[REWARD] 게시글 삭제 시 리워드 차감 실패:', error.message, {
+        userId,
+        postId,
+        postType
+      });
+      // 에러가 발생해도 삭제 프로세스는 계속 진행되도록 에러를 throw하지 않음
+    }
+  }
 }
 
 module.exports = RewardService;

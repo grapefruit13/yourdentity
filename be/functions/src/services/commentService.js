@@ -31,6 +31,15 @@ class CommentService {
   constructor() {
     this.firestoreService = new FirestoreService("comments");
     this.userService = new UserService();
+    this.rewardService = null; // lazy loading
+  }
+
+  getRewardService() {
+    if (!this.rewardService) {
+      const RewardService = require("./rewardService");
+      this.rewardService = new RewardService();
+    }
+    return this.rewardService;
   }
 
   /**
@@ -551,6 +560,9 @@ class CommentService {
         const remainingCount = remainingSnapshot.docs.filter(
           (doc) => doc.id !== commentId
         ).length;
+
+        // 리워드 차감 처리
+        await this.getRewardService().handleRewardOnCommentDeletion(userId, commentId, transaction);
 
         // 댓글 실제 삭제
         transaction.delete(commentRef);
