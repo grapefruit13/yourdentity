@@ -21,19 +21,18 @@ async function shouldRunReset(now) {
     );
     const todayKey = todayKST.toISOString().substring(0, 10);
 
+    // 문서가 없으면 리셋 실행 (문서는 리셋 성공 후 생성)
     if (!resetDoc.exists) {
-      await resetDocRef.set({
-        lastResetDate: todayKey,
-        lastResetAt: now,
-      });
       return { shouldRun: true, resetDocRef, todayKey };
     }
 
+    // 문서가 있으면 마지막 리셋 날짜 확인
     const data = resetDoc.data();
     if (data.lastResetDate === todayKey) {
       return { shouldRun: false };
     }
 
+    // 마지막 리셋 날짜가 오늘과 다르면 리셋 실행 필요
     return { shouldRun: true, resetDocRef, todayKey };
   } catch (error) {
     console.error("[missionReset] shouldRunReset 에러:", error);
@@ -154,7 +153,9 @@ async function runMissionDailyReset() {
       });
     }
 
-    // 4. 리셋 문서 업데이트 (성공 여부와 관계없이 완료 기록)
+    // 4. 리셋 문서 생성/업데이트 (리셋이 성공적으로 완료된 후에만 기록)
+    // 문서가 없으면 생성, 있으면 업데이트
+    // 에러가 발생하면 문서를 생성/업데이트하지 않아서 다음 스케줄에서 재시도 가능
     try {
       if (resetDocRef && todayKey) {
         await resetDocRef.set(
@@ -170,10 +171,14 @@ async function runMissionDailyReset() {
           },
           { merge: true },
         );
+        console.log("[missionReset] 리셋 문서 생성/업데이트 완료", { todayKey });
       }
     } catch (error) {
-      console.error("[missionReset] 리셋 문서 업데이트 실패:", error);
-      // 리셋 문서 업데이트 실패는 치명적이지 않음 (다음 스케줄에 재시도)
+      console.error("[missionReset] 리셋 문서 생성/업데이트 실패:", error);
+      // 문서 생성/업데이트 실패 시 에러를 throw하여 재시도 가능하도록 함
+      throw new Error(
+        `리셋 완료 후 문서 생성/업데이트 실패: ${error.message}`,
+      );
     }
 
     return {
@@ -202,26 +207,56 @@ const missionDailyResetScheduler = onSchedule(
     memory: "512MiB",
   },
   async (event) => {
-    try {
-      console.log("[missionReset] 스케줄러 실행", {
-        scheduleTime: event.scheduleTime,
-        timestamp: new Date().toISOString(),
-      });
+    const MAX_RETRIES = 3; // 최대 재시도 횟수
+    const INITIAL_RETRY_DELAY = 5000; // 초기 재시도 지연 (5초)
 
-      const result = await runMissionDailyReset();
-      console.log("[missionReset] 스케줄러 완료", result);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log("[missionReset] 스케줄러 실행", {
+          scheduleTime: event.scheduleTime,
+          timestamp: new Date().toISOString(),
+          attempt: `${attempt}/${MAX_RETRIES}`,
+        });
 
-      return result;
-    } catch (error) {
-      console.error("[missionReset] 스케줄러 실행 실패:", error);
-      console.error("[missionReset] 에러 상세:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      });
+        const result = await runMissionDailyReset();
 
-      // 에러를 다시 throw하여 Cloud Scheduler가 실패로 기록하도록 함
-      throw error;
+        // 성공 시 재시도 루프 종료
+        if (attempt > 1) {
+          console.log(
+            `[missionReset] 재시도 성공 (시도 ${attempt}회만에 성공)`,
+          );
+        } else {
+          console.log("[missionReset] 스케줄러 완료", result);
+        }
+
+        return result;
+      } catch (error) {
+        console.error(
+          `[missionReset] 스케줄러 실행 실패 (시도 ${attempt}/${MAX_RETRIES}):`,
+          error.message,
+        );
+        console.error("[missionReset] 에러 상세:", {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+          attempt,
+        });
+
+        // 마지막 시도에서도 실패하면 에러 throw
+        if (attempt === MAX_RETRIES) {
+          console.error(
+            "[missionReset] 최대 재시도 횟수에 도달했습니다. 스케줄러 실패.",
+          );
+          throw error;
+        }
+
+        // 재시도 전 대기 (지수 백오프: 5초, 10초, 20초)
+        const retryDelay = INITIAL_RETRY_DELAY * Math.pow(2, attempt - 1);
+        console.log(
+          `[missionReset] ${retryDelay / 1000}초 후 재시도합니다...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
     }
   },
 );
