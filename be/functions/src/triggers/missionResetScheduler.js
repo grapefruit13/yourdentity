@@ -140,20 +140,26 @@ async function runMissionDailyReset() {
       statsErrors.length > 0 || missionsErrors.length > 0;
 
     if (hasErrors) {
-      console.warn("[missionReset] 리셋 완료 (일부 에러 발생)", {
+      console.warn("[missionReset] 리셋 중 일부 에러 발생, 리셋을 실패로 처리합니다.", {
         statsUpdated,
         statsErrors: statsErrors.length,
         missionsUpdated,
         missionsErrors: missionsErrors.length,
       });
-    } else {
-      console.log("[missionReset] 리셋 완료", {
-        statsUpdated,
-        missionsUpdated,
-      });
+      // 부분 실패도 전체적으로는 실패로 보고 재시도 대상이 되도록 함
+      // 리셋 문서를 업데이트하지 않아서 같은 날 재시도 가능
+      throw new Error(
+        `리셋 중 일부 문서 처리 실패 (statsErrors=${statsErrors.length}, missionsErrors=${missionsErrors.length})`,
+      );
     }
 
+    console.log("[missionReset] 리셋 완료", {
+      statsUpdated,
+      missionsUpdated,
+    });
+
     // 4. 리셋 문서 생성/업데이트 (리셋이 성공적으로 완료된 후에만 기록)
+    // 모든 통계와 미션이 성공적으로 리셋된 경우에만 문서 생성/업데이트
     // 문서가 없으면 생성, 있으면 업데이트
     // 에러가 발생하면 문서를 생성/업데이트하지 않아서 다음 스케줄에서 재시도 가능
     try {
@@ -164,9 +170,9 @@ async function runMissionDailyReset() {
             lastResetAt: Timestamp.fromDate(now),
             statsUpdated,
             missionsUpdated,
-            statsErrors: statsErrors.length,
-            missionsErrors: missionsErrors.length,
-            hasErrors,
+            statsErrors: 0,
+            missionsErrors: 0,
+            hasErrors: false,
             updatedAt: Timestamp.now(),
           },
           { merge: true },
