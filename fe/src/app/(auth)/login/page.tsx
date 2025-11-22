@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +10,7 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
-import { signInWithKakao } from "@/lib/auth";
+import { signInWithKakao, handleKakaoRedirectResult } from "@/lib/auth";
 import { setKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 
@@ -42,28 +42,86 @@ const LoginPageContent = () => {
   /**
    * @description FCM 토큰 등록 (실패해도 로그인은 계속 진행)
    */
-  const registerFCMTokenSafely = async () => {
+  const registerFCMTokenSafely = useCallback(async () => {
     try {
       await registerFCMToken();
     } catch (fcmError) {
       debug.error("FCM 토큰 저장 실패:", fcmError);
       // FCM 토큰 저장 실패해도 로그인은 계속 진행
     }
-  };
+  }, [registerFCMToken]);
 
   /**
    * @description 로그인 성공 후 라우팅 처리
    * @param hasNickname - 닉네임 존재 여부
    */
-  const handlePostLoginRouting = (hasNickname: boolean) => {
-    if (hasNickname) {
-      // 닉네임이 있으면 next 파라미터가 있으면 해당 경로로, 없으면 홈으로
-      router.replace(returnTo || LINK_URL.HOME);
-    } else {
-      // 온보딩이 필요한 경우 next 파라미터 무시하고 온보딩 페이지로
-      router.replace(LINK_URL.MY_PAGE_EDIT);
-    }
-  };
+  const handlePostLoginRouting = useCallback(
+    (hasNickname: boolean) => {
+      if (hasNickname) {
+        // 닉네임이 있으면 next 파라미터가 있으면 해당 경로로, 없으면 홈으로
+        router.replace(returnTo || LINK_URL.HOME);
+      } else {
+        // 온보딩이 필요한 경우 next 파라미터 무시하고 온보딩 페이지로
+        router.replace(LINK_URL.MY_PAGE_EDIT);
+      }
+    },
+    [router, returnTo]
+  );
+
+  /**
+   * @description 카카오 redirect 결과 처리 (iOS PWA 환경)
+   */
+  useEffect(() => {
+    const processRedirectResult = async () => {
+      try {
+        const result = await handleKakaoRedirectResult();
+        if (!result) {
+          // redirect 결과가 없음 (일반적인 경우)
+          return;
+        }
+
+        setIsLoading(true);
+        const { kakaoAccessToken, isNewUser } = result;
+
+        // 신규 회원 처리
+        if (isNewUser) {
+          if (!kakaoAccessToken) {
+            debug.error("신규 회원인데 카카오 액세스 토큰이 없습니다.");
+            setIsLoading(false);
+            setErrorMessage(
+              "카카오 로그인 권한이 필요합니다. 다시 시도해 주세요."
+            );
+            return;
+          }
+
+          setKakaoAccessToken(kakaoAccessToken);
+          await registerFCMTokenSafely();
+          setIsLoading(false);
+          router.replace(LINK_URL.MY_PAGE_EDIT);
+          return;
+        }
+
+        // 기존 사용자 처리
+        try {
+          const { data: userData } = await refetchUserData();
+          const hasNickname = !!userData?.nickname;
+          await registerFCMTokenSafely();
+          setIsLoading(false);
+          handlePostLoginRouting(hasNickname);
+        } catch (error) {
+          debug.error("사용자 정보 조회 실패:", error);
+          setIsLoading(false);
+          setErrorMessage("사용자 정보 조회에 실패했습니다.");
+        }
+      } catch (error) {
+        debug.error("카카오 redirect 결과 처리 실패:", error);
+        setIsLoading(false);
+        setErrorMessage("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
+      }
+    };
+
+    processRedirectResult();
+  }, [router, refetchUserData, registerFCMTokenSafely, handlePostLoginRouting]);
 
   /**
    * @description 카카오 로그인

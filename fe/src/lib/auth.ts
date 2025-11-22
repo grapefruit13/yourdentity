@@ -5,6 +5,8 @@ import { FirebaseError } from "firebase/app";
 import {
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   UserCredential,
@@ -20,6 +22,7 @@ import { AUTH_MESSAGE } from "@/constants/auth/_message";
 import { auth, functions } from "@/lib/firebase";
 import { ErrorResponse, Result } from "@/types/shared/response";
 import { debug } from "@/utils/shared/debugger";
+import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 import { post, del } from "./axios";
 
 /**
@@ -141,7 +144,14 @@ const handleKakaoAuthError = (error: FirebaseError): ErrorResponse => {
 };
 
 /**
- * @description 카카오 로그인 - Popup 방식(test)
+ * @description iOS PWA 환경인지 확인
+ */
+const isIOSPWA = (): boolean => {
+  return isIOSDevice() && isStandalone();
+};
+
+/**
+ * @description 카카오 로그인 - Popup 방식 (iOS PWA에서는 Redirect 방식 사용)
  */
 export const signInWithKakao = async (): Promise<{
   isNewUser: boolean;
@@ -149,6 +159,22 @@ export const signInWithKakao = async (): Promise<{
 }> => {
   try {
     const provider = createKakaoProvider();
+
+    // iOS PWA 환경에서는 redirect 방식 사용 (popup이 실패할 수 있음)
+    if (isIOSPWA()) {
+      debug.log("iOS PWA 환경 감지: redirect 방식으로 카카오 로그인 시도");
+      // redirect는 페이지 이동이 발생하므로 Promise는 resolve되지 않음
+      // redirect 후 getRedirectResult로 결과를 처리해야 함
+      await signInWithRedirect(auth, provider);
+      // 이 코드는 실행되지 않지만 (redirect로 페이지 리로드), 타입 체크를 위해 필요
+      const unknownError: ErrorResponse = {
+        status: 500,
+        message: "리다이렉트 중입니다...",
+      };
+      throw unknownError;
+    }
+
+    // 일반 환경에서는 popup 방식 사용
     const result = await signInWithPopup(auth, provider);
 
     // null 체크 및 검증
@@ -169,6 +195,77 @@ export const signInWithKakao = async (): Promise<{
     return { isNewUser, kakaoAccessToken };
   } catch (error) {
     debug.warn("카카오 로그인 실패:", error);
+    // TEMP
+    alert("KAKAO ERROR:" + JSON.stringify(error));
+
+    if (error instanceof FirebaseError) {
+      alert("firebase Error:" + JSON.stringify(error));
+
+      // iOS PWA 환경에서 네트워크 에러가 발생한 경우, redirect 방식으로 재시도
+      if (isIOSPWA() && isNetworkError(error.code)) {
+        debug.log("iOS PWA 네트워크 에러: redirect 방식으로 재시도");
+        try {
+          const provider = createKakaoProvider();
+          // redirect는 페이지 이동이 발생하므로 Promise는 resolve되지 않음
+          await signInWithRedirect(auth, provider);
+          // 이 코드는 실행되지 않지만 (redirect로 페이지 리로드), 타입 체크를 위해 필요
+          const redirectError: ErrorResponse = {
+            status: 500,
+            message: "리다이렉트 중입니다...",
+          };
+          throw redirectError;
+        } catch (redirectError) {
+          // redirect 실패 시 원래 에러 처리
+          throw handleKakaoAuthError(error);
+        }
+      }
+
+      throw handleKakaoAuthError(error);
+    }
+
+    // 알 수 없는 에러
+    const unknownError: ErrorResponse = {
+      status: 500,
+      message: AUTH_MESSAGE.ERROR.UNKNOWN_ERROR,
+    };
+    throw unknownError;
+  }
+};
+
+/**
+ * @description 카카오 로그인 Redirect 결과 처리
+ * iOS PWA 환경에서 redirect 후 결과를 처리할 때 사용
+ */
+export const handleKakaoRedirectResult = async (): Promise<{
+  isNewUser: boolean;
+  kakaoAccessToken?: string;
+} | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+
+    if (!result) {
+      // redirect 결과가 없음 (일반적인 경우)
+      return null;
+    }
+
+    // null 체크 및 검증
+    if (!result.user) {
+      const invalidResultError: ErrorResponse = {
+        status: 500,
+        message: AUTH_MESSAGE.KAKAO.FAILURE,
+      };
+      throw invalidResultError;
+    }
+
+    const additionalInfo = getAdditionalUserInfo(result);
+    const isNewUser = additionalInfo?.isNewUser ?? false;
+    const credential = OAuthProvider.credentialFromResult(result);
+    const kakaoAccessToken = credential?.accessToken;
+
+    debug.log(AUTH_MESSAGE.KAKAO.SUCCESS, result.user);
+    return { isNewUser, kakaoAccessToken };
+  } catch (error) {
+    debug.warn("카카오 redirect 결과 처리 실패:", error);
 
     if (error instanceof FirebaseError) {
       throw handleKakaoAuthError(error);

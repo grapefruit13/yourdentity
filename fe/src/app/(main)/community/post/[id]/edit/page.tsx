@@ -93,18 +93,15 @@ const EditPageContent = () => {
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const setTitle = useTopBarStore((state) => state.setTitle);
 
-  // 상세 데이터에서 초기값 구성
-  const post = postData as Schema.CommunityPost | undefined;
-
   // 기존 media 배열을 state로 관리
   const [originalMedia, setOriginalMedia] = useState<string[]>([]);
 
-  // post 데이터가 로드되면 초기 media 설정
+  // postData가 로드되면 초기 media 설정
   useEffect(() => {
-    if (post?.media) {
+    if (postData?.media) {
       // media가 string[] 형태인지 확인
-      const mediaArray = Array.isArray(post.media)
-        ? post.media.map((item) => {
+      const mediaArray = Array.isArray(postData.media)
+        ? postData.media.map((item) => {
             // string이면 그대로, object면 fileName이나 path 추출
             if (typeof item === "string") return item;
             // @grapefruit 아래 사항 확인해주시구 정리해주세요~
@@ -114,14 +111,15 @@ const EditPageContent = () => {
         : [];
       setOriginalMedia(mediaArray.filter(Boolean));
     }
-  }, [post]);
+  }, [postData]);
 
-  const initialTitleHtml = typeof post?.title === "string" ? post.title : "";
+  const initialTitleHtml =
+    typeof postData?.title === "string" ? postData.title : "";
 
   const initialContentHtml =
-    typeof post?.content === "string" ? post.content : "";
+    typeof postData?.content === "string" ? postData.content : "";
 
-  const resolvedCategory = post?.category ?? selectedCategoryFromQuery;
+  const resolvedCategory = postData?.category ?? selectedCategoryFromQuery;
 
   // 제출 시 일괄 업로드할 파일 큐
   const [fileQueue, setFileQueue] = useState<
