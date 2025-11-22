@@ -3,6 +3,7 @@
 
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import MissionCertificationStatusCard from "@/components/mission/mission-certification-status-card";
@@ -45,6 +46,7 @@ import {
  */
 const WritePageContent = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
@@ -273,6 +275,22 @@ const WritePageContent = () => {
             reject(new Error(WRITE_MESSAGES.POST_RESPONSE_INVALID));
             return;
           }
+
+          // 커뮤니티 게시글 목록 쿼리 무효화
+          queryClient.invalidateQueries({
+            predicate: (query) => {
+              const queryKey = query.queryKey;
+              if (!Array.isArray(queryKey) || queryKey.length === 0) {
+                return false;
+              }
+              const isCustomKey = queryKey[0] === "communitiesPosts";
+              const isGeneratedKey =
+                queryKey[0] === "communities" &&
+                queryKey[1] === "getCommunitiesPosts";
+
+              return isCustomKey || isGeneratedKey;
+            },
+          });
 
           resolve({ postId, communityId });
         },
