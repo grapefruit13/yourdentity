@@ -1,6 +1,6 @@
 const { db, Timestamp } = require("../config/database");
 const notionMissionService = require("./notionMissionService");
-const { getDateKeyByKST, getTodayByKST } = require("../utils/helpers");
+const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -178,8 +178,21 @@ class MissionService {
 
       // 통계 업데이트 (activeCount, dailyAppliedCount 감소)
       // 오늘 신청한 미션을 그만두면 dailyAppliedCount도 감소
+      // 어제 이전에 신청한 미션은 dailyAppliedCount에 영향을 주지 않음
       const currentDailyAppliedCount = statsData.dailyAppliedCount || 0;
-      const newDailyAppliedCount = Math.max(0, currentDailyAppliedCount - 1);
+      let newDailyAppliedCount = currentDailyAppliedCount;
+
+      // 미션 신청일이 오늘인지 확인 (AM 05:00 KST 기준)
+      const missionStartedAt = missionData.startedAt;
+      if (missionStartedAt) {
+        const missionStartedDateKey = getDateKeyByUTC(missionStartedAt);
+        const todayKey = getDateKeyByUTC(getTodayByUTC());
+
+        // 오늘 신청한 미션이면 dailyAppliedCount 감소
+        if (missionStartedDateKey === todayKey) {
+          newDailyAppliedCount = Math.max(0, currentDailyAppliedCount - 1);
+        }
+      }
 
       transaction.set(
         userMissionStatsRef,
@@ -254,9 +267,6 @@ class MissionService {
       throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
     }
 
-    // AM 05:00 기준으로 오늘 날짜 계산
-    const today = getTodayByKST();
-
     // 1. 오늘의 미션 인증 현황 (userMissionStats에서 가져오기)
     const statsDoc = await db
       .collection(USER_MISSION_STATS_COLLECTION)
@@ -279,14 +289,15 @@ class MissionService {
     // state에 저장된 연속일자를 읽고, 마지막 인증일을 확인하여 유효성 검증
     let consecutiveDays = statsData.consecutiveDays || 0;
     
-    // 마지막 인증일을 날짜 키로 변환 (AM 05:00 KST 기준)
-    const lastPostDateKey = getDateKeyByKST(statsData.lastCompletedAt);
+    // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
+    const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
+    const todayKey = getDateKeyByUTC(getTodayByUTC());
 
-    // 어제 날짜 계산 (AM 05:00 KST 기준)
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = getDateKeyByKST(yesterday);
-    const todayKey = getDateKeyByKST(today);
+    // 어제 날짜 계산: UTC 기반 오늘에서 하루를 뺀 후 날짜 키로 변환
+    const todayDate = getTodayByUTC();
+    const yesterdayDate = new Date(todayDate);
+    yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+    const yesterdayKey = getDateKeyByUTC(yesterdayDate);
 
     // 어제 또는 오늘 인증하지 않았으면 연속일자 0으로 처리
     if (lastPostDateKey !== yesterdayKey && lastPostDateKey !== todayKey) {

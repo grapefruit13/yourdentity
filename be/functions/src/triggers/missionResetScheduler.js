@@ -6,6 +6,7 @@ const {
   MISSION_LAST_RESET_COLLECTION,
   MISSION_STATUS,
 } = require("../constants/missionConstants");
+const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 
 const DAILY_RESET_DOCUMENT = "daily";
 
@@ -16,10 +17,8 @@ async function shouldRunReset(now) {
       .doc(DAILY_RESET_DOCUMENT);
     const resetDoc = await resetDocRef.get();
 
-    const todayKST = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-    );
-    const todayKey = todayKST.toISOString().substring(0, 10);
+    // UTC 20:00 기준으로 오늘 날짜 키 계산
+    const todayKey = getDateKeyByUTC(now);
 
     // 문서가 없으면 리셋 실행 (문서는 리셋 성공 후 생성)
     if (!resetDoc.exists) {
@@ -206,8 +205,8 @@ async function runMissionDailyReset() {
 
 const missionDailyResetScheduler = onSchedule(
   {
-    schedule: "0 5 * * *", // 매일 새벽 5시 (AM 05:00 KST)
-    timeZone: "Asia/Seoul",
+    schedule: "0 20 * * *", // 매일 UTC 20:00 (한국 시간 새벽 5시)
+    timeZone: "UTC",
     region: "asia-northeast3",
     timeoutSeconds: 540, // 9분 (리셋 작업 완료 대기)
     memory: "512MiB",

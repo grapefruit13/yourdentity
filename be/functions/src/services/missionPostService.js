@@ -1,7 +1,7 @@
 const { db, Timestamp } = require("../config/database");
 const fileService = require("./fileService");
 const { sanitizeContent } = require("../utils/sanitizeHelper");
-const { getDateKeyByKST, getTodayByKST } = require("../utils/helpers");
+const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -98,16 +98,17 @@ class MissionPostService {
           };
 
       // 연속일자 계산을 위한 날짜 처리
-      const today = getTodayByKST();
-      const todayKey = getDateKeyByKST(today); // YYYY-MM-DD
+      // 모든 날짜 키는 getDateKeyByUTC를 사용하여 일관성 유지 (UTC 20:00 기준)
+      const todayKey = getDateKeyByUTC(getTodayByUTC()); // YYYY-MM-DD
 
-      // 어제 날짜 계산
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayKey = getDateKeyByKST(yesterday);
+      // 어제 날짜 계산: UTC 기반 오늘에서 하루를 뺀 후 날짜 키로 변환
+      const todayDate = getTodayByUTC();
+      const yesterdayDate = new Date(todayDate);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const yesterdayKey = getDateKeyByUTC(yesterdayDate);
 
-      // 마지막 인증일을 날짜 키로 변환 (AM 05:00 KST 기준)
-      const lastPostDateKey = getDateKeyByKST(statsData.lastCompletedAt);
+      // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
+      const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
 
       // 연속일자 업데이트 로직
       // - 오늘 이미 인증했으면: 연속일자 유지 (변경 없음)
