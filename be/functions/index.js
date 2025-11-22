@@ -49,6 +49,9 @@ const {
   storageCleanupScheduler,
   storageCleanupWeeklyScheduler,
 } = require("./src/triggers/storageCleanupScheduler");
+const {
+  missionDailyResetScheduler,
+} = require("./src/triggers/missionResetScheduler");
 
 // 서울 리전 설정 (1st generation에서는 functions.region 사용)
 
@@ -231,3 +234,4 @@ exports.deleteUserDocument = deleteUserDocument;
 // Storage Cleanup Scheduler 내보내기
 exports.storageCleanupScheduler = storageCleanupScheduler;
 exports.storageCleanupWeeklyScheduler = storageCleanupWeeklyScheduler;
+exports.missionDailyResetScheduler = missionDailyResetScheduler;
