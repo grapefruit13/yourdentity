@@ -22,6 +22,20 @@ export const postMissionsApplyById = (
   );
 };
 
+export const postMissionsPostsById = (
+  request: Types.TPOSTMissionsPostsByIdReq
+) => {
+  const { missionId, ...data } = request;
+  return post<Types.TPOSTMissionsPostsByIdRes>(
+    `/missions/${request.missionId}/posts`,
+    data.data ?? data
+  );
+};
+
 export const getMissionsCategories = () => {
   return get<Types.TGETMissionsCategoriesRes>(`/missions/categories`);
+};
+
+export const getMissionsMe = (request: Types.TGETMissionsMeReq) => {
+  return get<Types.TGETMissionsMeRes>(`/missions/me`, { params: request });
 };

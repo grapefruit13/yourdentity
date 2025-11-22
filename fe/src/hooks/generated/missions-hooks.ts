@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-
 import {
   useQuery,
   useMutation,
@@ -78,6 +77,32 @@ export const usePostMissionsApplyById = <
   });
 };
 
+export const usePostMissionsPostsById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsPostsByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsPostsById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsPostsById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsPostsById(variables as Types.TPOSTMissionsPostsByIdReq),
+    ...options,
+  });
+};
+
 export const useGetMissionsCategories = <
   TData = Types.TGETMissionsCategoriesRes,
 >(
@@ -93,5 +118,24 @@ export const useGetMissionsCategories = <
       return response.data;
     },
     ...options,
+  });
+};
+
+export const useGetMissionsMe = <TData = Types.TGETMissionsMeRes>(
+  options: {
+    request: Types.TGETMissionsMeReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETMissionsMeRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETMissionsMeRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsMe(request),
+    queryFn: async () => {
+      const response = await Api.getMissionsMe(request);
+      return response.data;
+    },
+    ...queryOptions,
   });
 };

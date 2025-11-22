@@ -33,6 +33,35 @@ export type TPOSTMissionsApplyByIdRes = {
   status?: string;
 };
 
+export interface TPOSTMissionsPostsByIdReq {
+  missionId: string;
+  data: {
+    title?: string;
+    content?: string;
+    media?: string[];
+    postType?: string;
+  };
+}
+
+export type TPOSTMissionsPostsByIdRes = {
+  missionId?: string;
+  postId?: string;
+  status?: string;
+};
+
 export type TGETMissionsCategoriesRes = {
   categories?: string[];
+};
+
+export interface TGETMissionsMeReq {
+  limit?: number;
+}
+
+export type TGETMissionsMeRes = {
+  missions?: {
+    id?: string;
+    missionNotionPageId?: string;
+    missionTitle?: string;
+    startedAt?: string;
+  }[];
 };

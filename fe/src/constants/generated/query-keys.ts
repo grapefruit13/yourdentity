@@ -169,6 +169,11 @@ export const missionsKeys = {
       query: {},
     }),
   getMissionsCategories: __buildKey("missions", "getMissionsCategories"),
+  getMissionsMe: (request: missionsTypes.TGETMissionsMeReq) =>
+    __buildKey("missions", "getMissionsMe", {
+      path: {},
+      query: { limit: request.limit },
+    }),
 } as const;
 
 // Notifications Query Keys
