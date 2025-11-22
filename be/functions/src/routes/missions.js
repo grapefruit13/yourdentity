@@ -352,6 +352,101 @@ router.post("/:missionId/apply", authGuard, missionController.applyMission);
 
 /**
  * @swagger
+ * /missions/{missionId}/quit:
+ *   post:
+ *     summary: 미션 그만두기
+ *     description: 사용자가 신청한 진행 중인 미션을 그만둡니다.
+ *     tags: [Missions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: missionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 ID (Notion 페이지 ID)
+ *     responses:
+ *       200:
+ *         description: 미션 그만두기 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     missionId:
+ *                       type: string
+ *                       example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
+ *                     status:
+ *                       type: string
+ *                       example: "QUIT"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               BadRequest:
+ *                 value:
+ *                   status: 400
+ *                   message: "미션 ID가 필요합니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Forbidden:
+ *                 value:
+ *                   status: 403
+ *                   message: "본인의 미션만 그만둘 수 있습니다."
+ *       404:
+ *         description: 미션을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissionNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "신청한 미션이 없습니다."
+ *       409:
+ *         description: 충돌
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissionNotInProgress:
+ *                 value:
+ *                   status: 409
+ *                   message: "진행 중인 미션만 그만둘 수 있습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.post("/:missionId/quit", authGuard, missionController.quitMission);
+
+/**
+ * @swagger
  * /missions/{missionId}/posts:
  *   post:
  *     summary: 미션 인증 글 작성 (완료 처리)

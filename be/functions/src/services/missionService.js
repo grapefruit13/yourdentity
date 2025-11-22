@@ -115,6 +115,83 @@ class MissionService {
   }
 
   /**
+   * 미션 그만두기
+   * @param {Object} params
+   * @param {string} params.userId - 사용자 UID
+   * @param {string} params.missionId - 노션 미션 페이지 ID
+   * @returns {Promise<Object>} 그만두기 결과
+   */
+  async quitMission({ userId, missionId }) {
+    if (!userId) {
+      throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
+    }
+
+    if (!missionId) {
+      throw buildError("미션 ID가 필요합니다.", "BAD_REQUEST", 400);
+    }
+
+    const missionDocId = `${userId}_${missionId}`;
+    const missionDocRef = db.collection(USER_MISSIONS_COLLECTION).doc(missionDocId);
+    const userMissionStatsRef = db.collection(USER_MISSION_STATS_COLLECTION).doc(userId);
+    const now = Timestamp.now();
+
+    await db.runTransaction(async (transaction) => {
+      const missionDoc = await transaction.get(missionDocRef);
+
+      if (!missionDoc.exists) {
+        throw buildError("신청한 미션이 없습니다.", "MISSION_NOT_FOUND", 404);
+      }
+
+      const missionData = missionDoc.data();
+
+      // 본인의 미션인지 확인
+      if (missionData.userId !== userId) {
+        throw buildError("본인의 미션만 그만둘 수 있습니다.", "FORBIDDEN", 403);
+      }
+
+      // 진행 중인 미션인지 확인
+      if (missionData.status !== MISSION_STATUS.IN_PROGRESS) {
+        throw buildError(
+          "진행 중인 미션만 그만둘 수 있습니다.",
+          "MISSION_NOT_IN_PROGRESS",
+          409,
+        );
+      }
+
+      // 통계 업데이트
+      const statsDoc = await transaction.get(userMissionStatsRef);
+      const statsData = statsDoc.exists ? statsDoc.data() : { activeCount: 0 };
+
+      const currentActiveCount = statsData.activeCount || 0;
+      const newActiveCount = Math.max(0, currentActiveCount - 1);
+
+      // 미션 상태를 QUIT로 변경
+      transaction.update(missionDocRef, {
+        status: MISSION_STATUS.QUIT,
+        quitAt: now,
+        lastActivityAt: now,
+        updatedAt: now,
+      });
+
+      // 통계 업데이트 (activeCount 감소)
+      transaction.set(
+        userMissionStatsRef,
+        {
+          userId,
+          activeCount: newActiveCount,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+    });
+
+    return {
+      missionId,
+      status: MISSION_STATUS.QUIT,
+    };
+  }
+
+  /**
    * 사용자 미션 목록 조회
    * @param {Object} params
    * @param {string} params.userId
