@@ -3,6 +3,7 @@
 
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import MissionCertificationStatusCard from "@/components/mission/mission-certification-status-card";
@@ -45,6 +46,7 @@ import {
  */
 const WritePageContent = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
@@ -273,6 +275,11 @@ const WritePageContent = () => {
             reject(new Error(WRITE_MESSAGES.POST_RESPONSE_INVALID));
             return;
           }
+
+          // community/page.tsx에서 사용하는 커뮤니티 목록 쿼리 무효화
+          queryClient.invalidateQueries({
+            queryKey: ["communitiesPosts"],
+          });
 
           resolve({ postId, communityId });
         },
