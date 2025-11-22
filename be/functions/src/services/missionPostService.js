@@ -1,6 +1,7 @@
 const { db, Timestamp } = require("../config/database");
 const fileService = require("./fileService");
 const { sanitizeContent } = require("../utils/sanitizeHelper");
+const { getDateKeyByKST, getTodayByKST } = require("../utils/helpers");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -92,8 +93,35 @@ class MissionPostService {
             dailyCompletedCount: 0,
             lastAppliedAt: null,
             lastCompletedAt: null,
+            consecutiveDays: 0,
             updatedAt: now,
           };
+
+      // 연속일자 계산을 위한 날짜 처리
+      const today = getTodayByKST();
+      const todayKey = today.toISOString().substring(0, 10); // YYYY-MM-DD
+
+      // 어제 날짜 계산
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayKey = yesterday.toISOString().substring(0, 10);
+
+      // lastCompletedAt을 날짜로 변환
+      const lastPostDateKey = getDateKeyByKST(statsData.lastCompletedAt);
+
+      // 연속일자 업데이트 로직
+      let newConsecutiveDays = statsData.consecutiveDays || 0;
+
+      if (lastPostDateKey === todayKey) {
+        // 오늘 이미 인증했으면 연속일자 유지
+        // 변경 없음
+      } else if (lastPostDateKey === yesterdayKey) {
+        // 어제 인증했고 오늘 첫 인증이면 +1
+        newConsecutiveDays = (statsData.consecutiveDays || 0) + 1;
+      } else {
+        // 어제 인증 안 했거나 첫 인증이면 1로 리셋
+        newConsecutiveDays = 1;
+      }
 
       const missionTitle = missionDoc.missionTitle || "";
 
@@ -138,6 +166,7 @@ class MissionPostService {
           dailyAppliedCount: statsData.dailyAppliedCount || 0,
           dailyCompletedCount: (statsData.dailyCompletedCount || 0) + 1,
           lastCompletedAt: now,
+          consecutiveDays: newConsecutiveDays,
           updatedAt: now,
         },
         { merge: true },

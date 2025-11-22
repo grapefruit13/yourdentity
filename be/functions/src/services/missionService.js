@@ -1,5 +1,6 @@
 const { db, Timestamp } = require("../config/database");
 const notionMissionService = require("./notionMissionService");
+const { getDateKeyByKST, getTodayByKST } = require("../utils/helpers");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -54,6 +55,7 @@ class MissionService {
             dailyAppliedCount: 0,
             dailyCompletedCount: 0,
             lastAppliedAt: null,
+            consecutiveDays: 0,
             updatedAt: now,
           };
 
@@ -252,17 +254,8 @@ class MissionService {
       throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
     }
 
-    const now = new Date();
-    const todayKST = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-    );
-
     // AM 05:00 기준으로 오늘 날짜 계산
-    const today = new Date(todayKST);
-    if (today.getHours() < 5) {
-      today.setDate(today.getDate() - 1);
-    }
-    today.setHours(5, 0, 0, 0);
+    const today = getTodayByKST();
 
     const todayStart = Timestamp.fromDate(today);
     const todayEnd = Timestamp.fromDate(
@@ -287,48 +280,28 @@ class MissionService {
     // 오늘 신청한 미션 중 완료하지 않은 것 = total - completed
     const todayActiveCount = Math.max(0, todayTotalCount - todayCompletedCount);
 
-    // 3. 연속 미션일 계산 (missionPosts의 날짜를 기반으로)
-    const allPostsSnapshot = await db
-      .collection(MISSION_POSTS_COLLECTION)
-      .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .get();
+    // 3. 연속 미션일 (userMissionStats에서 가져오기)
+    let consecutiveDays = statsData.consecutiveDays || 0;
+    
+    // lastCompletedAt을 날짜로 변환하여 비교
+    const lastPostDateKey = getDateKeyByKST(statsData.lastCompletedAt);
 
-    // 날짜별로 그룹화 (AM 05:00 기준)
-    const dateSet = new Set();
-    for (const doc of allPostsSnapshot.docs) {
-      const postData = doc.data();
-      const createdAt = postData.createdAt?.toDate?.() || new Date(postData.createdAt);
-      const postDate = new Date(
-        createdAt.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-      );
-
-      // AM 05:00 기준으로 날짜 조정
-      if (postDate.getHours() < 5) {
-        postDate.setDate(postDate.getDate() - 1);
-      }
-      postDate.setHours(5, 0, 0, 0);
-
-      const dateKey = postDate.toISOString().substring(0, 10); // YYYY-MM-DD
-      dateSet.add(dateKey);
-    }
-
-    // 오늘부터 역순으로 연속된 날짜 계산
-    let consecutiveDays = 0;
+    // 어제 날짜 계산 (AM 05:00 기준)
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().substring(0, 10);
     const todayKey = today.toISOString().substring(0, 10);
-    let checkDate = new Date(today);
 
-    while (true) {
-      const checkKey = checkDate.toISOString().substring(0, 10);
-      if (dateSet.has(checkKey)) {
-        consecutiveDays++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
+    // 어제 인증 안 했으면 연속일자 0으로 처리
+    if (lastPostDateKey !== yesterdayKey && lastPostDateKey !== todayKey) {
+      consecutiveDays = 0;
     }
 
     // 4. 누적 게시글 수 (전체 인증글 개수)
+    const allPostsSnapshot = await db
+      .collection(MISSION_POSTS_COLLECTION)
+      .where("userId", "==", userId)
+      .get();
     const totalPostsCount = allPostsSnapshot.size;
 
     return {

@@ -267,6 +267,67 @@ const maskPhoneNumber = (phoneNumber) => {
   return '*'.repeat(numbers.length);
 };
 
+/**
+ * AM 05:00 KST 기준으로 날짜를 변환하여 YYYY-MM-DD 형식으로 반환
+ * @param {Date|Timestamp|string} dateValue - 변환할 날짜 (Date, Firestore Timestamp, 또는 ISO string)
+ * @returns {string|null} YYYY-MM-DD 형식의 날짜 문자열, 변환 실패 시 null
+ */
+function getDateKeyByKST(dateValue) {
+  if (!dateValue) return null;
+
+  try {
+    // Firestore Timestamp 처리
+    let date;
+    if (typeof dateValue === "object" && typeof dateValue.toDate === "function") {
+      date = dateValue.toDate();
+    } else if (typeof dateValue === "object" && dateValue.seconds) {
+      date = new Date(dateValue.seconds * 1000);
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+
+    // KST로 변환
+    const kstDate = new Date(
+      date.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+    );
+
+    // AM 05:00 기준으로 날짜 조정
+    if (kstDate.getHours() < 5) {
+      kstDate.setDate(kstDate.getDate() - 1);
+    }
+    kstDate.setHours(5, 0, 0, 0);
+
+    // YYYY-MM-DD 형식으로 반환
+    return kstDate.toISOString().substring(0, 10);
+  } catch (error) {
+    console.warn("[getDateKeyByKST] 날짜 변환 실패:", error);
+    return null;
+  }
+}
+
+/**
+ * AM 05:00 KST 기준으로 오늘 날짜를 계산
+ * @returns {Date} AM 05:00 KST 기준 오늘 날짜
+ */
+function getTodayByKST() {
+  const now = new Date();
+  const todayKST = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+  );
+
+  const today = new Date(todayKST);
+  if (today.getHours() < 5) {
+    today.setDate(today.getDate() - 1);
+  }
+  today.setHours(5, 0, 0, 0);
+
+  return today;
+}
+
 module.exports = {
   // Validation
   validateMissionStatus,
@@ -283,6 +344,8 @@ module.exports = {
   toDate,
   getStartOfDayUTC,
   getStartOfNextDayUTC,
+  getDateKeyByKST,
+  getTodayByKST,
 
   // PII 보호
   maskPhoneNumber,
