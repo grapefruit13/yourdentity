@@ -269,6 +269,10 @@ const maskPhoneNumber = (phoneNumber) => {
 
 /**
  * AM 05:00 KST 기준으로 날짜를 변환하여 YYYY-MM-DD 형식으로 반환
+ * 
+ * 미션 연속일자 계산 등에서 사용되며, AM 05:00 이전 시간은 전날로 간주합니다.
+ * 예: 2024-01-01 04:59 → 2023-12-31, 2024-01-01 05:00 → 2024-01-01
+ * 
  * @param {Date|Timestamp|string} dateValue - 변환할 날짜 (Date, Firestore Timestamp, 또는 ISO string)
  * @returns {string|null} YYYY-MM-DD 형식의 날짜 문자열, 변환 실패 시 null
  */
@@ -295,7 +299,7 @@ function getDateKeyByKST(dateValue) {
       date.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
     );
 
-    // AM 05:00 기준으로 날짜 조정
+    // AM 05:00 기준으로 날짜 조정 (05:00 이전은 전날로 간주)
     if (kstDate.getHours() < 5) {
       kstDate.setDate(kstDate.getDate() - 1);
     }
@@ -311,7 +315,11 @@ function getDateKeyByKST(dateValue) {
 
 /**
  * AM 05:00 KST 기준으로 오늘 날짜를 계산
- * @returns {Date} AM 05:00 KST 기준 오늘 날짜
+ * 
+ * 현재 시간이 AM 05:00 이전이면 전날을 "오늘"로 간주합니다.
+ * 미션 일일 리셋 및 연속일자 계산에 사용됩니다.
+ * 
+ * @returns {Date} AM 05:00 KST 기준 오늘 날짜 (시,분,초,밀리초는 0으로 설정)
  */
 function getTodayByKST() {
   const now = new Date();
@@ -320,6 +328,7 @@ function getTodayByKST() {
   );
 
   const today = new Date(todayKST);
+  // AM 05:00 이전이면 전날로 간주
   if (today.getHours() < 5) {
     today.setDate(today.getDate() - 1);
   }

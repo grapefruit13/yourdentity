@@ -99,17 +99,20 @@ class MissionPostService {
 
       // 연속일자 계산을 위한 날짜 처리
       const today = getTodayByKST();
-      const todayKey = today.toISOString().substring(0, 10); // YYYY-MM-DD
+      const todayKey = getDateKeyByKST(today); // YYYY-MM-DD
 
       // 어제 날짜 계산
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayKey = yesterday.toISOString().substring(0, 10);
+      const yesterdayKey = getDateKeyByKST(yesterday);
 
-      // lastCompletedAt을 날짜로 변환
+      // 마지막 인증일을 날짜 키로 변환 (AM 05:00 KST 기준)
       const lastPostDateKey = getDateKeyByKST(statsData.lastCompletedAt);
 
       // 연속일자 업데이트 로직
+      // - 오늘 이미 인증했으면: 연속일자 유지 (변경 없음)
+      // - 어제 인증했고 오늘 첫 인증이면: 연속일자 +1
+      // - 어제 인증 안 했거나 첫 인증이면: 연속일자 1로 리셋
       let newConsecutiveDays = statsData.consecutiveDays || 0;
 
       if (lastPostDateKey === todayKey) {
@@ -158,6 +161,7 @@ class MissionPostService {
         updatedAt: now,
       });
 
+      // userMissionStats 업데이트: 완료 카운트 증가, 연속일자 업데이트
       transaction.set(
         statsDocRef,
         {
@@ -165,8 +169,8 @@ class MissionPostService {
           activeCount: Math.max((statsData.activeCount || 0) - 1, 0),
           dailyAppliedCount: statsData.dailyAppliedCount || 0,
           dailyCompletedCount: (statsData.dailyCompletedCount || 0) + 1,
-          lastCompletedAt: now,
-          consecutiveDays: newConsecutiveDays,
+          lastCompletedAt: now, // 마지막 인증 시간 업데이트 (연속일자 계산에 사용)
+          consecutiveDays: newConsecutiveDays, // 연속일자 업데이트 (어제 인증 여부에 따라 +1 또는 1로 리셋)
           updatedAt: now,
         },
         { merge: true },

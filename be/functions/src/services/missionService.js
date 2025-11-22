@@ -55,7 +55,7 @@ class MissionService {
             dailyAppliedCount: 0,
             dailyCompletedCount: 0,
             lastAppliedAt: null,
-            consecutiveDays: 0,
+            consecutiveDays: 0, // 연속일자 초기값 (인증글 작성 시 업데이트됨)
             updatedAt: now,
           };
 
@@ -257,11 +257,6 @@ class MissionService {
     // AM 05:00 기준으로 오늘 날짜 계산
     const today = getTodayByKST();
 
-    const todayStart = Timestamp.fromDate(today);
-    const todayEnd = Timestamp.fromDate(
-      new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1),
-    );
-
     // 1. 오늘의 미션 인증 현황 (userMissionStats에서 가져오기)
     const statsDoc = await db
       .collection(USER_MISSION_STATS_COLLECTION)
@@ -281,18 +276,19 @@ class MissionService {
     const todayActiveCount = Math.max(0, todayTotalCount - todayCompletedCount);
 
     // 3. 연속 미션일 (userMissionStats에서 가져오기)
+    // state에 저장된 연속일자를 읽고, 마지막 인증일을 확인하여 유효성 검증
     let consecutiveDays = statsData.consecutiveDays || 0;
     
-    // lastCompletedAt을 날짜로 변환하여 비교
+    // 마지막 인증일을 날짜 키로 변환 (AM 05:00 KST 기준)
     const lastPostDateKey = getDateKeyByKST(statsData.lastCompletedAt);
 
-    // 어제 날짜 계산 (AM 05:00 기준)
+    // 어제 날짜 계산 (AM 05:00 KST 기준)
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = yesterday.toISOString().substring(0, 10);
-    const todayKey = today.toISOString().substring(0, 10);
+    const yesterdayKey = getDateKeyByKST(yesterday);
+    const todayKey = getDateKeyByKST(today);
 
-    // 어제 인증 안 했으면 연속일자 0으로 처리
+    // 어제 또는 오늘 인증하지 않았으면 연속일자 0으로 처리
     if (lastPostDateKey !== yesterdayKey && lastPostDateKey !== todayKey) {
       consecutiveDays = 0;
     }
