@@ -15,6 +15,8 @@ class MissionController {
     this.getMyMissions = this.getMyMissions.bind(this);
     this.quitMission = this.quitMission.bind(this);
     this.getMissionStats = this.getMissionStats.bind(this);
+    this.getAllMissionPosts = this.getAllMissionPosts.bind(this);
+    this.getMissionPostById = this.getMissionPostById.bind(this);
   }
 
   /**
@@ -259,6 +261,60 @@ class MissionController {
 
     } catch (error) {
       console.error("[MissionController] 미션 상세 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 목록 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getAllMissionPosts(req, res, next) {
+    try {
+      const { sort = "latest", category, userId } = req.query;
+      const viewerId = req.user?.uid || null;
+
+      const result = await missionPostService.getAllMissionPosts(
+        {
+          sort,
+          category,
+          userId,
+        },
+        viewerId,
+      );
+
+      return res.success(result);
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 목록 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 상세 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getMissionPostById(req, res, next) {
+    try {
+      const { postId } = req.params;
+      const viewerId = req.user?.uid || null;
+
+      if (!postId) {
+        const error = new Error("인증글 ID가 필요합니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const post = await missionPostService.getMissionPostById(postId, viewerId);
+
+      return res.success(post);
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 상세 조회 오류:", error.message);
       return next(error);
     }
   }
