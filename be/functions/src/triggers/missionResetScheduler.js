@@ -1,0 +1,232 @@
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { db, Timestamp } = require("../config/database");
+const {
+  USER_MISSIONS_COLLECTION,
+  USER_MISSION_STATS_COLLECTION,
+  MISSION_LAST_RESET_COLLECTION,
+  MISSION_STATUS,
+} = require("../constants/missionConstants");
+
+const DAILY_RESET_DOCUMENT = "daily";
+
+async function shouldRunReset(now) {
+  try {
+    const resetDocRef = db
+      .collection(MISSION_LAST_RESET_COLLECTION)
+      .doc(DAILY_RESET_DOCUMENT);
+    const resetDoc = await resetDocRef.get();
+
+    const todayKST = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+    );
+    const todayKey = todayKST.toISOString().substring(0, 10);
+
+    if (!resetDoc.exists) {
+      await resetDocRef.set({
+        lastResetDate: todayKey,
+        lastResetAt: now,
+      });
+      return { shouldRun: true, resetDocRef, todayKey };
+    }
+
+    const data = resetDoc.data();
+    if (data.lastResetDate === todayKey) {
+      return { shouldRun: false };
+    }
+
+    return { shouldRun: true, resetDocRef, todayKey };
+  } catch (error) {
+    console.error("[missionReset] shouldRunReset 에러:", error);
+    throw error;
+  }
+}
+
+async function runMissionDailyReset() {
+  const now = new Date();
+  let resetDocRef = null;
+  let todayKey = null;
+
+  try {
+    const shouldRunResult = await shouldRunReset(now);
+    const { shouldRun } = shouldRunResult;
+
+    if (!shouldRun) {
+      console.log("[missionReset] 이미 오늘 리셋이 실행되었습니다.");
+      return { skipped: true };
+    }
+
+    resetDocRef = shouldRunResult.resetDocRef;
+    todayKey = shouldRunResult.todayKey;
+
+    console.log("[missionReset] 리셋 시작", {
+      timestamp: now.toISOString(),
+      todayKey,
+    });
+
+    // 1. 사용자 미션 통계 리셋
+    let statsUpdated = 0;
+    let statsErrors = [];
+    try {
+      const userMissionStatsSnapshot = await db
+        .collection(USER_MISSION_STATS_COLLECTION)
+        .get();
+
+      const statsUpdates = userMissionStatsSnapshot.docs.map(async (doc) => {
+        try {
+          await doc.ref.update({
+            activeCount: 0,
+            dailyAppliedCount: 0,
+            dailyCompletedCount: 0,
+            lastAppliedAt: null,
+            lastCompletedAt: null,
+            updatedAt: Timestamp.now(),
+          });
+          statsUpdated++;
+        } catch (error) {
+          console.error(
+            `[missionReset] 통계 업데이트 실패 (userId: ${doc.id}):`,
+            error,
+          );
+          statsErrors.push({ userId: doc.id, error: error.message });
+        }
+      });
+
+      await Promise.all(statsUpdates);
+      console.log(
+        `[missionReset] 통계 리셋 완료: ${statsUpdated}개 성공, ${statsErrors.length}개 실패`,
+      );
+    } catch (error) {
+      console.error("[missionReset] 통계 리셋 중 에러:", error);
+      statsErrors.push({ error: error.message });
+    }
+
+    // 2. 진행 중인 미션 QUIT로 변경
+    let missionsUpdated = 0;
+    let missionsErrors = [];
+    try {
+      const missionSnapshots = await db
+        .collection(USER_MISSIONS_COLLECTION)
+        .where("status", "==", MISSION_STATUS.IN_PROGRESS)
+        .get();
+
+      const missionUpdates = missionSnapshots.docs.map(async (doc) => {
+        try {
+          await doc.ref.update({
+            status: MISSION_STATUS.QUIT,
+            quitAt: Timestamp.now(),
+            lastActivityAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+          missionsUpdated++;
+        } catch (error) {
+          console.error(
+            `[missionReset] 미션 업데이트 실패 (missionId: ${doc.id}):`,
+            error,
+          );
+          missionsErrors.push({ missionId: doc.id, error: error.message });
+        }
+      });
+
+      await Promise.all(missionUpdates);
+      console.log(
+        `[missionReset] 미션 리셋 완료: ${missionsUpdated}개 성공, ${missionsErrors.length}개 실패`,
+      );
+    } catch (error) {
+      console.error("[missionReset] 미션 리셋 중 에러:", error);
+      missionsErrors.push({ error: error.message });
+    }
+
+    // 3. 전체 성공 여부 확인
+    const hasErrors =
+      statsErrors.length > 0 || missionsErrors.length > 0;
+
+    if (hasErrors) {
+      console.warn("[missionReset] 리셋 완료 (일부 에러 발생)", {
+        statsUpdated,
+        statsErrors: statsErrors.length,
+        missionsUpdated,
+        missionsErrors: missionsErrors.length,
+      });
+    } else {
+      console.log("[missionReset] 리셋 완료", {
+        statsUpdated,
+        missionsUpdated,
+      });
+    }
+
+    // 4. 리셋 문서 업데이트 (성공 여부와 관계없이 완료 기록)
+    try {
+      if (resetDocRef && todayKey) {
+        await resetDocRef.set(
+          {
+            lastResetDate: todayKey,
+            lastResetAt: Timestamp.fromDate(now),
+            statsUpdated,
+            missionsUpdated,
+            statsErrors: statsErrors.length,
+            missionsErrors: missionsErrors.length,
+            hasErrors,
+            updatedAt: Timestamp.now(),
+          },
+          { merge: true },
+        );
+      }
+    } catch (error) {
+      console.error("[missionReset] 리셋 문서 업데이트 실패:", error);
+      // 리셋 문서 업데이트 실패는 치명적이지 않음 (다음 스케줄에 재시도)
+    }
+
+    return {
+      skipped: false,
+      statsUpdated,
+      missionsUpdated,
+      statsErrors: statsErrors.length,
+      missionsErrors: missionsErrors.length,
+      hasErrors,
+    };
+  } catch (error) {
+    console.error("[missionReset] 리셋 실행 중 치명적 에러:", error);
+    console.error("[missionReset] 에러 스택:", error.stack);
+
+    // 에러 발생 시 리셋 문서는 업데이트하지 않음 (다음 스케줄에 재시도 가능)
+    throw error;
+  }
+}
+
+const missionDailyResetScheduler = onSchedule(
+  {
+    schedule: "0 5 * * *", // 매일 새벽 5시 (AM 05:00 KST)
+    timeZone: "Asia/Seoul",
+    region: "asia-northeast3",
+    timeoutSeconds: 540, // 9분 (리셋 작업 완료 대기)
+    memory: "512MiB",
+  },
+  async (event) => {
+    try {
+      console.log("[missionReset] 스케줄러 실행", {
+        scheduleTime: event.scheduleTime,
+        timestamp: new Date().toISOString(),
+      });
+
+      const result = await runMissionDailyReset();
+      console.log("[missionReset] 스케줄러 완료", result);
+
+      return result;
+    } catch (error) {
+      console.error("[missionReset] 스케줄러 실행 실패:", error);
+      console.error("[missionReset] 에러 상세:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+
+      // 에러를 다시 throw하여 Cloud Scheduler가 실패로 기록하도록 함
+      throw error;
+    }
+  },
+);
+
+module.exports = {
+  missionDailyResetScheduler,
+};
+
