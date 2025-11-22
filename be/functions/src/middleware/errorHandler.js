@@ -55,6 +55,9 @@ const errorHandler = (err, req, res, next) => {
     case "RESOURCE_ALREADY_EXISTS":
     case "CONFLICT":
     case "DUPLICATE_APPLICATION":
+    case "MISSION_ALREADY_APPLIED":
+    case "MISSION_NOT_IN_PROGRESS":
+    case "MAX_ACTIVE_MISSIONS_EXCEEDED":
       httpStatus = 409;
       if (!err.message) errorMessage = "이미 존재하는 리소스입니다";
       break;

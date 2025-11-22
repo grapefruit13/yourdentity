@@ -13,6 +13,7 @@ class MissionController {
     this.getParticipatedMissionIds = this.getParticipatedMissionIds.bind(this);
     this.createMissionPost = this.createMissionPost.bind(this);
     this.getMyMissions = this.getMyMissions.bind(this);
+    this.quitMission = this.quitMission.bind(this);
   }
 
   /**
@@ -63,6 +64,36 @@ class MissionController {
       return res.success({ missions });
     } catch (error) {
       console.error("[MissionController] 내 미션 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 그만두기
+   */
+  async quitMission(req, res, next) {
+    try {
+      const { missionId } = req.params;
+      const userId = req.user?.uid;
+
+      if (!missionId) {
+        const error = new Error("미션 ID가 필요합니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await missionService.quitMission({
+        userId,
+        missionId,
+      });
+
+      return res.success({
+        missionId: result.missionId,
+        status: result.status,
+      });
+    } catch (error) {
+      console.error("[MissionController] 미션 그만두기 오류:", error.message);
       return next(error);
     }
   }
