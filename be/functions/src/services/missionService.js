@@ -3,6 +3,7 @@ const notionMissionService = require("./notionMissionService");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
+  MISSION_POSTS_COLLECTION,
   MISSION_STATUS,
   BLOCKED_STATUSES,
   MAX_ACTIVE_MISSIONS,
@@ -173,12 +174,17 @@ class MissionService {
         updatedAt: now,
       });
 
-      // 통계 업데이트 (activeCount 감소)
+      // 통계 업데이트 (activeCount, dailyAppliedCount 감소)
+      // 오늘 신청한 미션을 그만두면 dailyAppliedCount도 감소
+      const currentDailyAppliedCount = statsData.dailyAppliedCount || 0;
+      const newDailyAppliedCount = Math.max(0, currentDailyAppliedCount - 1);
+
       transaction.set(
         userMissionStatsRef,
         {
           userId,
           activeCount: newActiveCount,
+          dailyAppliedCount: newDailyAppliedCount,
           updatedAt: now,
         },
         { merge: true },
@@ -233,6 +239,105 @@ class MissionService {
     }
 
     return missions;
+  }
+
+  /**
+   * 미션 통계 조회
+   * @param {Object} params
+   * @param {string} params.userId - 사용자 UID
+   * @returns {Promise<Object>} 통계 데이터
+   */
+  async getMissionStats({ userId }) {
+    if (!userId) {
+      throw buildError("사용자 정보가 필요합니다.", "UNAUTHORIZED", 401);
+    }
+
+    const now = new Date();
+    const todayKST = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+    );
+
+    // AM 05:00 기준으로 오늘 날짜 계산
+    const today = new Date(todayKST);
+    if (today.getHours() < 5) {
+      today.setDate(today.getDate() - 1);
+    }
+    today.setHours(5, 0, 0, 0);
+
+    const todayStart = Timestamp.fromDate(today);
+    const todayEnd = Timestamp.fromDate(
+      new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1),
+    );
+
+    // 1. 오늘의 미션 인증 현황 (userMissionStats에서 가져오기)
+    const statsDoc = await db
+      .collection(USER_MISSION_STATS_COLLECTION)
+      .doc(userId)
+      .get();
+
+    const statsData = statsDoc.exists ? statsDoc.data() : {};
+
+    // 오늘 신청한 미션 수 (QUIT 제외) - dailyAppliedCount는 QUIT 시 감소되므로 이미 QUIT 제외됨
+    const todayTotalCount = statsData.dailyAppliedCount || 0;
+
+    // 오늘 완료한 미션 수
+    const todayCompletedCount = statsData.dailyCompletedCount || 0;
+
+    // 진행 중인 미션 수 (오늘 신청한 미션 중 IN_PROGRESS만)
+    // 오늘 신청한 미션 중 완료하지 않은 것 = total - completed
+    const todayActiveCount = Math.max(0, todayTotalCount - todayCompletedCount);
+
+    // 3. 연속 미션일 계산 (missionPosts의 날짜를 기반으로)
+    const allPostsSnapshot = await db
+      .collection(MISSION_POSTS_COLLECTION)
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    // 날짜별로 그룹화 (AM 05:00 기준)
+    const dateSet = new Set();
+    for (const doc of allPostsSnapshot.docs) {
+      const postData = doc.data();
+      const createdAt = postData.createdAt?.toDate?.() || new Date(postData.createdAt);
+      const postDate = new Date(
+        createdAt.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+      );
+
+      // AM 05:00 기준으로 날짜 조정
+      if (postDate.getHours() < 5) {
+        postDate.setDate(postDate.getDate() - 1);
+      }
+      postDate.setHours(5, 0, 0, 0);
+
+      const dateKey = postDate.toISOString().substring(0, 10); // YYYY-MM-DD
+      dateSet.add(dateKey);
+    }
+
+    // 오늘부터 역순으로 연속된 날짜 계산
+    let consecutiveDays = 0;
+    const todayKey = today.toISOString().substring(0, 10);
+    let checkDate = new Date(today);
+
+    while (true) {
+      const checkKey = checkDate.toISOString().substring(0, 10);
+      if (dateSet.has(checkKey)) {
+        consecutiveDays++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    // 4. 누적 게시글 수 (전체 인증글 개수)
+    const totalPostsCount = allPostsSnapshot.size;
+
+    return {
+      todayTotalCount, // 오늘 신청한 미션 수 (QUIT 제외, IN_PROGRESS + COMPLETED)
+      todayCompletedCount, // 오늘 완료한 미션 수 (COMPLETED만)
+      todayActiveCount, // 진행 중인 미션 수 (오늘 신청한 미션 중 IN_PROGRESS만)
+      consecutiveDays, // 연속 미션일
+      totalPostsCount, // 누적 게시글 수
+    };
   }
 }
 
