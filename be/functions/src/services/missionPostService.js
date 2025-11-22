@@ -451,11 +451,11 @@ class MissionPostService {
 
       const post = { id: postDoc.id, ...postDoc.data() };
 
-      // 조회수 증가 (비동기로 처리)
+      // 조회수 증가 (원자적 증가로 동시성 문제 해결, 비동기로 처리)
       const newViewCount = (post.viewCount || 0) + 1;
       postRef
         .update({
-          viewCount: newViewCount,
+          viewCount: FieldValue.increment(1),
           updatedAt: FieldValue.serverTimestamp(),
         })
         .catch((error) => {

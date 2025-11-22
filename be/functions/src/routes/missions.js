@@ -272,9 +272,7 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *   get:
  *     summary: 미션 인증글 목록 조회
  *     tags: [Missions]
- *     description: 미션 인증글 목록을 조회합니다. 페이지네이션은 추후 추가 예정입니다.
- *     security:
- *       - bearerAuth: []
+ *     description: 미션 인증글 목록을 조회합니다. 페이지네이션은 추후 추가 예정입니다. 인증은 선택사항이며, 인증 시 추가 정보를 제공할 수 있습니다.
  *     parameters:
  *       - in: query
  *         name: sort
@@ -426,9 +424,7 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *   get:
  *     summary: 미션 인증글 상세 조회
  *     tags: [Missions]
- *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회 시 조회수가 증가합니다.
- *     security:
- *       - bearerAuth: []
+ *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회 시 조회수가 증가합니다. 인증은 선택사항이며, 인증 시 isAuthor 필드가 정확하게 표시됩니다.
  *     parameters:
  *       - in: path
  *         name: postId
