@@ -7,7 +7,7 @@
  * - Error 관련: middleware/errorHandler.js 사용
  */
 
-const {admin} = require("../config/database");
+const {admin, Timestamp} = require("../config/database");
 
 // Cloud Storage 관련 상수
 const SIGNED_URL_EXPIRY_HOURS = 1; // 서명된 URL 만료 시간 (시간)
@@ -267,6 +267,114 @@ const maskPhoneNumber = (phoneNumber) => {
   return '*'.repeat(numbers.length);
 };
 
+/**
+ * UTC 20:00 기준으로 날짜를 변환하여 YYYY-MM-DD 형식으로 반환
+ * 
+ * 미션 연속일자 계산 등에서 사용되며, UTC 20:00 이전 시간은 전날로 간주합니다.
+ * UTC 20:00는 한국 시간 새벽 5시와 동일합니다.
+ * 예: 2024-01-01 19:59 UTC → 2023-12-31, 2024-01-01 20:00 UTC → 2024-01-01
+ * 
+ * @param {Date|Timestamp|string} dateValue - 변환할 날짜 (Date, Firestore Timestamp, 또는 ISO string)
+ * @returns {string|null} YYYY-MM-DD 형식의 날짜 문자열, 변환 실패 시 null
+ */
+function getDateKeyByUTC(dateValue) {
+  if (!dateValue) return null;
+
+  try {
+    // Firestore Timestamp 처리
+    let date;
+    if (typeof dateValue === "object" && typeof dateValue.toDate === "function") {
+      date = dateValue.toDate();
+    } else if (typeof dateValue === "object" && dateValue.seconds) {
+      date = new Date(dateValue.seconds * 1000);
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+
+    // UTC 기준 연/월/일/시 추출
+    const utcYear = date.getUTCFullYear();
+    const utcMonth = date.getUTCMonth();
+    const utcDay = date.getUTCDate();
+    const utcHour = date.getUTCHours();
+
+    // UTC 20:00 기준으로 날짜 조정 (20:00 이전은 전날로 간주)
+    let targetYear = utcYear;
+    let targetMonth = utcMonth;
+    let targetDay = utcDay;
+
+    if (utcHour < 20) {
+      // 전날로 조정
+      const prevDay = new Date(Date.UTC(utcYear, utcMonth, utcDay));
+      prevDay.setUTCDate(prevDay.getUTCDate() - 1);
+      targetYear = prevDay.getUTCFullYear();
+      targetMonth = prevDay.getUTCMonth();
+      targetDay = prevDay.getUTCDate();
+    }
+
+    // YYYY-MM-DD 형식으로 반환
+    const year = targetYear.toString();
+    const month = String(targetMonth + 1).padStart(2, "0");
+    const day = String(targetDay).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.warn("[getDateKeyByUTC] 날짜 변환 실패:", error);
+    return null;
+  }
+}
+
+/**
+ * UTC 20:00 기준으로 오늘 날짜를 계산하여 Date로 반환
+ * 
+ * 현재 시간이 UTC 20:00 이전이면 전날을 "오늘"로 간주합니다.
+ * UTC 20:00는 한국 시간 새벽 5시와 동일합니다.
+ * 미션 일일 리셋 및 연속일자 계산에 사용됩니다.
+ * 날짜 키 계산에만 사용되므로 Date를 반환합니다.
+ * 
+ * @param {Date|Timestamp} [dateOrTimestamp] - 기준 시간 (기본값: 현재 시간)
+ * @returns {Date} UTC 20:00 기준 오늘 날짜 (시,분,초,밀리초는 0으로 설정)
+ */
+function getTodayByUTC(dateOrTimestamp = null) {
+  // Date 또는 Timestamp가 제공되지 않으면 현재 시간 사용
+  let now;
+  if (dateOrTimestamp) {
+    if (typeof dateOrTimestamp.toDate === "function") {
+      // Timestamp인 경우
+      now = dateOrTimestamp.toDate();
+    } else {
+      // Date인 경우
+      now = dateOrTimestamp;
+    }
+  } else {
+    now = new Date();
+  }
+  
+  // UTC 기준으로 날짜 계산
+  const utcYear = now.getUTCFullYear();
+  const utcMonth = now.getUTCMonth();
+  const utcDay = now.getUTCDate();
+  const utcHour = now.getUTCHours();
+
+  // UTC 20:00 이전이면 전날로 간주
+  let targetYear = utcYear;
+  let targetMonth = utcMonth;
+  let targetDay = utcDay;
+
+  if (utcHour < 20) {
+    const prevDay = new Date(Date.UTC(utcYear, utcMonth, utcDay));
+    prevDay.setUTCDate(prevDay.getUTCDate() - 1);
+    targetYear = prevDay.getUTCFullYear();
+    targetMonth = prevDay.getUTCMonth();
+    targetDay = prevDay.getUTCDate();
+  }
+
+  // UTC 20:00으로 설정
+  return new Date(Date.UTC(targetYear, targetMonth, targetDay, 20, 0, 0, 0));
+}
+
 module.exports = {
   // Validation
   validateMissionStatus,
@@ -283,6 +391,8 @@ module.exports = {
   toDate,
   getStartOfDayUTC,
   getStartOfNextDayUTC,
+  getDateKeyByUTC,
+  getTodayByUTC,
 
   // PII 보호
   maskPhoneNumber,

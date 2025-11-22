@@ -1,6 +1,7 @@
 const { db, Timestamp } = require("../config/database");
 const fileService = require("./fileService");
 const { sanitizeContent } = require("../utils/sanitizeHelper");
+const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -92,8 +93,39 @@ class MissionPostService {
             dailyCompletedCount: 0,
             lastAppliedAt: null,
             lastCompletedAt: null,
+            consecutiveDays: 0,
             updatedAt: now,
           };
+
+      // 연속일자 계산을 위한 날짜 처리
+      // 모든 날짜 키는 getDateKeyByUTC를 사용하여 일관성 유지 (UTC 20:00 기준)
+      const todayKey = getDateKeyByUTC(getTodayByUTC()); // YYYY-MM-DD
+
+      // 어제 날짜 계산: UTC 기반 오늘에서 하루를 뺀 후 날짜 키로 변환
+      const todayDate = getTodayByUTC();
+      const yesterdayDate = new Date(todayDate);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const yesterdayKey = getDateKeyByUTC(yesterdayDate);
+
+      // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
+      const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
+
+      // 연속일자 업데이트 로직
+      // - 오늘 이미 인증했으면: 연속일자 유지 (변경 없음)
+      // - 어제 인증했고 오늘 첫 인증이면: 연속일자 +1
+      // - 어제 인증 안 했거나 첫 인증이면: 연속일자 1로 리셋
+      let newConsecutiveDays = statsData.consecutiveDays || 0;
+
+      if (lastPostDateKey === todayKey) {
+        // 오늘 이미 인증했으면 연속일자 유지
+        // 변경 없음
+      } else if (lastPostDateKey === yesterdayKey) {
+        // 어제 인증했고 오늘 첫 인증이면 +1
+        newConsecutiveDays = (statsData.consecutiveDays || 0) + 1;
+      } else {
+        // 어제 인증 안 했거나 첫 인증이면 1로 리셋
+        newConsecutiveDays = 1;
+      }
 
       const missionTitle = missionDoc.missionTitle || "";
 
@@ -130,6 +162,7 @@ class MissionPostService {
         updatedAt: now,
       });
 
+      // userMissionStats 업데이트: 완료 카운트 증가, 연속일자 업데이트
       transaction.set(
         statsDocRef,
         {
@@ -137,7 +170,8 @@ class MissionPostService {
           activeCount: Math.max((statsData.activeCount || 0) - 1, 0),
           dailyAppliedCount: statsData.dailyAppliedCount || 0,
           dailyCompletedCount: (statsData.dailyCompletedCount || 0) + 1,
-          lastCompletedAt: now,
+          lastCompletedAt: now, // 마지막 인증 시간 업데이트 (연속일자 계산에 사용)
+          consecutiveDays: newConsecutiveDays, // 연속일자 업데이트 (어제 인증 여부에 따라 +1 또는 1로 리셋)
           updatedAt: now,
         },
         { merge: true },
