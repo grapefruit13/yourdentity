@@ -276,9 +276,20 @@ const WritePageContent = () => {
             return;
           }
 
-          // community/page.tsx에서 사용하는 커뮤니티 목록 쿼리 무효화
+          // 커뮤니티 게시글 목록 쿼리 무효화
           queryClient.invalidateQueries({
-            queryKey: ["communitiesPosts"],
+            predicate: (query) => {
+              const queryKey = query.queryKey;
+              if (!Array.isArray(queryKey) || queryKey.length === 0) {
+                return false;
+              }
+              const isCustomKey = queryKey[0] === "communitiesPosts";
+              const isGeneratedKey =
+                queryKey[0] === "communities" &&
+                queryKey[1] === "getCommunitiesPosts";
+
+              return isCustomKey || isGeneratedKey;
+            },
           });
 
           resolve({ postId, communityId });
