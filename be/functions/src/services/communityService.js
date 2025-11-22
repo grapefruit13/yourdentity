@@ -1703,7 +1703,7 @@ class CommunityService {
         transaction.delete(authoredPostRef);
 
         // certificationPosts 카운트 감소
-        if (post.type === "ROUTINE_CERT" || post.type === "GATHERING_REVIEW" || post.type === "TMI") {
+        if (CERTIFICATION_COUNT_TYPES.has(post.type)) {
           const userRef = this.firestoreService.db.collection("users").doc(userId);
           transaction.update(userRef, {
             certificationPosts: FieldValue.increment(-1),
