@@ -869,28 +869,44 @@ class RewardService {
         const amount = historyData.amount || 0;
         
         if (amount > 0) {
-          // ① 원본 히스토리 isProcessed = true로 업데이트
-          transaction.update(historyRef, {
-            isProcessed: true
-          });
-
-          // ② 사용자 리워드 차감
+          // 현재 리워드 조회 (음수 방지)
           const userRef = db.collection('users').doc(userId);
-          transaction.update(userRef, {
-            rewards: FieldValue.increment(-amount),
-            updatedAt: FieldValue.serverTimestamp()
-          });
+          const userDoc = await transaction.get(userRef);
+          const currentRewards = userDoc.exists && typeof userDoc.data().rewards === 'number'
+            ? userDoc.data().rewards
+            : 0;
+          
+          // 실제 차감할 금액 결정 (0 미만 방지)
+          const deducted = Math.min(currentRewards, amount);
+          
+          if (deducted > 0) {
+            // ① 원본 히스토리 isProcessed = true로 업데이트
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
 
-          // ③ 차감 히스토리 추가 (무작위 ID)
-          const deductHistoryRef = db.collection(`users/${userId}/rewardsHistory`).doc();
-          transaction.set(deductHistoryRef, {
-            amount: amount,
-            changeType: 'deduct',
-            reason: '댓글 삭제',
-            actionKey: historyData.actionKey || 'comment_deletion',
-            isProcessed: true,
-            createdAt: FieldValue.serverTimestamp()
-          });
+            // ② 사용자 리워드 차감 (0 미만 방지)
+            transaction.update(userRef, {
+              rewards: FieldValue.increment(-deducted),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+
+            // ③ 차감 히스토리 추가 (무작위 ID)
+            const deductHistoryRef = db.collection(`users/${userId}/rewardsHistory`).doc();
+            transaction.set(deductHistoryRef, {
+              amount: deducted,
+              changeType: 'deduct',
+              reason: '댓글 삭제',
+              actionKey: historyData.actionKey || 'comment_deletion',
+              isProcessed: true,
+              createdAt: FieldValue.serverTimestamp()
+            });
+          } else {
+            // 차감할 금액이 없어도 원본 히스토리는 처리 완료로 표시
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
+          }
         }
       }
     } catch (error) {
@@ -944,28 +960,44 @@ class RewardService {
         const amount = historyData.amount || 0;
         
         if (amount > 0) {
-          // ① 원본 히스토리 isProcessed = true로 업데이트
-          transaction.update(historyRef, {
-            isProcessed: true
-          });
-
-          // ② 사용자 리워드 차감
+          // 현재 리워드 조회 (음수 방지)
           const userRef = db.collection('users').doc(userId);
-          transaction.update(userRef, {
-            rewards: FieldValue.increment(-amount),
-            updatedAt: FieldValue.serverTimestamp()
-          });
+          const userDoc = await transaction.get(userRef);
+          const currentRewards = userDoc.exists && typeof userDoc.data().rewards === 'number'
+            ? userDoc.data().rewards
+            : 0;
+          
+          // 실제 차감할 금액 결정 (0 미만 방지)
+          const deducted = Math.min(currentRewards, amount);
+          
+          if (deducted > 0) {
+            // ① 원본 히스토리 isProcessed = true로 업데이트
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
 
-          // ③ 차감 히스토리 추가 (무작위 ID)
-          const deductHistoryRef = db.collection(`users/${userId}/rewardsHistory`).doc();
-          transaction.set(deductHistoryRef, {
-            amount: amount,
-            changeType: 'deduct',
-            reason: '게시글 삭제',
-            actionKey: historyData.actionKey || 'post_deletion',
-            isProcessed: true,
-            createdAt: FieldValue.serverTimestamp()
-          });
+            // ② 사용자 리워드 차감 (0 미만 방지)
+            transaction.update(userRef, {
+              rewards: FieldValue.increment(-deducted),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+
+            // ③ 차감 히스토리 추가 (무작위 ID)
+            const deductHistoryRef = db.collection(`users/${userId}/rewardsHistory`).doc();
+            transaction.set(deductHistoryRef, {
+              amount: deducted,
+              changeType: 'deduct',
+              reason: '게시글 삭제',
+              actionKey: historyData.actionKey || 'post_deletion',
+              isProcessed: true,
+              createdAt: FieldValue.serverTimestamp()
+            });
+          } else {
+            // 차감할 금액이 없어도 원본 히스토리는 처리 완료로 표시
+            transaction.update(historyRef, {
+              isProcessed: true
+            });
+          }
         }
       }
     } catch (error) {
