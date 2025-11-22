@@ -265,6 +265,288 @@ router.get("/me", authGuard, missionController.getMyMissions);
  */
 router.get("/stats", authGuard, missionController.getMissionStats);
 
+// 미션 인증글 목록 조회 (라우트 순서 중요: /posts가 /:missionId보다 먼저 정의되어야 함)
+/**
+ * @swagger
+ * /missions/posts:
+ *   get:
+ *     summary: 미션 인증글 목록 조회
+ *     tags: [Missions]
+ *     description: 미션 인증글 목록을 조회합니다. 페이지네이션은 추후 추가 예정입니다. 인증은 선택사항이며, 인증 시 추가 정보를 제공할 수 있습니다.
+ *     parameters:
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [latest, popular]
+ *           default: latest
+ *         description: 정렬 기준 (latest=최신순, popular=인기순)
+ *         example: "latest"
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: 카테고리 필터 (추후 구현)
+ *         example: "일상"
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: 내가 인증한 미션만 보기 (userId 필터)
+ *         example: "user-123"
+ *     responses:
+ *       200:
+ *         description: 미션 인증글 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     posts:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "post-123"
+ *                           title:
+ *                             type: string
+ *                             example: "오늘 하늘이 이뻤어요!"
+ *                           missionTitle:
+ *                             type: string
+ *                             example: "일상 인증 미션"
+ *                           missionNotionPageId:
+ *                             type: string
+ *                             example: "mission-page-123"
+ *                           author:
+ *                             type: string
+ *                             example: "닉네임"
+ *                           profileImageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "https://example.com/profile.jpg"
+ *                           preview:
+ *                             type: object
+ *                             properties:
+ *                               description:
+ *                                 type: string
+ *                                 example: "두줄까지 미리보기로 보이게!!! 구름이 뭉게뭉게..."
+ *                               thumbnail:
+ *                                 type: object
+ *                                 nullable: true
+ *                                 properties:
+ *                                   url:
+ *                                     type: string
+ *                                     example: "https://example.com/image.jpg"
+ *                                   width:
+ *                                     type: number
+ *                                     nullable: true
+ *                                   height:
+ *                                     type: number
+ *                                     nullable: true
+ *                                   blurHash:
+ *                                     type: string
+ *                                     nullable: true
+ *                           mediaCount:
+ *                             type: integer
+ *                             example: 3
+ *                           commentsCount:
+ *                             type: integer
+ *                             example: 12
+ *                           viewCount:
+ *                             type: integer
+ *                             example: 100
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2024-01-20T10:00:00.000Z"
+ *                           timeAgo:
+ *                             type: string
+ *                             example: "1시간 전"
+ *             example:
+ *               status: 200
+ *               data:
+ *                 posts:
+ *                   - id: "post-123"
+ *                     title: "오늘 하늘이 이뻤어요!"
+ *                     missionTitle: "일상 인증 미션"
+ *                     missionNotionPageId: "mission-page-123"
+ *                     author: "닉네임"
+ *                     profileImageUrl: "https://example.com/profile.jpg"
+ *                     preview:
+ *                       description: "두줄까지 미리보기로 보이게!!! 구름이 뭉게뭉게..."
+ *                       thumbnail:
+ *                         url: "https://example.com/image.jpg"
+ *                         width: 1080
+ *                         height: 1080
+ *                         blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                     mediaCount: 3
+ *                     commentsCount: 12
+ *                     viewCount: 100
+ *                     createdAt: "2024-01-20T10:00:00.000Z"
+ *                     timeAgo: "1시간 전"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               BadRequest:
+ *                 value:
+ *                   status: 400
+ *                   message: "잘못된 요청입니다"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "인증글 목록을 조회할 수 없습니다."
+ */
+router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
+
+// 미션 인증글 상세 조회 (라우트 순서 중요: /posts/:postId가 /:missionId보다 먼저 정의되어야 함)
+/**
+ * @swagger
+ * /missions/posts/{postId}:
+ *   get:
+ *     summary: 미션 인증글 상세 조회
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회 시 조회수가 증가합니다. 인증은 선택사항이며, 인증 시 isAuthor 필드가 정확하게 표시됩니다.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 인증글 ID
+ *         example: "post-123"
+ *     responses:
+ *       200:
+ *         description: 미션 인증글 상세 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "post-123"
+ *                     title:
+ *                       type: string
+ *                       example: "오늘 하늘이 이뻤어요!"
+ *                     content:
+ *                       type: string
+ *                       example: "구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
+ *                     media:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]
+ *                     missionTitle:
+ *                       type: string
+ *                       example: "일상 인증 미션"
+ *                     missionNotionPageId:
+ *                       type: string
+ *                       example: "mission-page-123"
+ *                     author:
+ *                       type: string
+ *                       example: "닉네임"
+ *                     profileImageUrl:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "https://example.com/profile.jpg"
+ *                     commentsCount:
+ *                       type: integer
+ *                       example: 12
+ *                     viewCount:
+ *                       type: integer
+ *                       example: 101
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-20T10:00:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-20T10:00:00.000Z"
+ *                     timeAgo:
+ *                       type: string
+ *                       example: "1시간 전"
+ *                     isAuthor:
+ *                       type: boolean
+ *                       example: false
+ *             example:
+ *               status: 200
+ *               data:
+ *                 id: "post-123"
+ *                 title: "오늘 하늘이 이뻤어요!"
+ *                 content: "구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
+ *                 media: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]
+ *                 missionTitle: "일상 인증 미션"
+ *                 missionNotionPageId: "mission-page-123"
+ *                 author: "닉네임"
+ *                 profileImageUrl: "https://example.com/profile.jpg"
+ *                 commentsCount: 12
+ *                 viewCount: 101
+ *                 createdAt: "2024-01-20T10:00:00.000Z"
+ *                 updatedAt: "2024-01-20T10:00:00.000Z"
+ *                 timeAgo: "1시간 전"
+ *                 isAuthor: false
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               BadRequest:
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글 ID가 필요합니다."
+ *       404:
+ *         description: 인증글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               NotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "인증글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "인증글을 조회할 수 없습니다."
+ */
+router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById);
+
 /**
  * @swagger
  * /missions/{missionId}:
