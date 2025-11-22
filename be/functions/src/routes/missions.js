@@ -201,6 +201,72 @@ router.get("/me", authGuard, missionController.getMyMissions);
 
 /**
  * @swagger
+ * /missions/stats:
+ *   get:
+ *     summary: 미션 통계 조회
+ *     description: 사용자의 미션 통계 정보를 조회합니다. (오늘의 미션 인증 현황, 연속 미션일, 진행 미션 수, 누적 게시글 수)
+ *     tags: [Missions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 미션 통계 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     todayTotalCount:
+ *                       type: integer
+ *                       description: 오늘 신청한 미션 수 (QUIT 제외, IN_PROGRESS + COMPLETED)
+ *                       example: 2
+ *                     todayCompletedCount:
+ *                       type: integer
+ *                       description: 오늘 완료한 미션 수 (COMPLETED만)
+ *                       example: 2
+ *                     todayActiveCount:
+ *                       type: integer
+ *                       description: 진행 중인 미션 수 (오늘 신청한 미션 중 IN_PROGRESS만)
+ *                       example: 0
+ *                     consecutiveDays:
+ *                       type: integer
+ *                       description: 연속 미션일
+ *                       example: 5
+ *                     totalPostsCount:
+ *                       type: integer
+ *                       description: 누적 게시글 수
+ *                       example: 15
+ *             example:
+ *               status: 200
+ *               data:
+ *                 todayTotalCount: 2
+ *                 todayCompletedCount: 2
+ *                 todayActiveCount: 0
+ *                 consecutiveDays: 5
+ *                 totalPostsCount: 15
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.get("/stats", authGuard, missionController.getMissionStats);
+
+/**
+ * @swagger
  * /missions/{missionId}:
  *   get:
  *     summary: 미션 상세 조회
