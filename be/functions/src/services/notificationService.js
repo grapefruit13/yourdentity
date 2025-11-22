@@ -457,7 +457,7 @@ class NotificationService {
 
           rewardResults = await Promise.allSettled(rewardPromises);
           rewardedUserIds = rewardResults
-            .filter(result => result.status === 'fulfilled' && result.value.success)
+            .filter(result => result.status === 'fulfilled' && result.value.success && !result.value.duplicate)
             .map(result => result.value.userId);
 
           const rewardSuccessCount = rewardedUserIds.length;
@@ -518,7 +518,7 @@ class NotificationService {
 
           rewardResults = await Promise.allSettled(rewardPromises);
           rewardedUserIds = rewardResults
-            .filter(result => result.status === 'fulfilled' && result.value.success)
+            .filter(result => result.status === 'fulfilled' && result.value.success && !result.value.duplicate)
             .map(result => result.value.userId);
 
           const rewardSuccessCount = rewardedUserIds.length;
