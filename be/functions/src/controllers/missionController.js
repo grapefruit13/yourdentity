@@ -14,6 +14,7 @@ class MissionController {
     this.createMissionPost = this.createMissionPost.bind(this);
     this.getMyMissions = this.getMyMissions.bind(this);
     this.quitMission = this.quitMission.bind(this);
+    this.getMissionStats = this.getMissionStats.bind(this);
   }
 
   /**
@@ -94,6 +95,22 @@ class MissionController {
       });
     } catch (error) {
       console.error("[MissionController] 미션 그만두기 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 통계 조회
+   */
+  async getMissionStats(req, res, next) {
+    try {
+      const userId = req.user?.uid;
+
+      const stats = await missionService.getMissionStats({ userId });
+
+      return res.success(stats);
+    } catch (error) {
+      console.error("[MissionController] 미션 통계 조회 오류:", error.message);
       return next(error);
     }
   }
