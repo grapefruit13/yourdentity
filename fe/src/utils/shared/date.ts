@@ -114,3 +114,22 @@ export const getFutureDate = (
     Date.now() + hours * HOUR_MS + minutes * MINUTE_MS + seconds * SECOND_MS
   );
 };
+
+/**
+ * 시작 시간에서 다음날 새벽 5시까지의 Date 객체를 반환
+ * @param startedAt - 시작 시간 (ISO 8601 문자열 또는 Date 객체)
+ * @returns 다음날 새벽 5시의 Date 객체
+ */
+export const getNextDay5AM = (startedAt: string | Date): Date => {
+  const startDate =
+    typeof startedAt === "string" ? new Date(startedAt) : startedAt;
+  const nextDay = new Date(startDate);
+
+  // 다음날로 이동
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // 새벽 5시로 설정
+  nextDay.setHours(5, 0, 0, 0);
+
+  return nextDay;
+};
