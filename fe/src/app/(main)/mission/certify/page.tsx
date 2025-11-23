@@ -12,6 +12,7 @@ import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import SubmitButton from "@/components/shared/ui/submit-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   MAX_FILES,
   WRITE_MESSAGES,
@@ -64,7 +65,11 @@ const MissionCertifyPageContent = () => {
   const missionId = searchParams.get("missionId") || "";
 
   // 미션 상세 조회 API
-  const { data: missionResponse, isError } = useGetMissionsById({
+  const {
+    data: missionResponse,
+    isError,
+    isLoading,
+  } = useGetMissionsById({
     request: { missionId },
     enabled: !!missionId,
   });
@@ -470,6 +475,19 @@ const MissionCertifyPageContent = () => {
   // (useRequireAuth가 자동으로 리다이렉트 처리)
   if (!isReady || !user) {
     return null;
+  }
+
+  // 미션 데이터 로딩 중일 때 로딩 스피너 표시
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white p-4 pt-12">
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
   }
 
   return (
