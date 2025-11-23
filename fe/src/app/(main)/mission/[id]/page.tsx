@@ -239,7 +239,7 @@ const Page = () => {
             </Typography>
             <button
               className="flex items-center gap-1"
-              onClick={() => router.push("/community")}
+              onClick={() => router.push(LINK_URL.COMMUNITY)}
             >
               <Typography
                 font="noto"
@@ -265,6 +265,11 @@ const Page = () => {
                   imageAlt={post.title || "미션 인증글"}
                   title={post.title || "-"}
                   content={post.preview?.description || "-"}
+                  onClick={() => {
+                    if (post.id) {
+                      router.push(`${LINK_URL.COMMUNITY_MISSION}/${post.id}`);
+                    }
+                  }}
                 />
               ))
             ) : (

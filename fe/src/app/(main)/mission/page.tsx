@@ -67,12 +67,16 @@ const MissionPageContent = () => {
   );
 
   // 진행중인 미션 조회 API
-  const { data: myMissionsResponse } = useGetMissionsMe({
-    request: {},
-  });
+  const { data: myMissionsResponse, isLoading: isMissionsMeLoading } =
+    useGetMissionsMe({
+      request: {},
+    });
 
   // 미션 통계 조회 API
-  const { data: missionStatsResponse } = useGetMissionsStats();
+  const { data: missionStatsResponse, isLoading: isStatsLoading } =
+    useGetMissionsStats();
+
+  const isLoading = isMissionsMeLoading || isStatsLoading;
 
   const activeMissions = myMissionsResponse?.missions || [];
   const isOnMission = activeMissions.length > 0;
@@ -174,8 +178,86 @@ const MissionPageContent = () => {
     }
   }, [searchParams, openSuccessModal, router]);
 
+  // 로딩 중일 때는 스켈레톤 표시
+  if (isLoading) {
+    return (
+      <div className="h-full min-h-screen bg-white">
+        <div className="p-5">
+          {/* 헤더 스켈레톤 */}
+          <Skeleton className="h-8 w-64 pb-4" />
+
+          {/* 현재 미션 카드 스켈레톤 */}
+          <div className="mt-4">
+            <div className="flex w-[99%] shrink-0 flex-col gap-1">
+              <div className="w-full rounded-lg bg-white p-4 shadow-sm">
+                {/* 상단: 시계 아이콘 + 시간 (왼쪽), 휴지통 아이콘 (오른쪽) */}
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+                {/* 제목 */}
+                <Skeleton className="mb-2 h-6 w-48" />
+                {/* 설명 */}
+                <Skeleton className="mb-4 h-4 w-full" />
+                {/* 태그 2개 */}
+                <div className="mb-4 flex gap-2">
+                  <Skeleton className="h-6 w-20 rounded-lg" />
+                  <Skeleton className="h-6 w-20 rounded-lg" />
+                </div>
+              </div>
+              {/* 미션 인증하기 버튼 */}
+              <Skeleton className="h-12 w-full rounded-lg" />
+            </div>
+          </div>
+        </div>
+
+        {/* 흰화면 - 미션 진척 현황 */}
+        <div className="pb-safe rounded-t-2xl bg-white px-5 py-6">
+          {/* 미션 진척 현황 스켈레톤 */}
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-5 rounded" />
+            <Skeleton className="h-6 w-32" />
+          </div>
+          <div className="mt-3 grid grid-cols-[1.2fr_1fr] grid-rows-2 gap-2">
+            {/* 왼쪽: 오늘의 미션 인증 현황 (큰 카드, 2행 병합) */}
+            <div className="row-span-2 flex flex-col items-center justify-center rounded-lg border border-gray-200 py-2">
+              <Skeleton className="mb-3 h-4 w-40" />
+              <Skeleton className="mb-2 h-20 w-20 rounded-full" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+            {/* 오른쪽 위: 연속 미션일 */}
+            <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2">
+              <div className="mb-2 flex items-center gap-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-3 rounded-full" />
+              </div>
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-4 w-6" />
+              </div>
+            </div>
+            {/* 오른쪽 아래: 진행 미션 수 */}
+            <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2">
+              <div className="mb-2 flex items-center gap-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-3 rounded-full" />
+              </div>
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-4 w-6" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full min-h-screen bg-gray-200">
+    <div className="h-full min-h-screen bg-white">
       <div className="p-5">
         <Typography
           as="span"
@@ -275,7 +357,7 @@ const MissionPageContent = () => {
       </div>
 
       {/* 흰화면 */}
-      <div className="h-full rounded-2xl bg-white px-5 py-6">
+      <div className="pb-safe rounded-t-2xl bg-white px-5 py-6">
         {/* 미션 진척 현황 */}
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-gray-400" />
@@ -436,7 +518,7 @@ const MissionPageContent = () => {
                   likeCount={mission.reactionCount || 0}
                   onClick={() => {
                     if (mission.id) {
-                      router.push(`/mission/${mission.id}`);
+                      router.push(`${LINK_URL.MISSION}/${mission.id}`);
                     }
                   }}
                 />
@@ -494,7 +576,7 @@ const PageWrapper = () => {
   return (
     <Suspense
       fallback={
-        <div className="h-full min-h-screen bg-gray-200">
+        <div className="h-full min-h-screen bg-white">
           <div className="p-5">
             {/* 헤더 스켈레톤 */}
             <Skeleton className="h-8 w-64 pb-4" />
@@ -528,7 +610,7 @@ const PageWrapper = () => {
           </div>
 
           {/* 흰화면 - 미션 진척 현황 */}
-          <div className="h-full rounded-2xl bg-white px-5 py-6">
+          <div className="pb-safe rounded-t-2xl bg-white px-5 py-6">
             {/* 미션 진척 현황 스켈레톤 */}
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5 rounded" />
