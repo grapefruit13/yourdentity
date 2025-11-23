@@ -175,7 +175,7 @@ const MissionPageContent = () => {
   }, [searchParams, openSuccessModal, router]);
 
   return (
-    <div className="h-full min-h-screen bg-gray-200">
+    <div className="h-full min-h-screen bg-white">
       <div className="p-5">
         <Typography
           as="span"
@@ -275,7 +275,7 @@ const MissionPageContent = () => {
       </div>
 
       {/* 흰화면 */}
-      <div className="h-full rounded-2xl bg-white px-5 py-6">
+      <div className="pb-safe rounded-t-2xl bg-white px-5 py-6">
         {/* 미션 진척 현황 */}
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-gray-400" />
@@ -494,7 +494,7 @@ const PageWrapper = () => {
   return (
     <Suspense
       fallback={
-        <div className="h-full min-h-screen bg-gray-200">
+        <div className="h-full min-h-screen bg-white">
           <div className="p-5">
             {/* 헤더 스켈레톤 */}
             <Skeleton className="h-8 w-64 pb-4" />
@@ -528,7 +528,7 @@ const PageWrapper = () => {
           </div>
 
           {/* 흰화면 - 미션 진척 현황 */}
-          <div className="h-full rounded-2xl bg-white px-5 py-6">
+          <div className="pb-safe rounded-t-2xl bg-white px-5 py-6">
             {/* 미션 진척 현황 스켈레톤 */}
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5 rounded" />
