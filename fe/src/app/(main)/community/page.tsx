@@ -26,6 +26,7 @@ import AlarmButton from "@/components/shared/AlarmButton";
 import GrayCheckbox from "@/components/shared/GrayCheckbox";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
+import { communitiesKeys } from "@/constants/generated/query-keys";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
@@ -178,17 +179,13 @@ const CommunityPageContent = () => {
     isLoading,
     refetch,
   } = useInfiniteQuery<TGETCommunitiesPostsRes, Error>({
-    queryKey: [
-      "communitiesPosts",
-      appliedProgramType ?? "ALL",
-      appliedProgramState ?? "ALL",
-      // 필터 변경 시 쿼리 무효화를 위해 검색어와 정렬도 포함
-      // (클라이언트 필터링이지만 쿼리 키에 포함하여 필터 변경 시 리셋)
-      appliedSearchQuery.trim() || "NO_SEARCH",
-      selectedSort,
-      selectedCategories.join(",") || "NO_CATEGORY",
-      onlyMyPrograms ? "MY_PROGRAMS" : "ALL_PROGRAMS",
-    ],
+    queryKey: communitiesKeys.getCommunitiesPosts({
+      page: undefined, // useInfiniteQuery는 각 페이지마다 다른 쿼리 키를 사용하므로 page는 queryFn에서 처리
+      size: COMMUNITY_POST_LIST_SIZE,
+      programType: appliedProgramType,
+      programState: appliedProgramState,
+      sort: selectedSort === "popular" ? "popular" : undefined,
+    }),
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const currentPage =
@@ -198,6 +195,7 @@ const CommunityPageContent = () => {
         size: COMMUNITY_POST_LIST_SIZE,
         programType: appliedProgramType,
         programState: appliedProgramState,
+        sort: selectedSort === "popular" ? "popular" : undefined,
       });
       return response.data;
     },
