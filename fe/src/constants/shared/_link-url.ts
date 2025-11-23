@@ -15,6 +15,7 @@ export const LINK_URL = {
   MISSION_CERTIFY: "/mission/certify",
   COMMUNITY: "/community",
   COMMUNITY_POST: "/community/post",
+  COMMUNITY_MISSION: "/community/mission",
   COMMUNITY_WRITE: "/community/write",
   DOWNLOAD: "/download",
   PROGRAMS: "/programs",
