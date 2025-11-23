@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Target } from "lucide-react";
 import { ActiveMissionCard } from "@/components/mission/active-mission-card";
 import { MissionCertificationCard } from "@/components/mission/mission-certification-card";
@@ -8,22 +10,115 @@ import { MissionRecommendationCard } from "@/components/mission/mission-recommen
 import { RecommendedMissionCard } from "@/components/mission/recommended-mission-card";
 import { Typography } from "@/components/shared/typography";
 import { Button } from "@/components/shared/ui/button";
+import HorizontalScrollContainer from "@/components/shared/ui/horizontal-scroll-container";
 import { InfoIconWithTooltip } from "@/components/shared/ui/info-icon-with-tooltip";
+import Modal from "@/components/shared/ui/modal";
 import { MoreButton } from "@/components/shared/ui/more-button";
 import { ProgressGauge } from "@/components/shared/ui/progress-gauge";
+import { missionsKeys } from "@/constants/generated/query-keys";
+import {
+  QUIT_MISSION_ERROR_MESSAGE,
+  QUIT_MISSION_SUCCESS_MESSAGE,
+  TOAST_DELAY_MS,
+  TOAST_DURATION_MS,
+} from "@/constants/mission/_mission-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { useGetMissions } from "@/hooks/generated/missions-hooks";
-import { getFutureDate } from "@/utils/shared/date";
+import {
+  useGetMissions,
+  useGetMissionsMe,
+  useGetMissionsStats,
+  usePostMissionsQuitById,
+} from "@/hooks/generated/missions-hooks";
+import useToggle from "@/hooks/shared/useToggle";
+import { getNextDay5AM } from "@/utils/shared/date";
+import { showToast } from "@/utils/shared/toast";
 
 /**
  * @description 미션 페이지
  */
 const Page = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const {
+    isOpen: isQuitMissionConfirmOpen,
+    open: openQuitMissionConfirm,
+    close: closeQuitMissionConfirm,
+  } = useToggle();
+  const {
+    isOpen: isErrorModalOpen,
+    open: openErrorModal,
+    close: closeErrorModal,
+  } = useToggle();
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(
+    null
+  );
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // TODO: 실 api response로 교체
-  const isOnMission = true;
-  const remainingMission = 3;
+  // 진행중인 미션 조회 API
+  const { data: myMissionsResponse } = useGetMissionsMe({
+    request: {},
+  });
+
+  // 미션 통계 조회 API
+  const { data: missionStatsResponse } = useGetMissionsStats();
+
+  const activeMissions = myMissionsResponse?.missions || [];
+  const isOnMission = activeMissions.length > 0;
+  const remainingMission = activeMissions.length;
+
+  // 미션 통계 데이터
+  const missionStats = missionStatsResponse || {};
+  const todayTotalCount = missionStats.todayTotalCount ?? 0;
+  const todayCompletedCount = missionStats.todayCompletedCount ?? 0;
+  const consecutiveDays = missionStats.consecutiveDays ?? 0;
+
+  /**
+   * 미션 관련 쿼리 무효화
+   */
+  const invalidateMissionQueries = () => {
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsMe({}),
+    });
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsStats,
+    });
+  };
+
+  /**
+   * 미션 그만두기 성공 처리
+   */
+  const handleQuitMissionSuccess = () => {
+    invalidateMissionQueries();
+    closeQuitMissionConfirm();
+    setSelectedMissionId(null);
+    // 모달이 완전히 닫힌 후 토스트 메시지 표시
+    setTimeout(() => {
+      showToast(QUIT_MISSION_SUCCESS_MESSAGE, {
+        duration: TOAST_DURATION_MS,
+      });
+    }, TOAST_DELAY_MS);
+  };
+
+  /**
+   * 미션 그만두기 에러 처리
+   */
+  const handleQuitMissionError = (error: unknown) => {
+    const message =
+      error instanceof Error ? error.message : QUIT_MISSION_ERROR_MESSAGE;
+    setErrorMessage(message);
+    openErrorModal();
+  };
+
+  // 미션 그만두기 API
+  const { mutate: quitMission, isPending: isQuittingMission } =
+    usePostMissionsQuitById({
+      onSuccess: handleQuitMissionSuccess,
+      onError: handleQuitMissionError,
+    });
+
+  const handleQuitMission = (missionId: string) => {
+    quitMission({ missionId });
+  };
 
   // 추천 미션 목록 조회 API (인기순으로 최대 4개)
   const { data: recommendedMissionsResponse } = useGetMissions({
@@ -50,60 +145,90 @@ const Page = () => {
         </Typography>
         {/* 흰카드 */}
         {isOnMission ? (
-          <div className="scrollbar-hide mt-4 flex w-[calc(100%+1.25rem)] gap-3 overflow-x-auto overflow-y-hidden pr-5">
-            <ActiveMissionCard
-              title="친구와 함께 요리하기"
-              tags={["건강한 아침 러닝 30분 하기", "요리", "친구와 함께"]}
-              endTime={getFutureDate(7, 32, 12)}
-              onDelete={() => {
-                // TODO: 미션 삭제 로직
-              }}
-              onClick={() => {
-                router.push(`${LINK_URL.MISSION_CERTIFY}?missionId=1`);
-              }}
-            />
-            <ActiveMissionCard
-              title="친구와 함께 요리하기"
-              tags={["건강한 아침 러닝 30분 하기", "요리", "친구와 함께"]}
-              endTime={getFutureDate(7, 32, 12)}
-              onDelete={() => {
-                // TODO: 미션 삭제 로직
-              }}
-              onClick={() => {
-                router.push(`${LINK_URL.MISSION_CERTIFY}?missionId=2`);
-              }}
-            />
-            <ActiveMissionCard
-              title="친구와 함께 요리하기"
-              tags={["건강한 아침 러닝 30분 하기", "요리", "친구와 함께"]}
-              endTime={getFutureDate(7, 32, 12)}
-              onDelete={() => {
-                // TODO: 미션 삭제 로직
-              }}
-              onClick={() => {
-                router.push(`${LINK_URL.MISSION_CERTIFY}?missionId=3`);
-              }}
-            />
-          </div>
-        ) : (
-          <MissionRecommendationCard message="진행 중인 미션이 없어요. 미션을 시작해 보세요!" />
-        )}
+          <HorizontalScrollContainer
+            className="mt-4"
+            containerClassName="flex w-[calc(100%)] gap-3"
+          >
+            {activeMissions.map((mission) => {
+              // TODO: 미션 상세 정보 조회하여 tags 가져오기
+              // 현재는 API 응답에 포함되지 않아 임시로 처리
+              const missionId = mission.id || mission.missionNotionPageId || "";
+              const missionNotionPageId = mission.missionNotionPageId || "";
+              const missionTitle = mission.missionTitle || "";
+              const endTime = mission.startedAt
+                ? getNextDay5AM(mission.startedAt)
+                : new Date();
 
-        <Button
-          variant="default"
-          size="default"
-          className="mt-1 w-full rounded-lg"
-          onClick={() =>
-            router.push(
-              isOnMission ? LINK_URL.MISSION_CERTIFY : LINK_URL.MISSION_LIST
-            )
-          }
-        >
-          <Typography font="noto" variant="body3B" className="text-white">
-            {isOnMission ? "미션 인증하기" : "미션 보러가기"}
-          </Typography>
-          <ChevronRight className="h-4 w-4 text-white" />
-        </Button>
+              const handleDelete = () => {
+                if (!missionNotionPageId) {
+                  return;
+                }
+
+                setSelectedMissionId(missionNotionPageId);
+                openQuitMissionConfirm();
+              };
+
+              return (
+                <div
+                  key={missionId}
+                  className="flex w-[99%] max-w-[99%] min-w-[99%] shrink-0 flex-col gap-1"
+                >
+                  <div className="w-full">
+                    <ActiveMissionCard
+                      title={missionTitle}
+                      tags={["temp1", "temp2", "temp3"]}
+                      endTime={endTime}
+                      onDelete={handleDelete}
+                      onClick={() => {
+                        if (missionId) {
+                          router.push(
+                            `${LINK_URL.MISSION_CERTIFY}?missionId=${missionId}`
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button
+                    variant="default"
+                    size="default"
+                    className="w-full rounded-lg"
+                    onClick={() => {
+                      if (missionId) {
+                        router.push(
+                          `${LINK_URL.MISSION_CERTIFY}?missionId=${missionId}`
+                        );
+                      }
+                    }}
+                  >
+                    <Typography
+                      font="noto"
+                      variant="body3B"
+                      className="text-white"
+                    >
+                      미션 인증하기
+                    </Typography>
+                    <ChevronRight className="h-4 w-4 text-white" />
+                  </Button>
+                </div>
+              );
+            })}
+          </HorizontalScrollContainer>
+        ) : (
+          <>
+            <MissionRecommendationCard message="진행 중인 미션이 없어요. 미션을 시작해 보세요!" />
+            <Button
+              variant="default"
+              size="default"
+              className="mt-1 w-full rounded-lg"
+              onClick={() => router.push(LINK_URL.MISSION_LIST)}
+            >
+              <Typography font="noto" variant="body3B" className="text-white">
+                미션 보러가기
+              </Typography>
+              <ChevronRight className="h-4 w-4 text-white" />
+            </Button>
+          </>
+        )}
       </div>
 
       {/* 흰화면 */}
@@ -122,7 +247,10 @@ const Page = () => {
             <Typography font="noto" variant="label1R" className="text-gray-950">
               오늘의 미션 인증 현황
             </Typography>
-            <ProgressGauge total={3} completed={3} />
+            <ProgressGauge
+              total={todayTotalCount}
+              completed={todayCompletedCount}
+            />
           </div>
 
           {/* 오른쪽 위 패널 */}
@@ -144,7 +272,7 @@ const Page = () => {
                 variant="heading1B"
                 className="text-gray-600"
               >
-                999
+                {consecutiveDays}
               </Typography>
               <Typography
                 font="noto"
@@ -175,7 +303,7 @@ const Page = () => {
                 variant="heading1B"
                 className="text-gray-600"
               >
-                999
+                {remainingMission}
               </Typography>
               <Typography
                 font="noto"
@@ -202,7 +330,10 @@ const Page = () => {
               <MoreButton onClick={() => router.push(LINK_URL.COMMUNITY)} />
             </div>
             {/* 후기 슬라이딩 */}
-            <div className="scrollbar-hide -mx-5 flex gap-3 overflow-x-auto overflow-y-hidden px-5">
+            <HorizontalScrollContainer
+              className="-mx-5"
+              containerClassName="flex gap-3 px-5"
+            >
               {/* TODO: 카드 클릭 시 미션 인증이 올라간 피드 상세로 이동 */}
               <MissionCertificationCard
                 title="오늘 하늘이 이뻤어요!"
@@ -218,7 +349,21 @@ const Page = () => {
                 tagName="건강한 아침 러닝 30분 하기"
                 postId="1"
               />
-            </div>
+              <MissionCertificationCard
+                title="오늘 하늘이 이뻤어요!"
+                thumbnailText="두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요! 두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
+                thumbnailImageUrl="/imgs/mockup3.jpg"
+                tagName="건강한 아침 러닝 30분 하기"
+                postId="1"
+              />
+              <MissionCertificationCard
+                title="오늘 하늘이 이뻤어요!"
+                thumbnailText="두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요! 두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
+                thumbnailImageUrl="/imgs/mockup3.jpg"
+                tagName="건강한 아침 러닝 30분 하기"
+                postId="1"
+              />
+            </HorizontalScrollContainer>
           </>
         )}
         {/* 미션 진행 중인거 있을때  */}
@@ -235,7 +380,11 @@ const Page = () => {
               <MoreButton onClick={() => router.push(LINK_URL.MISSION_LIST)} />
             </div>
             {/* 후기 슬라이딩 */}
-            <div className="scrollbar-hide -mx-5 flex gap-3 overflow-x-auto overflow-y-hidden px-5">
+            <HorizontalScrollContainer
+              className="-mx-5"
+              containerClassName="flex gap-3 px-5"
+              gradientColor="white"
+            >
               {recommendedMissions.map((mission) => (
                 <RecommendedMissionCard
                   key={mission.id}
@@ -249,10 +398,40 @@ const Page = () => {
                   }}
                 />
               ))}
-            </div>
+            </HorizontalScrollContainer>
           </>
         )}
       </div>
+      {/* 미션 그만두기 컨펌 모달 */}
+      <Modal
+        isOpen={isQuitMissionConfirmOpen}
+        title="미션을 그만둘까요?"
+        description="진행 중인 미션을 그만두면 다시 시작해야 해요."
+        cancelText="취소"
+        confirmText={isQuittingMission ? "처리 중..." : "그만두기"}
+        onClose={() => {
+          closeQuitMissionConfirm();
+          setSelectedMissionId(null);
+        }}
+        onConfirm={() => {
+          if (selectedMissionId) {
+            handleQuitMission(selectedMissionId);
+          }
+        }}
+        variant="primary"
+        confirmDisabled={isQuittingMission}
+      />
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        title="오류가 발생했어요"
+        description={errorMessage}
+        confirmText="확인"
+        onClose={closeErrorModal}
+        onConfirm={closeErrorModal}
+        variant="primary"
+      />
     </div>
   );
 };
