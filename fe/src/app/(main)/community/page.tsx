@@ -27,6 +27,7 @@ import GrayCheckbox from "@/components/shared/GrayCheckbox";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { onAuthStateChange } from "@/lib/auth";
@@ -267,8 +268,8 @@ const CommunityPageContent = () => {
 
       if (newQueryString !== currentQueryString) {
         const newUrl = newQueryString
-          ? `/community?${newQueryString}`
-          : "/community";
+          ? `${LINK_URL.COMMUNITY}?${newQueryString}`
+          : LINK_URL.COMMUNITY;
         router.replace(newUrl, { scroll: false });
       }
     },
@@ -314,7 +315,7 @@ const CommunityPageContent = () => {
         params.set("onlyMyPrograms", "true");
       }
 
-      router.push(`/community/post/${postId}?${params.toString()}`);
+      router.push(`${LINK_URL.COMMUNITY_POST}/${postId}?${params.toString()}`);
     } else {
       alert("게시물 정보를 찾을 수 없습니다.");
     }
@@ -827,7 +828,7 @@ const CommunityPageContent = () => {
                     key={program.id}
                     onClick={() => {
                       if (program.id) {
-                        router.push(`/programs/${program.id}`);
+                        router.push(`${LINK_URL.PROGRAMS}/${program.id}`);
                       }
                     }}
                     className="flex w-[335px] flex-shrink-0 cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"

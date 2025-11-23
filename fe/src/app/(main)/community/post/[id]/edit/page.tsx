@@ -20,6 +20,7 @@ import {
   ERROR_MESSAGES,
 } from "@/constants/community/_write-constants";
 import { communitiesKeys } from "@/constants/generated/query-keys";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import {
   useGetCommunitiesPostsByTwoIds,
@@ -27,7 +28,6 @@ import {
 } from "@/hooks/generated/communities-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
-import type * as Schema from "@/types/generated/api-schema";
 import type * as CommunityTypes from "@/types/generated/communities-types";
 import {
   replaceEditorFileHrefWithUploadedUrls,
@@ -394,7 +394,9 @@ const EditPageContent = () => {
     allowLeaveCountRef.current = 2;
 
     // 상세 페이지로 이동
-    router.replace(`/community/post/${postId}?communityId=${communityId}`);
+    router.replace(
+      `${LINK_URL.COMMUNITY_POST}/${postId}?communityId=${communityId}`
+    );
   };
 
   /**
@@ -699,7 +701,7 @@ const EditPageContent = () => {
           // 뒤로가기 인터셉트 해제 (replace와 실제 back 위해)
           allowLeaveCountRef.current = 2;
           // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
-          router.replace(`/community`);
+          router.replace(LINK_URL.COMMUNITY);
         }}
         variant="primary"
       />

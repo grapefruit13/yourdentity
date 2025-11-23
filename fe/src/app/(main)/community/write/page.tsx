@@ -354,7 +354,7 @@ const WritePageContent = () => {
         isPublic: false,
       });
       router.replace(
-        `/community/post/${postResponse.postId}?communityId=${postResponse.communityId}`
+        `${LINK_URL.COMMUNITY_POST}/${postResponse.postId}?communityId=${postResponse.communityId}`
       );
     } catch (error) {
       // 에러 발생 시 업로드된 파일들 롤백
@@ -639,7 +639,7 @@ const WritePageContent = () => {
         onConfirm={() => {
           setIsLeaveConfirmOpen(false);
           // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
-          router.replace(`/community`);
+          router.replace(LINK_URL.COMMUNITY);
         }}
         variant="primary"
       />

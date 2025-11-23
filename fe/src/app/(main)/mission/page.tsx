@@ -436,7 +436,7 @@ const MissionPageContent = () => {
                   likeCount={mission.reactionCount || 0}
                   onClick={() => {
                     if (mission.id) {
-                      router.push(`/mission/${mission.id}`);
+                      router.push(`${LINK_URL.MISSION}/${mission.id}`);
                     }
                   }}
                 />
