@@ -133,3 +133,19 @@ export const getNextDay5AM = (startedAt: string | Date): Date => {
 
   return nextDay;
 };
+
+/**
+ * 현재 시간 기준으로 내일 새벽 4시 59분의 Date 객체를 반환
+ * @returns 내일 새벽 4시 59분의 Date 객체
+ */
+export const getTomorrow4AM59 = (): Date => {
+  const tomorrow = new Date();
+
+  // 다음날로 이동
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // 새벽 4시 59분으로 설정
+  tomorrow.setHours(4, 59, 0, 0);
+
+  return tomorrow;
+};

@@ -30,7 +30,7 @@ const MissionReviewCard = ({
   content,
 }: MissionReviewCardProps) => {
   return (
-    <div className="flex max-w-[90%] min-w-[90%] flex-shrink-0 border-collapse items-center rounded-xl border border-gray-200">
+    <div className="flex w-full shrink-0 border-collapse items-center rounded-xl border border-gray-200">
       <Image
         src={imageUrl}
         alt={imageAlt}

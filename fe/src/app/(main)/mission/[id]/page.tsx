@@ -7,26 +7,33 @@ import { ChevronRight } from "lucide-react";
 import MissionDetailActionBar from "@/components/mission/mission-detail-action-bar";
 import MissionInfoBox from "@/components/mission/mission-info-box";
 import MissionReviewCard from "@/components/mission/mission-review-card";
+import MissionTag from "@/components/mission/mission-tag";
 import { Typography } from "@/components/shared/typography";
 import AccordionItem from "@/components/shared/ui/accordion-item";
 import DetailImage from "@/components/shared/ui/detail-image";
+import HorizontalScrollContainer from "@/components/shared/ui/horizontal-scroll-container";
 import Modal from "@/components/shared/ui/modal";
 import ShareButton from "@/components/shared/ui/share-button";
-import TabButton from "@/components/shared/ui/tab-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { missionsKeys } from "@/constants/generated/query-keys";
+import {
+  DEFAULT_MODAL_CONTENT,
+  MAX_MISSION_ERROR_MODAL,
+  MAX_TITLE_LENGTH,
+} from "@/constants/mission/_mission-constants";
 import { MOCK_FAQ_ITEMS } from "@/constants/mission/_mock-faq";
-import { MOCK_REVIEW_ITEMS } from "@/constants/mission/_mock-reviews";
-import { MISSION_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   useGetMissionsById,
+  useGetMissionsPosts,
   usePostMissionsApplyById,
 } from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
-import type { MissionDetailTabType } from "@/types/mission/tab-types";
+import { getTomorrow4AM59 } from "@/utils/shared/date";
+import { getErrorStatus } from "@/utils/shared/error";
 import { shareContent } from "@/utils/shared/share";
+import { showToast } from "@/utils/shared/toast";
 
 /**
  * @description 미션 상세 페이지
@@ -40,7 +47,6 @@ const Page = () => {
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
 
-  const [activeTab, setActiveTab] = useState<MissionDetailTabType>("faq");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // 미션 상세 조회 API
@@ -53,7 +59,21 @@ const Page = () => {
   });
 
   const missionData = missionResponse?.mission;
+
+  // 미션 인증글 목록 조회 API
+  const { data: postsResponse } = useGetMissionsPosts({
+    request: {
+      sort: "latest",
+    },
+  });
+
+  // TODO: 미션 별 인증글 생기면 현재 미션글의 인증글만 보이게 필터링 넣기
+  // 현재 미션의 인증글만 필터링 (임시로 해제)
+  const missionPosts = postsResponse?.posts || [];
+
   const [isLiked, setIsLiked] = useState(false);
+  const [modalContent, setModalContent] = useState(DEFAULT_MODAL_CONTENT);
+  const [isMaxMissionError, setIsMaxMissionError] = useState(false);
   const {
     isOpen: isConfirmModalOpen,
     open: openConfirmModal,
@@ -72,12 +92,23 @@ const Page = () => {
         queryClient.invalidateQueries({
           queryKey: missionsKeys.getMissionsStats,
         });
-        alert("미션이 시작되었어요!");
         closeConfirmModal();
         router.push(LINK_URL.MISSION);
       },
-      onError: () => {
-        alert("미션 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
+      onError: (error: unknown) => {
+        const errorStatus = getErrorStatus(error);
+
+        if (errorStatus === 409) {
+          // 409 Conflict: 미션 최대 개수 초과
+          setModalContent(MAX_MISSION_ERROR_MODAL);
+          setIsMaxMissionError(true);
+          if (!isConfirmModalOpen) {
+            openConfirmModal();
+          }
+        } else {
+          closeConfirmModal();
+          showToast("미션 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
+        }
       },
     });
 
@@ -86,13 +117,12 @@ const Page = () => {
     if (!missionData?.title) return;
 
     const missionTitle = missionData.title;
-    setTitle(
-      missionTitle.length > 20
-        ? `${missionTitle.slice(0, 20)}...`
-        : missionTitle
-    );
+    const truncatedTitle =
+      missionTitle.length > MAX_TITLE_LENGTH
+        ? `${missionTitle.slice(0, MAX_TITLE_LENGTH)}...`
+        : missionTitle;
+    setTitle(truncatedTitle);
 
-    // 공유하기 기능
     const handleShare = async () => {
       const shareUrl =
         typeof window !== "undefined" ? window.location.href : "";
@@ -105,9 +135,7 @@ const Page = () => {
       });
     };
 
-    // 공유하기 버튼
-    const shareButton = <ShareButton onClick={handleShare} />;
-    setRightSlot(shareButton);
+    setRightSlot(<ShareButton onClick={handleShare} />);
 
     return () => {
       resetTopBar();
@@ -146,7 +174,7 @@ const Page = () => {
     },
     {
       label: "인증 마감",
-      value: missionData.certificationDeadline || "-",
+      value: "매일 새벽 4시 59분",
     },
     {
       label: "참여 대상",
@@ -161,142 +189,160 @@ const Page = () => {
         imageUrl={missionData.detailPageUrl || "/imgs/mockup.jpg"}
         alt={missionData.title || "미션 이미지"}
       />
-
-      <div className="flex flex-col p-5 pb-12">
+      <div className="flex flex-col gap-2 p-5 pb-12">
         {/* 미션 제목 */}
         <Typography
           as="h2"
           font="noto"
           variant="title5"
-          className="mb-6 text-gray-950"
+          className="text-gray-950"
         >
           {missionData.title || "-"}
         </Typography>
+        <div className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4">
+          <Typography font="noto" variant="body1B" className="text-gray-950">
+            미션 소개
+          </Typography>
+          <Typography font="noto" variant="body3R" className="text-gray-950">
+            {/* TODO: api 연동 필요 */}
+            나와 가장 많은 시간을 보내는 친구에게 나는 어떤 사람인지에 대해
+            이야기 들어보기. 그리고 내가 바라보는 내 자신과, 친구가 바라보는 내
+            자신이 어떤 점이 다른지 비교해서 글로 써보기
+          </Typography>
+          <Typography font="noto" variant="body1B" className="text-gray-950">
+            인증 방법
+          </Typography>
+          <div className="flex gap-1">
+            <MissionTag tagName="인증 글 작성" />
+            <MissionTag tagName="사진 업로드" />
+          </div>
+        </div>
 
         {/* 정보 박스 */}
         <MissionInfoBox items={infoItems} />
         {/* 하단 안내 문구 */}
         <Typography font="noto" variant="label2R" className="text-gray-400">
-          *모든 미션 인증은 새벽 5시에 초기화 됩니다.
+          {missionData.notes || "-"}
         </Typography>
       </div>
 
-      {/* 탭메뉴 */}
-      <div className="flex bg-white px-5 pt-5">
-        {MISSION_DETAIL_TABS.map((tab) => (
-          <TabButton
-            key={tab.id}
-            label={tab.label}
-            isActive={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
-          />
-        ))}
-      </div>
-
-      {/* 탭 컨텐츠 */}
-      {activeTab === "description" && (
-        <div className="bg-white px-5 py-10">
-          <div className="flex flex-col gap-4">
-            <Typography font="noto" variant="body1R" className="text-gray-950">
-              {missionData.notes || "미션 설명이 없습니다."}
+      <div className="border-t-8 border-b-8 border-t-gray-200 border-b-gray-200 bg-white px-5 py-10">
+        <div className="flex flex-col gap-4">
+          {/* TODO: 실제 미션 후기 컨텐츠로 교체 */}
+          <div className="flex items-center justify-between">
+            <Typography
+              font="noto"
+              variant="heading3B"
+              className="text-gray-950"
+            >
+              미션에 참여한 인증글이에요!
             </Typography>
-          </div>
-        </div>
-      )}
-      {activeTab === "reviews" && (
-        <div className="bg-white px-5 py-10">
-          <div className="flex flex-col gap-4">
-            {/* TODO: 실제 미션 후기 컨텐츠로 교체 */}
-            <div className="flex items-center justify-between">
+            <button
+              className="flex items-center gap-1"
+              onClick={() => router.push("/community")}
+            >
               <Typography
                 font="noto"
-                variant="heading3B"
-                className="text-gray-950"
+                variant="body3R"
+                className="text-main-500"
               >
-                미션에 참여한 친구들의 후기예요!
+                피드 보러가기
               </Typography>
-              <button className="flex items-center gap-1">
-                <Typography
-                  font="noto"
-                  variant="body3R"
-                  className="text-main-500"
-                >
-                  후기 보러가기
-                </Typography>
-                <ChevronRight className="text-main-500 size-3" />
-              </button>
-            </div>
-            {/* y scroll layout */}
-            <div className="scrollbar-hide -mx-5 flex gap-2 overflow-x-auto overflow-y-hidden px-5">
-              {MOCK_REVIEW_ITEMS.map((review, index) => (
-                <MissionReviewCard
-                  key={index}
-                  imageUrl={review.imageUrl}
-                  imageAlt={review.imageAlt}
-                  title={review.title}
-                  content={review.content}
-                />
-              ))}
-            </div>
+              <ChevronRight className="text-main-500 size-3" />
+            </button>
           </div>
-        </div>
-      )}
-
-      {activeTab === "faq" && (
-        <div className="flex flex-col">
-          <Typography
-            font="noto"
-            variant="heading3B"
-            className="border-b border-gray-200 px-5 pt-10 pb-5 text-gray-950"
+          {/* y scroll layout */}
+          <HorizontalScrollContainer
+            className="-mx-5"
+            containerClassName="flex gap-2 px-5"
+            gradientColor="white"
           >
-            자주 묻는 질문이에요!
-          </Typography>
-
-          {/* TODO: 실제 FAQ 데이터로 교체 */}
-          {MOCK_FAQ_ITEMS.map((faq, index) => {
-            const isOpen = openFaqIndex === index;
-            const isLast = index === MOCK_FAQ_ITEMS.length - 1;
-
-            return (
-              <AccordionItem
-                key={index}
-                title={faq.question}
-                content={faq.answer}
-                isOpen={isOpen}
-                onToggle={() => setOpenFaqIndex(isOpen ? null : index)}
-                isLast={isLast}
-              />
-            );
-          })}
+            {missionPosts.length > 0 ? (
+              missionPosts.map((post) => (
+                <MissionReviewCard
+                  key={post.id}
+                  imageUrl={post.preview?.thumbnail?.url || "/imgs/mockup2.jpg"}
+                  imageAlt={post.title || "미션 인증글"}
+                  title={post.title || "-"}
+                  content={post.preview?.description || "-"}
+                />
+              ))
+            ) : (
+              <Typography
+                font="noto"
+                variant="body3R"
+                className="px-5 text-gray-400"
+              >
+                아직 인증글이 없어요.
+              </Typography>
+            )}
+          </HorizontalScrollContainer>
         </div>
-      )}
+      </div>
+      <div className="flex flex-col">
+        <Typography
+          font="noto"
+          variant="heading3B"
+          className="border-b border-gray-200 px-5 pt-10 pb-5 text-gray-950"
+        >
+          자주 묻는 질문이에요!
+        </Typography>
 
+        {/* TODO: 실제 FAQ 데이터로 교체 */}
+        {MOCK_FAQ_ITEMS.map((faq, index) => {
+          const isOpen = openFaqIndex === index;
+          const isLast = index === MOCK_FAQ_ITEMS.length - 1;
+
+          return (
+            <AccordionItem
+              key={index}
+              title={faq.question}
+              content={faq.answer}
+              isOpen={isOpen}
+              onToggle={() => setOpenFaqIndex(isOpen ? null : index)}
+              isLast={isLast}
+            />
+          );
+        })}
+      </div>
       {/* 하단 액션 바 */}
       <MissionDetailActionBar
-        deadline={
-          missionData?.certificationDeadline
-            ? new Date(missionData.certificationDeadline)
-            : undefined
-        }
+        deadline={getTomorrow4AM59()}
         isLiked={isLiked}
         onLikeClick={() => {
           setIsLiked((prev) => !prev);
           // TODO: 실제 찜하기 API 호출
         }}
-        onStartClick={openConfirmModal}
+        onStartClick={() => {
+          setModalContent({
+            title: DEFAULT_MODAL_CONTENT.title,
+            description: `${missionData.title}\n미션을 시작해 볼까요?`,
+          });
+          setIsMaxMissionError(false);
+          openConfirmModal();
+        }}
       />
-
       {/* 미션 시작 확인 모달 */}
       <Modal
         isOpen={isConfirmModalOpen}
-        title="미션을 시작할까요?"
-        description={`${missionData.title}\n미션을 시작해 볼까요?`}
-        confirmText={isApplying ? "신청 중..." : "시작하기"}
-        cancelText="취소"
+        title={modalContent.title}
+        description={modalContent.description || undefined}
+        confirmText={
+          isMaxMissionError ? "확인" : isApplying ? "신청 중..." : "시작하기"
+        }
+        cancelText={isMaxMissionError ? undefined : "취소"}
         onConfirm={() => {
-          applyMission({ missionId });
+          if (isMaxMissionError) {
+            closeConfirmModal();
+          } else {
+            applyMission({ missionId });
+          }
         }}
-        onClose={closeConfirmModal}
+        onClose={() => {
+          closeConfirmModal();
+          setModalContent(DEFAULT_MODAL_CONTENT);
+          setIsMaxMissionError(false);
+        }}
         variant="primary"
       />
     </div>
