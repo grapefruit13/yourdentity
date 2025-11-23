@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Typography } from "@/components/shared/typography";
-import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { MissionTag } from "./mission-tag";
 
@@ -30,7 +29,7 @@ export const MissionCertificationCard = ({
   return (
     <Link
       href={`${LINK_URL.COMMUNITY_POST}/${postId}`}
-      className="flex w-[85%] max-w-[85%] min-w-[85%] flex-shrink-0 gap-2"
+      className="flex w-full shrink-0 gap-2"
       onClick={onClick}
     >
       <div className="flex h-full max-h-[88px] w-full flex-col justify-between">

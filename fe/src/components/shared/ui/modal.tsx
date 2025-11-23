@@ -16,8 +16,8 @@ interface ModalProps {
   children?: ReactNode;
   /** 확인 버튼 텍스트 */
   confirmText: string;
-  /** 취소 버튼 텍스트 */
-  cancelText: string;
+  /** 취소 버튼 텍스트 (없으면 취소 버튼 숨김) */
+  cancelText?: string;
   /** 확인 버튼 클릭 핸들러 */
   onConfirm: () => void;
   /** 취소/닫기 핸들러 */
@@ -147,23 +147,28 @@ const Modal = ({
         {children && <div className="mb-6">{children}</div>}
 
         {/* 버튼들 */}
-        <div className="mt-6 flex gap-3">
-          {/* 취소 버튼 */}
-          <button
-            onClick={handleClose}
-            className="flex-1 grow rounded-lg border border-gray-100 bg-white py-2 text-black shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
-            aria-label={cancelText}
-          >
-            <Typography font="noto" variant="body2M">
-              {cancelText}
-            </Typography>
-          </button>
+        <div className={cn("mt-6 flex gap-3", !cancelText && "justify-end")}>
+          {/* 취소 버튼 - cancelText가 있을 때만 표시 */}
+          {cancelText && (
+            <button
+              onClick={handleClose}
+              className="flex-1 grow rounded-lg border border-gray-100 bg-white py-2 text-black shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
+              aria-label={cancelText}
+            >
+              <Typography font="noto" variant="body2M">
+                {cancelText}
+              </Typography>
+            </button>
+          )}
 
           {/* 확인 버튼 */}
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className="bg-main-600 hover:bg-main-700 flex-1 grow rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className={cn(
+              "bg-main-600 hover:bg-main-700 rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300",
+              cancelText ? "flex-1 grow" : "px-6"
+            )}
             aria-label={confirmText}
           >
             <Typography font="noto" variant="body2M" className="text-white">

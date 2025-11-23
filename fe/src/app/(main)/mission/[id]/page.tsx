@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import MissionDetailActionBar from "@/components/mission/mission-detail-action-bar";
 import MissionInfoBox from "@/components/mission/mission-info-box";
@@ -13,6 +14,7 @@ import Modal from "@/components/shared/ui/modal";
 import ShareButton from "@/components/shared/ui/share-button";
 import TabButton from "@/components/shared/ui/tab-button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { missionsKeys } from "@/constants/generated/query-keys";
 import { MOCK_FAQ_ITEMS } from "@/constants/mission/_mock-faq";
 import { MOCK_REVIEW_ITEMS } from "@/constants/mission/_mock-reviews";
 import { MISSION_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
@@ -31,6 +33,7 @@ import { shareContent } from "@/utils/shared/share";
  */
 const Page = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams();
   const missionId = params.id as string;
   const setTitle = useTopBarStore((state) => state.setTitle);
@@ -61,6 +64,14 @@ const Page = () => {
   const { mutate: applyMission, isPending: isApplying } =
     usePostMissionsApplyById({
       onSuccess: () => {
+        // 진행중인 미션 목록 쿼리 무효화하여 목록 갱신
+        queryClient.invalidateQueries({
+          queryKey: missionsKeys.getMissionsMe({}),
+        });
+        // 미션 통계 쿼리 무효화하여 통계 갱신
+        queryClient.invalidateQueries({
+          queryKey: missionsKeys.getMissionsStats,
+        });
         alert("미션이 시작되었어요!");
         closeConfirmModal();
         router.push(LINK_URL.MISSION);
