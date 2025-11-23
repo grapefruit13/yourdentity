@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Target } from "lucide-react";
 import { ActiveMissionCard } from "@/components/mission/active-mission-card";
 import { MissionCertificationCard } from "@/components/mission/mission-certification-card";
+import { MissionCertificationSuccessModal } from "@/components/mission/mission-certification-success-modal";
 import { MissionRecommendationCard } from "@/components/mission/mission-recommendation-card";
 import { RecommendedMissionCard } from "@/components/mission/recommended-mission-card";
 import { Typography } from "@/components/shared/typography";
@@ -38,6 +39,7 @@ import { showToast } from "@/utils/shared/toast";
  */
 const Page = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const {
     isOpen: isQuitMissionConfirmOpen,
@@ -53,6 +55,15 @@ const Page = () => {
     null
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const {
+    isOpen: isSuccessModalOpen,
+    open: openSuccessModal,
+    close: closeSuccessModal,
+  } = useToggle();
+  const [successMissionName, setSuccessMissionName] = useState<string>("");
+  const [successPostId, setSuccessPostId] = useState<string | undefined>(
+    undefined
+  );
 
   // 진행중인 미션 조회 API
   const { data: myMissionsResponse } = useGetMissionsMe({
@@ -130,6 +141,38 @@ const Page = () => {
   const recommendedMissions =
     recommendedMissionsResponse?.missions?.slice(0, 4) || [];
 
+  // 이미 처리된 쿼리 파라미터인지 확인하는 ref
+  const hasProcessedSuccessParams = useRef(false);
+
+  // 쿼리 파라미터에서 성공 정보 확인 및 모달 표시
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const missionName = searchParams.get("missionName");
+    const postId = searchParams.get("postId");
+
+    // 성공 파라미터가 있고 아직 처리하지 않은 경우에만 실행
+    if (
+      success === "true" &&
+      missionName &&
+      !hasProcessedSuccessParams.current
+    ) {
+      hasProcessedSuccessParams.current = true;
+
+      setSuccessMissionName(missionName);
+      setSuccessPostId(postId || undefined);
+      openSuccessModal();
+
+      // URL에서 쿼리 파라미터 제거 (Next.js router 사용)
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("success");
+      params.delete("missionName");
+      params.delete("postId");
+      const newSearch = params.toString();
+      const newUrl = newSearch ? `/mission?${newSearch}` : "/mission";
+      router.replace(newUrl);
+    }
+  }, [searchParams, openSuccessModal, router]);
+
   return (
     <div className="h-full min-h-screen bg-gray-200">
       <div className="p-5">
@@ -152,7 +195,6 @@ const Page = () => {
             {activeMissions.map((mission) => {
               // TODO: 미션 상세 정보 조회하여 tags 가져오기
               // 현재는 API 응답에 포함되지 않아 임시로 처리
-              const missionId = mission.id || mission.missionNotionPageId || "";
               const missionNotionPageId = mission.missionNotionPageId || "";
               const missionTitle = mission.missionTitle || "";
               const endTime = mission.startedAt
@@ -170,7 +212,7 @@ const Page = () => {
 
               return (
                 <div
-                  key={missionId}
+                  key={mission.id || missionNotionPageId}
                   className="flex w-[99%] max-w-[99%] min-w-[99%] shrink-0 flex-col gap-1"
                 >
                   <div className="w-full">
@@ -180,9 +222,9 @@ const Page = () => {
                       endTime={endTime}
                       onDelete={handleDelete}
                       onClick={() => {
-                        if (missionId) {
+                        if (missionNotionPageId) {
                           router.push(
-                            `${LINK_URL.MISSION_CERTIFY}?missionId=${missionId}`
+                            `${LINK_URL.MISSION_CERTIFY}?missionId=${missionNotionPageId}`
                           );
                         }
                       }}
@@ -193,9 +235,9 @@ const Page = () => {
                     size="default"
                     className="w-full rounded-lg"
                     onClick={() => {
-                      if (missionId) {
+                      if (missionNotionPageId) {
                         router.push(
-                          `${LINK_URL.MISSION_CERTIFY}?missionId=${missionId}`
+                          `${LINK_URL.MISSION_CERTIFY}?missionId=${missionNotionPageId}`
                         );
                       }
                     }}
@@ -406,7 +448,7 @@ const Page = () => {
       <Modal
         isOpen={isQuitMissionConfirmOpen}
         title="미션을 그만둘까요?"
-        description="진행 중인 미션을 그만두면 다시 시작해야 해요."
+        description="진행 중인 미션을 그만두면 더 이상 미션을 진행할 수 없어요. 그래도 그만둘까요?"
         cancelText="취소"
         confirmText={isQuittingMission ? "처리 중..." : "그만두기"}
         onClose={() => {
@@ -431,6 +473,14 @@ const Page = () => {
         onClose={closeErrorModal}
         onConfirm={closeErrorModal}
         variant="primary"
+      />
+
+      {/* 미션 인증 완료 성공 모달 */}
+      <MissionCertificationSuccessModal
+        isOpen={isSuccessModalOpen}
+        missionName={successMissionName}
+        postId={successPostId}
+        onClose={closeSuccessModal}
       />
     </div>
   );
