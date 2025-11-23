@@ -260,10 +260,11 @@ const options = {
               description: "미션 제목",
               example: "내가 좋아하는 책 읽고 책 추천사 써보기",
             },
-            detailPageUrl: {
+            missionIntroduction: {
               type: "string",
               nullable: true,
-              description: "상세 페이지(노션) URL",
+              description: "미션 소개",
+              example: "내가 좋아하는 책을 한권 선정해서 읽고 그 책을 쓴 작가를 위한 책 추천사 써보기",
             },
             isRecruiting: {
               type: "boolean",
