@@ -49,6 +49,15 @@ export type TPOSTMissionsPostsByIdRes = {
   status?: string;
 };
 
+export interface TPOSTMissionsQuitByIdReq {
+  missionId: string;
+}
+
+export type TPOSTMissionsQuitByIdRes = {
+  missionId?: string;
+  status?: string;
+};
+
 export type TGETMissionsCategoriesRes = {
   categories?: string[];
 };
@@ -64,4 +73,64 @@ export type TGETMissionsMeRes = {
     missionTitle?: string;
     startedAt?: string;
   }[];
+};
+
+export interface TGETMissionsPostsReq {
+  sort?: "latest" | "popular";
+  category?: string;
+  userId?: string;
+}
+
+export type TGETMissionsPostsRes = {
+  posts?: {
+    id?: string;
+    title?: string;
+    missionTitle?: string;
+    missionNotionPageId?: string;
+    author?: string;
+    profileImageUrl?: string;
+    preview?: {
+      description?: string;
+      thumbnail?: {
+        url?: string;
+        width?: number;
+        height?: number;
+        blurHash?: string;
+      };
+    };
+    mediaCount?: number;
+    commentsCount?: number;
+    viewCount?: number;
+    createdAt?: string;
+    timeAgo?: string;
+  }[];
+};
+
+export interface TGETMissionsPostsByIdReq {
+  postId: string;
+}
+
+export type TGETMissionsPostsByIdRes = {
+  id?: string;
+  title?: string;
+  content?: string;
+  media?: string[];
+  missionTitle?: string;
+  missionNotionPageId?: string;
+  author?: string;
+  profileImageUrl?: string;
+  commentsCount?: number;
+  viewCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  timeAgo?: string;
+  isAuthor?: boolean;
+};
+
+export type TGETMissionsStatsRes = {
+  todayTotalCount?: number;
+  todayCompletedCount?: number;
+  todayActiveCount?: number;
+  consecutiveDays?: number;
+  totalPostsCount?: number;
 };

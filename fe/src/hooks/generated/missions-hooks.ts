@@ -103,6 +103,32 @@ export const usePostMissionsPostsById = <
   });
 };
 
+export const usePostMissionsQuitById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsQuitByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsQuitById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsQuitById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsQuitById(variables as Types.TPOSTMissionsQuitByIdReq),
+    ...options,
+  });
+};
+
 export const useGetMissionsCategories = <
   TData = Types.TGETMissionsCategoriesRes,
 >(
@@ -137,5 +163,59 @@ export const useGetMissionsMe = <TData = Types.TGETMissionsMeRes>(
       return response.data;
     },
     ...queryOptions,
+  });
+};
+
+export const useGetMissionsPosts = <TData = Types.TGETMissionsPostsRes>(
+  options: {
+    request: Types.TGETMissionsPostsReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETMissionsPostsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETMissionsPostsRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsPosts(request),
+    queryFn: async () => {
+      const response = await Api.getMissionsPosts(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetMissionsPostsById = <TData = Types.TGETMissionsPostsByIdRes>(
+  options: {
+    request: Types.TGETMissionsPostsByIdReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETMissionsPostsByIdRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETMissionsPostsByIdRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsPostsById(request),
+    queryFn: async () => {
+      const response = await Api.getMissionsPostsById(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetMissionsStats = <TData = Types.TGETMissionsStatsRes>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETMissionsStatsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETMissionsStatsRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsStats,
+    queryFn: async () => {
+      const response = await Api.getMissionsStats();
+      return response.data;
+    },
+    ...options,
   });
 };

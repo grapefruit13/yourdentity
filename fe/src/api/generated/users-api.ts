@@ -10,10 +10,6 @@ export const getUsers = () => {
   return get<Types.TGETUsersRes>(`/users`);
 };
 
-export const deleteUsersById = (request: Types.TDELETEUsersByIdReq) => {
-  return del<Types.TDELETEUsersByIdRes>(`/users/${request.userId}`);
-};
-
 export const getUsersById = (request: Types.TGETUsersByIdReq) => {
   return get<Types.TGETUsersByIdRes>(`/users/${request.userId}`);
 };
@@ -23,6 +19,14 @@ export const putUsersById = (request: Types.TPUTUsersByIdReq) => {
   return put<Types.TPUTUsersByIdRes>(
     `/users/${request.userId}`,
     data.data ?? data
+  );
+};
+
+export const getUsersDeletePostById = (
+  request: Types.TGETUsersDeletePostByIdReq
+) => {
+  return get<Types.TGETUsersDeletePostByIdRes>(
+    `/users/deletePost/${request.userId}`
   );
 };
 

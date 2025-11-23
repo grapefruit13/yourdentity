@@ -32,10 +32,36 @@ export const postMissionsPostsById = (
   );
 };
 
+export const postMissionsQuitById = (
+  request: Types.TPOSTMissionsQuitByIdReq
+) => {
+  return post<Types.TPOSTMissionsQuitByIdRes>(
+    `/missions/${request.missionId}/quit`
+  );
+};
+
 export const getMissionsCategories = () => {
   return get<Types.TGETMissionsCategoriesRes>(`/missions/categories`);
 };
 
 export const getMissionsMe = (request: Types.TGETMissionsMeReq) => {
   return get<Types.TGETMissionsMeRes>(`/missions/me`, { params: request });
+};
+
+export const getMissionsPosts = (request: Types.TGETMissionsPostsReq) => {
+  return get<Types.TGETMissionsPostsRes>(`/missions/posts`, {
+    params: request,
+  });
+};
+
+export const getMissionsPostsById = (
+  request: Types.TGETMissionsPostsByIdReq
+) => {
+  return get<Types.TGETMissionsPostsByIdRes>(
+    `/missions/posts/${request.postId}`
+  );
+};
+
+export const getMissionsStats = () => {
+  return get<Types.TGETMissionsStatsRes>(`/missions/stats`);
 };

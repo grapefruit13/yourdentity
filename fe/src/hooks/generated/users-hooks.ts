@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-
 import {
   useQuery,
   useMutation,
@@ -26,32 +25,6 @@ export const useGetUsers = <TData = Types.TGETUsersRes>(
       const response = await Api.getUsers();
       return response.data;
     },
-    ...options,
-  });
-};
-
-export const useDeleteUsersById = <
-  TContext = unknown,
-  TVariables = Types.TDELETEUsersByIdReq,
->(
-  options?: Omit<
-    UseMutationOptions<
-      Awaited<ReturnType<typeof Api.deleteUsersById>>,
-      Error,
-      TVariables,
-      TContext
-    >,
-    "mutationFn"
-  >
-) => {
-  return useMutation<
-    Awaited<ReturnType<typeof Api.deleteUsersById>>,
-    Error,
-    TVariables,
-    TContext
-  >({
-    mutationFn: (variables: TVariables) =>
-      Api.deleteUsersById(variables as Types.TDELETEUsersByIdReq),
     ...options,
   });
 };
@@ -98,6 +71,27 @@ export const usePutUsersById = <
     mutationFn: (variables: TVariables) =>
       Api.putUsersById(variables as Types.TPUTUsersByIdReq),
     ...options,
+  });
+};
+
+export const useGetUsersDeletePostById = <
+  TData = Types.TGETUsersDeletePostByIdRes,
+>(
+  options: {
+    request: Types.TGETUsersDeletePostByIdReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETUsersDeletePostByIdRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETUsersDeletePostByIdRes, Error, TData>({
+    queryKey: usersKeys.getUsersDeletePostById(request),
+    queryFn: async () => {
+      const response = await Api.getUsersDeletePostById(request);
+      return response.data;
+    },
+    ...queryOptions,
   });
 };
 

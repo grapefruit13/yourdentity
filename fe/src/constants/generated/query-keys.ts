@@ -174,6 +174,21 @@ export const missionsKeys = {
       path: {},
       query: { limit: request.limit },
     }),
+  getMissionsPosts: (request: missionsTypes.TGETMissionsPostsReq) =>
+    __buildKey("missions", "getMissionsPosts", {
+      path: {},
+      query: {
+        sort: request.sort,
+        category: request.category,
+        userId: request.userId,
+      },
+    }),
+  getMissionsPostsById: (request: missionsTypes.TGETMissionsPostsByIdReq) =>
+    __buildKey("missions", "getMissionsPostsById", {
+      path: { postId: request.postId },
+      query: {},
+    }),
+  getMissionsStats: __buildKey("missions", "getMissionsStats"),
 } as const;
 
 // Notifications Query Keys
@@ -307,6 +322,11 @@ export const usersKeys = {
   getUsers: __buildKey("users", "getUsers"),
   getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
     __buildKey("users", "getUsersById", {
+      path: { userId: request.userId },
+      query: {},
+    }),
+  getUsersDeletePostById: (request: usersTypes.TGETUsersDeletePostByIdReq) =>
+    __buildKey("users", "getUsersDeletePostById", {
       path: { userId: request.userId },
       query: {},
     }),

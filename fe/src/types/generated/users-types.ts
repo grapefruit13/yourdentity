@@ -10,14 +10,6 @@ export type TGETUsersRes = {
   count?: number;
 };
 
-export interface TDELETEUsersByIdReq {
-  userId: string;
-}
-
-export type TDELETEUsersByIdRes = {
-  userId?: string;
-};
-
 export interface TGETUsersByIdReq {
   userId: string;
 }
@@ -47,6 +39,14 @@ export interface TPUTUsersByIdReq {
 }
 
 export type TPUTUsersByIdRes = { user?: Schema.User };
+
+export interface TGETUsersDeletePostByIdReq {
+  userId: string;
+}
+
+export type TGETUsersDeletePostByIdRes = {
+  userId?: string;
+};
 
 export type TGETUsersMeRes = { user?: Schema.User };
 
