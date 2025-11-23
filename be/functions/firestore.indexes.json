@@ -72,6 +72,16 @@
       "collectionGroup": "comments",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "parentId", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comments",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "parentId", "order": "ASCENDING" },
         { "fieldPath": "postId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" },
@@ -190,6 +200,20 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "lastActivityAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "likedPosts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "postId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "commentedPosts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "postId", "order": "ASCENDING" }
       ]
     },
     {

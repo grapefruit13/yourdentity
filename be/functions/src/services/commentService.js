@@ -532,12 +532,20 @@ class CommentService {
 
       if (replies && replies.length > 0) {
         // 대댓글이 있으면 소프트 딜리트
-        const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
-        await commentRef.update({
-          isDeleted: true,
-          author: "알 수 없음",
-          content: "삭제된 댓글입니다",
-          updatedAt: FieldValue.serverTimestamp(),
+        await this.firestoreService.runTransaction(async (transaction) => {
+          const commentRef = this.firestoreService.db.collection("comments").doc(commentId);
+          
+          // 리워드 차감 처리
+          await this.getRewardService().handleRewardOnCommentDeletion(userId, commentId, transaction);
+          
+          // 소프트 딜리트
+          transaction.update(commentRef, {
+            isDeleted: true,
+            userId: null,
+            author: "알 수 없음",
+            content: "삭제된 댓글입니다",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
         });
       } else {
         // 대댓글이 없으면 하드 딜리트
