@@ -71,6 +71,7 @@ export type TGETMissionsMeRes = {
     id?: string;
     missionNotionPageId?: string;
     missionTitle?: string;
+    detailTags?: string;
     startedAt?: string;
   }[];
 };

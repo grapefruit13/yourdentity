@@ -64,7 +64,7 @@ export interface User {
 export interface Mission {
   id?: string;
   title?: string;
-  detailPageUrl?: string;
+  missionIntroduction?: string;
   isRecruiting?: boolean;
   isUnlimited?: boolean;
   applicationDeadline?: string;
@@ -73,7 +73,7 @@ export interface Mission {
   detailTags?: string;
   targetAudience?: string;
   notes?: string;
-  certificationMethod?: string;
+  certificationMethod?: string[];
   reactionCount?: number;
   faqRelation?: {
     relations?: {
@@ -84,6 +84,8 @@ export interface Mission {
   isReviewRegistered?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  coverImage?: string;
+  pageContent?: Record<string, any>[];
 }
 
 export interface ImageUpload {
