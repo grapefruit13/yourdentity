@@ -21,12 +21,10 @@ import {
   useGetMissionsMe,
 } from "@/hooks/generated/missions-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
+import { Mission } from "@/types/generated/api-schema";
 import type { TGETMissionsReq } from "@/types/generated/missions-types";
 import type { SingleSelectFilterId } from "@/types/mission/filter-types";
-import type {
-  MissionListItem,
-  MissionResponse,
-} from "@/types/mission/mission-types";
+import type { MissionListItem } from "@/types/mission/mission-types";
 import type { SortType } from "@/types/mission/sort-types";
 import { transformMissionsToListItems } from "@/utils/mission/transform-mission";
 import { cn } from "@/utils/shared/cn";
@@ -96,7 +94,7 @@ const Page = () => {
       return [];
     }
 
-    let filteredMissions = missionsResponse.missions as MissionResponse[];
+    let filteredMissions = missionsResponse.missions as Mission[];
 
     // "liked" 필터는 클라이언트 측 필터링 (API에 해당 필터가 없음)
     // TODO: 찜한 미션 필터링은 추후 API 지원 시 서버 측으로 이동
