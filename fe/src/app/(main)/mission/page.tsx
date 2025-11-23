@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Target } from "lucide-react";
@@ -16,6 +16,7 @@ import { InfoIconWithTooltip } from "@/components/shared/ui/info-icon-with-toolt
 import Modal from "@/components/shared/ui/modal";
 import { MoreButton } from "@/components/shared/ui/more-button";
 import { ProgressGauge } from "@/components/shared/ui/progress-gauge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { missionsKeys } from "@/constants/generated/query-keys";
 import {
   QUIT_MISSION_ERROR_MESSAGE,
@@ -35,9 +36,9 @@ import { getNextDay5AM } from "@/utils/shared/date";
 import { showToast } from "@/utils/shared/toast";
 
 /**
- * @description 미션 페이지
+ * @description 미션 페이지 컨텐츠 (useSearchParams 사용)
  */
-const Page = () => {
+const MissionPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -486,4 +487,147 @@ const Page = () => {
   );
 };
 
-export default Page;
+/**
+ * @description 미션 페이지 (Suspense로 감싸기)
+ */
+const PageWrapper = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-full min-h-screen bg-gray-200">
+          <div className="p-5">
+            {/* 헤더 스켈레톤 */}
+            <Skeleton className="h-8 w-64 pb-4" />
+
+            {/* 현재 미션 카드 스켈레톤 */}
+            <div className="mt-4">
+              <div className="flex w-[99%] shrink-0 flex-col gap-1">
+                <div className="w-full rounded-lg bg-white p-4 shadow-sm">
+                  {/* 상단: 시계 아이콘 + 시간 (왼쪽), 휴지통 아이콘 (오른쪽) */}
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Skeleton className="h-4 w-4 rounded" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                    <Skeleton className="h-5 w-5 rounded" />
+                  </div>
+                  {/* 제목 */}
+                  <Skeleton className="mb-2 h-6 w-48" />
+                  {/* 설명 */}
+                  <Skeleton className="mb-4 h-4 w-full" />
+                  {/* 태그 2개 */}
+                  <div className="mb-4 flex gap-2">
+                    <Skeleton className="h-6 w-20 rounded-lg" />
+                    <Skeleton className="h-6 w-20 rounded-lg" />
+                  </div>
+                </div>
+                {/* 미션 인증하기 버튼 */}
+                <Skeleton className="h-12 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* 흰화면 - 미션 진척 현황 */}
+          <div className="h-full rounded-2xl bg-white px-5 py-6">
+            {/* 미션 진척 현황 스켈레톤 */}
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+            <div className="mt-3 grid grid-cols-[1.2fr_1fr] grid-rows-2 gap-2">
+              {/* 왼쪽: 오늘의 미션 인증 현황 (큰 카드, 2행 병합) */}
+              <div className="row-span-2 flex flex-col items-center justify-center rounded-lg border border-gray-200 py-2">
+                <Skeleton className="mb-3 h-4 w-40" />
+                <Skeleton className="mb-2 h-20 w-20 rounded-full" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+              {/* 오른쪽 위: 연속 미션일 */}
+              <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2">
+                <div className="mb-2 flex items-center gap-1">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-3 rounded-full" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-6" />
+                </div>
+              </div>
+              {/* 오른쪽 아래: 진행 미션 수 */}
+              <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2">
+                <div className="mb-2 flex items-center gap-1">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-3 rounded-full" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-6" />
+                </div>
+              </div>
+            </div>
+
+            {/* 친구들이 인증한 미션이에요 섹션 스켈레톤 */}
+            <div className="mt-9 mb-5 flex items-center justify-between">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-5 w-5 rounded" />
+            </div>
+            <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="min-w-[280px] shrink-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                >
+                  {/* 썸네일 이미지 */}
+                  <Skeleton className="mb-3 h-40 w-full rounded-lg" />
+                  {/* 태그 */}
+                  <Skeleton className="mb-2 h-5 w-32 rounded-lg" />
+                  {/* 제목 */}
+                  <Skeleton className="mb-2 h-5 w-full" />
+                  {/* 설명 (2줄) */}
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 추천 미션 섹션 스켈레톤 */}
+            <div className="mt-9 mb-3 flex items-center justify-between">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+            <HorizontalScrollContainer
+              className="-mx-5"
+              containerClassName="flex gap-3 px-5"
+              gradientColor="white"
+            >
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="min-w-[280px] shrink-0 rounded-lg bg-white p-4 shadow-sm"
+                >
+                  {/* 제목 */}
+                  <Skeleton className="mb-2 h-5 w-40" />
+                  {/* 설명 */}
+                  <Skeleton className="mb-3 h-4 w-28" />
+                  {/* 태그 + 좋아요 */}
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-16 rounded-lg" />
+                    <div className="flex items-center gap-1">
+                      <Skeleton className="h-4 w-4 rounded" />
+                      <Skeleton className="h-4 w-6" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </HorizontalScrollContainer>
+          </div>
+        </div>
+      }
+    >
+      <MissionPageContent />
+    </Suspense>
+  );
+};
+
+export default PageWrapper;
