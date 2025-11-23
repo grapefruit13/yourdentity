@@ -276,13 +276,17 @@ const MissionPageContent = () => {
             containerClassName="flex w-[calc(100%)] gap-3"
           >
             {activeMissions.map((mission) => {
-              // TODO: 미션 상세 정보 조회하여 tags 가져오기
-              // 현재는 API 응답에 포함되지 않아 임시로 처리
               const missionNotionPageId = mission.missionNotionPageId || "";
               const missionTitle = mission.missionTitle || "";
               const endTime = mission.startedAt
                 ? getNextDay5AM(mission.startedAt)
                 : new Date();
+              const tags = mission.detailTags
+                ? mission.detailTags
+                    .split(",")
+                    .map((tag) => tag.trim())
+                    .filter(Boolean)
+                : [];
 
               const handleDelete = () => {
                 if (!missionNotionPageId) {
@@ -301,7 +305,7 @@ const MissionPageContent = () => {
                   <div className="w-full">
                     <ActiveMissionCard
                       title={missionTitle}
-                      tags={["temp1", "temp2", "temp3"]}
+                      tags={tags}
                       endTime={endTime}
                       onDelete={handleDelete}
                       onClick={() => {

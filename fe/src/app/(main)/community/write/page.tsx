@@ -10,6 +10,7 @@ import MissionCertificationStatusCard from "@/components/mission/mission-certifi
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
+import { LoadingOverlay } from "@/components/shared/ui/loading-overlay";
 import Modal from "@/components/shared/ui/modal";
 import SubmitButton from "@/components/shared/ui/submit-button";
 import {
@@ -21,6 +22,7 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import { MIN_POST_TEXT_LENGTH } from "@/constants/shared/_post-constants";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
@@ -50,6 +52,26 @@ const WritePageContent = () => {
   const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
+  const {
+    isOpen: isUploading,
+    open: openUploading,
+    close: closeUploading,
+  } = useToggle();
+  const {
+    isOpen: isSuccessModalOpen,
+    open: openSuccessModal,
+    close: closeSuccessModal,
+  } = useToggle();
+  const {
+    isOpen: isErrorModalOpen,
+    open: openErrorModal,
+    close: closeErrorModal,
+  } = useToggle();
+  const [successPostData, setSuccessPostData] = useState<{
+    postId: string;
+    communityId: string;
+  } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   // 인증 체크: 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
   // returnTo를 명시하지 않으면 현재 경로 + 쿼리 파라미터가 자동으로 사용됨
@@ -312,6 +334,8 @@ const WritePageContent = () => {
     let uploadedImagePaths: string[] = [];
     let uploadedFilePaths: string[] = [];
 
+    openUploading();
+
     try {
       // 1. 이미지 업로드 및 검증
       const { imagePaths, imageUrlMap } = await handleImageUpload();
@@ -344,7 +368,7 @@ const WritePageContent = () => {
       );
 
       // 5. 성공 후 처리
-      alert(WRITE_MESSAGES.POST_CREATE_SUCCESS);
+      closeUploading();
       setImageQueue([]);
       setFileQueue([]);
       reset({
@@ -353,21 +377,27 @@ const WritePageContent = () => {
         category: "한끗루틴",
         isPublic: false,
       });
-      router.replace(
-        `${LINK_URL.COMMUNITY_POST}/${postResponse.postId}?communityId=${postResponse.communityId}`
-      );
+
+      // 성공 모달 표시
+      setSuccessPostData({
+        postId: postResponse.postId,
+        communityId: postResponse.communityId,
+      });
+      openSuccessModal();
     } catch (error) {
+      closeUploading();
       // 에러 발생 시 업로드된 파일들 롤백
       if (uploadedImagePaths.length > 0 || uploadedFilePaths.length > 0) {
         await rollbackUploadedFiles(uploadedImagePaths, uploadedFilePaths);
       }
 
-      // 에러가 이미 처리된 경우 (alert 등)는 다시 alert하지 않음
+      // 에러가 이미 처리된 경우 (alert 등)는 다시 처리하지 않음
       if (isHandledError(error)) {
         return;
       }
 
-      alert(WRITE_MESSAGES.POST_CREATE_FAILED);
+      setErrorMessage(WRITE_MESSAGES.POST_CREATE_FAILED);
+      openErrorModal();
     }
   };
   const hasTitle = watch("title").trim();
@@ -641,6 +671,38 @@ const WritePageContent = () => {
           // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
           router.replace(LINK_URL.COMMUNITY);
         }}
+        variant="primary"
+      />
+
+      {/* 로딩 오버레이 */}
+      <LoadingOverlay isLoading={isUploading} message="업로드 중입니다" />
+
+      {/* 성공 모달 */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        title="게시물이 등록되었습니다"
+        description="작성하신 게시물이 성공적으로 등록되었어요."
+        confirmText="확인"
+        onClose={closeSuccessModal}
+        onConfirm={() => {
+          closeSuccessModal();
+          if (successPostData) {
+            router.replace(
+              `${LINK_URL.COMMUNITY_POST}/${successPostData.postId}?communityId=${successPostData.communityId}`
+            );
+          }
+        }}
+        variant="primary"
+      />
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        title="오류가 발생했어요"
+        description={errorMessage}
+        confirmText="확인"
+        onClose={closeErrorModal}
+        onConfirm={closeErrorModal}
         variant="primary"
       />
     </form>

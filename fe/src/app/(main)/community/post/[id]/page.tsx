@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentsSection from "@/components/community/CommentsSection";
@@ -19,6 +19,7 @@ import {
   usePostCommunitiesPostsLikeByTwoIds,
   useDeleteCommunitiesPostsByTwoIds,
 } from "@/hooks/generated/communities-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
@@ -38,7 +39,16 @@ const PostDetailPage = () => {
   const communityId = searchParams.get("communityId") || "";
 
   const queryClient = useQueryClient();
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const {
+    isOpen: isDeleteModalOpen,
+    open: openDeleteModal,
+    close: closeDeleteModal,
+  } = useToggle();
+  const {
+    isOpen: isDeleteSuccessModalOpen,
+    open: openDeleteSuccessModal,
+    close: closeDeleteSuccessModal,
+  } = useToggle();
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const focusCommentInputRef = useRef<(() => void) | null>(null);
@@ -98,21 +108,21 @@ const PostDetailPage = () => {
     });
   }, [post, postId, communityId]);
 
+  // 수정 클릭 핸들러
+  const handleEditClick = useCallback(() => {
+    if (!postId || !communityId) return;
+    router.push(
+      `${LINK_URL.COMMUNITY_POST}/${postId}/edit?communityId=${communityId}`
+    );
+  }, [postId, communityId, router]);
+
+  // 삭제 클릭 핸들러
+  const handleDeleteClick = useCallback(() => {
+    openDeleteModal();
+  }, [openDeleteModal]);
+
   // 탑바 커스텀
   useEffect(() => {
-    // 수정 클릭
-    const handleEditClick = () => {
-      if (!postId || !communityId) return;
-      router.push(
-        `${LINK_URL.COMMUNITY_POST}/${postId}/edit?communityId=${communityId}`
-      );
-    };
-
-    // 삭제 클릭
-    const handleDeleteClick = () => {
-      setIsDeleteModalOpen(true);
-    };
-
     setRightSlot(
       <KebabMenu
         onShare={handleShare}
@@ -120,7 +130,7 @@ const PostDetailPage = () => {
         onDelete={isAuthor ? handleDeleteClick : undefined}
       />
     );
-  }, [setRightSlot, communityId, postId, router, isAuthor, handleShare]);
+  }, [setRightSlot, isAuthor, handleShare, handleEditClick, handleDeleteClick]);
 
   // 삭제 mutation
   const { mutateAsync: deletePostAsync, isPending: isDeleting } =
@@ -145,26 +155,59 @@ const PostDetailPage = () => {
           postId,
         }),
       });
+      // 커뮤니티 목록 조회 쿼리 무효화 (generated 쿼리 키 사용)
       queryClient.invalidateQueries({
-        queryKey: communitiesKeys.getCommunitiesPosts({
-          page: undefined,
-          size: undefined,
-          programType: undefined,
-          programState: undefined,
-        }),
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return (
+            Array.isArray(queryKey) &&
+            queryKey.length > 0 &&
+            queryKey[0] === "communities" &&
+            queryKey[1] === "getCommunitiesPosts"
+          );
+        },
       });
 
-      // 성공 메시지 표시
-      alert(POST_EDIT_CONSTANTS.DELETE_SUCCESS);
+      // 삭제 확인 모달 닫기
+      closeDeleteModal();
 
-      // 커뮤니티 목록으로 이동 (브라우저 히스토리 활용)
-      router.back();
+      // 성공 모달 표시
+      openDeleteSuccessModal();
     } catch (error) {
       debug.error("게시글 삭제 실패:", error);
-    } finally {
-      setIsDeleteModalOpen(false);
+      closeDeleteModal();
     }
-  }, [postId, communityId, deletePostAsync, queryClient, router]);
+  }, [
+    postId,
+    communityId,
+    deletePostAsync,
+    queryClient,
+    closeDeleteModal,
+    openDeleteSuccessModal,
+  ]);
+
+  /**
+   * 삭제 성공 모달 확인 핸들러
+   */
+  const handleDeleteSuccessConfirm = useCallback(() => {
+    closeDeleteSuccessModal();
+
+    // 커뮤니티 목록 조회 쿼리 무효화 (generated 쿼리 키 사용)
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const queryKey = query.queryKey;
+        return (
+          Array.isArray(queryKey) &&
+          queryKey.length > 0 &&
+          queryKey[0] === "communities" &&
+          queryKey[1] === "getCommunitiesPosts"
+        );
+      },
+    });
+
+    // 커뮤니티 목록으로 이동
+    router.replace(LINK_URL.COMMUNITY);
+  }, [closeDeleteSuccessModal, queryClient, router]);
 
   // 좋아요 mutation
   const { mutateAsync: toggleLikeAsync, isPending: isToggleLikePending } =
@@ -366,10 +409,21 @@ const PostDetailPage = () => {
         description="삭제한 게시글은 복구할 수 없어요."
         cancelText="취소"
         confirmText={isDeleting ? "삭제 중..." : "삭제"}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
+        onClose={() => !isDeleting && closeDeleteModal()}
         onConfirm={handleDeleteConfirm}
         confirmDisabled={isDeleting}
         variant="danger"
+      />
+
+      {/* 삭제 성공 모달 */}
+      <Modal
+        isOpen={isDeleteSuccessModalOpen}
+        title="게시글이 삭제되었어요"
+        description={POST_EDIT_CONSTANTS.DELETE_SUCCESS}
+        confirmText="확인"
+        onClose={handleDeleteSuccessConfirm}
+        onConfirm={handleDeleteSuccessConfirm}
+        variant="primary"
       />
     </div>
   );

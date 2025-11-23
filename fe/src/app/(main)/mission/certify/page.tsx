@@ -10,6 +10,7 @@ import MissionCertificationStatusCard from "@/components/mission/mission-certifi
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
+import { LoadingOverlay } from "@/components/shared/ui/loading-overlay";
 import Modal from "@/components/shared/ui/modal";
 import SubmitButton from "@/components/shared/ui/submit-button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -93,7 +94,18 @@ const MissionCertifyPageContent = () => {
     open: openErrorModal,
     close: closeErrorModal,
   } = useToggle();
+  const {
+    isOpen: isUploading,
+    open: openUploading,
+    close: closeUploading,
+  } = useToggle();
+  const {
+    isOpen: isSuccessModalOpen,
+    open: openSuccessModal,
+    close: closeSuccessModal,
+  } = useToggle();
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [successPostId, setSuccessPostId] = useState<string | null>(null);
   const allowLeaveCountRef = useRef(0);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const setTitle = useTopBarStore((state) => state.setTitle);
@@ -117,7 +129,8 @@ const MissionCertifyPageContent = () => {
     const clientId = crypto.randomUUID();
     setImageQueue((prev) => {
       if (prev.length >= MAX_FILES) {
-        alert(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
+        setErrorMessage(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
+        openErrorModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -134,7 +147,8 @@ const MissionCertifyPageContent = () => {
       // 중복 체크
       const merged = dedupeFiles([...prev.map((item) => item.file), file]);
       if (merged.length > MAX_FILES) {
-        alert(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        setErrorMessage(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        openErrorModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -155,13 +169,17 @@ const MissionCertifyPageContent = () => {
 
     // 이미지 업로드 실패 확인
     if (imageQueue.length > 0 && imageFailedCount > 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount));
+      setErrorMessage(
+        WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount)
+      );
+      openErrorModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
     // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
     if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      setErrorMessage(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      openErrorModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
@@ -194,7 +212,8 @@ const MissionCertifyPageContent = () => {
         "img[data-client-id]"
       );
       if (imagesWithClientId.length > 0) {
-        alert(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        setErrorMessage(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        openErrorModal();
         throw new Error("IMAGE_URL_REPLACE_FAILED");
       }
     }
@@ -219,12 +238,14 @@ const MissionCertifyPageContent = () => {
     } = await uploadFileQueue(queueToUse, "파일");
 
     if (queueToUse.length > 0 && fileFailedCount > 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      setErrorMessage(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openErrorModal();
       return null;
     }
 
     if (queueToUse.length > 0 && fileIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      setErrorMessage(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openErrorModal();
       return null;
     }
 
@@ -304,6 +325,8 @@ const MissionCertifyPageContent = () => {
     let uploadedImagePaths: string[] = [];
     let uploadedFilePaths: string[] = [];
 
+    openUploading();
+
     try {
       // 1. 이미지 업로드 및 검증
       const { imagePaths, imageUrlMap } = await handleImageUpload();
@@ -331,7 +354,8 @@ const MissionCertifyPageContent = () => {
         uploadedImagePaths
       );
 
-      // 5. 성공 후 처리 - 미션 홈으로 이동하면서 성공 정보 전달
+      // 5. 성공 후 처리
+      closeUploading();
       setImageQueue([]);
       setFileQueue([]);
       reset({
@@ -339,21 +363,11 @@ const MissionCertifyPageContent = () => {
         content: "",
       });
 
-      // 쿼리 파라미터로 성공 정보 전달
-      const params = new URLSearchParams({
-        success: "true",
-        missionName: selectedMissionName,
-        ...(postId && { postId }),
-      });
-      const targetUrl = `${LINK_URL.MISSION}?${params.toString()}`;
-
-      // pushBlockState로 인한 히스토리 조작 때문에 Next.js router가 클라이언트 라우팅을 완료하지 못함
-      // 네트워크 요청은 성공하지만 화면이 변경되지 않는 문제가 발생
-      // window.location.href를 사용하여 전체 페이지 리로드로 확실하게 네비게이션 수행
-      // (전체 페이지 리로드이므로 popstate 이벤트가 발생하지 않음)
-      // 즉시 실행하여 확실하게 네비게이션 수행
-      window.location.href = targetUrl;
+      // 성공 모달 표시
+      setSuccessPostId(postId);
+      openSuccessModal();
     } catch (error) {
+      closeUploading();
       // 에러 발생 시 업로드된 파일들 롤백
       if (uploadedImagePaths.length > 0 || uploadedFilePaths.length > 0) {
         await rollbackUploadedFiles(uploadedImagePaths, uploadedFilePaths);
@@ -619,6 +633,25 @@ const MissionCertifyPageContent = () => {
         confirmText="확인"
         onClose={closeErrorModal}
         onConfirm={closeErrorModal}
+        variant="primary"
+      />
+
+      {/* 로딩 오버레이 */}
+      <LoadingOverlay isLoading={isUploading} message="업로드 중입니다" />
+
+      {/* 성공 모달 */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        title="미션 인증 완료!"
+        description="미션 인증글이 성공적으로 등록되었어요."
+        confirmText="확인"
+        onClose={closeSuccessModal}
+        onConfirm={() => {
+          closeSuccessModal();
+          if (successPostId) {
+            router.replace(`${LINK_URL.COMMUNITY_MISSION}/${successPostId}`);
+          }
+        }}
         variant="primary"
       />
     </form>
