@@ -64,7 +64,7 @@ const MissionCertifyPageContent = () => {
   const missionId = searchParams.get("missionId") || "";
 
   // 미션 상세 조회 API
-  const { data: missionResponse } = useGetMissionsById({
+  const { data: missionResponse, isError } = useGetMissionsById({
     request: { missionId },
     enabled: !!missionId,
   });
@@ -447,6 +447,14 @@ const MissionCertifyPageContent = () => {
       window.removeEventListener("popstate", handlePopState);
     };
   }, [openLeaveConfirm]);
+
+  // 미션 조회 실패 시 에러 모달 표시
+  useEffect(() => {
+    if (isError) {
+      setErrorMessage("미션 정보를 불러오는 데 실패했어요.");
+      openErrorModal();
+    }
+  }, [isError, openErrorModal]);
 
   // 미션 ID가 없으면 미션 홈으로 리다이렉트
   useEffect(() => {
