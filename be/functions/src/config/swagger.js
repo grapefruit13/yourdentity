@@ -311,9 +311,12 @@ const options = {
               description: "참고 사항",
             },
             certificationMethod: {
-              type: "string",
+              type: "array",
               nullable: true,
-              description: "인증 방법",
+              description: "인증 방법 (Multi-select)",
+              items: {
+                type: "string",
+              },
             },
             reactionCount: {
               type: "number",
