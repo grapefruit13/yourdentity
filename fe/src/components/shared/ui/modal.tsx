@@ -147,7 +147,7 @@ const Modal = ({
         {children && <div className="mb-6">{children}</div>}
 
         {/* 버튼들 */}
-        <div className={cn("mt-6 flex gap-3", !cancelText && "justify-end")}>
+        <div className="mt-6 flex gap-3">
           {/* 취소 버튼 - cancelText가 있을 때만 표시 */}
           {cancelText && (
             <button
@@ -167,7 +167,7 @@ const Modal = ({
             disabled={confirmDisabled}
             className={cn(
               "bg-main-600 hover:bg-main-700 rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300",
-              cancelText ? "flex-1 grow" : "px-6"
+              "flex-1 grow"
             )}
             aria-label={confirmText}
           >
