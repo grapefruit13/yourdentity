@@ -3,14 +3,17 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { User } from "lucide-react";
 import CommentsSection from "@/components/community/CommentsSection";
 import KebabMenu from "@/components/shared/kebab-menu";
+import { PostContent } from "@/components/shared/post-content";
+import { PostDetailError } from "@/components/shared/post-detail-error";
+import { PostDetailSkeleton } from "@/components/shared/post-detail-skeleton";
+import { PostProfileSection } from "@/components/shared/post-profile-section";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { POST_EDIT_CONSTANTS } from "@/constants/community/_write-constants";
 import { communitiesKeys } from "@/constants/generated/query-keys";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   useGetCommunitiesPostsByTwoIds,
   usePostCommunitiesPostsLikeByTwoIds,
@@ -19,9 +22,8 @@ import {
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
-import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
-import { shareContent } from "@/utils/shared/share";
+import { sharePost } from "@/utils/shared/post-share";
 
 /**
  * @description 게시글 상세 페이지
@@ -37,7 +39,6 @@ const PostDetailPage = () => {
 
   const queryClient = useQueryClient();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [imageLoadError, setImageLoadError] = useState(false);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const focusCommentInputRef = useRef<(() => void) | null>(null);
@@ -76,12 +77,6 @@ const PostDetailPage = () => {
     []
   );
   const isLiked = post?.isLiked ?? false;
-  const likesCount = post?.likesCount ?? 0;
-
-  // postData 변경 시 이미지 에러 상태 리셋
-  useEffect(() => {
-    setImageLoadError(false);
-  }, [postData]);
 
   // 작성자 여부 확인 (API 응답에서 isAuthor 필드 사용)
   // TODO: CommunityPost 타입에 isAuthor 필드가 추가되면 타입 단언 제거
@@ -92,26 +87,14 @@ const PostDetailPage = () => {
   const handleShare = useCallback(async () => {
     if (!post) return;
 
-    const shareTitle = post.title || "게시글";
-    const shareUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/community/post/${postId}${communityId ? `?communityId=${communityId}` : ""}`
-        : "";
-
-    // content가 문자열인 경우에만 텍스트 추출 (실제로는 HTML 문자열로 사용됨)
     const contentString = post.content as unknown as string | undefined;
-    const contentText =
-      contentString && typeof contentString === "string"
-        ? contentString.replace(/<[^>]*>/g, "").substring(0, 100)
-        : "";
-    const shareText = contentText
-      ? `${shareTitle}\n${contentText}...`
-      : shareTitle;
-
-    await shareContent({
-      title: shareTitle,
-      text: shareText,
-      url: shareUrl,
+    await sharePost({
+      title: post.title,
+      content: contentString,
+      postId,
+      sharePath: LINK_URL.COMMUNITY_POST,
+      queryParams: communityId ? `?communityId=${communityId}` : "",
+      defaultTitle: "게시글",
     });
   }, [post, postId, communityId]);
 
@@ -120,7 +103,9 @@ const PostDetailPage = () => {
     // 수정 클릭
     const handleEditClick = () => {
       if (!postId || !communityId) return;
-      router.push(`/community/post/${postId}/edit?communityId=${communityId}`);
+      router.push(
+        `${LINK_URL.COMMUNITY_POST}/${postId}/edit?communityId=${communityId}`
+      );
     };
 
     // 삭제 클릭
@@ -249,72 +234,23 @@ const PostDetailPage = () => {
 
   // 로딩 중 - 스켈레톤 표시
   if (isLoading || !communityId) {
-    return (
-      <div className="min-h-screen bg-white">
-        {/* 헤더 스켈레톤 */}
-        <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
-          <Skeleton className="h-6 w-16" />
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-5 w-5" />
-            <Skeleton className="h-5 w-5" />
-            <Skeleton className="h-5 w-5" />
-          </div>
-        </div>
-
-        {/* 메인 콘텐츠 스켈레톤 */}
-        <div className="px-4 py-6 pb-26">
-          {/* 카테고리 스켈레톤 */}
-          <Skeleton className="mb-2 h-4 w-20" />
-
-          {/* 제목 스켈레톤 */}
-          <Skeleton className="mb-4 h-9 w-3/4" />
-
-          {/* 프로필 섹션 스켈레톤 */}
-          <div className="mb-6 flex items-center">
-            <Skeleton className="mr-3 h-8 w-8 rounded-full" />
-            <div>
-              <Skeleton className="mb-1 h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
-
-          {/* 내용 스켈레톤 */}
-          <div className="mb-6 space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-64 w-full rounded-lg" />
-          </div>
-        </div>
-      </div>
-    );
+    return <PostDetailSkeleton headerButtonCount={3} showCategory={true} />;
   }
 
   // 에러 처리 또는 communityId가 없는 경우
   if (error || !postData || !communityId) {
+    const errorMessage = error
+      ? "포스트를 불러오는 중 오류가 발생했습니다."
+      : !communityId
+        ? "커뮤니티 정보를 찾을 수 없습니다."
+        : "포스트를 찾을 수 없습니다.";
+
     return (
-      <div className="min-h-screen bg-white">
-        <div className="flex flex-col items-center justify-center py-8">
-          <div className="mb-4 text-gray-500">
-            {error
-              ? "포스트를 불러오는 중 오류가 발생했습니다."
-              : !communityId
-                ? "커뮤니티 정보를 찾을 수 없습니다."
-                : "포스트를 찾을 수 없습니다."}
-          </div>
-          {error && (
-            <div className="mb-4 text-sm text-gray-400">
-              {error.message || "알 수 없는 오류"}
-            </div>
-          )}
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 text-sm text-blue-600 underline hover:text-blue-800"
-          >
-            커뮤니티로 돌아가기
-          </button>
-        </div>
-      </div>
+      <PostDetailError
+        error={error || undefined}
+        notFoundMessage={errorMessage}
+        backButtonText="커뮤니티로 돌아가기"
+      />
     );
   }
 
@@ -341,67 +277,16 @@ const PostDetailPage = () => {
         </Typography>
 
         {/* 프로필 섹션 */}
-        <div className="mb-6 flex items-center border-b border-gray-200 pb-5">
-          {post?.profileImageUrl && !imageLoadError ? (
-            <img
-              src={post.profileImageUrl}
-              alt={post?.author || "프로필 이미지"}
-              className="mr-3 h-8 w-8 rounded-full object-cover"
-              onError={() => setImageLoadError(true)}
-            />
-          ) : (
-            <User
-              className="text-main-600 mr-3 h-8 w-8 rounded-full"
-              strokeWidth={1.5}
-            />
-          )}
-          <div>
-            <div className="flex items-center gap-1">
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="text-gray-950"
-              >
-                {post?.author || "익명"}
-              </Typography>
-            </div>
-            <div className="flex items-center gap-1">
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="text-gray-500"
-              >
-                {post?.createdAt && getTimeAgo(post.createdAt)}
-              </Typography>
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="text-gray-500"
-              >
-                조회 {post?.viewCount}
-              </Typography>
-            </div>
-          </div>
-        </div>
+        <PostProfileSection
+          profileImageUrl={post?.profileImageUrl}
+          author={post?.author}
+          createdAt={post?.createdAt}
+          viewCount={post?.viewCount}
+        />
 
         {/* 내용 */}
         <div className="py-8">
-          {post?.content && (
-            <div
-              className={cn(
-                "prose prose-sm prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2",
-                "prose-img:max-w-full prose-img:h-auto prose-img:rounded-lg prose-img:block prose-img:mx-auto prose-img:max-h-[400px] prose-img:object-contain",
-                "prose-a:text-blue-500 prose-a:underline prose-a:cursor-pointer prose-a:break-all",
-                "w-full max-w-none overflow-x-hidden break-words whitespace-pre-wrap",
-                "[&_span[data-attachment='file']]:inline-flex [&_span[data-attachment='file']]:items-center [&_span[data-attachment='file']]:gap-1 [&_span[data-attachment='file']]:select-none",
-                "[&_span[data-heading='1']]:text-[22px] [&_span[data-heading='1']]:leading-snug [&_span[data-heading='1']]:font-bold",
-                "[&_span[data-heading='2']]:text-[16px] [&_span[data-heading='2']]:leading-snug [&_span[data-heading='2']]:font-bold",
-                "[&_span[data-heading='3']]:text-[16px] [&_span[data-heading='3']]:leading-snug [&_span[data-heading='3']]:font-medium",
-                "[&_span[data-heading='4']]:text-[14px] [&_span[data-heading='4']]:leading-snug [&_span[data-heading='4']]:font-medium"
-              )}
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          )}
+          {post?.content && <PostContent content={post.content} />}
         </div>
 
         {/* 태그 섹션 */}
