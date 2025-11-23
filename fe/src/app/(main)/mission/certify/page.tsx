@@ -268,14 +268,14 @@ const MissionCertifyPageContent = () => {
             }
 
             // 미션 관련 쿼리 무효화
-            const queryKeysToInvalidate = [
-              missionsKeys.getMissionsPosts({}),
-              missionsKeys.getMissionsMe({}),
-              missionsKeys.getMissionsStats,
-            ];
-
-            queryKeysToInvalidate.forEach((queryKey) => {
-              queryClient.invalidateQueries({ queryKey });
+            queryClient.invalidateQueries({
+              queryKey: missionsKeys.getMissionsPosts({}),
+            });
+            queryClient.invalidateQueries({
+              queryKey: missionsKeys.getMissionsMe({}),
+            });
+            queryClient.invalidateQueries({
+              queryKey: missionsKeys.getMissionsStats,
             });
 
             resolve(postId);
@@ -342,8 +342,11 @@ const MissionCertifyPageContent = () => {
       });
       const targetUrl = `${LINK_URL.MISSION}?${params.toString()}`;
 
-      // pushBlockState로 인한 히스토리 조작을 우회하기 위해 window.location.href 사용
-      // (router.replace는 히스토리 조작과 충돌할 수 있음)
+      // pushBlockState로 인한 히스토리 조작 때문에 Next.js router가 클라이언트 라우팅을 완료하지 못함
+      // 네트워크 요청은 성공하지만 화면이 변경되지 않는 문제가 발생
+      // window.location.href를 사용하여 전체 페이지 리로드로 확실하게 네비게이션 수행
+      // (전체 페이지 리로드이므로 popstate 이벤트가 발생하지 않음)
+      // 즉시 실행하여 확실하게 네비게이션 수행
       window.location.href = targetUrl;
     } catch (error) {
       // 에러 발생 시 업로드된 파일들 롤백
@@ -459,7 +462,7 @@ const MissionCertifyPageContent = () => {
   // 미션 ID가 없으면 미션 홈으로 리다이렉트
   useEffect(() => {
     if (!missionId) {
-      router.push(LINK_URL.MISSION);
+      router.replace(LINK_URL.MISSION);
     }
   }, [missionId, router]);
 
