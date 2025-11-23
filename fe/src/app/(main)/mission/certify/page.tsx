@@ -305,24 +305,24 @@ const MissionCertifyPageContent = () => {
       uploadedImagePaths = imagePaths;
 
       // 2. 이미지 URL 교체 및 검증
-      const contentWithUrls = handleImageUrlReplacement(
+      const contentWithImageUrls = handleImageUrlReplacement(
         currentContent,
         imageUrlMap
       );
 
       // 3. 파일 업로드 및 URL 교체
-      const fileUploadResult = await handleFileUpload(contentWithUrls);
+      const fileUploadResult = await handleFileUpload(contentWithImageUrls);
       if (!fileUploadResult) {
         // 파일 업로드 실패 시 alert는 이미 표시되었으므로 여기서 종료
         return;
       }
-      const { filePaths } = fileUploadResult;
+      const { filePaths, content: contentWithFileUrls } = fileUploadResult;
       uploadedFilePaths = filePaths;
 
       // 4. 미션 인증글 등록
       const postId = await handleCreateMissionPost(
         currentTitle,
-        contentWithUrls,
+        contentWithFileUrls,
         uploadedImagePaths
       );
 
