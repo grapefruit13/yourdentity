@@ -27,10 +27,12 @@ interface HorizontalScrollContainerProps {
   className?: string;
   /** 스크롤 컨테이너의 추가 클래스명 */
   containerClassName?: string;
-  /** 한 번에 스크롤할 거리 (px). 기본값: 컨테이너 너비의 80% */
-  scrollOffset?: number;
   /** 그라데이션 배경색 (Tailwind 색상 클래스명, 예: "gray-200", "white"). 기본값: "gray-200" */
   gradientColor?: string;
+  /** 왼쪽 버튼 컨테이너의 위치 클래스명 (예: "-left-[10px]", "left-0"). 기본값: "-left-[10px]" */
+  leftButtonPositionClassName?: string;
+  /** 오른쪽 버튼 컨테이너의 위치 클래스명 (예: "-right-[10px]", "right-0"). 기본값: "-right-[10px]" */
+  rightButtonPositionClassName?: string;
 }
 
 /**
@@ -44,8 +46,9 @@ const HorizontalScrollContainer = ({
   children,
   className,
   containerClassName,
-  scrollOffset,
   gradientColor = "gray-200",
+  leftButtonPositionClassName = "left-[10px]",
+  rightButtonPositionClassName = "right-[10px]",
 }: HorizontalScrollContainerProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftButton, setShowLeftButton] = useState(false);
@@ -113,16 +116,6 @@ const HorizontalScrollContainer = ({
       const scrollContainer = scrollContainerRef.current;
       if (!scrollContainer) return;
 
-      if (scrollOffset !== undefined) {
-        // scrollOffset이 명시적으로 제공된 경우 사용
-        const offset = direction === "right" ? scrollOffset : -scrollOffset;
-        scrollContainer.scrollBy({
-          left: offset,
-          behavior: "smooth",
-        });
-        return;
-      }
-
       // 현재 스크롤 위치
       const currentScroll = scrollContainer.scrollLeft;
       const cardWidth = getCardWidth();
@@ -148,7 +141,7 @@ const HorizontalScrollContainer = ({
         behavior: "smooth",
       });
     },
-    [scrollOffset, getCardWidth]
+    [getCardWidth]
   );
 
   const handleScrollLeft = () => {
@@ -173,7 +166,12 @@ const HorizontalScrollContainer = ({
 
       {/* 왼쪽 그라데이션 및 버튼 */}
       {showLeftButton && (
-        <div className="pointer-events-none absolute top-0 left-0 z-10 flex h-full items-center">
+        <div
+          className={cn(
+            "pointer-events-none absolute top-0 z-10 flex h-full items-center",
+            leftButtonPositionClassName
+          )}
+        >
           {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보 */}
           <div className="relative h-full w-12">
             {/* 그라데이션 배경 */}
@@ -199,7 +197,12 @@ const HorizontalScrollContainer = ({
 
       {/* 오른쪽 그라데이션 및 버튼 */}
       {showRightButton && (
-        <div className="pointer-events-none absolute top-0 right-0 z-10 flex h-full items-center">
+        <div
+          className={cn(
+            "pointer-events-none absolute top-0 z-10 flex h-full items-center",
+            rightButtonPositionClassName
+          )}
+        >
           {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보 */}
           <div className="relative h-full w-12">
             {/* 그라데이션 배경 */}
