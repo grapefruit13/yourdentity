@@ -8,7 +8,8 @@ const {
   getNumberValue,
   getUrlValue,
   getRelationValues,
-  formatNotionBlocks
+  formatNotionBlocks,
+  getCoverImageUrl
 } = require('../utils/notionHelper');
 
 // 상수 정의
@@ -36,8 +37,8 @@ const ERROR_CODES = {
 
 // Notion 필드명 상수 (실제 노션 DB 구조 반영)
 const NOTION_FIELDS = {
-  TITLE: "제목",                                    // Title
-  DETAIL_PAGE: "상세페이지",                        // 노션 페이지 (URL)
+  TITLE: "상세페이지(노션)",                        // Title (페이지 제목으로 사용)
+  MISSION_INTRODUCTION: "미션 소개",                // Text
   IS_RECRUITING: "현재 모집 여부",                  // Checkbox
   CATEGORY: "카테고리",                             // Multi-select
   DETAIL_TAGS: "상세 태그",                         // Text
@@ -46,12 +47,12 @@ const NOTION_FIELDS = {
   CERTIFICATION_DEADLINE: "인증 마감",              // Date
   TARGET_AUDIENCE: "참여 대상",                     // Text
   NOTES: "참고 사항",                               // Text
-  CERTIFICATION_METHOD: "인증 방법",                // Text
+  CERTIFICATION_METHOD: "인증방법(미션상세)",       // Multi-select
   FAQ: "(미션) 자주 묻는 질문이에요!",              // Relation (Q&A 연동)
   REACTION_COUNT: "반응 수",                        // Number (찜 기능)
-  IS_REVIEW_REGISTERED: "미션 후기 등록 여부",      // Checkbox
+  IS_REVIEW_REGISTERED: "미션 인증글 등록 여부",    // Checkbox
   LAST_EDITED_TIME: "최근 수정 날짜",               // Date
-  LINK_URL: "바로 보러가기",                        // URL
+  LINK_URL: "바로 보러 가기",                       // URL
 };
 
 class NotionMissionService {
@@ -79,7 +80,7 @@ class NotionMissionService {
       notionVersion: NOTION_VERSION,
     });
 
-    this.missionDataSource = NOTION_MISSION_DB_ID;
+    this.missionDataSourceId = NOTION_MISSION_DB_ID;
   }
 
   /**
@@ -90,9 +91,9 @@ class NotionMissionService {
    */
   async getCategories() {
     try {
-      // 전체 미션 조회
+      // 전체 미션 조회 (신 API - dataSources.query)
       const response = await this.notion.dataSources.query({
-        data_source_id: this.missionDataSource,
+        data_source_id: this.missionDataSourceId,
         page_size: MAX_PAGE_SIZE,
       });
 
@@ -162,6 +163,14 @@ class NotionMissionService {
       // 필터 조건
       const filterConditions = [];
 
+      // 기본 필터: 현재 모집 여부가 true인 미션만 조회
+      filterConditions.push({
+        property: NOTION_FIELDS.IS_RECRUITING,
+        checkbox: {
+          equals: true
+        }
+      });
+
       // 카테고리 필터 (Multi-select 중 포함 여부)
       if (filters.category) {
         filterConditions.push({
@@ -172,16 +181,14 @@ class NotionMissionService {
         });
       }
 
-      // 필터 조건이 있으면 적용
-      if (filterConditions.length > 0) {
-        queryBody.filter = {
-          and: filterConditions
-        };
-      }
+      // 필터 조건 적용 (항상 최소 1개 이상: IS_RECRUITING 필터)
+      queryBody.filter = {
+        and: filterConditions
+      };
 
-      // Notion API 호출
+      // Notion API 호출 (신 API - dataSources.query)
       const data = await this.notion.dataSources.query({
-        data_source_id: this.missionDataSource,
+        data_source_id: this.missionDataSourceId,
         ...queryBody
       });
       
@@ -303,18 +310,14 @@ class NotionMissionService {
   formatMissionData(page, includeDetails = false) {
     const props = page.properties;
     
-    const dynamicTitlePropName = Object.entries(props).find(
-      ([, v]) => v && v.type === 'title'
-    )?.[0];
-    const resolvedTitle =
-      dynamicTitlePropName && props[dynamicTitlePropName]
-        ? getTitleValue(props[dynamicTitlePropName])
-        : getTitleValue(props[NOTION_FIELDS.TITLE]);
+    // 페이지 제목 가져오기: "상세페이지(노션)" 필드(title 타입) 사용
+    const resolvedTitle = getTitleValue(props[NOTION_FIELDS.TITLE]) || '';
 
     const missionData = {
       id: page.id,
       title: resolvedTitle || "",
-      detailPageUrl: getUrlValue(props[NOTION_FIELDS.DETAIL_PAGE]),
+      missionIntroduction: getTextContent(props[NOTION_FIELDS.MISSION_INTRODUCTION]),
+      coverImage: getCoverImageUrl(page), // 노션 페이지 커버 이미지 (unsplash 등)
       
       // 모집 상태
       isRecruiting: getCheckboxValue(props[NOTION_FIELDS.IS_RECRUITING]),
@@ -329,7 +332,7 @@ class NotionMissionService {
       // 내용
       targetAudience: getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
       notes: getTextContent(props[NOTION_FIELDS.NOTES]),
-      certificationMethod: getTextContent(props[NOTION_FIELDS.CERTIFICATION_METHOD]),
+      certificationMethod: getMultiSelectNames(props[NOTION_FIELDS.CERTIFICATION_METHOD]), // Multi-select
       
       // 통계 & 관계
       reactionCount: getNumberValue(props[NOTION_FIELDS.REACTION_COUNT]) || 0, // 찜 수
