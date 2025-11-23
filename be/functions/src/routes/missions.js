@@ -281,6 +281,10 @@ router.get("/", optionalAuth, missionController.getMissions);
  *                             type: string
  *                           missionTitle:
  *                             type: string
+ *                           detailTags:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 미션 태그
  *                           startedAt:
  *                             type: string
  *                             format: date-time
@@ -291,6 +295,7 @@ router.get("/", optionalAuth, missionController.getMissions);
  *                   - id: "mission-test-user_2a645f52-4cd0-803b-8da5-e9fb9d16d263"
  *                     missionNotionPageId: "2a645f52-4cd0-803b-8da5-e9fb9d16d263"
  *                     missionTitle: "친구와 함께 요리하기"
+ *                     detailTags: "일상, 요리"
  *                     startedAt: "2025-11-21T10:13:31.809Z"
  *       401:
  *         description: 인증 필요

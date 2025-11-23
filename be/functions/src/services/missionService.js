@@ -90,6 +90,7 @@ class MissionService {
         userId,
         missionNotionPageId: missionId,
         missionTitle: mission.title || null,
+        detailTags: mission.detailTags || null, // 미션 태그 저장
         status: MISSION_STATUS.IN_PROGRESS,
         startedAt: now,
         lastActivityAt: now,
@@ -249,6 +250,7 @@ class MissionService {
         id: doc.id,
         missionNotionPageId: data.missionNotionPageId,
         missionTitle: data.missionTitle,
+        detailTags: data.detailTags || null, // 저장된 태그 사용
         startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
       });
     }
