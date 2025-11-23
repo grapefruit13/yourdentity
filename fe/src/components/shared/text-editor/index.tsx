@@ -752,10 +752,18 @@ const TextEditor = ({
    * 이미지 업로드 버튼 클릭 처리
    */
   const handleImageClick = () => {
-    // 에디터가 비어있거나 포커스가 없을 수 있으므로 내용 시작 위치로 커서 설정 후 선택 영역 저장
+    // 현재 커서 위치를 저장 (이미 선택 영역이 있으면 그대로 유지)
     contentRef.current?.focus();
     if (contentRef.current) {
-      setCursorPosition(contentRef.current, false);
+      const selection = window.getSelection();
+      // 현재 선택 영역이 없거나 에디터 외부에 있으면 시작 위치로 이동
+      if (
+        !selection ||
+        selection.rangeCount === 0 ||
+        !contentRef.current.contains(selection.anchorNode)
+      ) {
+        setCursorPosition(contentRef.current, false);
+      }
       saveSelection();
     }
     imageInputRef.current?.click();
@@ -765,9 +773,18 @@ const TextEditor = ({
    * 파일 업로드 버튼 클릭 처리
    */
   const handleFileClick = () => {
+    // 현재 커서 위치를 저장 (이미 선택 영역이 있으면 그대로 유지)
     contentRef.current?.focus();
     if (contentRef.current) {
-      setCursorPosition(contentRef.current, false);
+      const selection = window.getSelection();
+      // 현재 선택 영역이 없거나 에디터 외부에 있으면 시작 위치로 이동
+      if (
+        !selection ||
+        selection.rangeCount === 0 ||
+        !contentRef.current.contains(selection.anchorNode)
+      ) {
+        setCursorPosition(contentRef.current, false);
+      }
       saveSelection();
     }
     fileInputRef.current?.click();
@@ -779,14 +796,25 @@ const TextEditor = ({
    */
   const insertImageToEditor = (imageUrl: string, clientId?: string) => {
     contentRef.current?.focus();
-    // 파일 선택 과정에서 선택영역이 사라진 경우 시작 위치로 커서 보정
+
+    // 저장된 선택 영역 복원 시도
+    restoreSelection();
+
+    // 복원된 선택 영역이 유효한지 확인
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      (contentRef.current &&
+        (!contentRef.current.contains(selection.anchorNode) ||
+          !contentRef.current.contains(selection.focusNode)))
+    ) {
+      // 선택 영역이 없거나 에디터 외부에 있으면 에디터 끝으로 이동
       if (contentRef.current) {
-        setCursorPosition(contentRef.current, false);
+        setCursorPosition(contentRef.current, true);
       }
     }
-    restoreSelection();
+
     const clientAttr = clientId ? ` data-client-id="${clientId}"` : "";
     const img = `<img src="${imageUrl}" alt="업로드된 이미지" class="max-w-full h-auto w-auto block mx-auto"${clientAttr} />`;
     const ok = document.execCommand("insertHTML", false, img);
@@ -808,13 +836,24 @@ const TextEditor = ({
     clientId?: string
   ) => {
     contentRef.current?.focus();
+
+    // 저장된 선택 영역 복원 시도
+    restoreSelection();
+
+    // 복원된 선택 영역이 유효한지 확인
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      (contentRef.current &&
+        (!contentRef.current.contains(selection.anchorNode) ||
+          !contentRef.current.contains(selection.focusNode)))
+    ) {
+      // 선택 영역이 없거나 에디터 외부에 있으면 에디터 끝으로 이동
       if (contentRef.current) {
-        setCursorPosition(contentRef.current, false);
+        setCursorPosition(contentRef.current, true);
       }
     }
-    restoreSelection();
 
     // 파일 첨부 블록을 원자적으로 다루기 위해 컨테이너로 래핑하고 편집 불가 처리
     const fileAttr = clientId ? ` data-file-id="${clientId}"` : "";
