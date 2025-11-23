@@ -384,6 +384,8 @@ const ProfileEditPage = () => {
       uploadedImagePath = filePath;
 
       // 4. 프로필 업데이트 (updateOnboarding API 호출)
+      const isOnboarding =
+        !initialNickname || initialNickname.trim().length === 0;
       await patchOnboardingAsync(
         {
           data: {
@@ -395,8 +397,8 @@ const ProfileEditPage = () => {
         {
           onSuccess: () => {
             invalidateUserQueries();
-            alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_SUCCESS);
-            router.push(LINK_URL.MY_PAGE);
+            // 온보딩 완료 시 홈으로, 일반 편집 시 마이페이지로 이동
+            router.push(isOnboarding ? LINK_URL.HOME : LINK_URL.MY_PAGE);
           },
         }
       );
