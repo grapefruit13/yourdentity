@@ -186,7 +186,7 @@ const Page = () => {
     <div className="min-h-screen bg-white pt-12">
       {/* 메인 이미지 */}
       <DetailImage
-        imageUrl={missionData.detailPageUrl || "/imgs/mockup.jpg"}
+        imageUrl={missionData.coverImage || "/imgs/mockup.jpg"}
         alt={missionData.title || "미션 이미지"}
       />
       <div className="flex flex-col gap-2 p-5 pb-12">
