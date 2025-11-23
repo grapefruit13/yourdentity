@@ -270,6 +270,13 @@ class StoreService {
   }
 
   /**
+   * @typedef {Object} RollbackInfo
+   * @property {string[]} processedDocIds - 만료 처리한 문서 ID 배열
+   * @property {string[]} createdDocIds - 생성한 잔여 이력 문서 ID 배열
+   * @property {string|null} deductDocId - 차감 이력 문서 ID
+   */
+
+  /**
    * FIFO 방식으로 포인트 차감 (내부 메서드)
    * @private
    * @param {string} userId - 사용자 ID
@@ -277,10 +284,17 @@ class StoreService {
    * @param {string} reason - 차감 사유
    * @param {Object} transaction - Firestore 트랜잭션 객체
    * @param {Object} userRef - 사용자 문서 참조 (rewards 필드 업데이트용)
-   * @return {Promise<Object>} rollbackInfo - 롤백 정보 객체
+   * @return {Promise<RollbackInfo>} 롤백 정보 객체
    */
   async _deductRewardsFIFO(userId, totalPoints, reason, transaction, userRef) {
     // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      const error = new Error("유효하지 않은 사용자 ID입니다.");
+      error.code = "INVALID_INPUT";
+      error.statusCode = 400;
+      throw error;
+    }
+
     if (!totalPoints || totalPoints <= 0) {
       const error = new Error("차감할 포인트는 0보다 커야 합니다.");
       error.code = "INVALID_INPUT";
@@ -288,7 +302,7 @@ class StoreService {
       throw error;
     }
 
-    // 롤백 정보 추적용 객체
+    /** @type {RollbackInfo} */
     const rollbackInfo = {
       processedDocIds: [],  // isProcessed: true로 변경한 문서 ID들
       createdDocIds: [],    // 새로 생성한 잔여 이력 문서 ID들
@@ -303,18 +317,27 @@ class StoreService {
         .where("changeType", "==", "add")
         .where("isProcessed", "==", false);
 
-    const availableHistorySnapshot = await transaction.get(availableHistoryQuery);
+    let availableHistorySnapshot;
+    try {
+      availableHistorySnapshot = await transaction.get(availableHistoryQuery);
+    } catch (queryError) {
+      console.error(`[StoreService] 포인트 이력 조회 실패: ${queryError.message}`);
+      const error = new Error("포인트 이력 조회 중 오류가 발생했습니다.");
+      error.code = "QUERY_ERROR";
+      error.statusCode = 500;
+      throw error;
+    }
 
-    // 2. expiresAt 기반 FIFO 정렬
+    // 2. expiresAt 기반 FIFO 정렬 (성능 최적화: 단일 순회)
     const now = new Date();
     const availableHistory = availableHistorySnapshot.docs
-        .map((doc) => {
+        .reduce((acc, doc) => {
           const data = doc.data();
 
           // expiresAt이 없으면 스킵 (필수 필드)
           if (!data.expiresAt) {
             console.warn(`[StoreService] rewardsHistory에 expiresAt이 없습니다: ${doc.id}`);
-            return null;
+            return acc;
           }
 
           // Firestore Timestamp를 Date로 변환
@@ -323,18 +346,24 @@ class StoreService {
           // expiresAt이 유효한 날짜인지 확인
           if (isNaN(expiresAt.getTime())) {
             console.warn(`[StoreService] rewardsHistory에 유효하지 않은 expiresAt: ${doc.id}`);
-            return null;
+            return acc;
           }
 
-          return {
+          // amount 검증 및 만료 체크
+          const amount = data.amount || 0;
+          if (amount <= 0 || expiresAt <= now) {
+            return acc;
+          }
+
+          acc.push({
             id: doc.id,
             ...data,
             expiresAt: expiresAt,
             expiresAtTimestamp: data.expiresAt, // 원본 Timestamp 보관 (나중에 사용)
-          };
-        })
-        .filter((item) => item !== null && item.amount > 0) // null 제거 및 amount가 0보다 큰 것만
-        .filter((item) => item.expiresAt > now) // 만료되지 않은 것만
+          });
+
+          return acc;
+        }, [])
         .sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime()); // 만료일이 가까운 순으로 정렬
 
     // 3. 사용 가능한 총 포인트 계산
@@ -377,26 +406,48 @@ class StoreService {
         const newHistoryRef = historyRef.doc();
         // 원본 Timestamp를 그대로 사용 (이미 Firestore Timestamp 객체)
         const createdAtTimestamp = historyItem.createdAt;
-        const expiresAtTimestamp = historyItem.expiresAtTimestamp || historyItem.expiresAt;
+        const expiresAtTimestamp = historyItem.expiresAtTimestamp;
 
-        // 필수 필드 검증
+        // 필수 필드 검증 (더 상세한 검증)
         if (!createdAtTimestamp || !expiresAtTimestamp) {
-          console.error(`[StoreService] createdAt 또는 expiresAt이 없습니다: ${historyItem.id}`);
+          console.error(`[StoreService] createdAt 또는 expiresAt이 없습니다: ${historyItem.id}`, {
+            hasCreatedAt: !!historyItem.createdAt,
+            hasExpiresAtTimestamp: !!historyItem.expiresAtTimestamp,
+            historyItemKeys: Object.keys(historyItem),
+          });
           const error = new Error("포인트 차감 처리 중 데이터 오류가 발생했습니다.");
           error.code = "DEDUCTION_ERROR";
           error.statusCode = 500;
           throw error;
         }
 
-        transaction.set(newHistoryRef, {
+        // Timestamp 타입 검증 (Firestore Timestamp 객체인지 확인)
+        if (!createdAtTimestamp.toDate || !expiresAtTimestamp.toDate) {
+          console.error(`[StoreService] createdAt 또는 expiresAt이 Timestamp 타입이 아닙니다: ${historyItem.id}`, {
+            createdAtType: typeof createdAtTimestamp,
+            expiresAtType: typeof expiresAtTimestamp,
+          });
+          const error = new Error("포인트 차감 처리 중 데이터 타입 오류가 발생했습니다.");
+          error.code = "DEDUCTION_ERROR";
+          error.statusCode = 500;
+          throw error;
+        }
+
+        const newHistoryData = {
           amount: itemAmount - remainingDeduct,
           changeType: "add",
           reason: historyItem.reason || "",
           isProcessed: false,
           createdAt: createdAtTimestamp, // 원본 createdAt 유지
           expiresAt: expiresAtTimestamp, // 원본 expiresAt 유지
-          actionKey: historyItem.actionKey,
-        });
+        };
+
+        // actionKey가 있는 경우에만 추가 (undefined 방지)
+        if (historyItem.actionKey !== undefined && historyItem.actionKey !== null) {
+          newHistoryData.actionKey = historyItem.actionKey;
+        }
+
+        transaction.set(newHistoryRef, newHistoryData);
         rollbackInfo.createdDocIds.push(newHistoryRef.id);  // 롤백 정보 추가
 
         remainingDeduct = 0;
@@ -442,11 +493,16 @@ class StoreService {
    * @param {string} userId - 사용자 ID
    * @param {number} totalPoints - 복구할 포인트
    * @param {string} productName - 상품명
-   * @param {Object} rollbackInfo - 롤백 정보 (선택적)
+   * @param {RollbackInfo|null} rollbackInfo - 롤백 정보 (선택적)
    * @return {Promise<void>}
    */
   async _rollbackRewardsDeduction(userId, totalPoints, productName, rollbackInfo = null) {
     // 입력 검증
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      console.error(`[StoreService] 유효하지 않은 사용자 ID입니다`);
+      return;
+    }
+
     if (!totalPoints || totalPoints <= 0) {
       console.warn(`[StoreService] 복구할 포인트가 0 이하입니다: ${totalPoints}`);
       return;
@@ -679,11 +735,16 @@ class StoreService {
         } catch (rollbackError) {
           // 복구 실패 시 크리티컬 로그 (수동 처리 필요)
           console.error("[StoreService] 🚨 크리티컬: 포인트 복구 실패 🚨", {
-            userId,  // 수동 처리를 위해 userId 포함
+            userIdHash: userId ? `${userId.substring(0, 8)}***` : 'unknown',  // PII 마스킹
             productId,
             productName: product.name,
             totalPoints,
-            rollbackInfo,  // 복구 정보도 로그에 남김
+            rollbackInfo: rollbackInfo ? {
+              processedCount: rollbackInfo.processedDocIds?.length || 0,
+              createdCount: rollbackInfo.createdDocIds?.length || 0,
+              hasDeductId: !!rollbackInfo.deductDocId,
+              // 실제 문서 ID는 보안상 로그하지 않음
+            } : null,
             notionError: notionError.message,
             rollbackError: rollbackError.message,
             timestamp: new Date().toISOString(),
