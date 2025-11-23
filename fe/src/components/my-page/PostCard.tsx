@@ -74,7 +74,7 @@ const PostCard = ({
         <Typography
           font="noto"
           variant="label1B"
-          className="line-clamp-2 self-start text-gray-900"
+          className="line-clamp-2 self-start break-all text-gray-900"
         >
           {description}
         </Typography>
