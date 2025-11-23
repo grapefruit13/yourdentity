@@ -18,6 +18,7 @@ import { MISSION_SORT_OPTIONS } from "@/constants/mission/_sort-options";
 import {
   useGetMissions,
   useGetMissionsCategories,
+  useGetMissionsMe,
 } from "@/hooks/generated/missions-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETMissionsReq } from "@/types/generated/missions-types";
@@ -30,9 +31,6 @@ import type { SortType } from "@/types/mission/sort-types";
 import { transformMissionsToListItems } from "@/utils/mission/transform-mission";
 import { cn } from "@/utils/shared/cn";
 
-// TODO: 실 api res로 수정
-const isFirstEnter = true;
-
 /**
  * @description 미션 목록 페이지
  */
@@ -40,13 +38,22 @@ const Page = () => {
   const setTitle = useTopBarStore((state) => state.setTitle);
   const setHideTopBar = useTopBarStore((state) => state.setHideTopBar);
 
+  // 진행중인 미션 조회 API
+  const { data: myMissionsResponse } = useGetMissionsMe({
+    request: {},
+  });
+
+  // 진행중인 미션이 있으면 첫 진입이 아님
+  const activeMissions = myMissionsResponse?.missions || [];
+  const isFirstEnter = activeMissions.length === 0;
+
   useEffect(() => {
     setTitle("전체 미션 보기");
     setHideTopBar(isFirstEnter);
     return () => {
       setHideTopBar(false);
     };
-  }, [setTitle, setHideTopBar]);
+  }, [setTitle, setHideTopBar, isFirstEnter]);
 
   const [filters, setFilters] = useState<
     DualFilterState<SingleSelectFilterId, string>
@@ -120,7 +127,12 @@ const Page = () => {
     <div className={cn("flex flex-col px-5", isFirstEnter ? "pt-8" : "pt-12")}>
       {/* 미션 첫 진입일 때 */}
       {isFirstEnter && <MissionFirstEnterMessage />}
-      <div className="sticky top-0 z-40 bg-white pt-7">
+      <div
+        className={cn(
+          "sticky z-40 bg-white pt-7",
+          isFirstEnter ? "top-0" : "top-12"
+        )}
+      >
         <DualGroupFilterButtons
           filters={filters}
           onFiltersChange={handleFiltersChange}
@@ -141,15 +153,15 @@ const Page = () => {
             return undefined;
           }}
         />
+        {/* 최신순 + 참여한 미션 제외하기 */}
+        <FilterBar
+          sortOptions={MISSION_SORT_OPTIONS}
+          sortValue={sortValue}
+          onSortChange={handleSortChange}
+          excludeChecked={excludeParticipated}
+          onExcludeChange={handleExcludeChange}
+        />
       </div>
-      {/* 최신순 + 참여한 미션 제외하기 */}
-      <FilterBar
-        sortOptions={MISSION_SORT_OPTIONS}
-        sortValue={sortValue}
-        onSortChange={handleSortChange}
-        excludeChecked={excludeParticipated}
-        onExcludeChange={handleExcludeChange}
-      />
       {/* 미션 목록 */}
       <div className="flex flex-col">
         {isLoading && (
