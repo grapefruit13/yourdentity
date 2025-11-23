@@ -29,9 +29,9 @@ interface HorizontalScrollContainerProps {
   containerClassName?: string;
   /** 그라데이션 배경색 (Tailwind 색상 클래스명, 예: "gray-200", "white"). 기본값: "gray-200" */
   gradientColor?: string;
-  /** 왼쪽 버튼 컨테이너의 위치 클래스명 (예: "-left-[10px]", "left-0"). 기본값: "-left-[10px]" */
+  /** 왼쪽 버튼 컨테이너의 위치 클래스명 (예: "left-[10px]", "left-0"). 기본값: "left-[10px]" */
   leftButtonPositionClassName?: string;
-  /** 오른쪽 버튼 컨테이너의 위치 클래스명 (예: "-right-[10px]", "right-0"). 기본값: "-right-[10px]" */
+  /** 오른쪽 버튼 컨테이너의 위치 클래스명 (예: "right-[10px]", "right-0"). 기본값: "right-[10px]" */
   rightButtonPositionClassName?: string;
 }
 
