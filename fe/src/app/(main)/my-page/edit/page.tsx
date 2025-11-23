@@ -64,8 +64,9 @@ const ProfileEditPage = () => {
     useDeleteAuthDeleteAccount();
 
   const actualUserData = userData;
+  // userData가 로드된 이후에만 온보딩 여부를 true로 판단
   const isOnboarding =
-    !actualUserData?.nickname || actualUserData.nickname.trim().length === 0;
+    !!actualUserData && actualUserData.nickname?.trim().length === 0;
 
   const {
     register,
@@ -381,8 +382,6 @@ const ProfileEditPage = () => {
       uploadedImagePath = filePath;
 
       // 4. 프로필 업데이트 (updateOnboarding API 호출)
-      const isOnboarding =
-        !initialNickname || initialNickname.trim().length === 0;
       await patchOnboardingAsync(
         {
           data: {
