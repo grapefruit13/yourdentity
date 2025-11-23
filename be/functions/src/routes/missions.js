@@ -6,6 +6,121 @@ const authGuard = require("../middleware/authGuard");
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Mission:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 미션 ID (Notion 페이지 ID)
+ *           example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
+ *         title:
+ *           type: string
+ *           description: 미션 제목
+ *           example: "친구와 함께 요리하기"
+ *         missionIntroduction:
+ *           type: string
+ *           nullable: true
+ *           description: 미션 소개
+ *           example: "내가 좋아하는 책을 한권 선정해서 읽고 그 책을 쓴 작가를 위한 책 추천사 써보기"
+ *         coverImage:
+ *           type: string
+ *           nullable: true
+ *           description: 노션 페이지 커버 이미지 URL (unsplash 등)
+ *           example: "https://images.unsplash.com/photo-1234567890"
+ *         isRecruiting:
+ *           type: boolean
+ *           description: 현재 모집 여부
+ *           example: true
+ *         isUnlimited:
+ *           type: boolean
+ *           description: 무제한 여부
+ *           example: false
+ *         applicationDeadline:
+ *           type: string
+ *           nullable: true
+ *           format: date-time
+ *           description: 신청 마감일시 (무제한이 아닐 경우)
+ *           example: "2024-12-31T23:59:59.000Z"
+ *         certificationDeadline:
+ *           type: string
+ *           nullable: true
+ *           format: date-time
+ *           description: 인증 마감일시
+ *           example: "2024-12-31T23:59:59.000Z"
+ *         categories:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: 카테고리 목록
+ *           example: ["자기 탐색", "자기 만족"]
+ *         detailTags:
+ *           type: string
+ *           nullable: true
+ *           description: 상세 태그
+ *           example: "일상, 요리"
+ *         targetAudience:
+ *           type: string
+ *           nullable: true
+ *           description: 참여 대상
+ *           example: "누구나"
+ *         notes:
+ *           type: string
+ *           nullable: true
+ *           description: 참고 사항
+ *           example: "매일 인증해주세요"
+ *         certificationMethod:
+ *           type: array
+ *           nullable: true
+ *           description: 인증 방법 (Multi-select)
+ *           items:
+ *             type: string
+ *           example: ["사진과 함께 인증글 작성", "3줄 이상 글 작성"]
+ *         reactionCount:
+ *           type: integer
+ *           description: 찜 수
+ *           example: 10
+ *         faqRelation:
+ *           type: object
+ *           nullable: true
+ *           description: FAQ 연동 정보
+ *           properties:
+ *             relations:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *             has_more:
+ *               type: boolean
+ *           example:
+ *             relations:
+ *               - id: "faq-page-1"
+ *               - id: "faq-page-2"
+ *             has_more: false
+ *         isReviewRegistered:
+ *           type: boolean
+ *           description: 미션 후기 등록 여부
+ *           example: false
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: 생성일시
+ *           example: "2024-01-01T00:00:00.000Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 수정일시
+ *           example: "2024-01-01T00:00:00.000Z"
+ *         pageContent:
+ *           type: array
+ *           description: 페이지 내용 (상세 조회 시에만 포함)
+ *           items:
+ *             type: object
+ *
+ * @swagger
  * tags:
  *   name: Missions
  *   description: 미션 관리 API
@@ -59,6 +174,9 @@ router.get("/categories", missionController.getCategories);
  *     tags: [Missions]
  *     description: |
  *       전체 미션 목록을 조회합니다. (약 30~100개, 페이지네이션 없음)
+ *       
+ *       **자동 필터링:**
+ *       - 현재 모집 여부가 체크된 미션만 조회됩니다.
  *       
  *       정렬:
  *       - latest: 최신순 (기본값)
