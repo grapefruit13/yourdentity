@@ -672,6 +672,142 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
 
 /**
  * @swagger
+ * /missions/posts/{postId}/comments:
+ *   post:
+ *     summary: 미션 인증글 댓글 작성
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글에 댓글을 작성합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: 댓글 HTML 내용
+ *                 example: "<p>정말 좋은 인증이네요!</p>"
+ *               parentId:
+ *                 type: string
+ *                 nullable: true
+ *                 description: 부모 댓글 ID (대댓글인 경우)
+ *                 example: "comment_123"
+ *           example:
+ *             content: "<p>정말 좋은 인증이네요!</p>"
+ *             parentId: "comment_123"
+ *     responses:
+ *       201:
+ *         description: 댓글 작성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: 댓글 ID
+ *                       example: "comment_123"
+ *                     postId:
+ *                       type: string
+ *                       description: 미션 인증글 ID
+ *                       example: "post-123"
+ *                     userId:
+ *                       type: string
+ *                       description: 작성자 UID
+ *                       example: "user-123"
+ *                     author:
+ *                       type: string
+ *                       description: 작성자 닉네임
+ *                       example: "사용자닉네임"
+ *                     content:
+ *                       type: string
+ *                       description: 댓글 HTML 내용
+ *                       example: "<p>좋은 인증입니다!</p>"
+ *                     parentId:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 ID
+ *                       example: "comment_456"
+ *                     depth:
+ *                       type: number
+ *                       description: 댓글 깊이
+ *                       example: 0
+ *                     likesCount:
+ *                       type: number
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     isLocked:
+ *                       type: boolean
+ *                       description: 잠금 여부
+ *                       example: false
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 생성일시
+ *                       example: "2025-10-03T17:15:07.862Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 수정일시
+ *                       example: "2025-10-03T17:15:07.862Z"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               BadRequest:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글 내용은 필수입니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: 인증글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "인증글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.post("/posts/:postId/comments", authGuard, require("../middleware/rewardHandler"), missionController.createMissionPostComment);
+
+/**
+ * @swagger
  * /missions/{missionId}:
  *   get:
  *     summary: 미션 상세 조회

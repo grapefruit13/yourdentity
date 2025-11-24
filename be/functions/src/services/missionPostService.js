@@ -4,6 +4,7 @@ const { sanitizeContent } = require("../utils/sanitizeHelper");
 const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
 const userService = require("./userService");
+const fcmHelper = require("../utils/fcmHelper");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -495,6 +496,170 @@ class MissionPostService {
         throw error;
       }
       throw buildError("인증글을 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 생성
+   * @param {string} postId - 미션 인증글 ID
+   * @param {string} userId - 댓글 작성자 UID
+   * @param {Object} commentData - 댓글 데이터
+   * @param {string} commentData.content - 댓글 내용
+   * @param {string} [commentData.parentId] - 부모 댓글 ID (대댓글인 경우)
+   * @returns {Promise<Object>} 생성된 댓글 정보
+   */
+  async createComment(postId, userId, commentData) {
+    try {
+      const { content, parentId = null } = commentData;
+
+      // 댓글 내용 검증
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        throw buildError("댓글 내용은 필수입니다.", "BAD_REQUEST", 400);
+      }
+
+      const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
+      if (textWithoutTags.length === 0) {
+        throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
+      }
+
+      const sanitizedContent = sanitizeContent(content);
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
+      if (sanitizedText.length === 0) {
+        throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 미션 인증글 조회
+      const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
+      const postDoc = await postRef.get();
+
+      if (!postDoc.exists) {
+        throw buildError("인증글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const post = postDoc.data();
+
+      // 부모 댓글 검증 (대댓글인 경우)
+      let parentComment = null;
+      if (parentId) {
+        const parentCommentDoc = await db.collection("comments").doc(parentId).get();
+        if (!parentCommentDoc.exists) {
+          throw buildError("부모 댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+        }
+
+        parentComment = parentCommentDoc.data();
+
+        // 대댓글은 2레벨까지만 허용
+        if (parentComment.parentId) {
+          throw buildError("대댓글은 2레벨까지만 허용됩니다.", "BAD_REQUEST", 400);
+        }
+
+        // 같은 게시글의 댓글인지 확인
+        if (parentComment.postId !== postId) {
+          throw buildError("부모 댓글이 해당 인증글의 댓글이 아닙니다.", "BAD_REQUEST", 400);
+        }
+      }
+
+      // 작성자 닉네임 조회 (사용자 기본 닉네임 사용)
+      const userProfile = await userService.getUserById(userId);
+      if (!userProfile || !userProfile.nickname) {
+        throw buildError("사용자 닉네임을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+      const author = userProfile.nickname;
+
+      // 댓글 생성
+      const newComment = {
+        // communityId 없음 = 미션 인증글 댓글 (커뮤니티 댓글은 communityId 있음)
+        postId: postId,
+        userId,
+        author,
+        content: sanitizedContent,
+        parentId,
+        likesCount: 0,
+        isDeleted: false,
+        isLocked: false,
+        depth: parentId ? 1 : 0,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      const result = await db.runTransaction(async (transaction) => {
+        const commentRef = db.collection("comments").doc();
+
+        transaction.set(commentRef, newComment);
+        transaction.update(postRef, {
+          commentsCount: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        return { commentId: commentRef.id };
+      });
+
+      const commentId = result.commentId;
+      const createdCommentDoc = await db.collection("comments").doc(commentId).get();
+      const createdComment = { id: createdCommentDoc.id, ...createdCommentDoc.data() };
+
+      // 알림 전송 (본인 게시글이 아닌 경우)
+      if (post.userId !== userId) {
+        fcmHelper
+          .sendNotification(
+            post.userId,
+            "새로운 댓글이 달렸습니다",
+            `${author}님이 미션 인증글 "${post.title || "인증글"}"에 댓글을 남겼습니다.`,
+            "COMMENT",
+            postId,
+            undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
+            "", // link 없음
+            commentId,
+          )
+          .catch((error) => {
+            console.error("[MISSION_POST] 댓글 알림 전송 실패:", error);
+          });
+      }
+
+      // 부모 댓글 작성자에게 알림 전송 (대댓글인 경우)
+      if (parentId && parentComment && parentComment.userId !== userId && parentComment.userId !== post.userId) {
+        const textOnly = typeof parentComment.content === "string" ? parentComment.content.replace(/<[^>]*>/g, "") : "";
+        const previewText = textOnly.length > 10 ? textOnly.substring(0, 10) + "..." : textOnly;
+
+        fcmHelper
+          .sendNotification(
+            parentComment.userId,
+            "새로운 대댓글이 달렸습니다",
+            `${author}님이 "${previewText}" 댓글에 대댓글을 남겼습니다.`,
+            "COMMENT",
+            postId,
+            undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
+            "", // link 없음
+            commentId,
+          )
+          .catch((error) => {
+            console.error("[MISSION_POST] 대댓글 알림 전송 실패:", error);
+          });
+      }
+
+      // 응답 데이터 포맷팅
+      const createdAtDate = createdComment.createdAt?.toDate?.() || new Date(createdComment.createdAt);
+      const updatedAtDate = createdComment.updatedAt?.toDate?.() || new Date(createdComment.updatedAt);
+
+      return {
+        id: createdComment.id,
+        postId: createdComment.postId,
+        userId: createdComment.userId,
+        author: createdComment.author,
+        content: createdComment.content,
+        parentId: createdComment.parentId || null,
+        depth: createdComment.depth || 0,
+        likesCount: createdComment.likesCount || 0,
+        isLocked: createdComment.isLocked || false,
+        createdAt: createdAtDate.toISOString(),
+        updatedAt: updatedAtDate.toISOString(),
+      };
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 생성 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
+        throw error;
+      }
+      throw buildError("댓글을 생성할 수 없습니다.", "INTERNAL_ERROR", 500);
     }
   }
 }
