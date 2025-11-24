@@ -343,13 +343,6 @@ class MissionController {
 
       const result = await missionPostService.createComment(postId, userId, commentData);
 
-      // 리워드 부여 (댓글 작성)
-      await req.grantReward("comment", {
-        commentId: result.id,
-        postId,
-        targetType: "MISSION_CERT",
-      });
-
       return res.created(result);
     } catch (error) {
       console.error("[MissionController] 미션 인증글 댓글 생성 오류:", error.message);
