@@ -510,6 +510,12 @@ class CommunityService {
           value: normalizedProgramTypes,
         });
       }
+      // isLocked가 false인 게시글만 조회
+      whereConditions.push({
+        field: "isLocked",
+        operator: "==",
+        value: false,
+      });
 
       const communityCache = new Map();
       const userProfileCache = new Map();
@@ -1386,6 +1392,7 @@ class CommunityService {
         programType: resolvedProgramType,
         isReview: resolvedIsReview,
         viewCount: newViewCount,
+        reportsCount: post.reportsCount || 0,
         // 시간 필드들을 ISO 문자열로 변환 (FirestoreService와 동일)
         createdAt: post.createdAt?.toDate?.()?.toISOString?.() || post.createdAt,
         updatedAt: post.updatedAt?.toDate?.()?.toISOString?.() || post.updatedAt,
