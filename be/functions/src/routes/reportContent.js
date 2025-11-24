@@ -169,6 +169,13 @@ const router = express.Router();
  *                 message:
  *                   type: string
  *                   example: "로그인이 필요합니다."
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       404:
  *         description: 신고 대상을 찾을 수 없음
  *         content:
@@ -335,6 +342,13 @@ router.get("/syncNotionReports", reportContentController.syncNotionReports);
  *                 message:
  *                   type: string
  *                   example: "인증이 필요합니다."
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:

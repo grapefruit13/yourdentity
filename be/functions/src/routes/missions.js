@@ -308,6 +308,13 @@ router.get("/", optionalAuth, missionController.getMissions);
  *                 value:
  *                   status: 401
  *                   message: "Bearer 토큰이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -379,6 +386,13 @@ router.get("/me", authGuard, missionController.getMyMissions);
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -931,6 +945,13 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       404:
  *         description: 리소스를 찾을 수 없음
  *         content:
@@ -1325,6 +1346,13 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  *                 value:
  *                   status: 401
  *                   message: "Bearer 토큰이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       404:
  *         description: 미션을 찾을 수 없음
  *         content:
@@ -1414,6 +1442,13 @@ router.post("/:missionId/apply", authGuard, missionController.applyMission);
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       403:
  *         description: 권한 없음
  *         content:
@@ -1542,6 +1577,13 @@ router.post("/:missionId/quit", authGuard, missionController.quitMission);
  *                 value:
  *                   status: 401
  *                   message: "Bearer 토큰이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       404:
  *         description: 미션 신청 기록 없음
  *         content:

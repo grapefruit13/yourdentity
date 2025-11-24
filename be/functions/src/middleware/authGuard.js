@@ -63,7 +63,7 @@ const authGuard = async (req, res, next) => {
         endAt: suspensionStatus.suspensionEndAt,
       });
 
-      return res.error(403, suspensionStatus.suspensionReason || "계정이 자격정지 상태입니다", {
+      return res.error(423, suspensionStatus.suspensionReason || "계정이 자격정지 상태입니다", {
         suspensionEndAt: suspensionStatus.suspensionEndAt,
       });
     }

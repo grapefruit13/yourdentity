@@ -53,6 +53,13 @@ const authGuard = require("../middleware/authGuard");
  *                 message:
  *                   type: string
  *                   example: "Bearer 토큰이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -109,6 +116,13 @@ router.post("/token", authGuard, fcmController.saveToken.bind(fcmController));
  *                 message:
  *                   type: string
  *                   example: "Bearer 토큰이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -173,6 +187,13 @@ router.get("/tokens", authGuard, fcmController.getUserTokens.bind(fcmController)
  *                 message:
  *                   type: string
  *                   example: "Bearer 토큰이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:

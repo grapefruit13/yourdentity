@@ -14,15 +14,6 @@ const router = express.Router();
  *       bearerFormat: JWT
  *       description: Firebase ID Token
  *   schemas:
- *     ErrorResponse:
- *       type: object
- *       properties:
- *         status:
- *           type: number
- *           example: 400
- *         message:
- *           type: string
- *           example: 잘못된 요청입니다
  *     StandardResponse:
  *       type: object
  *       properties:
@@ -170,7 +161,13 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       409:
  *         description: 닉네임 중복 등 충돌(NICKNAME_TAKEN)
  *         content:
