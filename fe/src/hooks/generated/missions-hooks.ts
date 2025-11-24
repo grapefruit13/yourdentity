@@ -204,6 +204,27 @@ export const useGetMissionsPostsById = <TData = Types.TGETMissionsPostsByIdRes>(
   });
 };
 
+export const useGetMissionsPostsCommentsById = <
+  TData = Types.TGETMissionsPostsCommentsByIdRes,
+>(
+  options: {
+    request: Types.TGETMissionsPostsCommentsByIdReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETMissionsPostsCommentsByIdRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETMissionsPostsCommentsByIdRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsPostsCommentsById(request),
+    queryFn: async () => {
+      const response = await Api.getMissionsPostsCommentsById(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
 export const usePostMissionsPostsCommentsById = <
   TContext = unknown,
   TVariables = Types.TPOSTMissionsPostsCommentsByIdReq,
