@@ -6,17 +6,6 @@ const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 const DELAY_MS = 1200; // 지연시간
 const BATCH_SIZE = 500; // 배치 사이즈
 
-// 액션 키 → 리워드 타입 매핑
-const ACTION_TO_REWARD_TYPE_MAP = {
-  'additional_point': '관리자 지급',
-  'comment': '댓글',
-  'routine_post': '게시글',
-  'routine_review': '게시글',
-  'gathering_review_text': '게시글',
-  'gathering_review_media': '게시글',
-  'tmi_review': '게시글',
-};
-
 // changeType → 지급 타입 매핑
 const CHANGE_TYPE_TO_PAYMENT_TYPE_MAP = {
   'add': '지급',
@@ -40,6 +29,7 @@ class NotionRewardHistoryService {
       NOTION_API_KEY,
       NOTION_REWARD_HISTORY_DB_ID,
       NOTION_USER_ACCOUNT_DB_ID,
+      NOTION_REWARD_POLICY_DB_ID,
     } = process.env;
 
     // 환경 변수 검증
@@ -65,6 +55,7 @@ class NotionRewardHistoryService {
 
     this.notionRewardHistoryDB = NOTION_REWARD_HISTORY_DB_ID;
     this.notionUserAccountDB = NOTION_USER_ACCOUNT_DB_ID;
+    this.notionRewardPolicyDB = NOTION_REWARD_POLICY_DB_ID;
     this.dbSchema = null; // 데이터베이스 스키마 캐시
   }
 
@@ -102,6 +93,75 @@ class NotionRewardHistoryService {
   }
 
   /**
+   * Notion 리워드 정책 DB에서 actionKey → 사용자 행동 매핑 조회
+   * @return {Promise<Object>} {actionKey: 사용자 행동} 매핑
+   */
+  async getRewardPolicyMapping() {
+    try {
+      if (!this.notionRewardPolicyDB) {
+        console.warn('[WARN] NOTION_REWARD_POLICY_DB_ID가 설정되지 않아 정책 매핑을 조회할 수 없습니다.');
+        return {};
+      }
+
+      let results = [];
+      let hasMore = true;
+      let startCursor;
+
+      while (hasMore) {
+        const res = await fetch(`https://api.notion.com/v1/databases/${this.notionRewardPolicyDB}/query`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            page_size: 100,
+            start_cursor: startCursor,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`[Notion 정책 API Error] Status: ${res.status}, Response: ${errorText}`);
+          return {};
+        }
+
+        const data = await res.json();
+
+        if (data.error) {
+          console.error(`[Notion 정책 API Error]`, data.error);
+          return {};
+        }
+
+        results = results.concat(data.results);
+        hasMore = data.has_more;
+        startCursor = data.next_cursor;
+      }
+
+      const policyMap = {};
+      for (const page of results) {
+        const props = page.properties;
+        const actionKey = props["__DEV_ONLY__"]?.rich_text?.[0]?.plain_text || null;
+        const userAction = props["사용자 행동"]?.title?.[0]?.plain_text || null;
+        
+        if (actionKey && userAction) {
+          policyMap[actionKey] = {
+            userAction: userAction,
+            pageId: page.id
+          };
+        }
+      }
+
+      console.log(`[정책 매핑] ${Object.keys(policyMap).length}개의 정책을 조회했습니다.`);
+      return policyMap;
+    } catch (error) {
+      console.error('[정책 매핑 조회 실패]:', error.message);
+      return {};
+    }
+  }
+
+  /**
    * 전체 사용자의 리워드 히스토리를 Notion에 동기화
    * @return {Promise<{syncedCount: number, failedCount: number, total: number}>}
    */
@@ -109,7 +169,10 @@ class NotionRewardHistoryService {
     try {
       console.log('=== 리워드 히스토리 동기화 시작 ===');
 
-      // 0. Notion 데이터베이스 스키마 조회 (필드명 확인)
+      // 0. Notion 리워드 정책 DB에서 actionKey → 사용자 행동 매핑 조회
+      const rewardPolicyMap = await this.getRewardPolicyMapping();
+
+      // 0-1. Notion 데이터베이스 스키마 조회 (필드명 확인)
       const dbSchema = await this.getDatabaseSchema(this.notionRewardHistoryDB);
       
       // "회원 관리" 필드가 relation 타입인지 확인
@@ -266,14 +329,28 @@ class NotionRewardHistoryService {
               }
             }
 
-            // 리워드 타입 결정
-            const rewardType = ACTION_TO_REWARD_TYPE_MAP[historyData.actionKey] || '기타';
+            // 리워드 타입 결정 (Notion 정책 DB에서 조회 - 관계형 필드)
+            let rewardTypeRelation = [];
+            if (historyData.actionKey === 'additional_point') {
+              // 관리자 지급은 정책 DB에 없으므로 관계형 필드 비워두기
+              rewardTypeRelation = [];
+            } else if (rewardPolicyMap[historyData.actionKey]) {
+              // 정책 DB에서 페이지 ID 가져와서 relation으로 연결
+              const policyInfo = rewardPolicyMap[historyData.actionKey];
+              rewardTypeRelation = [{ id: policyInfo.pageId }];
+            } else {
+              console.warn(`[WARN] actionKey "${historyData.actionKey}"에 대한 정책을 찾을 수 없습니다.`);
+              rewardTypeRelation = [];
+            }
             
             // 지급 타입 결정
             const paymentType = CHANGE_TYPE_TO_PAYMENT_TYPE_MAP[historyData.changeType] || '지급';
 
             // 내용 (reason)
             const content = historyData.reason || '';
+
+            // 나다움 포인트 (amount)
+            const amount = historyData.amount || 0;
 
             // 적립/차감 날짜
             let rewardDate = null;
@@ -287,13 +364,32 @@ class NotionRewardHistoryService {
               }
             }
 
+            // 만료 날짜 (expiresAt)
+            let expiryDate = null;
+            if (historyData.expiresAt) {
+              try {
+                if (historyData.expiresAt.toDate) {
+                  expiryDate = historyData.expiresAt.toDate().toISOString();
+                } else if (historyData.expiresAt instanceof Date) {
+                  expiryDate = historyData.expiresAt.toISOString();
+                } else if (typeof historyData.expiresAt === 'string') {
+                  expiryDate = new Date(historyData.expiresAt).toISOString();
+                }
+                console.log(`[만료 날짜] historyId=${historyId}, expiresAt=${expiryDate}`);
+              } catch (error) {
+                console.warn(`[만료 날짜 파싱 실패] historyId=${historyId}:`, error.message);
+              }
+            } else {
+              console.log(`[만료 날짜 없음] historyId=${historyId}, changeType=${historyData.changeType}`);
+            }
+
             // Notion 페이지 데이터 구성
-            // title 필드는 고유 식별자만 (userId 제외)
+            // title 필드에 historyId 저장 (중복 체크용)
             const notionPage = {
-              '나다움 적립 목록': { 
+              '나다움 ID': { 
                 title: [{ 
                   text: { 
-                    content: "적립/차감 목록"
+                    content: historyId
                   } 
                 }] 
               },
@@ -313,9 +409,10 @@ class NotionRewardHistoryService {
 
             // 나머지 필드 추가
             notionPage['리워드 타입'] = {
-              select: {
-                name: rewardType
-              }
+              relation: rewardTypeRelation
+            };
+            notionPage['나다움 포인트'] = {
+              number: amount
             };
             notionPage['내용'] = {
               rich_text: content ? [{ text: { content: content } }] : []
@@ -328,17 +425,36 @@ class NotionRewardHistoryService {
             notionPage['적립/차감 날짜'] = rewardDate ? {
               date: { start: rewardDate }
             } : { date: null };
+            
+            // 만료 날짜 필드 추가 (expiresAt이 있는 경우)
+            if (expiryDate) {
+              notionPage['만료 날짜'] = {
+                date: { start: expiryDate }
+              };
+              console.log(`[Notion 필드 추가] 만료 날짜: ${expiryDate}, historyId=${historyId}`);
+            } else {
+              // expiresAt이 없으면 필드를 추가하지 않음
+              console.log(`[Notion 필드 스킵] 만료 날짜 없음 (historyId=${historyId})`);
+            }
 
-            // 중복 체크용 고유 키 생성 (historyId만 사용, title 필드와 일치)
+            // 중복 체크용 고유 키 생성 (historyId 사용)
             const uniqueKey = historyId;
 
             // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
             try {
               if (notionRewardHistories[uniqueKey]) {
                 // 기존 페이지 업데이트
+                console.log(`[업데이트] historyId=${historyId}, pageId=${notionRewardHistories[uniqueKey].pageId}`);
+                if (notionPage['만료 날짜']) {
+                  console.log(`[업데이트] 만료 날짜 필드 포함됨:`, notionPage['만료 날짜']);
+                }
                 await this.updateNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId, notionPage);
               } else {
                 // 새 페이지 생성
+                console.log(`[생성] historyId=${historyId}`);
+                if (notionPage['만료 날짜']) {
+                  console.log(`[생성] 만료 날짜 필드 포함됨:`, notionPage['만료 날짜']);
+                }
                 await this.createNotionPageWithRetry(notionPage);
               }
             } catch (error) {
@@ -476,70 +592,14 @@ class NotionRewardHistoryService {
     const historyMap = {};
     for (const page of results) {
       const props = page.properties;
-      const title = props["나다움 적립 목록"]?.title?.[0]?.plain_text || null;
+      // title 필드에 historyId가 저장되어 있음
+      const title = props["나다움 ID"]?.title?.[0]?.plain_text || null;
       if (title) {
-        // title은 historyId만 포함하므로 그대로 사용
+        // title이 historyId이므로 그대로 사용
         historyMap[title] = { pageId: page.id };
       }
     }
     return historyMap;
-  }
-
-  /**
-   * Notion 회원 관리 DB에서 모든 사용자 정보 조회
-   * @param {string} databaseId - Notion 데이터베이스 ID
-   * @return {Promise<Object>} {userId: {pageId, ...}}
-   */
-  async getNotionUsers(databaseId) {
-    let results = [];
-    let hasMore = true;
-    let startCursor;
-
-    while (hasMore) {
-      const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          page_size: 100,
-          start_cursor: startCursor,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`[Notion API Error] Status: ${res.status}, Response: ${errorText}`);
-        const err = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
-        err.code = "INTERNAL_ERROR";
-        throw err;
-      }
-
-      const data = await res.json();
-
-      if (data.error) {
-        console.error(`[Notion API Error]`, data.error);
-        const err = new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
-        err.code = "INTERNAL_ERROR";
-        throw err;
-      }
-
-      results = results.concat(data.results);
-      hasMore = data.has_more;
-      startCursor = data.next_cursor;
-    }
-
-    const userMap = {};
-    for (const page of results) {
-      const props = page.properties;
-      const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || null;
-      if (userId) {
-        userMap[userId] = { pageId: page.id };
-      }
-    }
-    return userMap;
   }
 
   /**
@@ -555,9 +615,22 @@ class NotionRewardHistoryService {
           page_id: pageId,
           properties: notionPage,
         });
+        // 성공 시 만료 날짜 필드가 포함되었는지 확인
+        if (notionPage['만료 날짜']) {
+          console.log(`[업데이트 성공] pageId=${pageId}, 만료 날짜 필드 포함됨`);
+        }
         return; // 성공하면 종료
       } catch (error) {
         console.warn(`Notion 페이지 업데이트 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
+        // 필드명 관련 에러인지 확인
+        if (error.message && (error.message.includes('만료 날짜') || error.message.includes('not a property'))) {
+          console.error(`[필드명 에러] "만료 날짜" 필드가 Notion에 존재하지 않을 수 있습니다. 에러:`, error.message);
+          // 만료 날짜 필드를 제거하고 재시도
+          const notionPageWithoutExpiry = { ...notionPage };
+          delete notionPageWithoutExpiry['만료 날짜'];
+          console.log(`[필드 제거 후 재시도] 만료 날짜 필드 제거`);
+          notionPage = notionPageWithoutExpiry;
+        }
         
         if (attempt === maxRetries) {
           throw new Error(`Notion 페이지 업데이트 최종 실패 (pageId: ${pageId}): ${error.message}`);
