@@ -3,7 +3,7 @@ const fileService = require("./fileService");
 const { sanitizeContent } = require("../utils/sanitizeHelper");
 const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
-const userService = require("./userService");
+const UserService = require("./userService");
 const fcmHelper = require("../utils/fcmHelper");
 const RewardService = require("./rewardService");
 const {
@@ -561,11 +561,29 @@ class MissionPostService {
       }
 
       // 작성자 닉네임 조회 (사용자 기본 닉네임 사용)
-      const userProfile = await userService.getUserById(userId);
-      if (!userProfile || !userProfile.nickname) {
-        throw buildError("사용자 닉네임을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      let author;
+      try {
+        const userService = new UserService();
+        const userProfile = await userService.getUserById(userId);
+        if (!userProfile) {
+          console.error("[MISSION_POST] 사용자 프로필 조회 실패:", { userId });
+          throw buildError("사용자를 찾을 수 없습니다.", "NOT_FOUND", 404);
+        }
+        
+        // 닉네임이 없거나 빈 문자열인 경우 에러
+        if (!userProfile.nickname || userProfile.nickname.trim() === "") {
+          console.error("[MISSION_POST] 사용자 닉네임이 없음:", { userId, nickname: userProfile.nickname });
+          throw buildError("사용자 닉네임을 찾을 수 없습니다. 온보딩을 완료해주세요.", "NOT_FOUND", 404);
+        }
+        
+        author = userProfile.nickname;
+      } catch (error) {
+        console.error("[MISSION_POST] 사용자 조회 중 에러:", error.message, { userId });
+        if (error.code === "NOT_FOUND" || error.statusCode === 404) {
+          throw error;
+        }
+        throw buildError("사용자 정보를 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
       }
-      const author = userProfile.nickname;
 
       // 댓글 생성
       const newComment = {
@@ -657,7 +675,13 @@ class MissionPostService {
       };
     } catch (error) {
       console.error("[MISSION_POST] 댓글 생성 실패:", error.message);
-      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
+      console.error("[MISSION_POST] 에러 상세:", {
+        message: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+        stack: error.stack,
+      });
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "FORBIDDEN") {
         throw error;
       }
       throw buildError("댓글을 생성할 수 없습니다.", "INTERNAL_ERROR", 500);

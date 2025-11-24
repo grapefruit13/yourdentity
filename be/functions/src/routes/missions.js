@@ -776,10 +776,26 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
- *               BadRequest:
+ *               ContentRequired:
  *                 value:
  *                   status: 400
  *                   message: "댓글 내용은 필수입니다."
+ *               TextContentRequired:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글에 텍스트 내용이 필요합니다."
+ *               InvalidContent:
+ *                 value:
+ *                   status: 400
+ *                   message: "sanitize 후 유효한 텍스트 내용이 없습니다."
+ *               MaxDepthExceeded:
+ *                 value:
+ *                   status: 400
+ *                   message: "대댓글은 2레벨까지만 허용됩니다."
+ *               InvalidParentComment:
+ *                 value:
+ *                   status: 400
+ *                   message: "부모 댓글이 해당 인증글의 댓글이 아닙니다."
  *       401:
  *         description: 인증 필요
  *         content:
@@ -787,22 +803,43 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *       404:
- *         description: 인증글을 찾을 수 없음
+ *         description: 리소스를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
- *               NotFound:
+ *               PostNotFound:
  *                 value:
  *                   status: 404
  *                   message: "인증글을 찾을 수 없습니다."
+ *               ParentCommentNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "부모 댓글을 찾을 수 없습니다."
+ *               UserNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "사용자를 찾을 수 없습니다."
+ *               NicknameNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "사용자 닉네임을 찾을 수 없습니다. 온보딩을 완료해주세요."
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               CreateCommentError:
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글을 생성할 수 없습니다."
+ *               UserInfoError:
+ *                 value:
+ *                   status: 500
+ *                   message: "사용자 정보를 조회할 수 없습니다."
  */
 router.post("/posts/:postId/comments", authGuard, require("../middleware/rewardHandler"), missionController.createMissionPostComment);
 
@@ -886,7 +923,7 @@ router.post("/posts/:postId/comments", authGuard, require("../middleware/rewardH
  *                       example: "comment_456"
  *                     depth:
  *                       type: number
- *                       description: 댓글 깊이 (0: 원댓글, 1: 대댓글)
+ *                       description: "댓글 깊이 (0: 원댓글, 1: 대댓글)"
  *                       example: 0
  *                     likesCount:
  *                       type: number
@@ -913,10 +950,26 @@ router.post("/posts/:postId/comments", authGuard, require("../middleware/rewardH
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
- *               BadRequest:
+ *               ContentRequired:
  *                 value:
  *                   status: 400
  *                   message: "댓글 내용은 필수입니다."
+ *               TextContentRequired:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글에 텍스트 내용이 필요합니다."
+ *               InvalidContent:
+ *                 value:
+ *                   status: 400
+ *                   message: "sanitize 후 유효한 텍스트 내용이 없습니다."
+ *               CommentDeleted:
+ *                 value:
+ *                   status: 400
+ *                   message: "삭제된 댓글은 수정할 수 없습니다."
+ *               CommunityCommentError:
+ *                 value:
+ *                   status: 400
+ *                   message: "커뮤니티 댓글은 이 API로 수정할 수 없습니다."
  *       403:
  *         description: 권한 없음
  *         content:
@@ -987,10 +1040,10 @@ router.put("/posts/:postId/comments/:commentId", authGuard, missionController.up
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
- *               BadRequest:
+ *               CommunityCommentError:
  *                 value:
  *                   status: 400
- *                   message: "인증글 ID가 필요합니다."
+ *                   message: "커뮤니티 댓글은 이 API로 삭제할 수 없습니다."
  *       403:
  *         description: 권한 없음
  *         content:
