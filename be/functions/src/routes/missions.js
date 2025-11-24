@@ -673,6 +673,135 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
 /**
  * @swagger
  * /missions/posts/{postId}/comments:
+ *   get:
+ *     summary: 미션 인증글 댓글 목록 조회
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글에 달린 댓글과 대댓글을 조회합니다. 인증은 선택 사항입니다.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *     responses:
+ *       200:
+ *         description: 댓글 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     comments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: 댓글 ID
+ *                             example: "comment_123"
+ *                           postId:
+ *                             type: string
+ *                             description: 미션 인증글 ID
+ *                             example: "post-123"
+ *                           userId:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 작성자 UID
+ *                           author:
+ *                             type: string
+ *                             description: 작성자 닉네임
+ *                           content:
+ *                             type: string
+ *                             description: 댓글 HTML 내용
+ *                           parentId:
+ *                             type: string
+ *                             nullable: true
+ *                           depth:
+ *                             type: number
+ *                             description: "댓글 깊이 (0: 원댓글, 1: 대댓글)"
+ *                           likesCount:
+ *                             type: number
+ *                             example: 0
+ *                           isDeleted:
+ *                             type: boolean
+ *                           isLocked:
+ *                             type: boolean
+ *                           isMine:
+ *                             type: boolean
+ *                             description: 현재 사용자가 작성한 댓글 여부
+ *                           isAuthor:
+ *                             type: boolean
+ *                             description: 인증글 작성자의 댓글 여부
+ *                           repliesCount:
+ *                             type: number
+ *                             description: 대댓글 수
+ *                           replies:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                 userId:
+ *                                   type: string
+ *                                   nullable: true
+ *                                 author:
+ *                                   type: string
+ *                                 content:
+ *                                   type: string
+ *                                 parentId:
+ *                                   type: string
+ *                                 depth:
+ *                                   type: number
+ *                                 likesCount:
+ *                                   type: number
+ *                                 isDeleted:
+ *                                   type: boolean
+ *                                 isLocked:
+ *                                   type: boolean
+ *                                 isMine:
+ *                                   type: boolean
+ *                                 isAuthor:
+ *                                   type: boolean
+ *                                 createdAt:
+ *                                   type: string
+ *                                   format: date-time
+ *                                 updatedAt:
+ *                                   type: string
+ *                                   format: date-time
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: 인증글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
  *   post:
  *     summary: 미션 인증글 댓글 작성
  *     tags: [Missions]
@@ -841,6 +970,7 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                   status: 500
  *                   message: "사용자 정보를 조회할 수 없습니다."
  */
+router.get("/posts/:postId/comments", optionalAuth, missionController.getMissionPostComments);
 router.post("/posts/:postId/comments", authGuard, missionController.createMissionPostComment);
 
 /**
