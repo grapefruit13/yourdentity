@@ -755,6 +755,49 @@ const options = {
             },
           },
         },
+        UnauthorizedResponse: {
+          type: "object",
+          required: ["status", "message"],
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 401,
+            },
+            message: {
+              type: "string",
+              description: "인증 실패 사유",
+              example: "토큰이 만료되었습니다",
+            },
+          },
+        },
+        AccountSuspendedResponse: {
+          type: "object",
+          required: ["status", "message"],
+          properties: {
+            status: {
+              type: "number",
+              description: "HTTP 상태 코드",
+              example: 423,
+            },
+            message: {
+              type: "string",
+              description: "자격정지 사유",
+              example: "계정이 자격정지 상태입니다",
+            },
+            data: {
+              type: "object",
+              properties: {
+                suspensionEndAt: {
+                  type: "string",
+                  format: "date-time",
+                  description: "자격정지 종료 일시",
+                  example: "2024-12-31T23:59:59.000Z",
+                },
+              },
+            },
+          },
+        },
         PaginatedResponse: {
           type: "object",
           required: ["status", "data", "pagination"],

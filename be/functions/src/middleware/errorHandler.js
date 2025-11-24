@@ -42,6 +42,12 @@ const errorHandler = (err, req, res, next) => {
       if (!err.message) errorMessage = "권한이 없습니다";
       break;
 
+    case "ACCOUNT_SUSPENDED":
+    case "USER_SUSPENDED":
+      httpStatus = 423;
+      if (!err.message) errorMessage = "계정이 자격정지 상태입니다";
+      break;
+
     case "NOT_FOUND":
     case "USER_NOT_FOUND":
     case "RESOURCE_NOT_FOUND":

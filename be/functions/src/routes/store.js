@@ -561,6 +561,13 @@ router.get("/products/:productId", storeController.getProductById);
  *                 message:
  *                   type: string
  *                   example: "인증에 실패했습니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -728,6 +735,13 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                 message:
  *                   type: string
  *                   example: "인증에 실패했습니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:

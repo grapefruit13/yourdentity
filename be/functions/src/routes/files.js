@@ -70,6 +70,13 @@ const router = express.Router();
  *             example:
  *               status: 401
  *               message: "인증이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       403:
  *         description: 권한 없음
  *         content:
@@ -136,6 +143,13 @@ router.post(
  *             example:
  *               status: 401
  *               message: "인증이 필요합니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       403:
  *         description: 권한 없음
  *         content:

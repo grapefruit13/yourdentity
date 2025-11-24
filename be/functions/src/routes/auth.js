@@ -73,6 +73,12 @@ const router = express.Router();
  *                     - "유효하지 않은 토큰입니다"
  *                     - "인증에 실패했습니다"
  *                   example: "토큰이 만료되었습니다"
+ *       423:
+ *         description: 계정 자격정지 (Locked)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -148,6 +154,12 @@ router.post("/logout", authGuard, authController.logout);
  *                     - "유효하지 않은 토큰입니다"
  *                     - "인증에 실패했습니다"
  *                   example: "토큰이 만료되었습니다"
+ *       423:
+ *         description: 계정 자격정지 (Locked)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  */
 router.get("/verify", authGuard, authController.verifyToken);
 
@@ -235,6 +247,12 @@ router.get("/verify", authGuard, authController.verifyToken);
  *                     - "유효하지 않은 토큰입니다"
  *                     - "인증에 실패했습니다"
  *                   example: "토큰이 만료되었습니다"
+ *       423:
+ *         description: 계정 자격정지 (Locked)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
