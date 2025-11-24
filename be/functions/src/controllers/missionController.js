@@ -376,7 +376,7 @@ class MissionController {
         return next(error);
       }
 
-      const result = await missionPostService.updateComment(commentId, userId, updateData);
+      const result = await missionPostService.updateComment(postId, commentId, userId, updateData);
 
       return res.success(result);
     } catch (error) {
@@ -410,7 +410,7 @@ class MissionController {
         return next(error);
       }
 
-      await missionPostService.deleteComment(commentId, userId);
+      await missionPostService.deleteComment(postId, commentId, userId);
 
       return res.noContent();
     } catch (error) {

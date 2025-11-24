@@ -689,7 +689,7 @@ class MissionPostService {
    * @param {string} updateData.content - 댓글 내용
    * @return {Promise<Object>} 수정된 댓글
    */
-  async updateComment(commentId, userId, updateData) {
+  async updateComment(postId, commentId, userId, updateData) {
     try {
       const { content } = updateData;
 
@@ -702,6 +702,11 @@ class MissionPostService {
       }
 
       const comment = commentDoc.data();
+
+      // 게시글 소속 검증
+      if (comment.postId !== postId) {
+        throw buildError("댓글이 해당 인증글에 속하지 않습니다.", "BAD_REQUEST", 400);
+      }
 
       // 소유권 검증
       if (comment.userId !== userId) {
@@ -778,7 +783,7 @@ class MissionPostService {
    * @param {string} userId - 사용자 ID
    * @return {Promise<void>}
    */
-  async deleteComment(commentId, userId) {
+  async deleteComment(postId, commentId, userId) {
     try {
       // 댓글 존재 확인
       const commentRef = db.collection("comments").doc(commentId);
@@ -789,6 +794,10 @@ class MissionPostService {
       }
 
       const comment = commentDoc.data();
+
+      if (comment.postId !== postId) {
+        throw buildError("댓글이 해당 인증글에 속하지 않습니다.", "BAD_REQUEST", 400);
+      }
 
       // 소유권 검증
       if (comment.userId !== userId) {
