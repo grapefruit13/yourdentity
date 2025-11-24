@@ -841,7 +841,7 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                   status: 500
  *                   message: "사용자 정보를 조회할 수 없습니다."
  */
-router.post("/posts/:postId/comments", authGuard, require("../middleware/rewardHandler"), missionController.createMissionPostComment);
+router.post("/posts/:postId/comments", authGuard, missionController.createMissionPostComment);
 
 /**
  * @swagger

@@ -5,7 +5,6 @@ const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
 const UserService = require("./userService");
 const fcmHelper = require("../utils/fcmHelper");
-const RewardService = require("./rewardService");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -818,11 +817,7 @@ class MissionPostService {
 
       if (hasReplies) {
         // 대댓글이 있으면 소프트 딜리트
-        const rewardService = new RewardService();
         await db.runTransaction(async (transaction) => {
-          // 리워드 차감 처리
-          await rewardService.handleRewardOnCommentDeletion(userId, commentId, transaction);
-
           // 소프트 딜리트
           transaction.update(commentRef, {
             isDeleted: true,
@@ -834,12 +829,8 @@ class MissionPostService {
         });
       } else {
         // 대댓글이 없으면 하드 딜리트
-        const rewardService = new RewardService();
         await db.runTransaction(async (transaction) => {
           const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(comment.postId);
-
-          // 리워드 차감 처리
-          await rewardService.handleRewardOnCommentDeletion(userId, commentId, transaction);
 
           // 댓글 실제 삭제
           transaction.delete(commentRef);
