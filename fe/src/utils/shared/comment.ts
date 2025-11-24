@@ -61,7 +61,6 @@ export function getCommentInputForItem(
     ? commentInput
     : "";
 }
-
 /**
  * 답글 placeholder 텍스트 생성
  * @param author - 작성자 닉네임
