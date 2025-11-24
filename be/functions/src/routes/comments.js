@@ -168,6 +168,10 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             type: number
  *                             description: 대댓글 수
  *                             example: 2
+ *                           reportsCount:
+ *                             type: number
+ *                             description: 신고 횟수
+ *                             example: 0
  *                           createdAt:
  *                             type: string
  *                             format: date-time
@@ -229,6 +233,10 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                                   nullable: true
  *                                   description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  *                                   example: false
+ *                                 reportsCount:
+ *                                   type: number
+ *                                   description: 신고 횟수
+ *                                   example: 0
  *                                 createdAt:
  *                                   type: string
  *                                   format: date-time

@@ -339,6 +339,7 @@ class CommentService {
                 ...replyWithoutDeleted,
                 isDeleted: reply.isDeleted || false,
                 isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
+                reportsCount: reply.reportsCount || 0,
               };
               return replyResult;
             });
@@ -351,6 +352,7 @@ class CommentService {
             replies: sortedReplies,
             repliesCount: replies.length,
             isLiked: viewerId ? likedCommentIds.has(comment.id) : false,
+            reportsCount: comment.reportsCount || 0,
           };
 
           commentsWithReplies.push(processedComment);
