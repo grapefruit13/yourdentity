@@ -939,9 +939,9 @@ class ProgramService {
         }
       };
 
-      // "회원 관리" relation 추가 (사용자를 찾은 경우에만)
+      // "신청자 페이지" relation 추가 (사용자를 찾은 경우에만)
       if (userNotionPageId) {
-        properties['회원 관리'] = {
+        properties['신청자 페이지'] = {
           relation: [
             {
               id: userNotionPageId
@@ -949,7 +949,7 @@ class ProgramService {
           ]
         };
       } else {
-        console.warn(`[ProgramService] "회원 관리" relation 연결 실패: 사용자를 찾을 수 없음 (UID: ${applicantId})`);
+        console.warn(`[ProgramService] "신청자 페이지" relation 연결 실패: 사용자를 찾을 수 없음 (UID: ${applicantId})`);
       }
 
       // 선택적 필드 추가
