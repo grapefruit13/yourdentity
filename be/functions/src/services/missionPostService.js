@@ -585,6 +585,12 @@ class MissionPostService {
       }
 
       // 댓글 생성
+      const now = Timestamp.now();
+      const nowIsoString = now.toDate().toISOString();
+
+      const commentRef = db.collection("comments").doc();
+      const commentId = commentRef.id;
+
       const newComment = {
         // communityId 없음 = 미션 인증글 댓글 (커뮤니티 댓글은 communityId 있음)
         postId: postId,
@@ -596,25 +602,17 @@ class MissionPostService {
         isDeleted: false,
         isLocked: false,
         depth: parentId ? 1 : 0,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
       };
 
-      const result = await db.runTransaction(async (transaction) => {
-        const commentRef = db.collection("comments").doc();
-
+      await db.runTransaction(async (transaction) => {
         transaction.set(commentRef, newComment);
         transaction.update(postRef, {
           commentsCount: FieldValue.increment(1),
           updatedAt: FieldValue.serverTimestamp(),
         });
-
-        return { commentId: commentRef.id };
       });
-
-      const commentId = result.commentId;
-      const createdCommentDoc = await db.collection("comments").doc(commentId).get();
-      const createdComment = { id: createdCommentDoc.id, ...createdCommentDoc.data() };
 
       // 알림 전송 (본인 게시글이 아닌 경우)
       if (post.userId !== userId) {
@@ -655,22 +653,18 @@ class MissionPostService {
           });
       }
 
-      // 응답 데이터 포맷팅
-      const createdAtDate = createdComment.createdAt?.toDate?.() || new Date(createdComment.createdAt);
-      const updatedAtDate = createdComment.updatedAt?.toDate?.() || new Date(createdComment.updatedAt);
-
       return {
-        id: createdComment.id,
-        postId: createdComment.postId,
-        userId: createdComment.userId,
-        author: createdComment.author,
-        content: createdComment.content,
-        parentId: createdComment.parentId || null,
-        depth: createdComment.depth || 0,
-        likesCount: createdComment.likesCount || 0,
-        isLocked: createdComment.isLocked || false,
-        createdAt: createdAtDate.toISOString(),
-        updatedAt: updatedAtDate.toISOString(),
+        id: commentId,
+        postId,
+        userId,
+        author,
+        content: sanitizedContent,
+        parentId: parentId || null,
+        depth: parentId ? 1 : 0,
+        likesCount: 0,
+        isLocked: false,
+        createdAt: nowIsoString,
+        updatedAt: nowIsoString,
       };
     } catch (error) {
       console.error("[MISSION_POST] 댓글 생성 실패:", error.message);
