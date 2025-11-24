@@ -3,6 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/missions-types";
 
@@ -59,6 +60,34 @@ export const getMissionsPostsById = (
 ) => {
   return get<Types.TGETMissionsPostsByIdRes>(
     `/missions/posts/${request.postId}`
+  );
+};
+
+export const postMissionsPostsCommentsById = (
+  request: Types.TPOSTMissionsPostsCommentsByIdReq
+) => {
+  const { postId, ...data } = request;
+  return post<Types.TPOSTMissionsPostsCommentsByIdRes>(
+    `/missions/posts/${request.postId}/comments`,
+    data.data ?? data
+  );
+};
+
+export const deleteMissionsPostsCommentsByTwoIds = (
+  request: Types.TDELETEMissionsPostsCommentsByTwoIdsReq
+) => {
+  return del<any>(
+    `/missions/posts/${request.postId}/comments/${request.commentId}`
+  );
+};
+
+export const putMissionsPostsCommentsByTwoIds = (
+  request: Types.TPUTMissionsPostsCommentsByTwoIdsReq
+) => {
+  const { postId, commentId, ...data } = request;
+  return put<Types.TPUTMissionsPostsCommentsByTwoIdsRes>(
+    `/missions/posts/${request.postId}/comments/${request.commentId}`,
+    data.data ?? data
   );
 };
 

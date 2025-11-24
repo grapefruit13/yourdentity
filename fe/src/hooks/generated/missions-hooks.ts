@@ -204,6 +204,90 @@ export const useGetMissionsPostsById = <TData = Types.TGETMissionsPostsByIdRes>(
   });
 };
 
+export const usePostMissionsPostsCommentsById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsPostsCommentsByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsPostsCommentsById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsPostsCommentsById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsPostsCommentsById(
+        variables as Types.TPOSTMissionsPostsCommentsByIdReq
+      ),
+    ...options,
+  });
+};
+
+export const useDeleteMissionsPostsCommentsByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TDELETEMissionsPostsCommentsByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.deleteMissionsPostsCommentsByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.deleteMissionsPostsCommentsByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.deleteMissionsPostsCommentsByTwoIds(
+        variables as Types.TDELETEMissionsPostsCommentsByTwoIdsReq
+      ),
+    ...options,
+  });
+};
+
+export const usePutMissionsPostsCommentsByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TPUTMissionsPostsCommentsByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.putMissionsPostsCommentsByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.putMissionsPostsCommentsByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.putMissionsPostsCommentsByTwoIds(
+        variables as Types.TPUTMissionsPostsCommentsByTwoIdsReq
+      ),
+    ...options,
+  });
+};
+
 export const useGetMissionsStats = <TData = Types.TGETMissionsStatsRes>(
   options?: Omit<
     UseQueryOptions<Types.TGETMissionsStatsRes, Error, TData>,

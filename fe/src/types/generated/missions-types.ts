@@ -128,6 +128,55 @@ export type TGETMissionsPostsByIdRes = {
   isAuthor?: boolean;
 };
 
+export interface TPOSTMissionsPostsCommentsByIdReq {
+  postId: string;
+  data: {
+    content: string;
+    parentId?: string;
+  };
+}
+
+export type TPOSTMissionsPostsCommentsByIdRes = {
+  id?: string;
+  postId?: string;
+  userId?: string;
+  author?: string;
+  content?: string;
+  parentId?: string;
+  depth?: number;
+  likesCount?: number;
+  isLocked?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export interface TDELETEMissionsPostsCommentsByTwoIdsReq {
+  postId: string;
+  commentId: string;
+}
+
+export interface TPUTMissionsPostsCommentsByTwoIdsReq {
+  postId: string;
+  commentId: string;
+  data: {
+    content: string;
+  };
+}
+
+export type TPUTMissionsPostsCommentsByTwoIdsRes = {
+  id?: string;
+  postId?: string;
+  userId?: string;
+  author?: string;
+  content?: string;
+  parentId?: string;
+  depth?: number;
+  likesCount?: number;
+  isLocked?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type TGETMissionsStatsRes = {
   todayTotalCount?: number;
   todayCompletedCount?: number;

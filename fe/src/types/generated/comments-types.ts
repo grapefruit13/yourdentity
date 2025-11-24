@@ -63,6 +63,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     likesCount?: number;
     isLiked?: boolean;
     repliesCount?: number;
+    reportsCount?: number;
     createdAt?: string;
     updatedAt?: string;
     replies?: {
@@ -77,6 +78,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
       isDeleted?: boolean;
       likesCount?: number;
       isLiked?: boolean;
+      reportsCount?: number;
       createdAt?: string;
       updatedAt?: string;
     }[];
