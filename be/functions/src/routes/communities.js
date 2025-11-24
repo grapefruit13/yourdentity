@@ -641,6 +641,10 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *                           type: boolean
  *                           description: 후기 글 여부
  *                           example: false
+ *                         reportsCount:
+ *                           type: integer
+ *                           description: 신고 횟수
+ *                           example: 0
  *                         isAuthor:
  *                           type: boolean
  *                           description: 작성자 여부 (본인 게시글인지)
