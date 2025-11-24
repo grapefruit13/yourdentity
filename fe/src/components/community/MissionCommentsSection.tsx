@@ -95,18 +95,23 @@ const MissionCommentsSection = ({
     });
   }, [commentsData?.comments]);
 
+  // 미션 게시글 및 댓글 쿼리 무효화 헬퍼
+  const invalidateCommentQueries = useCallback(() => {
+    // 게시글 상세 정보 refetch (댓글 카운트 반영)
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsById({ postId }),
+    });
+    // 댓글 목록 refetch
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsCommentsById({ postId }),
+    });
+  }, [queryClient, postId]);
+
   // 댓글 작성 mutation
   const { mutateAsync: postCommentAsync, isPending: isPostCommentPending } =
     usePostMissionsPostsCommentsById({
       onSuccess: () => {
-        // 게시글 상세 정보 refetch (댓글 카운트 반영)
-        queryClient.invalidateQueries({
-          queryKey: missionsKeys.getMissionsPostsById({ postId }),
-        });
-        // 댓글 목록 refetch
-        queryClient.invalidateQueries({
-          queryKey: missionsKeys.getMissionsPostsCommentsById({ postId }),
-        });
+        invalidateCommentQueries();
         setCommentInput("");
         setReplyingTo(null);
       },
@@ -115,14 +120,7 @@ const MissionCommentsSection = ({
   // 댓글 수정 mutation
   const { mutateAsync: putCommentAsync } = usePutMissionsPostsCommentsByTwoIds({
     onSuccess: () => {
-      // 게시글 상세 정보 refetch (댓글 카운트 반영)
-      queryClient.invalidateQueries({
-        queryKey: missionsKeys.getMissionsPostsById({ postId }),
-      });
-      // 댓글 목록 refetch
-      queryClient.invalidateQueries({
-        queryKey: missionsKeys.getMissionsPostsCommentsById({ postId }),
-      });
+      invalidateCommentQueries();
       setEditingCommentId(null);
       setEditingContent("");
     },
@@ -132,14 +130,7 @@ const MissionCommentsSection = ({
   const { mutateAsync: deleteCommentAsync } =
     useDeleteMissionsPostsCommentsByTwoIds({
       onSuccess: () => {
-        // 게시글 상세 정보 refetch (댓글 카운트 반영)
-        queryClient.invalidateQueries({
-          queryKey: missionsKeys.getMissionsPostsById({ postId }),
-        });
-        // 댓글 목록 refetch
-        queryClient.invalidateQueries({
-          queryKey: missionsKeys.getMissionsPostsCommentsById({ postId }),
-        });
+        invalidateCommentQueries();
         setIsDeleteModalOpen(false);
         setDeleteTargetId(null);
       },
