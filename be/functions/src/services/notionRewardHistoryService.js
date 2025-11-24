@@ -180,17 +180,10 @@ class NotionRewardHistoryService {
       let hasUserRelationField = false;
       
       if (dbSchema) {
-        console.log('Notion 데이터베이스 스키마 조회 완료');
-        console.log('사용 가능한 필드:', Object.keys(dbSchema));
         hasUserRelationField = dbSchema[userRelationFieldName] && dbSchema[userRelationFieldName].type === 'relation';
       } else {
-        console.warn(`[WARN] 스키마를 조회할 수 없습니다. 기본 필드명을 사용합니다.`);
         // 스키마를 조회할 수 없어도 기본 필드명으로 시도
-        hasUserRelationField = true; // 일단 시도해보고 에러 발생 시 건너뜀
-      }
-      
-      if (!hasUserRelationField && dbSchema) {
-        console.warn(`[WARN] "${userRelationFieldName}" 필드가 relation 타입이 아니거나 존재하지 않습니다. 회원 관리 연동을 건너뜁니다.`);
+        hasUserRelationField = true;
       }
 
       // 1. Firestore에서 전체 rewardsHistory 조회 (collectionGroup 쿼리)
@@ -210,7 +203,6 @@ class NotionRewardHistoryService {
 
       // 2. Notion에 있는 기존 리워드 히스토리 목록 가져오기 (중복 체크용 및 필드명 확인)
       const notionRewardHistories = await this.getNotionRewardHistories(this.notionRewardHistoryDB);
-      console.log(`Notion에 기존 리워드 히스토리 ${Object.keys(notionRewardHistories).length}개가 존재합니다.`);
 
       // 2-1. 기존 페이지가 있으면 properties에서 실제 필드명 확인
       let actualUserRelationFieldName = null;
@@ -221,59 +213,77 @@ class NotionRewardHistoryService {
           const samplePage = await this.notion.pages.retrieve({ page_id: firstPageId });
           
           if (samplePage && samplePage.properties) {
-            // "회원 관리" 필드가 있는지 확인
-            const fieldNames = Object.keys(samplePage.properties);
-            console.log('실제 필드명 목록:', fieldNames);
-            
             // "회원 관리" 필드 찾기 (공백 포함 가능)
+            const fieldNames = Object.keys(samplePage.properties);
             const userRelationField = fieldNames.find(name => {
               const trimmedName = name.trim();
               return trimmedName === '회원 관리' && samplePage.properties[name].type === 'relation';
             });
             
             if (userRelationField) {
-              actualUserRelationFieldName = userRelationField; // 실제 필드명 사용 (공백 포함)
+              actualUserRelationFieldName = userRelationField;
               hasUserRelationField = true;
-              console.log(`"회원 관리" 필드 확인됨: "${actualUserRelationFieldName}"`);
             } else {
               hasUserRelationField = false;
-              console.warn(`[WARN] "회원 관리" relation 필드를 찾을 수 없습니다.`);
-              console.warn(`[WARN] 사용 가능한 relation 필드:`, fieldNames.filter(name => samplePage.properties[name].type === 'relation'));
             }
           }
         } catch (error) {
-          console.warn(`[WARN] 기존 페이지 조회 실패:`, error.message);
+          // 에러 발생 시 기본 필드명 사용
         }
-      } else {
-        // 기존 페이지가 없으면 데이터베이스 스키마에서 필드명 확인
-        console.log('[INFO] 기존 페이지가 없어 데이터베이스 스키마에서 필드명을 확인합니다.');
-        if (dbSchema && hasUserRelationField) {
-          // 스키마에서 "회원 관리" 필드 찾기 (공백 포함 가능)
+      }
+      
+      // 기존 페이지가 없거나 필드를 찾지 못한 경우 기본 필드명 시도
+      if (!actualUserRelationFieldName && hasUserRelationField) {
+        if (dbSchema) {
           const schemaFieldNames = Object.keys(dbSchema);
           const userRelationField = schemaFieldNames.find(name => {
             const trimmedName = name.trim();
             return trimmedName === '회원 관리' && dbSchema[name].type === 'relation';
           });
-          
-          if (userRelationField) {
-            actualUserRelationFieldName = userRelationField;
-            console.log(`[INFO] 스키마에서 "회원 관리" 필드 확인됨: "${actualUserRelationFieldName}"`);
-          } else {
-            // 스키마에서도 찾지 못하면 기본 필드명 시도
-            actualUserRelationFieldName = '회원 관리';
-            console.log(`[INFO] 스키마에서 필드를 찾지 못해 기본 필드명 사용: "${actualUserRelationFieldName}"`);
-          }
-        } else if (hasUserRelationField) {
-          // 스키마를 조회할 수 없지만 hasUserRelationField가 true면 기본 필드명 시도
-          actualUserRelationFieldName = '회원 관리';
-          console.log(`[INFO] 기본 필드명 사용: "${actualUserRelationFieldName}"`);
+          actualUserRelationFieldName = userRelationField || '회원 관리';
         } else {
-          console.log('[INFO] 회원 관리 필드가 없어 회원 관리 연동을 건너뜁니다.');
+          actualUserRelationFieldName = '회원 관리';
         }
       }
 
-      // 3. Notion 회원 관리 DB 정보는 필요시 개별 조회 (programService 방식)
-      // 배치 처리 중에 각 사용자를 개별 조회하므로 여기서는 스킵
+      // 3. Notion 회원 관리 DB에서 전체 사용자 정보 미리 조회 (성능 개선)
+      let notionUsersMap = {};
+      if (actualUserRelationFieldName) {
+        try {
+          const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2 || this.notionUserAccountDB;
+          let userResults = [];
+          let hasMoreUsers = true;
+          let userStartCursor;
+
+          while (hasMoreUsers) {
+            const response = await this.notion.dataSources.query({
+              data_source_id: userDbId,
+              page_size: 100,
+              start_cursor: userStartCursor,
+            });
+
+            if (response.results) {
+              userResults = userResults.concat(response.results);
+              hasMoreUsers = response.has_more;
+              userStartCursor = response.next_cursor;
+            } else {
+              hasMoreUsers = false;
+            }
+          }
+
+          // userId → pageId 매핑 생성
+          for (const page of userResults) {
+            const props = page.properties;
+            const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || null;
+            if (userId) {
+              notionUsersMap[userId] = { pageId: page.id };
+            }
+          }
+          console.log(`[성능 개선] ${Object.keys(notionUsersMap).length}명의 사용자 정보를 미리 조회했습니다.`);
+        } catch (error) {
+          console.warn(`[WARN] 사용자 정보 미리 조회 실패:`, error.message);
+        }
+      }
 
       let syncedCount = 0;
       let failedCount = 0;
@@ -302,31 +312,10 @@ class NotionRewardHistoryService {
               return { success: false, historyId, error: 'userId_not_found' };
             }
 
-            // Notion 회원 관리 DB에서 사용자 pageId 조회 (programService 방식 사용)
+            // Notion 회원 관리 DB에서 사용자 pageId 조회 (캐시에서 조회 - 성능 개선)
             let notionUser = null;
-            if (actualUserRelationFieldName) {
-              try {
-                // programService처럼 dataSources.query로 직접 찾기
-                const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2 || this.notionUserAccountDB;
-                const response = await this.notion.dataSources.query({
-                  data_source_id: userDbId,
-                  filter: {
-                    property: '사용자ID',
-                    rich_text: {
-                      equals: userId
-                    }
-                  },
-                  page_size: 1
-                });
-                
-                if (response.results && response.results.length > 0) {
-                  notionUser = { pageId: response.results[0].id };
-                } else {
-                  console.warn(`[WARN] Notion에 사용자 ${userId}가 존재하지 않습니다. 회원 관리 연동 없이 진행합니다.`);
-                }
-              } catch (error) {
-                console.warn(`[WARN] 사용자 ${userId} 조회 실패:`, error.message);
-              }
+            if (actualUserRelationFieldName && notionUsersMap[userId]) {
+              notionUser = notionUsersMap[userId];
             }
 
             // 리워드 타입 결정 (Notion 정책 DB에서 조회 - 관계형 필드)
@@ -339,7 +328,6 @@ class NotionRewardHistoryService {
               const policyInfo = rewardPolicyMap[historyData.actionKey];
               rewardTypeRelation = [{ id: policyInfo.pageId }];
             } else {
-              console.warn(`[WARN] actionKey "${historyData.actionKey}"에 대한 정책을 찾을 수 없습니다.`);
               rewardTypeRelation = [];
             }
             
@@ -375,12 +363,9 @@ class NotionRewardHistoryService {
                 } else if (typeof historyData.expiresAt === 'string') {
                   expiryDate = new Date(historyData.expiresAt).toISOString();
                 }
-                console.log(`[만료 날짜] historyId=${historyId}, expiresAt=${expiryDate}`);
               } catch (error) {
-                console.warn(`[만료 날짜 파싱 실패] historyId=${historyId}:`, error.message);
+                // 파싱 실패 시 무시
               }
-            } else {
-              console.log(`[만료 날짜 없음] historyId=${historyId}, changeType=${historyData.changeType}`);
             }
 
             // Notion 페이지 데이터 구성
@@ -444,29 +429,19 @@ class NotionRewardHistoryService {
             try {
               if (notionRewardHistories[uniqueKey]) {
                 // 기존 페이지 업데이트
-                console.log(`[업데이트] historyId=${historyId}, pageId=${notionRewardHistories[uniqueKey].pageId}`);
-                if (notionPage['만료 날짜']) {
-                  console.log(`[업데이트] 만료 날짜 필드 포함됨:`, notionPage['만료 날짜']);
-                }
                 await this.updateNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId, notionPage);
               } else {
                 // 새 페이지 생성
-                console.log(`[생성] historyId=${historyId}`);
-                if (notionPage['만료 날짜']) {
-                  console.log(`[생성] 만료 날짜 필드 포함됨:`, notionPage['만료 날짜']);
-                }
                 await this.createNotionPageWithRetry(notionPage);
               }
             } catch (error) {
               // "회원 관리" 필드 관련 에러인 경우 필드를 제외하고 재시도
               if (error.message && (error.message.includes('회원 관리') || error.message.includes('not a property'))) {
-                console.warn(`[WARN] 필드 관련 에러 발생. 필드를 제외하고 재시도합니다: ${error.message}`);
                 // 회원 관리 필드 제거 (실제 필드명 사용)
                 const notionPageWithoutUser = { ...notionPage };
                 if (actualUserRelationFieldName) {
                   delete notionPageWithoutUser[actualUserRelationFieldName];
                 } else {
-                  // actualUserRelationFieldName이 없으면 모든 가능한 필드명 시도
                   delete notionPageWithoutUser['회원 관리'];
                   delete notionPageWithoutUser['회원 관리 '];
                 }
@@ -615,10 +590,6 @@ class NotionRewardHistoryService {
           page_id: pageId,
           properties: notionPage,
         });
-        // 성공 시 만료 날짜 필드가 포함되었는지 확인
-        if (notionPage['만료 날짜']) {
-          console.log(`[업데이트 성공] pageId=${pageId}, 만료 날짜 필드 포함됨`);
-        }
         return; // 성공하면 종료
       } catch (error) {
         console.warn(`Notion 페이지 업데이트 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
