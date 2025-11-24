@@ -672,6 +672,416 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
 
 /**
  * @swagger
+ * /missions/posts/{postId}/comments:
+ *   post:
+ *     summary: 미션 인증글 댓글 작성
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글에 댓글을 작성합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: 댓글 HTML 내용
+ *                 example: "<p>정말 좋은 인증이네요!</p>"
+ *               parentId:
+ *                 type: string
+ *                 nullable: true
+ *                 description: 부모 댓글 ID (대댓글인 경우)
+ *                 example: "comment_123"
+ *           example:
+ *             content: "<p>정말 좋은 인증이네요!</p>"
+ *             parentId: "comment_123"
+ *     responses:
+ *       201:
+ *         description: 댓글 작성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: 댓글 ID
+ *                       example: "comment_123"
+ *                     postId:
+ *                       type: string
+ *                       description: 미션 인증글 ID
+ *                       example: "post-123"
+ *                     userId:
+ *                       type: string
+ *                       description: 작성자 UID
+ *                       example: "user-123"
+ *                     author:
+ *                       type: string
+ *                       description: 작성자 닉네임
+ *                       example: "사용자닉네임"
+ *                     content:
+ *                       type: string
+ *                       description: 댓글 HTML 내용
+ *                       example: "<p>좋은 인증입니다!</p>"
+ *                     parentId:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 ID
+ *                       example: "comment_456"
+ *                     depth:
+ *                       type: number
+ *                       description: 댓글 깊이
+ *                       example: 0
+ *                     likesCount:
+ *                       type: number
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     isLocked:
+ *                       type: boolean
+ *                       description: 잠금 여부
+ *                       example: false
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 생성일시
+ *                       example: "2025-10-03T17:15:07.862Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 수정일시
+ *                       example: "2025-10-03T17:15:07.862Z"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ContentRequired:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글 내용은 필수입니다."
+ *               TextContentRequired:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글에 텍스트 내용이 필요합니다."
+ *               InvalidContent:
+ *                 value:
+ *                   status: 400
+ *                   message: "sanitize 후 유효한 텍스트 내용이 없습니다."
+ *               MaxDepthExceeded:
+ *                 value:
+ *                   status: 400
+ *                   message: "대댓글은 2레벨까지만 허용됩니다."
+ *               InvalidParentComment:
+ *                 value:
+ *                   status: 400
+ *                   message: "부모 댓글이 해당 인증글의 댓글이 아닙니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: 리소스를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               PostNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "인증글을 찾을 수 없습니다."
+ *               ParentCommentNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "부모 댓글을 찾을 수 없습니다."
+ *               UserNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "사용자를 찾을 수 없습니다."
+ *               NicknameNotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "사용자 닉네임을 찾을 수 없습니다. 온보딩을 완료해주세요."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               CreateCommentError:
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글을 생성할 수 없습니다."
+ *               UserInfoError:
+ *                 value:
+ *                   status: 500
+ *                   message: "사용자 정보를 조회할 수 없습니다."
+ */
+router.post("/posts/:postId/comments", authGuard, missionController.createMissionPostComment);
+
+/**
+ * @swagger
+ * /missions/posts/{postId}/comments/{commentId}:
+ *   put:
+ *     summary: 미션 인증글 댓글 수정
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글 댓글을 수정합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 댓글 ID
+ *         example: "comment_123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: 수정된 댓글 HTML 내용
+ *                 example: "<p>수정된 댓글 내용입니다!</p>"
+ *           example:
+ *             content: "<p>수정된 댓글 내용입니다!</p>"
+ *     responses:
+ *       200:
+ *         description: 댓글 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: 댓글 ID
+ *                       example: "comment_123"
+ *                     postId:
+ *                       type: string
+ *                       description: 미션 인증글 ID
+ *                       example: "post-123"
+ *                     userId:
+ *                       type: string
+ *                       description: 작성자 UID
+ *                       example: "user-123"
+ *                     author:
+ *                       type: string
+ *                       description: 작성자 닉네임
+ *                       example: "사용자닉네임"
+ *                     content:
+ *                       type: string
+ *                       description: 댓글 HTML 내용
+ *                       example: "<p>수정된 댓글 내용입니다!</p>"
+ *                     parentId:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 ID
+ *                       example: "comment_456"
+ *                     depth:
+ *                       type: number
+ *                       description: "댓글 깊이 (0: 원댓글, 1: 대댓글)"
+ *                       example: 0
+ *                     likesCount:
+ *                       type: number
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     isLocked:
+ *                       type: boolean
+ *                       description: 잠금 여부
+ *                       example: false
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 생성일시
+ *                       example: "2025-10-03T17:15:07.862Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 수정일시
+ *                       example: "2025-10-03T18:30:15.123Z"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ContentRequired:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글 내용은 필수입니다."
+ *               TextContentRequired:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글에 텍스트 내용이 필요합니다."
+ *               InvalidContent:
+ *                 value:
+ *                   status: 400
+ *                   message: "sanitize 후 유효한 텍스트 내용이 없습니다."
+ *               CommentDeleted:
+ *                 value:
+ *                   status: 400
+ *                   message: "삭제된 댓글은 수정할 수 없습니다."
+ *               CommunityCommentError:
+ *                 value:
+ *                   status: 400
+ *                   message: "커뮤니티 댓글은 이 API로 수정할 수 없습니다."
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Forbidden:
+ *                 value:
+ *                   status: 403
+ *                   message: "댓글 수정 권한이 없습니다."
+ *       404:
+ *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "댓글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글을 수정할 수 없습니다."
+ */
+router.put("/posts/:postId/comments/:commentId", authGuard, missionController.updateMissionPostComment);
+
+/**
+ * @swagger
+ * /missions/posts/{postId}/comments/{commentId}:
+ *   delete:
+ *     summary: 미션 인증글 댓글 삭제
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글 댓글을 삭제합니다. 대댓글이 있으면 소프트 딜리트, 없으면 하드 딜리트됩니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 댓글 ID
+ *         example: "comment_123"
+ *     responses:
+ *       204:
+ *         description: 댓글 삭제 성공
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               CommunityCommentError:
+ *                 value:
+ *                   status: 400
+ *                   message: "커뮤니티 댓글은 이 API로 삭제할 수 없습니다."
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Forbidden:
+ *                 value:
+ *                   status: 403
+ *                   message: "댓글 삭제 권한이 없습니다."
+ *       404:
+ *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "댓글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글을 삭제할 수 없습니다."
+ */
+router.delete("/posts/:postId/comments/:commentId", authGuard, missionController.deleteMissionPostComment);
+
+/**
+ * @swagger
  * /missions/{missionId}:
  *   get:
  *     summary: 미션 상세 조회

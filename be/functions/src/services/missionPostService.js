@@ -3,7 +3,8 @@ const fileService = require("./fileService");
 const { sanitizeContent } = require("../utils/sanitizeHelper");
 const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
-const userService = require("./userService");
+const UserService = require("./userService");
+const fcmHelper = require("../utils/fcmHelper");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -495,6 +496,361 @@ class MissionPostService {
         throw error;
       }
       throw buildError("인증글을 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 생성
+   * @param {string} postId - 미션 인증글 ID
+   * @param {string} userId - 댓글 작성자 UID
+   * @param {Object} commentData - 댓글 데이터
+   * @param {string} commentData.content - 댓글 내용
+   * @param {string} [commentData.parentId] - 부모 댓글 ID (대댓글인 경우)
+   * @returns {Promise<Object>} 생성된 댓글 정보
+   */
+  async createComment(postId, userId, commentData) {
+    try {
+      const { content, parentId = null } = commentData;
+
+      // 댓글 내용 검증
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        throw buildError("댓글 내용은 필수입니다.", "BAD_REQUEST", 400);
+      }
+
+      const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
+      if (textWithoutTags.length === 0) {
+        throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
+      }
+
+      const sanitizedContent = sanitizeContent(content);
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
+      if (sanitizedText.length === 0) {
+        throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 미션 인증글 조회
+      const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
+      const postDoc = await postRef.get();
+
+      if (!postDoc.exists) {
+        throw buildError("인증글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const post = postDoc.data();
+
+      // 부모 댓글 검증 (대댓글인 경우)
+      let parentComment = null;
+      if (parentId) {
+        const parentCommentDoc = await db.collection("comments").doc(parentId).get();
+        if (!parentCommentDoc.exists) {
+          throw buildError("부모 댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+        }
+
+        parentComment = parentCommentDoc.data();
+
+        // 대댓글은 2레벨까지만 허용
+        if (parentComment.parentId) {
+          throw buildError("대댓글은 2레벨까지만 허용됩니다.", "BAD_REQUEST", 400);
+        }
+
+        // 같은 게시글의 댓글인지 확인
+        if (parentComment.postId !== postId) {
+          throw buildError("부모 댓글이 해당 인증글의 댓글이 아닙니다.", "BAD_REQUEST", 400);
+        }
+      }
+
+      // 작성자 닉네임 조회 (사용자 기본 닉네임 사용)
+      let author;
+      try {
+        const userService = new UserService();
+        const userProfile = await userService.getUserById(userId);
+        if (!userProfile) {
+          console.error("[MISSION_POST] 사용자 프로필 조회 실패:", { userId });
+          throw buildError("사용자를 찾을 수 없습니다.", "NOT_FOUND", 404);
+        }
+        
+        // 닉네임이 없거나 빈 문자열인 경우 에러
+        if (!userProfile.nickname || userProfile.nickname.trim() === "") {
+          console.error("[MISSION_POST] 사용자 닉네임이 없음:", { userId, nickname: userProfile.nickname });
+          throw buildError("사용자 닉네임을 찾을 수 없습니다. 온보딩을 완료해주세요.", "NOT_FOUND", 404);
+        }
+        
+        author = userProfile.nickname;
+      } catch (error) {
+        console.error("[MISSION_POST] 사용자 조회 중 에러:", error.message, { userId });
+        if (error.code === "NOT_FOUND" || error.statusCode === 404) {
+          throw error;
+        }
+        throw buildError("사용자 정보를 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
+      }
+
+      // 댓글 생성
+      const now = Timestamp.now();
+      const nowIsoString = now.toDate().toISOString();
+
+      const commentRef = db.collection("comments").doc();
+      const commentId = commentRef.id;
+
+      const newComment = {
+        // communityId 없음 = 미션 인증글 댓글 (커뮤니티 댓글은 communityId 있음)
+        postId: postId,
+        userId,
+        author,
+        content: sanitizedContent,
+        parentId,
+        likesCount: 0,
+        isDeleted: false,
+        isLocked: false,
+        depth: parentId ? 1 : 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await db.runTransaction(async (transaction) => {
+        transaction.set(commentRef, newComment);
+        transaction.update(postRef, {
+          commentsCount: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      // 알림 전송 (본인 게시글이 아닌 경우)
+      if (post.userId !== userId) {
+        fcmHelper
+          .sendNotification(
+            post.userId,
+            "새로운 댓글이 달렸습니다",
+            `${author}님이 미션 인증글 "${post.title || "인증글"}"에 댓글을 남겼습니다.`,
+            "COMMENT",
+            postId,
+            undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
+            "", // link 없음
+            commentId,
+          )
+          .catch((error) => {
+            console.error("[MISSION_POST] 댓글 알림 전송 실패:", error);
+          });
+      }
+
+      // 부모 댓글 작성자에게 알림 전송 (대댓글인 경우)
+      if (parentId && parentComment && parentComment.userId !== userId && parentComment.userId !== post.userId) {
+        const textOnly = typeof parentComment.content === "string" ? parentComment.content.replace(/<[^>]*>/g, "") : "";
+        const previewText = textOnly.length > 10 ? textOnly.substring(0, 10) + "..." : textOnly;
+
+        fcmHelper
+          .sendNotification(
+            parentComment.userId,
+            "새로운 대댓글이 달렸습니다",
+            `${author}님이 "${previewText}" 댓글에 대댓글을 남겼습니다.`,
+            "COMMENT",
+            postId,
+            undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
+            "", // link 없음
+            commentId,
+          )
+          .catch((error) => {
+            console.error("[MISSION_POST] 대댓글 알림 전송 실패:", error);
+          });
+      }
+
+      return {
+        id: commentId,
+        postId,
+        userId,
+        author,
+        content: sanitizedContent,
+        parentId: parentId || null,
+        depth: parentId ? 1 : 0,
+        likesCount: 0,
+        isLocked: false,
+        createdAt: nowIsoString,
+        updatedAt: nowIsoString,
+      };
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 생성 실패:", error.message);
+      console.error("[MISSION_POST] 에러 상세:", {
+        message: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+        stack: error.stack,
+      });
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "FORBIDDEN") {
+        throw error;
+      }
+      throw buildError("댓글을 생성할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 수정
+   * @param {string} commentId - 댓글 ID
+   * @param {string} userId - 사용자 ID
+   * @param {Object} updateData - 수정할 데이터
+   * @param {string} updateData.content - 댓글 내용
+   * @return {Promise<Object>} 수정된 댓글
+   */
+  async updateComment(postId, commentId, userId, updateData) {
+    try {
+      const { content } = updateData;
+
+      // 댓글 존재 확인
+      const commentRef = db.collection("comments").doc(commentId);
+      const commentDoc = await commentRef.get();
+
+      if (!commentDoc.exists) {
+        throw buildError("댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const comment = commentDoc.data();
+
+      // 게시글 소속 검증
+      if (comment.postId !== postId) {
+        throw buildError("댓글이 해당 인증글에 속하지 않습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 소유권 검증
+      if (comment.userId !== userId) {
+        throw buildError("댓글 수정 권한이 없습니다.", "FORBIDDEN", 403);
+      }
+
+      // 삭제된 댓글 검증
+      if (comment.isDeleted) {
+        throw buildError("삭제된 댓글은 수정할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 미션 인증글 댓글인지 확인 (communityId가 없어야 함)
+      if (comment.communityId) {
+        throw buildError("커뮤니티 댓글은 이 API로 수정할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 댓글 내용 검증
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        throw buildError("댓글 내용은 필수입니다.", "BAD_REQUEST", 400);
+      }
+
+      const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
+      if (textWithoutTags.length === 0) {
+        throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
+      }
+
+      const sanitizedContent = sanitizeContent(content);
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
+      if (sanitizedText.length === 0) {
+        throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 댓글 수정
+      const updatedData = {
+        content: sanitizedContent,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      await commentRef.update(updatedData);
+
+      // 수정된 댓글 조회
+      const updatedCommentDoc = await commentRef.get();
+      const updatedComment = { id: updatedCommentDoc.id, ...updatedCommentDoc.data() };
+
+      // 응답 데이터 포맷팅
+      const createdAtDate = updatedComment.createdAt?.toDate?.() || new Date(updatedComment.createdAt);
+      const updatedAtDate = updatedComment.updatedAt?.toDate?.() || new Date(updatedComment.updatedAt);
+
+      return {
+        id: updatedComment.id,
+        postId: updatedComment.postId,
+        userId: updatedComment.userId,
+        author: updatedComment.author,
+        content: updatedComment.content,
+        parentId: updatedComment.parentId || null,
+        depth: updatedComment.depth || 0,
+        likesCount: updatedComment.likesCount || 0,
+        isLocked: updatedComment.isLocked || false,
+        createdAt: createdAtDate.toISOString(),
+        updatedAt: updatedAtDate.toISOString(),
+      };
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 수정 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "FORBIDDEN") {
+        throw error;
+      }
+      throw buildError("댓글을 수정할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 삭제
+   * @param {string} commentId - 댓글 ID
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<void>}
+   */
+  async deleteComment(postId, commentId, userId) {
+    try {
+      // 댓글 존재 확인
+      const commentRef = db.collection("comments").doc(commentId);
+      const commentDoc = await commentRef.get();
+
+      if (!commentDoc.exists) {
+        throw buildError("댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const comment = commentDoc.data();
+
+      if (comment.postId !== postId) {
+        throw buildError("댓글이 해당 인증글에 속하지 않습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 소유권 검증
+      if (comment.userId !== userId) {
+        throw buildError("댓글 삭제 권한이 없습니다.", "FORBIDDEN", 403);
+      }
+
+      // 미션 인증글 댓글인지 확인 (communityId가 없어야 함)
+      if (comment.communityId) {
+        throw buildError("커뮤니티 댓글은 이 API로 삭제할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 대댓글 확인 (삭제되지 않은 댓글만)
+      const repliesSnapshot = await db
+        .collection("comments")
+        .where("parentId", "==", commentId)
+        .where("isDeleted", "==", false)
+        .get();
+
+      const hasReplies = repliesSnapshot && repliesSnapshot.docs.length > 0;
+
+      if (hasReplies) {
+        // 대댓글이 있으면 소프트 딜리트
+        await db.runTransaction(async (transaction) => {
+          // 소프트 딜리트
+          transaction.update(commentRef, {
+            isDeleted: true,
+            userId: null,
+            author: "알 수 없음",
+            content: "삭제된 댓글입니다",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        });
+      } else {
+        // 대댓글이 없으면 하드 딜리트
+        await db.runTransaction(async (transaction) => {
+          const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(comment.postId);
+
+          // 댓글 실제 삭제
+          transaction.delete(commentRef);
+
+          // 게시글의 commentsCount 감소
+          transaction.update(postRef, {
+            commentsCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        });
+      }
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 삭제 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "FORBIDDEN") {
+        throw error;
+      }
+      throw buildError("댓글을 삭제할 수 없습니다.", "INTERNAL_ERROR", 500);
     }
   }
 }
