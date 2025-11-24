@@ -808,6 +808,153 @@ router.post("/posts/:postId/comments", authGuard, require("../middleware/rewardH
 
 /**
  * @swagger
+ * /missions/posts/{postId}/comments/{commentId}:
+ *   put:
+ *     summary: 미션 인증글 댓글 수정
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글 댓글을 수정합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 댓글 ID
+ *         example: "comment_123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: 수정된 댓글 HTML 내용
+ *                 example: "<p>수정된 댓글 내용입니다!</p>"
+ *           example:
+ *             content: "<p>수정된 댓글 내용입니다!</p>"
+ *     responses:
+ *       200:
+ *         description: 댓글 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: 댓글 ID
+ *                       example: "comment_123"
+ *                     postId:
+ *                       type: string
+ *                       description: 미션 인증글 ID
+ *                       example: "post-123"
+ *                     userId:
+ *                       type: string
+ *                       description: 작성자 UID
+ *                       example: "user-123"
+ *                     author:
+ *                       type: string
+ *                       description: 작성자 닉네임
+ *                       example: "사용자닉네임"
+ *                     content:
+ *                       type: string
+ *                       description: 댓글 HTML 내용
+ *                       example: "<p>수정된 댓글 내용입니다!</p>"
+ *                     parentId:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 ID
+ *                       example: "comment_456"
+ *                     depth:
+ *                       type: number
+ *                       description: 댓글 깊이 (0: 원댓글, 1: 대댓글)
+ *                       example: 0
+ *                     likesCount:
+ *                       type: number
+ *                       description: 좋아요 수
+ *                       example: 0
+ *                     isLocked:
+ *                       type: boolean
+ *                       description: 잠금 여부
+ *                       example: false
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 생성일시
+ *                       example: "2025-10-03T17:15:07.862Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 수정일시
+ *                       example: "2025-10-03T18:30:15.123Z"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               BadRequest:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글 내용은 필수입니다."
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Forbidden:
+ *                 value:
+ *                   status: 403
+ *                   message: "댓글 수정 권한이 없습니다."
+ *       404:
+ *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "댓글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글을 수정할 수 없습니다."
+ */
+router.put("/posts/:postId/comments/:commentId", authGuard, missionController.updateMissionPostComment);
+
+/**
+ * @swagger
  * /missions/{missionId}:
  *   get:
  *     summary: 미션 상세 조회

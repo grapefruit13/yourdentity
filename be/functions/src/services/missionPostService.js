@@ -662,6 +662,97 @@ class MissionPostService {
       throw buildError("댓글을 생성할 수 없습니다.", "INTERNAL_ERROR", 500);
     }
   }
+
+  /**
+   * 미션 인증글 댓글 수정
+   * @param {string} commentId - 댓글 ID
+   * @param {string} userId - 사용자 ID
+   * @param {Object} updateData - 수정할 데이터
+   * @param {string} updateData.content - 댓글 내용
+   * @return {Promise<Object>} 수정된 댓글
+   */
+  async updateComment(commentId, userId, updateData) {
+    try {
+      const { content } = updateData;
+
+      // 댓글 존재 확인
+      const commentRef = db.collection("comments").doc(commentId);
+      const commentDoc = await commentRef.get();
+
+      if (!commentDoc.exists) {
+        throw buildError("댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const comment = commentDoc.data();
+
+      // 소유권 검증
+      if (comment.userId !== userId) {
+        throw buildError("댓글 수정 권한이 없습니다.", "FORBIDDEN", 403);
+      }
+
+      // 삭제된 댓글 검증
+      if (comment.isDeleted) {
+        throw buildError("삭제된 댓글은 수정할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 미션 인증글 댓글인지 확인 (communityId가 없어야 함)
+      if (comment.communityId) {
+        throw buildError("커뮤니티 댓글은 이 API로 수정할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 댓글 내용 검증
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        throw buildError("댓글 내용은 필수입니다.", "BAD_REQUEST", 400);
+      }
+
+      const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
+      if (textWithoutTags.length === 0) {
+        throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
+      }
+
+      const sanitizedContent = sanitizeContent(content);
+      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
+      if (sanitizedText.length === 0) {
+        throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 댓글 수정
+      const updatedData = {
+        content: sanitizedContent,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      await commentRef.update(updatedData);
+
+      // 수정된 댓글 조회
+      const updatedCommentDoc = await commentRef.get();
+      const updatedComment = { id: updatedCommentDoc.id, ...updatedCommentDoc.data() };
+
+      // 응답 데이터 포맷팅
+      const createdAtDate = updatedComment.createdAt?.toDate?.() || new Date(updatedComment.createdAt);
+      const updatedAtDate = updatedComment.updatedAt?.toDate?.() || new Date(updatedComment.updatedAt);
+
+      return {
+        id: updatedComment.id,
+        postId: updatedComment.postId,
+        userId: updatedComment.userId,
+        author: updatedComment.author,
+        content: updatedComment.content,
+        parentId: updatedComment.parentId || null,
+        depth: updatedComment.depth || 0,
+        likesCount: updatedComment.likesCount || 0,
+        isLocked: updatedComment.isLocked || false,
+        createdAt: createdAtDate.toISOString(),
+        updatedAt: updatedAtDate.toISOString(),
+      };
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 수정 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "FORBIDDEN") {
+        throw error;
+      }
+      throw buildError("댓글을 수정할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
 }
 
 module.exports = new MissionPostService();
