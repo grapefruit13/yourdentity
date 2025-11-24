@@ -18,6 +18,7 @@ class MissionController {
     this.getAllMissionPosts = this.getAllMissionPosts.bind(this);
     this.getMissionPostById = this.getMissionPostById.bind(this);
     this.createMissionPostComment = this.createMissionPostComment.bind(this);
+    this.getMissionPostComments = this.getMissionPostComments.bind(this);
     this.updateMissionPostComment = this.updateMissionPostComment.bind(this);
     this.deleteMissionPostComment = this.deleteMissionPostComment.bind(this);
   }
@@ -318,6 +319,30 @@ class MissionController {
       return res.success(post);
     } catch (error) {
       console.error("[MissionController] 미션 인증글 상세 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 목록 조회
+   */
+  async getMissionPostComments(req, res, next) {
+    try {
+      const { postId } = req.params;
+      const viewerId = req.user?.uid || null;
+
+      if (!postId) {
+        const error = new Error("인증글 ID가 필요합니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const comments = await missionPostService.getComments(postId, viewerId);
+
+      return res.success({ comments });
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 댓글 목록 조회 오류:", error.message);
       return next(error);
     }
   }

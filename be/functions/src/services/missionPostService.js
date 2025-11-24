@@ -682,6 +682,126 @@ class MissionPostService {
   }
 
   /**
+   * 미션 인증글 댓글 목록 조회
+   * @param {string} postId - 인증글 ID
+   * @param {string|null} viewerId - 조회 사용자 ID (선택)
+   * @return {Promise<Array>} 댓글 목록
+   */
+  async getComments(postId, viewerId) {
+    try {
+      if (!postId || typeof postId !== "string") {
+        throw buildError("인증글 ID가 필요합니다.", "BAD_REQUEST", 400);
+      }
+
+      const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
+      const postDoc = await postRef.get();
+
+      if (!postDoc.exists) {
+        throw buildError("인증글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const postAuthorId = postDoc.data()?.userId || null;
+
+      const commentsSnapshot = await db
+        .collection("comments")
+        .where("postId", "==", postId)
+        .orderBy("createdAt", "asc")
+        .get();
+
+      const toIsoString = (value) => {
+        if (!value) {
+          return null;
+        }
+        if (typeof value.toDate === "function") {
+          return value.toDate().toISOString();
+        }
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString();
+      };
+
+      const processedComments = [];
+
+      commentsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+
+        // 커뮤니티 댓글 (communityId 존재) 제외
+        if (data.communityId) {
+          return;
+        }
+
+        const formatted = {
+          id: doc.id,
+          postId,
+          userId: data.userId || null,
+          author: data.author || null,
+          content: data.content || "",
+          parentId: data.parentId || null,
+          depth: data.depth || 0,
+          likesCount: data.likesCount || 0,
+          isDeleted: Boolean(data.isDeleted),
+          isLocked: Boolean(data.isLocked),
+          createdAt: toIsoString(data.createdAt),
+          updatedAt: toIsoString(data.updatedAt),
+          isMine: Boolean(viewerId && data.userId && viewerId === data.userId),
+          isAuthor: Boolean(postAuthorId && data.userId && postAuthorId === data.userId),
+          replies: [],
+        };
+
+        processedComments.push(formatted);
+      });
+
+      const commentMap = new Map();
+      processedComments.forEach((comment) => {
+        commentMap.set(comment.id, comment);
+      });
+
+      const rootComments = [];
+
+      const sortByCreatedAt = (list) =>
+        list.sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return aTime - bTime;
+        });
+
+      processedComments.forEach((comment) => {
+        if (comment.parentId) {
+          const parent = commentMap.get(comment.parentId);
+          if (parent) {
+            parent.replies.push(comment);
+          } else {
+            rootComments.push(comment);
+          }
+        } else {
+          rootComments.push(comment);
+        }
+      });
+
+      const formattedRoots = sortByCreatedAt(rootComments).map((comment) => {
+        const replies = sortByCreatedAt(comment.replies || []).map((reply) => {
+          const { replies, ...rest } = reply;
+          return rest;
+        });
+
+        const { replies: _replies, ...base } = comment;
+        return {
+          ...base,
+          replies,
+          repliesCount: replies.length,
+        };
+      });
+
+      return formattedRoots;
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 목록 조회 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
+        throw error;
+      }
+      throw buildError("댓글을 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
    * 미션 인증글 댓글 수정
    * @param {string} commentId - 댓글 ID
    * @param {string} userId - 사용자 ID
