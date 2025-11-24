@@ -194,6 +194,15 @@
       ]
     },
     {
+      "collectionGroup": "rewardsHistory",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "actionKey", "order": "ASCENDING" },
+        { "fieldPath": "changeType", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "qna",
       "queryScope": "COLLECTION",
       "fields": [
