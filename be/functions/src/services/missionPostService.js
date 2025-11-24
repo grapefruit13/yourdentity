@@ -705,7 +705,6 @@ class MissionPostService {
       const commentsSnapshot = await db
         .collection("comments")
         .where("postId", "==", postId)
-        .orderBy("createdAt", "asc")
         .get();
 
       const toIsoString = (value) => {
