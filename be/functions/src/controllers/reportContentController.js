@@ -95,7 +95,7 @@ class ReportContentController {
            synced: syncedReports.synced,
            failed: syncedReports.failed,
            errorCounts: syncedReports.errorCounts,
-           errors: syncedReports.errors
+           //errors: syncedReports.errors
          });
     } catch (error) {
       console.error("Notion -> Firebase 동기화 실패:", error);

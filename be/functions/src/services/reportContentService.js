@@ -1,6 +1,7 @@
 const { Client } = require('@notionhq/client');
-const { db, FieldValue } = require("../config/database");
-
+const { db, FieldValue, admin } = require("../config/database");
+const { Timestamp } = require("firebase-admin/firestore");
+const notionUserService = require("./notionUserService");
 
 
 class ReportContentService {
@@ -40,7 +41,126 @@ async createReport(reportData) {
     // 2. 신고 대상 존재 여부 확인
     await this.validateTargetExists(targetType, targetId, communityId);
 
-    // 3. Notion에 직접 저장
+    // // 3. Notion에 직접 저장
+    // const notionReport = {
+    //   targetType,
+    //   targetId,
+    //   targetUserId,
+    //   communityId,
+    //   reporterId,
+    //   reportReason,
+    //   status: false,
+    //   reviewedBy: null,
+    //   reviewedAt: null,
+    //   memo: null,
+    //   createdAt: new Date().toISOString(),
+    //   notionUpdatedAt: new Date().toISOString()
+    // };
+
+    // // 4. Notion에 직접 저장
+    // const notionPage = await this.syncToNotion(notionReport);
+
+
+    //  // 5. 신고 카운트 증가
+    //  try {
+    //   if (targetType === "comment") {
+    //     await db.collection("comments").doc(targetId).update({
+    //       reportsCount: FieldValue.increment(1),
+    //     });
+    //   } else if (targetType === "post") {
+    //     if (!communityId) {
+    //       const err = new Error("게시글 신고에는 communityId가 필요합니다.");
+    //       err.code = "MISSING_COMMUNITY_ID";
+    //       err.status = 400;
+    //       throw err;
+    //     }
+
+    //     await db
+    //       .collection("communities")
+    //       .doc(communityId)
+    //       .collection("posts")
+    //       .doc(targetId)
+    //       .update({
+    //         reportsCount: FieldValue.increment(1),
+    //       });
+    //   }
+    // } catch (countUpdateError) {
+    //   // 신고 카운트 증가 실패 시 에러 처리
+    //   const error = new Error(
+    //     `신고 카운트 증가 실패: ${countUpdateError.message || "알 수 없는 오류"}`
+    //   );
+    //   error.code = "REPORT_COUNT_UPDATE_FAILED";
+    //   error.status = 500;
+    //   error.originalError = countUpdateError;
+    //   throw error;
+    // }
+    // 3. 신고 카운트 증가 (먼저 실행)
+    let reportsCount = 0;
+    let isLocked = false;
+    try {
+      if (targetType === "comment") {
+        await db.collection("comments").doc(targetId).update({
+          reportsCount: FieldValue.increment(1),
+        });
+        const commentDoc = await db.collection("comments").doc(targetId).get();
+        reportsCount = commentDoc.data()?.reportsCount || 0;
+        
+        // comment는 3회 이상이면 잠금
+        if (reportsCount >= 3) {
+          isLocked = true;
+          await db.collection("comments").doc(targetId).update({
+            isLocked: true,
+          });
+          console.log(`[신고 처리] 댓글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
+        }
+      } else if (targetType === "post") {
+        if (!communityId) {
+          const err = new Error("게시글 신고에는 communityId가 필요합니다.");
+          err.code = "MISSING_COMMUNITY_ID";
+          err.status = 400;
+          throw err;
+        }
+        await db
+          .collection("communities")
+          .doc(communityId)
+          .collection("posts")
+          .doc(targetId)
+          .update({
+            reportsCount: FieldValue.increment(1),
+          });
+        const postDoc = await db
+          .collection("communities")
+          .doc(communityId)
+          .collection("posts")
+          .doc(targetId)
+          .get();
+        reportsCount = postDoc.data()?.reportsCount || 0;
+        
+        // post는 5회 이상이면 잠금
+        if (reportsCount >= 5) {
+          isLocked = true;
+          await db
+            .collection("communities")
+            .doc(communityId)
+            .collection("posts")
+            .doc(targetId)
+            .update({
+              isLocked: true,
+            });
+          console.log(`[신고 처리] 게시글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
+        }
+      }
+    } catch (countUpdateError) {
+      const error = new Error(
+        `신고 카운트 증가 실패: ${countUpdateError.message || "알 수 없는 오류"}`
+      );
+      error.code = "REPORT_COUNT_UPDATE_FAILED";
+      error.status = 500;
+      error.originalError = countUpdateError;
+      throw error;
+    }
+    
+    // 4. Notion에 저장 (신고 카운트 + 잠김 상태 포함)
     const notionReport = {
       targetType,
       targetId,
@@ -53,46 +173,11 @@ async createReport(reportData) {
       reviewedAt: null,
       memo: null,
       createdAt: new Date().toISOString(),
-      notionUpdatedAt: new Date().toISOString()
+      notionUpdatedAt: new Date().toISOString(),
+      reportsCount,
+      isLocked, // 잠김 상태 추가
     };
-
-    // 4. Notion에 직접 저장
     const notionPage = await this.syncToNotion(notionReport);
-
-
-     // 5. 신고 카운트 증가
-     try {
-      if (targetType === "comment") {
-        await db.collection("comments").doc(targetId).update({
-          reportsCount: FieldValue.increment(1),
-        });
-      } else if (targetType === "post") {
-        if (!communityId) {
-          const err = new Error("게시글 신고에는 communityId가 필요합니다.");
-          err.code = "MISSING_COMMUNITY_ID";
-          err.status = 400;
-          throw err;
-        }
-
-        await db
-          .collection("communities")
-          .doc(communityId)
-          .collection("posts")
-          .doc(targetId)
-          .update({
-            reportsCount: FieldValue.increment(1),
-          });
-      }
-    } catch (countUpdateError) {
-      // 신고 카운트 증가 실패 시 에러 처리
-      const error = new Error(
-        `신고 카운트 증가 실패: ${countUpdateError.message || "알 수 없는 오류"}`
-      );
-      error.code = "REPORT_COUNT_UPDATE_FAILED";
-      error.status = 500;
-      error.originalError = countUpdateError;
-      throw error;
-    }
 
 
 
@@ -328,7 +413,7 @@ async syncToNotion(reportData) {
 async syncReportToNotion(reportData) {
   try {
     
-    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false} = reportData;
+    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false} = reportData;
     
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
@@ -373,6 +458,85 @@ async syncReportToNotion(reportData) {
       }
     }
 
+
+    // 1. 같은 "신고 콘텐츠" 값을 가진 기존 페이지들 조회 및 업데이트
+    try {
+      // targetId를 문자열로 변환 (노션에 저장된 형식과 일치시키기 위해)
+      const targetIdString = String(targetId);
+      let cursor = undefined;
+      let hasMore = true;
+      let totalUpdated = 0;
+      
+      while (hasMore) {
+        const queryBody = {
+          filter: {
+            property: '신고 콘텐츠',
+            rich_text: {
+              equals: targetIdString
+            }
+          },
+          page_size: 100
+        };
+        
+        if (cursor) {
+          queryBody.start_cursor = cursor;
+        }
+        
+        const queryResponse = await fetch(`https://api.notion.com/v1/databases/${this.reportsDatabaseId}/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(queryBody)
+        });
+        
+        if (!queryResponse.ok) {
+          const errorText = await queryResponse.text();
+          throw new Error(`Notion API 요청 실패: ${queryResponse.status} - ${errorText}`);
+        }
+        
+        const queryData = await queryResponse.json();
+        
+        if (queryData.results && queryData.results.length > 0) {
+          // 조회된 페이지들의 "신고 카운트" 필드 업데이트
+          const updatePromises = queryData.results.map(async (page) => {
+            try {
+              await this.notion.pages.update({
+                page_id: page.id,
+                properties: {
+                  '신고 카운트': { number: reportsCount },
+                  '잠김 상태': { rich_text: [{ text: { content: String(isLocked) } }] }
+                }
+              });
+              return true;
+            } catch (pageError) {
+              console.error(`페이지 ${page.id} 업데이트 실패:`, pageError.message);
+              return false;
+            }
+          });
+          
+          const results = await Promise.all(updatePromises);
+          const successCount = results.filter(r => r === true).length;
+          totalUpdated += successCount;
+          
+          console.log(`[Notion 동기화] ${successCount}/${queryData.results.length}개 기존 신고의 카운트 업데이트 완료 (targetId: ${targetIdString}, reportsCount: ${reportsCount})`);
+        }
+        
+        hasMore = queryData.has_more || false;
+        cursor = queryData.next_cursor;
+      }
+      
+      if (totalUpdated > 0) {
+        console.log(`[Notion 동기화] 총 ${totalUpdated}개 기존 신고의 카운트를 ${reportsCount}로 업데이트 완료`);
+      }
+    } catch (updateError) {
+      console.error('기존 신고 카운트 업데이트 실패:', updateError);
+      // 업데이트 실패해도 새 신고 추가는 계속 진행
+    }
+
+    // 2. 새로운 신고 페이지 생성
     const notionData = {
       parent: { database_id: this.reportsDatabaseId },
       properties: {
@@ -385,6 +549,8 @@ async syncReportToNotion(reportData) {
         '신고일시': { date: { start: new Date().toISOString() } },
         '커뮤니티 ID': { rich_text: communityId ? [{ text: { content: communityId } }] : [] },
         '처리 여부': { checkbox: status },
+        '신고 카운트': { number: reportsCount }, 
+        '잠김 상태': { rich_text: [{ text: { content: String(isLocked) } }] },
         '동기화 시간(Firebase)': { 
             date: { 
               start: new Date(new Date().getTime()).toISOString()
@@ -500,9 +666,57 @@ async syncResolvedReports() {
 
     console.log("Notion 신고 데이터 개수:", reports.length);
 
+    // // 2. targetId별로 그룹화하고, 그룹 내 하나라도 status=true이면 모두 true로 처리
+    // const reportsByTarget = {};
+    
+    // for (const report of reports) {
+    //   const { targetId, targetType, communityId } = report;
+    //   if (!targetId || !targetType) continue;
+      
+    //   // targetId를 키로 사용 (게시글은 communityId도 포함, 댓글은 targetId만)
+    //   const key = targetType === "게시글" 
+    //     ? `${targetType}_${communityId}_${targetId}` 
+    //     : `${targetType}_${targetId}`;
+      
+    //   if (!reportsByTarget[key]) {
+    //     reportsByTarget[key] = {
+    //       targetType,
+    //       targetId,
+    //       communityId,
+    //       reports: [],
+    //       hasResolved: false
+    //     };
+    //   }
+      
+    //   reportsByTarget[key].reports.push(report);
+      
+    //   // 그룹 내 하나라도 status=true이면 hasResolved를 true로 설정
+    //   if (report.status) {
+    //     reportsByTarget[key].hasResolved = true;
+    //   }
+    // }
+
+    // // 3. hasResolved가 true인 그룹의 모든 리포트를 status=true로 처리
+    // const processedReports = [];
+    // for (const key in reportsByTarget) {
+    //   const group = reportsByTarget[key];
+      
+    //   if (group.hasResolved) {
+    //     // 그룹 내 모든 리포트를 status=true로 처리
+    //     for (const report of group.reports) {
+    //       processedReports.push({
+    //         ...report,
+    //         status: true // 모두 true로 설정
+    //       });
+    //     }
+    //   } else {
+    //     // hasResolved가 false인 경우는 그대로 유지
+    //     processedReports.push(...group.reports);
+    //   }
+    // }
     // 2. targetId별로 그룹화하고, 그룹 내 하나라도 status=true이면 모두 true로 처리
     const reportsByTarget = {};
-    
+
     for (const report of reports) {
       const { targetId, targetType, communityId } = report;
       if (!targetId || !targetType) continue;
@@ -527,6 +741,63 @@ async syncResolvedReports() {
       // 그룹 내 하나라도 status=true이면 hasResolved를 true로 설정
       if (report.status) {
         reportsByTarget[key].hasResolved = true;
+      }
+    }
+
+    // 2-1. 신고 카운트가 0인 그룹 처리 (삭제 및 Firestore 업데이트)
+    const groupsToDelete = [];
+    for (const key in reportsByTarget) {
+      const group = reportsByTarget[key];
+      
+      // 그룹 내 첫 번째 리포트의 신고 카운트 확인 (모든 리포트가 같은 targetId이므로 동일한 카운트를 가짐)
+      const firstReport = group.reports[0];
+      const reportsCount = firstReport.notionPage?.properties['신고 카운트']?.number ?? null;
+      
+      if (reportsCount === 0) {
+        groupsToDelete.push({ key, group }); // key와 group을 함께 저장
+      }
+    }
+
+    // 신고 카운트가 0인 그룹들 처리
+    for (const { key, group } of groupsToDelete) {
+      try {
+        const { targetType, targetId, communityId, reports } = group;
+        
+        // Firestore 업데이트: isLocked = false, reportsCount = 0
+        if (targetType === "게시글" && communityId) {
+          const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+          await postRef.update({
+            isLocked: false,
+            reportsCount: 0
+          });
+          console.log(`[게시글] ${targetId} → isLocked: false, reportsCount: 0으로 설정`);
+        } else if (targetType === "댓글") {
+          const commentRef = db.doc(`comments/${targetId}`);
+          await commentRef.update({
+            isLocked: false,
+            reportsCount: 0
+          });
+          console.log(`[댓글] ${targetId} → isLocked: false, reportsCount: 0으로 설정`);
+        }
+        
+        // 노션에서 해당 그룹의 모든 페이지 삭제 (archived)
+        for (const report of reports) {
+          try {
+            await this.notion.pages.update({
+              page_id: report.notionPageId,
+              archived: true
+            });
+            console.log(`[삭제] 노션 페이지 ${report.notionPageId} 아카이브 완료`);
+          } catch (archiveError) {
+            console.error(`[삭제 실패] 노션 페이지 ${report.notionPageId}:`, archiveError.message);
+          }
+        }
+        
+        // 그룹을 reportsByTarget에서 제거 (이후 처리에서 제외)
+        delete reportsByTarget[key];
+        console.log(`[그룹 삭제] ${key} → 신고 카운트 0으로 인해 삭제 처리 완료`);
+      } catch (deleteError) {
+        console.error(`[그룹 삭제 실패] ${group.targetId}:`, deleteError.message);
       }
     }
 
@@ -567,48 +838,210 @@ async syncResolvedReports() {
          continue;
        }
 
-       // 작성자 ID 가져오기
-       const targetUserId = notionPage.properties['작성자']?.rich_text?.[0]?.text?.content || null;
+      //  // 작성자 ID 가져오기
+      //  const targetUserId = notionPage.properties['작성자']?.rich_text?.[0]?.text?.content || null;
 
-       let syncSuccess = false;
+      //  let syncSuccess = false;
 
-       // Firebase 동기화 (status=true인 경우만 여기 도달)
-       if (targetType === "게시글") {
-         const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+      //  // Firebase 동기화 (status=true인 경우만 여기 도달)
+      //  if (targetType === "게시글") {
+      //    const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
 
-         await db.runTransaction(async (t) => {
-           const postSnap = await t.get(postRef);
+      //    await db.runTransaction(async (t) => {
+      //      const postSnap = await t.get(postRef);
 
-           if (!postSnap.exists) {
-               const err = new Error("POST_NOT_FOUND");
-               err.code = "POST_NOT_FOUND";
-               throw err;
+      //      if (!postSnap.exists) {
+      //          const err = new Error("POST_NOT_FOUND");
+      //          err.code = "POST_NOT_FOUND";
+      //          throw err;
+      //       }
+      //      // status=true이므로 항상 isLocked: true로 설정
+      //      t.update(postRef, { isLocked: true });
+
+      //      console.log(`[게시글] ${targetId} → locked`);
+      //    });
+      //    syncSuccess = true;
+
+      //  } else if (targetType === "댓글") {
+      //    const commentRef = db.doc(`comments/${targetId}`);
+
+      //    await db.runTransaction(async (t) => {
+      //      const commentSnap = await t.get(commentRef);
+
+      //      if (!commentSnap.exists) {
+      //            const err = new Error("COMMENT_NOT_FOUND");
+      //            err.code = "COMMENT_NOT_FOUND";
+      //            throw err;
+      //      }
+      //      // status=true이므로 항상 isLocked: true로 설정
+      //      t.update(commentRef, { isLocked: true });
+
+      //      console.log(`[댓글] ${targetId} → locked`);
+      //    });
+      //    syncSuccess = true;
+      //  }
+      // 작성자 ID 가져오기
+      const targetUserId = notionPage.properties['작성자']?.rich_text?.[0]?.text?.content || null;
+
+      // 신고 카운트 확인
+      const reportsCount = notionPage.properties['신고 카운트']?.number ?? null;
+
+      let syncSuccess = false;
+
+      // Firebase 동기화 (status=true인 경우만 여기 도달)
+      if (targetType === "게시글") {
+        const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+
+        await db.runTransaction(async (t) => {
+          const postSnap = await t.get(postRef);
+
+          if (!postSnap.exists) {
+              const err = new Error("POST_NOT_FOUND");
+              err.code = "POST_NOT_FOUND";
+              throw err;
+          }
+          // status=true이므로 항상 isLocked: true로 설정
+          t.update(postRef, { isLocked: true });
+
+          console.log(`[게시글] ${targetId} → locked`);
+        });
+        syncSuccess = true;
+
+      } else if (targetType === "댓글") {
+        const commentRef = db.doc(`comments/${targetId}`);
+
+        await db.runTransaction(async (t) => {
+          const commentSnap = await t.get(commentRef);
+
+          if (!commentSnap.exists) {
+                const err = new Error("COMMENT_NOT_FOUND");
+                err.code = "COMMENT_NOT_FOUND";
+                throw err;
+          }
+          // status=true이므로 항상 isLocked: true로 설정
+          t.update(commentRef, { isLocked: true });
+
+          console.log(`[댓글] ${targetId} → locked`);
+        });
+        syncSuccess = true;
+      }
+
+      console.log("=================================================")
+      console.log("reportsCount:", reportsCount);
+      console.log("targetUserId:", targetUserId);
+      console.log("syncSuccess:", syncSuccess);
+      console.log("targetType:", targetType);
+      console.log("targetId:", targetId);
+      console.log("communityId:", communityId);
+      console.log("status:", status);
+      console.log("=================================================")
+
+      // 신고 카운트가 0이 아닌 경우 작성자 penaltyCount 증가 및 정지 기간 업데이트
+      if (syncSuccess && targetUserId && reportsCount !== null && reportsCount > 0) {
+        try {
+          const userRef = db.collection("users").doc(targetUserId);
+          
+          await db.runTransaction(async (t) => {
+            const userSnap = await t.get(userRef);
+            
+            if (!userSnap.exists) {
+              console.warn(`[Users] ${targetUserId} 사용자를 찾을 수 없음`);
+              return;
             }
-           // status=true이므로 항상 isLocked: true로 설정
-           t.update(postRef, { isLocked: true });
+            
+            const userData = userSnap.data();
+            const currentPenaltyCount = userData.penaltyCount || 0;
+            const newPenaltyCount = currentPenaltyCount + 1;
+            
+            // 기존 정지 기간 확인
+            const suspensionStartAt = userData.suspensionStartAt;
+            const suspensionEndAt = userData.suspensionEndAt;
+            
+            // suspensionEndAt이 9999년 12월 31일인지 확인
+            const maxDate = new Date('9999-12-31T00:00:00.000Z');
+            let isPermanentSuspension = false;
 
-           console.log(`[게시글] ${targetId} → locked`);
-         });
-         syncSuccess = true;
+            if (suspensionEndAt) {
+              // string 타입이므로 Date 객체로 변환
+              const endDate = new Date(suspensionEndAt);
+              
+              // 연도, 월, 일만 비교
+              const endYear = endDate.getFullYear();
+              const endMonth = endDate.getMonth() + 1; // getMonth()는 0부터 시작
+              const endDay = endDate.getDate();
+              
+              isPermanentSuspension = endYear === 9999 && endMonth === 12 && endDay === 31;
+            }
+            
+            const now = new Date();
+            const updateData = {
+              penaltyCount: newPenaltyCount
+            };
 
-       } else if (targetType === "댓글") {
-         const commentRef = db.doc(`comments/${targetId}`);
+            console.log("=================================================")
+            console.log("isPermanentSuspension:", isPermanentSuspension);
+            console.log("newPenaltyCount:", newPenaltyCount);
+            console.log("suspensionStartAt:", suspensionStartAt);
+            console.log("suspensionEndAt:", suspensionEndAt);
+            console.log("=================================================")
+            
+            // 영구 정지가 아닌 경우에만 정지 기간 업데이트
+            if (!isPermanentSuspension) {
 
-         await db.runTransaction(async (t) => {
-           const commentSnap = await t.get(commentRef);
+              // 날짜를 YYYY-MM-DD 형식으로 변환하는 헬퍼 함수
+              const formatDateOnly = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              };
 
-           if (!commentSnap.exists) {
-                 const err = new Error("COMMENT_NOT_FOUND");
-                 err.code = "COMMENT_NOT_FOUND";
-                 throw err;
-           }
-           // status=true이므로 항상 isLocked: true로 설정
-           t.update(commentRef, { isLocked: true });
-
-           console.log(`[댓글] ${targetId} → locked`);
-         });
-         syncSuccess = true;
-       }
+              if (newPenaltyCount === 1) {
+                // penaltyCount가 1일 경우: 2주 정지
+                if (!suspensionStartAt && !suspensionEndAt) {
+                  // 둘 다 빈값: 현재 시점부터 2주 후
+                  const twoWeeksLater = new Date(now);
+                  twoWeeksLater.setDate(twoWeeksLater.getDate() + 14);
+                  updateData.suspensionStartAt = formatDateOnly(now);
+                  updateData.suspensionEndAt = formatDateOnly(twoWeeksLater);
+                } else if (suspensionStartAt && suspensionEndAt) {
+                  // 둘 다 값이 있음: suspensionEndAt에 2주 추가, suspensionStartAt도 날짜만 포함하도록 정규화
+                  const currentStart = new Date(suspensionStartAt);
+                  const currentEnd = new Date(suspensionEndAt);
+                  const newEnd = new Date(currentEnd);
+                  newEnd.setDate(newEnd.getDate() + 14);
+                  updateData.suspensionStartAt = formatDateOnly(currentStart);
+                  updateData.suspensionEndAt = formatDateOnly(newEnd);
+                }
+              } else if (newPenaltyCount >= 2) {
+                // penaltyCount가 2 이상일 경우: 1개월 정지
+                if (!suspensionStartAt && !suspensionEndAt) {
+                  // 둘 다 빈값: 현재 시점부터 1개월 후
+                  const oneMonthLater = new Date(now);
+                  oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+                  updateData.suspensionStartAt = formatDateOnly(now);
+                  updateData.suspensionEndAt = formatDateOnly(oneMonthLater);
+                } else if (suspensionStartAt && suspensionEndAt) {
+                  // 둘 다 값이 있음: suspensionEndAt에 1개월 추가, suspensionStartAt도 날짜만 포함하도록 정규화
+                  const currentStart = new Date(suspensionStartAt);
+                  const currentEnd = new Date(suspensionEndAt);
+                  const newEnd = new Date(currentEnd);
+                  newEnd.setMonth(newEnd.getMonth() + 1);
+                  updateData.suspensionStartAt = formatDateOnly(currentStart);
+                  updateData.suspensionEndAt = formatDateOnly(newEnd);
+                }
+              }
+            }
+            
+            t.update(userRef, updateData);
+            console.log(`[Users] ${targetUserId} → penaltyCount: ${newPenaltyCount}, 정지 기간 업데이트 완료`);
+            
+          });
+        } catch (userPenaltyError) {
+          console.error(`[Users] ${targetUserId}의 penaltyCount 증가 실패:`, userPenaltyError.message);
+          // penaltyCount 업데이트 실패는 전체 프로세스를 중단하지 않음
+        }
+      }
 
        // Firebase 동기화 성공 시 Notion 데이터베이스 이동 및 users 컬렉션 reportCount 증가
        if (syncSuccess) {
