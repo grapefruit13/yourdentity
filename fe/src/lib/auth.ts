@@ -163,6 +163,22 @@ export const signInWithKakao = async (): Promise<{
     // iOS PWA 환경에서는 redirect 방식 사용 (popup이 실패할 수 있음)
     if (isIOSPWA()) {
       debug.log("iOS PWA 환경 감지: redirect 방식으로 카카오 로그인 시도");
+
+      // redirect 전 현재 URL을 저장하여 돌아올 때 기존 창으로 돌아오도록 함
+      if (typeof window !== "undefined") {
+        const currentUrl = window.location.href;
+        // URL 파라미터로 redirect 전 URL 전달 (sessionStorage는 Safari 앱과 공유 불가)
+        const redirectUrl = new URL(currentUrl);
+        redirectUrl.searchParams.set("_redirect_from", currentUrl);
+
+        // 현재 URL을 history state에 저장
+        window.history.replaceState(
+          { ...window.history.state, redirectFrom: currentUrl },
+          "",
+          redirectUrl.toString()
+        );
+      }
+
       // redirect는 페이지 이동이 발생하므로 Promise는 resolve되지 않음
       // redirect 후 getRedirectResult로 결과를 처리해야 함
       await signInWithRedirect(auth, provider);
