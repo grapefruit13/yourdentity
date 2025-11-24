@@ -91,6 +91,7 @@ class MissionService {
         missionNotionPageId: missionId,
         missionTitle: mission.title || null,
         detailTags: mission.detailTags || null, // 미션 태그 저장
+        categories: Array.isArray(mission.categories) ? mission.categories : [],
         status: MISSION_STATUS.IN_PROGRESS,
         startedAt: now,
         lastActivityAt: now,

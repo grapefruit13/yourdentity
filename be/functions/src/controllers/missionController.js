@@ -277,13 +277,27 @@ class MissionController {
    */
   async getAllMissionPosts(req, res, next) {
     try {
-      const { sort = "latest", category, userId } = req.query;
+      const { sort = "latest", userId } = req.query;
+      const rawCategories = req.query.categories;
+
+      let categories = [];
+      if (typeof rawCategories === "string" && rawCategories.trim().length > 0) {
+        categories = rawCategories
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      } else if (Array.isArray(rawCategories)) {
+        categories = rawCategories
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean);
+      }
+
       const viewerId = req.user?.uid || null;
 
       const result = await missionPostService.getAllMissionPosts(
         {
           sort,
-          category,
+          categories,
           userId,
         },
         viewerId,
