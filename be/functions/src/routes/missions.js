@@ -955,6 +955,80 @@ router.put("/posts/:postId/comments/:commentId", authGuard, missionController.up
 
 /**
  * @swagger
+ * /missions/posts/{postId}/comments/{commentId}:
+ *   delete:
+ *     summary: 미션 인증글 댓글 삭제
+ *     tags: [Missions]
+ *     description: 특정 미션 인증글 댓글을 삭제합니다. 대댓글이 있으면 소프트 딜리트, 없으면 하드 딜리트됩니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 인증글 ID
+ *         example: "post-123"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 댓글 ID
+ *         example: "comment_123"
+ *     responses:
+ *       204:
+ *         description: 댓글 삭제 성공
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               BadRequest:
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글 ID가 필요합니다."
+ *       403:
+ *         description: 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Forbidden:
+ *                 value:
+ *                   status: 403
+ *                   message: "댓글 삭제 권한이 없습니다."
+ *       404:
+ *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotFound:
+ *                 value:
+ *                   status: 404
+ *                   message: "댓글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글을 삭제할 수 없습니다."
+ */
+router.delete("/posts/:postId/comments/:commentId", authGuard, missionController.deleteMissionPostComment);
+
+/**
+ * @swagger
  * /missions/{missionId}:
  *   get:
  *     summary: 미션 상세 조회

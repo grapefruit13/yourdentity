@@ -5,6 +5,7 @@ const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
 const userService = require("./userService");
 const fcmHelper = require("../utils/fcmHelper");
+const RewardService = require("./rewardService");
 const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
@@ -751,6 +752,87 @@ class MissionPostService {
         throw error;
       }
       throw buildError("댓글을 수정할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 삭제
+   * @param {string} commentId - 댓글 ID
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<void>}
+   */
+  async deleteComment(commentId, userId) {
+    try {
+      // 댓글 존재 확인
+      const commentRef = db.collection("comments").doc(commentId);
+      const commentDoc = await commentRef.get();
+
+      if (!commentDoc.exists) {
+        throw buildError("댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+      }
+
+      const comment = commentDoc.data();
+
+      // 소유권 검증
+      if (comment.userId !== userId) {
+        throw buildError("댓글 삭제 권한이 없습니다.", "FORBIDDEN", 403);
+      }
+
+      // 미션 인증글 댓글인지 확인 (communityId가 없어야 함)
+      if (comment.communityId) {
+        throw buildError("커뮤니티 댓글은 이 API로 삭제할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      // 대댓글 확인 (삭제되지 않은 댓글만)
+      const repliesSnapshot = await db
+        .collection("comments")
+        .where("parentId", "==", commentId)
+        .where("isDeleted", "==", false)
+        .get();
+
+      const hasReplies = repliesSnapshot && repliesSnapshot.docs.length > 0;
+
+      if (hasReplies) {
+        // 대댓글이 있으면 소프트 딜리트
+        const rewardService = new RewardService();
+        await db.runTransaction(async (transaction) => {
+          // 리워드 차감 처리
+          await rewardService.handleRewardOnCommentDeletion(userId, commentId, transaction);
+
+          // 소프트 딜리트
+          transaction.update(commentRef, {
+            isDeleted: true,
+            userId: null,
+            author: "알 수 없음",
+            content: "삭제된 댓글입니다",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        });
+      } else {
+        // 대댓글이 없으면 하드 딜리트
+        const rewardService = new RewardService();
+        await db.runTransaction(async (transaction) => {
+          const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(comment.postId);
+
+          // 리워드 차감 처리
+          await rewardService.handleRewardOnCommentDeletion(userId, commentId, transaction);
+
+          // 댓글 실제 삭제
+          transaction.delete(commentRef);
+
+          // 게시글의 commentsCount 감소
+          transaction.update(postRef, {
+            commentsCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        });
+      }
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 삭제 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "FORBIDDEN") {
+        throw error;
+      }
+      throw buildError("댓글을 삭제할 수 없습니다.", "INTERNAL_ERROR", 500);
     }
   }
 }
