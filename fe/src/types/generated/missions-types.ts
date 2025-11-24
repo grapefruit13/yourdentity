@@ -128,6 +128,45 @@ export type TGETMissionsPostsByIdRes = {
   isAuthor?: boolean;
 };
 
+export interface TGETMissionsPostsCommentsByIdReq {
+  postId: string;
+}
+
+export type TGETMissionsPostsCommentsByIdRes = {
+  comments?: {
+    id?: string;
+    postId?: string;
+    userId?: string;
+    author?: string;
+    content?: string;
+    parentId?: string;
+    depth?: number;
+    likesCount?: number;
+    isDeleted?: boolean;
+    isLocked?: boolean;
+    isMine?: boolean;
+    isAuthor?: boolean;
+    repliesCount?: number;
+    replies?: {
+      id?: string;
+      userId?: string;
+      author?: string;
+      content?: string;
+      parentId?: string;
+      depth?: number;
+      likesCount?: number;
+      isDeleted?: boolean;
+      isLocked?: boolean;
+      isMine?: boolean;
+      isAuthor?: boolean;
+      createdAt?: string;
+      updatedAt?: string;
+    }[];
+    createdAt?: string;
+    updatedAt?: string;
+  }[];
+};
+
 export interface TPOSTMissionsPostsCommentsByIdReq {
   postId: string;
   data: {

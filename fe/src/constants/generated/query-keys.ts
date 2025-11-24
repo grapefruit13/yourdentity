@@ -17,6 +17,7 @@ import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
+import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as qnaTypes from "@/types/generated/qna-types";
@@ -188,6 +189,13 @@ export const missionsKeys = {
       path: { postId: request.postId },
       query: {},
     }),
+  getMissionsPostsCommentsById: (
+    request: missionsTypes.TGETMissionsPostsCommentsByIdReq
+  ) =>
+    __buildKey("missions", "getMissionsPostsCommentsById", {
+      path: { postId: request.postId },
+      query: {},
+    }),
   getMissionsStats: __buildKey("missions", "getMissionsStats"),
 } as const;
 
@@ -201,6 +209,14 @@ export const notificationsKeys = {
   getNotificationsSendAllPending: __buildKey(
     "notifications",
     "getNotificationsSendAllPending"
+  ),
+} as const;
+
+// NotionRewardHistory Query Keys
+export const notionrewardhistoryKeys = {
+  getNotionrewardhistorySync: __buildKey(
+    "notionrewardhistory",
+    "getNotionrewardhistorySync"
   ),
 } as const;
 

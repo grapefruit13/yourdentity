@@ -63,6 +63,14 @@ export const getMissionsPostsById = (
   );
 };
 
+export const getMissionsPostsCommentsById = (
+  request: Types.TGETMissionsPostsCommentsByIdReq
+) => {
+  return get<Types.TGETMissionsPostsCommentsByIdRes>(
+    `/missions/posts/${request.postId}/comments`
+  );
+};
+
 export const postMissionsPostsCommentsById = (
   request: Types.TPOSTMissionsPostsCommentsByIdReq
 ) => {
