@@ -355,90 +355,130 @@ export const normalizeBrTags = (html: string): string => {
  * container.innerHTML로 파싱한 후에도 속성을 보존하기 위해
  * outerHTML을 사용하여 브라우저가 파싱한 HTML을 그대로 가져옴
  * @param element - 변환할 DOM 요소
+ * @param depth - 재귀 깊이 (내부 사용, 최대 50단계 제한)
  * @returns HTML 문자열
  */
-export const elementToHtml = (element: Node): string => {
-  if (element.nodeType === Node.TEXT_NODE) {
-    // 텍스트 노드는 HTML 이스케이프 필수 (XSS 방지)
-    return escapeHtml(element.textContent || "");
+export const elementToHtml = (element: Node, depth = 0): string => {
+  // 재귀 깊이 제한 (무한 루프 방지)
+  const MAX_DEPTH = 50;
+  if (depth > MAX_DEPTH) {
+    console.warn("elementToHtml: Maximum recursion depth exceeded");
+    return "";
   }
 
-  if (element.nodeType === Node.ELEMENT_NODE) {
-    const el = element as HTMLElement;
-    const tagName = el.tagName.toLowerCase();
+  try {
+    if (element.nodeType === Node.TEXT_NODE) {
+      // 텍스트 노드는 HTML 이스케이프 필수 (XSS 방지)
+      return escapeHtml(element.textContent || "");
+    }
 
-    // outerHTML을 사용하면 브라우저가 파싱한 속성을 그대로 가져올 수 있음
-    // container.innerHTML로 파싱한 후에도 outerHTML은 속성을 포함함
-    const outerHtml = el.outerHTML;
+    if (element.nodeType === Node.ELEMENT_NODE) {
+      const el = element as HTMLElement;
+      const tagName = el.tagName.toLowerCase();
 
-    // outerHTML이 있으면 사용 (속성이 포함되어 있음)
-    if (outerHtml) {
-      // 자식 노드들을 재귀적으로 처리하기 위해
-      // 시작 태그와 끝 태그를 분리하고 자식만 재귀 처리
-      // ReDoS 방지를 위해 indexOf 사용 (정규표현식 대신)
-      const tagStart = outerHtml.indexOf(`<${tagName}`);
-      const endTag = `</${tagName}>`;
+      // outerHTML을 사용하면 브라우저가 파싱한 속성을 그대로 가져올 수 있음
+      // container.innerHTML로 파싱한 후에도 outerHTML은 속성을 포함함
+      const outerHtml = el.outerHTML;
 
-      if (tagStart !== -1) {
-        // 시작 태그의 끝 위치 찾기 (> 문자)
-        const tagEnd = outerHtml.indexOf(">", tagStart);
-        if (tagEnd !== -1) {
-          const startTag = outerHtml.substring(tagStart, tagEnd + 1);
+      // outerHTML이 있으면 사용 (속성이 포함되어 있음)
+      if (outerHtml) {
+        // 자식 노드들을 재귀적으로 처리하기 위해
+        // 시작 태그와 끝 태그를 분리하고 자식만 재귀 처리
+        // ReDoS 방지를 위해 indexOf 사용 (정규표현식 대신)
+        const tagStart = outerHtml.indexOf(`<${tagName}`);
+        const endTag = `</${tagName}>`;
 
-          // 자식 노드들을 재귀적으로 처리
-          let childrenHtml = "";
+        if (tagStart !== -1) {
+          // 시작 태그의 끝 위치 찾기 (> 문자)
+          const tagEnd = outerHtml.indexOf(">", tagStart);
+          if (tagEnd !== -1) {
+            const startTag = outerHtml.substring(tagStart, tagEnd + 1);
+
+            // 자식 노드들을 재귀적으로 처리
+            let childrenHtml = "";
+            try {
+              el.childNodes.forEach((child) => {
+                childrenHtml += elementToHtml(child, depth + 1);
+              });
+            } catch (error) {
+              console.warn(
+                "elementToHtml: Error processing child nodes:",
+                error
+              );
+              // 에러 발생 시 outerHTML 사용 (폴백)
+              return outerHtml;
+            }
+
+            return `${startTag}${childrenHtml}${endTag}`;
+          }
+        }
+      }
+
+      // outerHTML이 없는 경우 (드물지만) 명시적으로 속성 추가
+      let html = `<${tagName}`;
+
+      // 모든 속성을 추가
+      if (el.attributes && el.attributes.length > 0) {
+        for (let i = 0; i < el.attributes.length; i++) {
+          const attr = el.attributes[i];
+          html += ` ${attr.name}="${attr.value.replace(/"/g, "&quot;")}"`;
+        }
+      }
+
+      // className 확인 및 추가
+      const className = el.className;
+      if (className && typeof className === "string" && className.trim()) {
+        const hasClassAttr = el.hasAttribute("class");
+        if (!hasClassAttr) {
+          html += ` class="${String(className).replace(/"/g, "&quot;")}"`;
+        }
+      }
+
+      // dataset 속성 확인 및 추가
+      if (el.dataset) {
+        Object.keys(el.dataset).forEach((key) => {
+          const dataAttr = `data-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+          const hasDataAttr = el.hasAttribute(dataAttr);
+          if (!hasDataAttr && el.dataset[key]) {
+            html += ` ${dataAttr}="${String(el.dataset[key]).replace(/"/g, "&quot;")}"`;
+          }
+        });
+      }
+
+      html += ">";
+
+      // 자식 노드들을 재귀적으로 처리
+      if (el.childNodes.length > 0) {
+        try {
           el.childNodes.forEach((child) => {
-            childrenHtml += elementToHtml(child);
+            html += elementToHtml(child, depth + 1);
           });
-
-          return `${startTag}${childrenHtml}${endTag}`;
+        } catch (error) {
+          console.warn("elementToHtml: Error processing child nodes:", error);
+          // 에러 발생 시 outerHTML 사용 (폴백)
+          if (outerHtml) {
+            return outerHtml;
+          }
         }
       }
+
+      html += `</${tagName}>`;
+      return html;
     }
 
-    // outerHTML이 없는 경우 (드물지만) 명시적으로 속성 추가
-    let html = `<${tagName}`;
-
-    // 모든 속성을 추가
-    if (el.attributes && el.attributes.length > 0) {
-      for (let i = 0; i < el.attributes.length; i++) {
-        const attr = el.attributes[i];
-        html += ` ${attr.name}="${attr.value.replace(/"/g, "&quot;")}"`;
-      }
+    return "";
+  } catch (error) {
+    // 전체 처리 실패 시 에러 로깅 및 폴백
+    console.error("elementToHtml: Unexpected error:", error);
+    // 텍스트 노드인 경우 텍스트만 반환
+    if (element.nodeType === Node.TEXT_NODE) {
+      return escapeHtml(element.textContent || "");
     }
-
-    // className 확인 및 추가
-    const className = el.className;
-    if (className && typeof className === "string" && className.trim()) {
-      const hasClassAttr = el.hasAttribute("class");
-      if (!hasClassAttr) {
-        html += ` class="${String(className).replace(/"/g, "&quot;")}"`;
-      }
+    // 요소 노드인 경우 outerHTML 사용 (폴백)
+    if (element.nodeType === Node.ELEMENT_NODE) {
+      const el = element as HTMLElement;
+      return el.outerHTML || "";
     }
-
-    // dataset 속성 확인 및 추가
-    if (el.dataset) {
-      Object.keys(el.dataset).forEach((key) => {
-        const dataAttr = `data-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
-        const hasDataAttr = el.hasAttribute(dataAttr);
-        if (!hasDataAttr && el.dataset[key]) {
-          html += ` ${dataAttr}="${String(el.dataset[key]).replace(/"/g, "&quot;")}"`;
-        }
-      });
-    }
-
-    html += ">";
-
-    // 자식 노드들을 재귀적으로 처리
-    if (el.childNodes.length > 0) {
-      el.childNodes.forEach((child) => {
-        html += elementToHtml(child);
-      });
-    }
-
-    html += `</${tagName}>`;
-    return html;
+    return "";
   }
-
-  return "";
 };

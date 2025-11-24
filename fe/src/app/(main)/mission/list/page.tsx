@@ -24,9 +24,7 @@ import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { Mission } from "@/types/generated/api-schema";
 import type { TGETMissionsReq } from "@/types/generated/missions-types";
 import type { SingleSelectFilterId } from "@/types/mission/filter-types";
-import type { MissionListItem } from "@/types/mission/mission-types";
 import type { SortType } from "@/types/mission/sort-types";
-import { transformMissionsToListItems } from "@/utils/mission/transform-mission";
 import { cn } from "@/utils/shared/cn";
 
 /**
@@ -88,8 +86,8 @@ const Page = () => {
     request: apiRequestParams,
   });
 
-  // API 응답을 MissionListCard 형식으로 변환
-  const missions = useMemo((): MissionListItem[] => {
+  // API 응답 필터링
+  const missions = useMemo((): Mission[] => {
     if (!missionsResponse?.missions) {
       return [];
     }
@@ -104,7 +102,7 @@ const Page = () => {
       filteredMissions = [];
     }
 
-    return transformMissionsToListItems(filteredMissions);
+    return filteredMissions;
   }, [missionsResponse, filters.leftSelect]);
 
   const handleFiltersChange = (
@@ -188,13 +186,17 @@ const Page = () => {
           missions.map((mission) => (
             <MissionListCard
               key={mission.id}
-              id={mission.id}
-              title={mission.title}
-              categories={mission.categories}
-              thumbnailUrl={mission.thumbnailUrl}
-              likeCount={mission.likeCount}
-              createdAt={mission.createdAt}
-              isLiked={mission.isLiked}
+              id={mission.id || ""}
+              title={mission.title || ""}
+              categories={mission.categories || []}
+              thumbnailUrl={mission.coverImage || "/imgs/mockup.jpg"}
+              likeCount={mission.reactionCount || 0}
+              createdAt={
+                mission.createdAt ||
+                mission.updatedAt ||
+                new Date().toISOString()
+              }
+              isLiked={false} // TODO: 찜한 미션 필터링 구현 시 수정
             />
           ))}
       </div>

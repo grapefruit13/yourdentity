@@ -1,51 +1,48 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, RefObject } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentItem from "@/components/community/CommentItem";
 import { CommentEmptyMessage } from "@/components/shared/comment-empty-message";
 import { CommentInputForm } from "@/components/shared/comment-input-form";
 import { CommentSkeleton } from "@/components/shared/comment-skeleton";
 import Modal from "@/components/shared/ui/modal";
-import { commentsKeys } from "@/constants/generated/query-keys";
-import { communitiesKeys } from "@/constants/generated/query-keys";
+import { missionsKeys } from "@/constants/generated/query-keys";
 import {
   COMMENT_DELETE_MODAL_TITLE,
   COMMENT_DELETE_MODAL_CONFIRM,
   COMMENT_DELETE_MODAL_CANCEL,
 } from "@/constants/shared/_comment-constants";
 import {
-  useGetCommentsCommunitiesPostsByTwoIds,
-  usePostCommentsCommunitiesPostsByTwoIds,
-  usePutCommentsById,
-  useDeleteCommentsById,
-} from "@/hooks/generated/comments-hooks";
+  useGetMissionsPostsCommentsById,
+  usePostMissionsPostsCommentsById,
+  usePutMissionsPostsCommentsByTwoIds,
+  useDeleteMissionsPostsCommentsByTwoIds,
+} from "@/hooks/generated/missions-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
 import type { ReplyingToState } from "@/types/shared/comment";
 import { getParentId, getCommentInputForItem } from "@/utils/shared/comment";
 import { debug } from "@/utils/shared/debugger";
 
-interface CommentsSectionProps {
+interface MissionCommentsSectionProps {
   postId: string;
-  communityId: string;
   commentInputRef?: React.RefObject<HTMLTextAreaElement | null>;
   onFocusRequestRef?: React.RefObject<(() => void) | null>;
 }
 
 /**
- * @description 댓글 섹션 컴포넌트
- * - 댓글 목록 표시
- * - 댓글 작성/수정/삭제 기능
+ * @description 미션 인증글 댓글 섹션 컴포넌트
+ * - 댓글 목록 표시 (API 연동)
+ * - 댓글 작성 기능 (API 연동)
  * - 답글 기능
  */
-const CommentsSection = ({
+const MissionCommentsSection = ({
   postId,
-  communityId,
   commentInputRef,
   onFocusRequestRef,
-}: CommentsSectionProps) => {
+}: MissionCommentsSectionProps) => {
   const queryClient = useQueryClient();
 
   const [commentInput, setCommentInput] = useState("");
@@ -62,8 +59,7 @@ const CommentsSection = ({
 
   // commentInputRef가 전달되면 그것을 사용, 없으면 내부 ref 사용
   const inputRef =
-    (commentInputRef as React.RefObject<HTMLTextAreaElement>) ||
-    bottomTextareaRef;
+    (commentInputRef as RefObject<HTMLTextAreaElement>) || bottomTextareaRef;
 
   // 외부에서 포커스 요청 시 답글 상태 초기화 및 포커스
   useCommentFocus({
@@ -75,79 +71,70 @@ const CommentsSection = ({
   });
 
   // 현재 사용자 정보
-  const { data: userData } = useGetUsersMe({
-    select: (data) => data?.user,
+  const { data: currentUserNickname = "" } = useGetUsersMe({
+    select: (data) => data?.user?.nickname || "",
   });
-  const currentUserNickname = userData?.nickname || "";
 
-  // 댓글 데이터 가져오기
+  // 댓글 목록 조회 API
   const { data: commentsData, isLoading: isCommentsLoading } =
-    useGetCommentsCommunitiesPostsByTwoIds({
+    useGetMissionsPostsCommentsById({
       request: {
-        communityId: communityId || "",
         postId,
       },
-      enabled: !!postId && !!communityId,
+      enabled: !!postId,
     });
 
-  const comments = commentsData?.comments || [];
+  // 댓글 목록 (최신순 정렬)
+  const comments = useMemo(() => {
+    if (!commentsData?.comments) return [];
+
+    return [...commentsData.comments].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA; // 최신순 (내림차순)
+    });
+  }, [commentsData?.comments]);
+
+  // 미션 게시글 및 댓글 쿼리 무효화 헬퍼
+  const invalidateCommentQueries = useCallback(() => {
+    // 게시글 상세 정보 refetch (댓글 카운트 반영)
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsById({ postId }),
+    });
+    // 댓글 목록 refetch
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsCommentsById({ postId }),
+    });
+  }, [queryClient, postId]);
 
   // 댓글 작성 mutation
   const { mutateAsync: postCommentAsync, isPending: isPostCommentPending } =
-    usePostCommentsCommunitiesPostsByTwoIds({
+    usePostMissionsPostsCommentsById({
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
-            communityId: communityId || "",
-            postId,
-          }),
-        });
-        queryClient.invalidateQueries({
-          queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
-            communityId: communityId || "",
-            postId,
-          }),
-        });
-        queryClient.invalidateQueries({
-          queryKey: communitiesKeys.getCommunitiesPosts({
-            page: undefined,
-            size: undefined,
-            programType: undefined,
-            programState: undefined,
-          }),
-        });
+        invalidateCommentQueries();
         setCommentInput("");
         setReplyingTo(null);
       },
     });
 
   // 댓글 수정 mutation
-  const { mutateAsync: putCommentAsync } = usePutCommentsById({
+  const { mutateAsync: putCommentAsync } = usePutMissionsPostsCommentsByTwoIds({
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
-          communityId: communityId || "",
-          postId,
-        }),
-      });
+      invalidateCommentQueries();
       setEditingCommentId(null);
       setEditingContent("");
     },
   });
 
   // 댓글 삭제 mutation
-  const { mutateAsync: deleteCommentAsync } = useDeleteCommentsById({
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
-          communityId: communityId || "",
-          postId,
-        }),
-      });
-      setIsDeleteModalOpen(false);
-      setDeleteTargetId(null);
-    },
-  });
+  const { mutateAsync: deleteCommentAsync } =
+    useDeleteMissionsPostsCommentsByTwoIds({
+      onSuccess: () => {
+        invalidateCommentQueries();
+        setIsDeleteModalOpen(false);
+        setDeleteTargetId(null);
+      },
+    });
 
   // parentId 계산 로직 (메모이제이션)
   const getParentIdMemoized = useCallback(
@@ -162,13 +149,12 @@ const CommentsSection = ({
       e.preventDefault();
       if (isPostCommentPending) return;
       const contentToSubmit = customContent ?? commentInput;
-      if (!contentToSubmit.trim() || !communityId || !postId) return;
+      if (!contentToSubmit.trim() || !postId) return;
 
       try {
         const parentId = getParentIdMemoized(replyingTo);
 
         await postCommentAsync({
-          communityId,
           postId,
           data: {
             content: contentToSubmit.trim(),
@@ -181,7 +167,6 @@ const CommentsSection = ({
     },
     [
       commentInput,
-      communityId,
       postId,
       replyingTo,
       getParentIdMemoized,
@@ -245,6 +230,7 @@ const CommentsSection = ({
 
       try {
         await putCommentAsync({
+          postId,
           commentId,
           data: {
             content: editingContent.trim(),
@@ -254,7 +240,7 @@ const CommentsSection = ({
         debug.error("댓글 수정 실패:", error);
       }
     },
-    [editingContent, putCommentAsync]
+    [editingContent, postId, putCommentAsync]
   );
 
   // 댓글 삭제 확인
@@ -265,16 +251,17 @@ const CommentsSection = ({
 
   // 댓글 삭제 실행
   const handleDeleteConfirm = useCallback(async () => {
-    if (!deleteTargetId) return;
+    if (!deleteTargetId || !postId) return;
 
     try {
       await deleteCommentAsync({
+        postId,
         commentId: deleteTargetId,
       });
     } catch (error) {
       debug.error("댓글 삭제 실패:", error);
     }
-  }, [deleteTargetId, deleteCommentAsync]);
+  }, [deleteTargetId, postId, deleteCommentAsync]);
 
   // 답글 더보기 토글
   const handleToggleReplies = useCallback((commentId: string) => {
@@ -323,8 +310,8 @@ const CommentsSection = ({
                 onStartReplyToReply={handleStartReplyToReply}
                 onStartEdit={handleStartEdit}
                 onDelete={handleDeleteClick}
-                onReport={(commentId) => {
-                  debug.log("신고:", commentId);
+                onReport={() => {
+                  // TODO: 신고 기능 구현
                   alert("구현 예정 기능입니다");
                 }}
                 editingCommentId={editingCommentId}
@@ -379,4 +366,4 @@ const CommentsSection = ({
   );
 };
 
-export default CommentsSection;
+export default MissionCommentsSection;
