@@ -290,6 +290,7 @@ class MissionPostService {
         content: sanitizedContent,
         media: media || [],
         postType,
+        categories: Array.isArray(missionDoc.categories) ? missionDoc.categories : [],
         likesCount: 0,
         commentsCount: 0,
         reportsCount: 0,
@@ -355,14 +356,14 @@ class MissionPostService {
    * 미션 인증글 목록 조회
    * @param {Object} options - 조회 옵션
    * @param {string} options.sort - 정렬 기준 ('latest' | 'popular')
-   * @param {string} options.category - 카테고리 필터
+   * @param {string[]} options.categories - 카테고리 필터 (다중 선택)
    * @param {string} options.userId - 내가 인증한 미션만 보기 (userId 필터)
    * @param {string} viewerId - 조회자 ID (선택)
    * @returns {Promise<Object>} 미션 인증글 목록
    */
   async getAllMissionPosts(options = {}, viewerId = null) {
     try {
-      const { sort = "latest", category, userId: filterUserId } = options;
+      const { sort = "latest", categories = [], userId: filterUserId } = options;
 
       let query = db.collection(MISSION_POSTS_COLLECTION);
 
@@ -371,10 +372,22 @@ class MissionPostService {
         query = query.where("userId", "==", filterUserId);
       }
 
+      // 카테고리 필터 (다중 선택)
+      if (Array.isArray(categories) && categories.length > 0) {
+        const uniqueCategories = [...new Set(categories.filter((item) => typeof item === "string" && item.trim().length > 0))];
+        if (uniqueCategories.length === 1) {
+          query = query.where("categories", "array-contains", uniqueCategories[0]);
+        } else if (uniqueCategories.length > 1) {
+          query = query.where("categories", "array-contains-any", uniqueCategories.slice(0, 10));
+        }
+      }
+
       // 정렬
-      const orderBy = sort === "popular" ? "viewCount" : "createdAt";
-      const orderDirection = "desc";
-      query = query.orderBy(orderBy, orderDirection);
+      if (sort === "popular") {
+        query = query.orderBy("viewCount", "desc").orderBy("createdAt", "desc");
+      } else {
+        query = query.orderBy("createdAt", "desc");
+      }
 
       // 전체 조회 (페이지네이션은 나중에)
       const snapshot = await query.get();
@@ -400,9 +413,6 @@ class MissionPostService {
       // 사용자 프로필 정보 배치 조회
       const profileMap = userIds.length > 0 ? await this.loadUserProfiles(userIds) : {};
 
-      // 카테고리 필터링 (미션 카테고리는 Notion에서 가져와야 하므로 일단 스킵)
-      // TODO: 카테고리 필터링은 미션 정보를 Notion에서 조회해야 함
-
       // 응답 데이터 구성
       const processedPosts = posts.map((post) => {
         const createdAtDate = post.createdAt?.toDate?.() || new Date(post.createdAt);
@@ -419,6 +429,7 @@ class MissionPostService {
           mediaCount: Array.isArray(post.media) ? post.media.length : 0,
           commentsCount: post.commentsCount || 0,
           viewCount: post.viewCount || 0,
+           categories: Array.isArray(post.categories) ? post.categories : [],
           createdAt: createdAtDate.toISOString(),
           timeAgo: this.getTimeAgo(createdAtDate),
         };
@@ -479,6 +490,7 @@ class MissionPostService {
         media: post.media || [],
         missionTitle: post.missionTitle || "",
         missionNotionPageId: post.missionNotionPageId || "",
+        categories: Array.isArray(post.categories) ? post.categories : [],
         author: userProfile.nickname || "",
         profileImageUrl: userProfile.profileImageUrl || null,
         commentsCount: post.commentsCount || 0,

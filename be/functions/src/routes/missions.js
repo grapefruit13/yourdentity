@@ -403,14 +403,14 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *           type: string
  *           enum: [latest, popular]
  *           default: latest
- *         description: 정렬 기준 (latest=최신순, popular=인기순)
+ *         description: 정렬 기준 (latest=최신순, popular=조회수 인기순)
  *         example: "latest"
  *       - in: query
- *         name: category
+ *         name: categories
  *         schema:
  *           type: string
- *         description: 카테고리 필터 (추후 구현)
- *         example: "일상"
+ *         description: 카테고리 필터 (콤마로 구분, 최대 10개)
+ *         example: "자기만족,취미생활"
  *       - in: query
  *         name: userId
  *         schema:
