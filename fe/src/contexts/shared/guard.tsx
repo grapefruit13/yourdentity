@@ -21,11 +21,12 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChange((user) => {
       setIsChecking(false);
       if (!user && pathname !== LINK_URL.LOGIN) {
-        router.replace(LINK_URL.LOGIN);
+        // /login 경로로 이동할 때는 서비스워커를 우회하기 위해 window.location 사용
+        window.location.href = LINK_URL.LOGIN;
       }
     });
     return () => unsubscribe();
-  }, [pathname, router]);
+  }, [pathname]);
 
   if (isChecking) {
     return null;

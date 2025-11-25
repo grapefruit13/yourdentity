@@ -42,7 +42,15 @@ export const useRequireAuth = (options: UseRequireAuthOptions = {}) => {
         const nextPath = returnTo ?? currentPathWithQuery;
         const redirectUrl = `${redirectTo}?next=${encodeURIComponent(nextPath)}`;
 
-        router.replace(redirectUrl);
+        // /login 경로로 이동할 때는 서비스워커를 우회하기 위해 window.location 사용
+        if (
+          redirectTo === LINK_URL.LOGIN ||
+          redirectTo.startsWith(LINK_URL.LOGIN)
+        ) {
+          window.location.href = redirectUrl;
+        } else {
+          router.replace(redirectUrl);
+        }
       }
     });
 
