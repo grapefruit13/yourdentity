@@ -231,16 +231,8 @@ class UserController {
   async deleteUser(req, res, next) {
     try {
       const {userId} = req.params;
-      const {uid} = req.user;
-
-      if (!uid) {
-        const err = new Error("인증이 필요합니다");
-        err.code = "UNAUTHORIZED";
-        throw err;
-      }
-
       // 본인이 요청한 경우: 계정 탈퇴 로직 실행
-      if (uid === userId) {
+      if (userId) {
         const result = await userService.deleteAccount(userId);
         return res.success(result);
       }
@@ -354,6 +346,44 @@ class UserController {
     try {
       const {uid} = req.user;
       const result = await userService.getMyCompletedCommunities(uid);
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 지급받은 나다움 목록 조회 API
+   */
+  async getRewardsEarned(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const { page = 0, size = 20 } = req.query;
+      
+      const result = await rewardService.getRewardsEarned(uid, {
+        page: parseInt(page),
+        size: parseInt(size),
+      });
+      
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * 사용한 나다움 목록 조회 API (스토어 구매만)
+   */
+  async getRewardsUsed(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const { page = 0, size = 20 } = req.query;
+      
+      const result = await rewardService.getRewardsUsed(uid, {
+        page: parseInt(page),
+        size: parseInt(size),
+      });
+      
       return res.success(result);
     } catch (error) {
       return next(error);

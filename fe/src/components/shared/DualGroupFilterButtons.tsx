@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import FilterButton from "./FilterButton";
+import HorizontalScrollContainer from "./ui/horizontal-scroll-container";
 
 export interface DualFilterState<TLeftId, TRightId> {
   leftSelect: TLeftId;
@@ -89,10 +90,15 @@ const DualGroupFilterButtons = <
   };
 
   return (
-    <div className="scrollbar-hide w-[calc(100%+2.5rem)] overflow-x-auto overflow-y-hidden pb-7">
+    <HorizontalScrollContainer
+      className="mb-7"
+      leftButtonPositionClassName="-left-4"
+      rightButtonPositionClassName="-right-4"
+      gradientColor="white"
+    >
       <div className="flex items-center gap-2">
         {/* 왼쪽 그룹 필터 */}
-        <div className="flex flex-shrink-0 gap-2">
+        <div className="flex shrink-0 gap-2">
           {leftOptions.map((option) => {
             const isActive = filters.leftSelect === option.id;
 
@@ -109,13 +115,10 @@ const DualGroupFilterButtons = <
         </div>
 
         {/* Divider */}
-        <div
-          className="h-6 w-px flex-shrink-0 bg-gray-200"
-          aria-hidden="true"
-        />
+        <div className="h-6 w-px shrink-0 bg-gray-200" aria-hidden="true" />
 
         {/* 오른쪽 그룹 필터 */}
-        <div className="flex flex-shrink-0 gap-2 pr-8">
+        <div className="flex shrink-0 gap-2 pr-8">
           {rightOptions.map((option) => {
             const isSelected = filters.rightSelect === option.id;
 
@@ -131,7 +134,7 @@ const DualGroupFilterButtons = <
           })}
         </div>
       </div>
-    </div>
+    </HorizontalScrollContainer>
   );
 };
 

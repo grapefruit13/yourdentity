@@ -26,6 +26,7 @@ import type {
   ColorPickerPosition,
 } from "@/types/shared/text-editor";
 import { cn } from "@/utils/shared/cn";
+import { debug } from "@/utils/shared/debugger";
 import {
   rgbToHex,
   isElementEmpty,
@@ -302,12 +303,20 @@ const TextEditor = ({
     checkPlaceholder(titleRef.current);
   };
 
+  // 디바운싱을 위한 타이머 ref
+  const contentInputTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   /**
-   * 내용 입력 처리
-   * 내용 변경 시 호출되며 플레이스홀더 상태도 업데이트
+   * 콘텐츠를 정규화된 HTML 문자열로 변환
+   * - 빈 링크 제거
+   * - elementToHtml로 속성 보존
+   * - normalizeBrTags로 정규화
+   * @returns 정규화된 HTML 문자열 또는 null (에러 시)
    */
-  const handleContentInput = () => {
-    if (contentRef.current && onContentChange) {
+  const processContentToHtml = (): string | null => {
+    if (!contentRef.current) return null;
+
+    try {
       // 빈 링크 제거
       const anchors = contentRef.current.querySelectorAll("a");
       anchors.forEach((link) => {
@@ -318,18 +327,56 @@ const TextEditor = ({
         }
       });
 
-      // innerHTML 대신 직접 HTML 문자열을 구성하여 속성 보존
+      // elementToHtml로 속성 보존하며 HTML 생성
       let html = "";
-      contentRef.current.childNodes.forEach((child) => {
-        html += elementToHtml(child);
-      });
+      try {
+        contentRef.current.childNodes.forEach((child) => {
+          html += elementToHtml(child);
+        });
+      } catch (error) {
+        // elementToHtml 실패 시 innerHTML 사용 (폴백)
+        debug.warn("elementToHtml failed, using innerHTML as fallback:", error);
+        html = contentRef.current.innerHTML;
+      }
 
-      // 불필요한 <br> 태그 제거 (브라우저가 자동으로 추가한 것들)
-      html = normalizeBrTags(html);
+      // normalizeBrTags로 정규화
+      try {
+        html = normalizeBrTags(html);
+      } catch (error) {
+        // normalizeBrTags 실패 시 원본 HTML 사용 (폴백)
+        debug.warn("normalizeBrTags failed, using original HTML:", error);
+      }
 
-      onContentChange(html);
+      return html;
+    } catch (error) {
+      debug.error("processContentToHtml error:", error);
+      return null;
     }
+  };
+
+  /**
+   * 내용 입력 처리
+   * 내용 변경 시 호출되며 플레이스홀더 상태도 업데이트
+   * 디바운싱을 적용하여 빠른 입력 시 성능 문제 방지
+   */
+  const handleContentInput = () => {
+    // 플레이스홀더는 즉시 업데이트
     checkPlaceholder(contentRef.current);
+
+    // 기존 타이머가 있으면 취소
+    if (contentInputTimerRef.current) {
+      clearTimeout(contentInputTimerRef.current);
+    }
+
+    // 디바운싱: 150ms 후에 실제 처리 수행
+    contentInputTimerRef.current = setTimeout(() => {
+      if (!onContentChange) return;
+
+      const html = processContentToHtml();
+      if (html !== null) {
+        onContentChange(html);
+      }
+    }, 150);
   };
 
   /**
@@ -752,10 +799,18 @@ const TextEditor = ({
    * 이미지 업로드 버튼 클릭 처리
    */
   const handleImageClick = () => {
-    // 에디터가 비어있거나 포커스가 없을 수 있으므로 내용 시작 위치로 커서 설정 후 선택 영역 저장
+    // 현재 커서 위치를 저장 (이미 선택 영역이 있으면 그대로 유지)
     contentRef.current?.focus();
     if (contentRef.current) {
-      setCursorPosition(contentRef.current, false);
+      const selection = window.getSelection();
+      // 현재 선택 영역이 없거나 에디터 외부에 있으면 시작 위치로 이동
+      if (
+        !selection ||
+        selection.rangeCount === 0 ||
+        !contentRef.current.contains(selection.anchorNode)
+      ) {
+        setCursorPosition(contentRef.current, false);
+      }
       saveSelection();
     }
     imageInputRef.current?.click();
@@ -765,9 +820,18 @@ const TextEditor = ({
    * 파일 업로드 버튼 클릭 처리
    */
   const handleFileClick = () => {
+    // 현재 커서 위치를 저장 (이미 선택 영역이 있으면 그대로 유지)
     contentRef.current?.focus();
     if (contentRef.current) {
-      setCursorPosition(contentRef.current, false);
+      const selection = window.getSelection();
+      // 현재 선택 영역이 없거나 에디터 외부에 있으면 시작 위치로 이동
+      if (
+        !selection ||
+        selection.rangeCount === 0 ||
+        !contentRef.current.contains(selection.anchorNode)
+      ) {
+        setCursorPosition(contentRef.current, false);
+      }
       saveSelection();
     }
     fileInputRef.current?.click();
@@ -779,14 +843,25 @@ const TextEditor = ({
    */
   const insertImageToEditor = (imageUrl: string, clientId?: string) => {
     contentRef.current?.focus();
-    // 파일 선택 과정에서 선택영역이 사라진 경우 시작 위치로 커서 보정
+
+    // 저장된 선택 영역 복원 시도
+    restoreSelection();
+
+    // 복원된 선택 영역이 유효한지 확인
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      (contentRef.current &&
+        (!contentRef.current.contains(selection.anchorNode) ||
+          !contentRef.current.contains(selection.focusNode)))
+    ) {
+      // 선택 영역이 없거나 에디터 외부에 있으면 에디터 끝으로 이동
       if (contentRef.current) {
-        setCursorPosition(contentRef.current, false);
+        setCursorPosition(contentRef.current, true);
       }
     }
-    restoreSelection();
+
     const clientAttr = clientId ? ` data-client-id="${clientId}"` : "";
     const img = `<img src="${imageUrl}" alt="업로드된 이미지" class="max-w-full h-auto w-auto block mx-auto"${clientAttr} />`;
     const ok = document.execCommand("insertHTML", false, img);
@@ -808,13 +883,24 @@ const TextEditor = ({
     clientId?: string
   ) => {
     contentRef.current?.focus();
+
+    // 저장된 선택 영역 복원 시도
+    restoreSelection();
+
+    // 복원된 선택 영역이 유효한지 확인
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      (contentRef.current &&
+        (!contentRef.current.contains(selection.anchorNode) ||
+          !contentRef.current.contains(selection.focusNode)))
+    ) {
+      // 선택 영역이 없거나 에디터 외부에 있으면 에디터 끝으로 이동
       if (contentRef.current) {
-        setCursorPosition(contentRef.current, false);
+        setCursorPosition(contentRef.current, true);
       }
     }
-    restoreSelection();
 
     // 파일 첨부 블록을 원자적으로 다루기 위해 컨테이너로 래핑하고 편집 불가 처리
     const fileAttr = clientId ? ` data-file-id="${clientId}"` : "";
@@ -1087,6 +1173,7 @@ const TextEditor = ({
   /**
    * 에디터 블러 이벤트 처리
    * 툴바나 컬러 피커 클릭 시에는 블러 방지
+   * 포커스를 잃을 때 대기 중인 입력 처리를 즉시 실행
    */
   const handleBlur = (e: FocusEvent) => {
     saveSelection();
@@ -1102,6 +1189,19 @@ const TextEditor = ({
     // 포커스를 잃을 때도 placeholder 상태를 강제 동기화하여 항상 보이도록 유지
     checkPlaceholder(titleRef.current);
     checkPlaceholder(contentRef.current);
+
+    // 대기 중인 입력 처리가 있으면 즉시 실행 (마지막 입력이 반영되도록)
+    if (contentInputTimerRef.current) {
+      clearTimeout(contentInputTimerRef.current);
+      contentInputTimerRef.current = null;
+
+      if (onContentChange) {
+        const html = processContentToHtml();
+        if (html !== null) {
+          onContentChange(html);
+        }
+      }
+    }
   };
 
   const alignIconMap = {
@@ -1128,6 +1228,15 @@ const TextEditor = ({
   useEffect(() => {
     checkPlaceholder(titleRef.current);
     checkPlaceholder(contentRef.current);
+  }, []);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (contentInputTimerRef.current) {
+        clearTimeout(contentInputTimerRef.current);
+      }
+    };
   }, []);
 
   /**

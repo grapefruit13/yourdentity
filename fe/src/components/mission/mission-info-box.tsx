@@ -17,7 +17,7 @@ interface MissionInfoBoxProps {
  */
 const MissionInfoBox = ({ items }: MissionInfoBoxProps) => {
   return (
-    <div className="mb-2 flex flex-col gap-3 rounded-sm border border-gray-200 bg-gray-100 p-4">
+    <div className="flex flex-col gap-3 rounded-sm border border-gray-200 bg-gray-100 p-4">
       {/* 첫 번째 항목: 신청 기간 */}
       <div className="flex items-center gap-4">
         <Typography font="noto" variant="label1B" className="text-gray-950">

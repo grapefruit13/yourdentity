@@ -5,52 +5,57 @@
 
 import type * as Schema from "./api-schema";
 
-export interface TPOSTUsersTestCreateReq {
-  data: {
-    count: number;
-  };
-}
-
-export type TPOSTUsersTestCreateRes = {
-  message?: string;
-  created?: number;
-  failed?: number;
-  users?: {
-    uid?: string;
-    email?: string;
-    displayName?: string;
-  }[];
+export type TGETUsersRes = {
+  users?: Schema.User[];
+  count?: number;
 };
 
-export interface TPATCHUsersMeOnboardingReq {
+export interface TGETUsersByIdReq {
+  userId: string;
+}
+
+export type TGETUsersByIdRes = { user?: Schema.User };
+
+export interface TPUTUsersByIdReq {
+  userId: string;
   data: {
-    nickname: string;
+    email?: string;
+    nickname?: string;
+    name?: string;
+    birthDate?: string;
+    gender?: "male" | "female";
+    phoneNumber?: string;
     profileImageUrl?: string;
     bio?: string;
+    rewards?: number;
+    authType?: string;
+    snsProvider?: string;
+    status?: "pending" | "active" | "suspended";
+    serviceTermsVersion?: string;
+    privacyTermsVersion?: string;
+    age14TermsAgreed?: boolean;
+    pushTermsAgreed?: boolean;
   };
 }
 
-export type TPATCHUsersMeOnboardingRes = {
-  status?: "pending" | "active" | "suspended";
+export type TPUTUsersByIdRes = { user?: Schema.User };
+
+export interface TGETUsersDeletePostByIdReq {
+  userId: string;
+}
+
+export type TGETUsersDeletePostByIdRes = {
+  userId?: string;
 };
 
 export type TGETUsersMeRes = { user?: Schema.User };
 
-export type TGETUsersMeMyPageRes = {
-  activityParticipationCount?: number;
-  certificationPosts?: number;
-  rewardPoints?: number;
-  name?: string;
-  profileImageUrl?: string;
-  bio?: string;
-};
-
-export interface TGETUsersMePostsReq {
+export interface TGETUsersMeCommentedPostsReq {
   page?: number;
   size?: number;
 }
 
-export type TGETUsersMePostsRes = {
+export type TGETUsersMeCommentedPostsRes = {
   posts?: {
     id?: string;
     author?: string;
@@ -93,6 +98,33 @@ export type TGETUsersMePostsRes = {
     hasPrevious?: boolean;
     isFirst?: boolean;
     isLast?: boolean;
+  };
+};
+
+export type TGETUsersMeCompletedCommunitiesRes = {
+  routine?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+      status?: string;
+    }[];
+  };
+  gathering?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+      status?: string;
+    }[];
+  };
+  tmi?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+      status?: string;
+    }[];
   };
 };
 
@@ -147,12 +179,60 @@ export type TGETUsersMeLikedPostsRes = {
   };
 };
 
-export interface TGETUsersMeCommentedPostsReq {
+export type TGETUsersMeMyPageRes = {
+  activityParticipationCount?: number;
+  certificationPosts?: number;
+  rewardPoints?: number;
+  name?: string;
+  profileImageUrl?: string;
+  bio?: string;
+};
+
+export interface TPATCHUsersMeOnboardingReq {
+  data: {
+    nickname: string;
+    profileImageUrl?: string;
+    bio?: string;
+  };
+}
+
+export type TPATCHUsersMeOnboardingRes = {
+  status?: "pending" | "active" | "suspended";
+};
+
+export type TGETUsersMeParticipatingCommunitiesRes = {
+  routine?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+      status?: string;
+    }[];
+  };
+  gathering?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+      status?: string;
+    }[];
+  };
+  tmi?: {
+    label?: string;
+    items?: {
+      id?: string;
+      name?: string;
+      status?: string;
+    }[];
+  };
+};
+
+export interface TGETUsersMePostsReq {
   page?: number;
   size?: number;
 }
 
-export type TGETUsersMeCommentedPostsRes = {
+export type TGETUsersMePostsRes = {
   posts?: {
     id?: string;
     author?: string;
@@ -198,66 +278,54 @@ export type TGETUsersMeCommentedPostsRes = {
   };
 };
 
-export type TGETUsersMeParticipatingCommunitiesRes = {
-  routine?: {
-    label?: string;
-    items?: {
-      id?: string;
-      name?: string;
-      status?: string;
-    }[];
-  };
-  gathering?: {
-    label?: string;
-    items?: {
-      id?: string;
-      name?: string;
-      status?: string;
-    }[];
-  };
-  tmi?: {
-    label?: string;
-    items?: {
-      id?: string;
-      name?: string;
-      status?: string;
-    }[];
-  };
-};
-
-export type TGETUsersMeCompletedCommunitiesRes = {
-  routine?: {
-    label?: string;
-    items?: {
-      id?: string;
-      name?: string;
-      status?: string;
-    }[];
-  };
-  gathering?: {
-    label?: string;
-    items?: {
-      id?: string;
-      name?: string;
-      status?: string;
-    }[];
-  };
-  tmi?: {
-    label?: string;
-    items?: {
-      id?: string;
-      name?: string;
-      status?: string;
-    }[];
-  };
-};
-
-export interface TGETUsersNicknameAvailabilityReq {
-  nickname: string;
+export interface TGETUsersMeRewardsEarnedReq {
+  page?: number;
+  size?: number;
 }
 
-export type TGETUsersNicknameAvailabilityRes = {
-  available?: boolean;
+export type TGETUsersMeRewardsEarnedRes = {
+  history?: {
+    id?: string;
+    amount?: number;
+    reason?: string;
+    actionKey?: string;
+    changeType?: "add" | "deduct";
+    createdAt?: string;
+    expiresAt?: string;
+    isProcessed?: boolean;
+    isExpired?: boolean;
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+  };
+};
+
+export interface TGETUsersMeRewardsUsedReq {
+  page?: number;
+  size?: number;
+}
+
+export type TGETUsersMeRewardsUsedRes = {
+  history?: {
+    id?: string;
+    amount?: number;
+    reason?: string;
+    changeType?: "deduct";
+    createdAt?: string;
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+  };
 };
 
 export interface TPOSTUsersMeSyncKakaoProfileReq {
@@ -270,45 +338,27 @@ export type TPOSTUsersMeSyncKakaoProfileRes = {
   success?: boolean;
 };
 
-export type TGETUsersRes = {
-  users?: Schema.User[];
-  count?: number;
-};
-
-export interface TGETUsersByIdReq {
-  userId: string;
+export interface TGETUsersNicknameAvailabilityReq {
+  nickname: string;
 }
 
-export type TGETUsersByIdRes = { user?: Schema.User };
+export type TGETUsersNicknameAvailabilityRes = {
+  available?: boolean;
+};
 
-export interface TPUTUsersByIdReq {
-  userId: string;
+export interface TPOSTUsersTestCreateReq {
   data: {
-    email?: string;
-    nickname?: string;
-    name?: string;
-    birthDate?: string;
-    gender?: "male" | "female";
-    phoneNumber?: string;
-    profileImageUrl?: string;
-    bio?: string;
-    rewards?: number;
-    authType?: string;
-    snsProvider?: string;
-    status?: "pending" | "active" | "suspended";
-    serviceTermsVersion?: string;
-    privacyTermsVersion?: string;
-    age14TermsAgreed?: boolean;
-    pushTermsAgreed?: boolean;
+    count: number;
   };
 }
 
-export type TPUTUsersByIdRes = { user?: Schema.User };
-
-export interface TDELETEUsersByIdReq {
-  userId: string;
-}
-
-export type TDELETEUsersByIdRes = {
-  userId?: string;
+export type TPOSTUsersTestCreateRes = {
+  message?: string;
+  created?: number;
+  failed?: number;
+  users?: {
+    uid?: string;
+    email?: string;
+    displayName?: string;
+  }[];
 };

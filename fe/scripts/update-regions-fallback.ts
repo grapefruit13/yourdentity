@@ -4,23 +4,43 @@
  *
  * 사용법: pnpm tsx scripts/update-regions-fallback.ts
  *
- * @note SGIS 도메인 변경 안내 (2025-11-20)
- * - 기존: sgisapi.kostat.go.kr
- * - 변경: sgisapi.mods.go.kr (2025-11-20부터 적용)
- * 서비스 공식 오픈일이 11/20 이후이므로 새 도메인을 기본값으로 사용합니다.
- * 환경 변수 SGIS_API_DOMAIN으로 도메인을 설정할 수 있습니다.
+ * @note SGIS 도메인
+ * - sgisapi.mods.go.kr 사용 (2025-11-20부터 공식 도메인)
+ * - 환경 변수 NEXT_PUBLIC_SGIS_API_DOMAIN으로 도메인을 설정할 수 있습니다.
+ * - 주의: 현재 mods 도메인의 인증서가 아직 업데이트되지 않아 임시로 인증서 검증을 우회합니다.
+ *   인증서가 업데이트되면 이 옵션을 제거해야 합니다.
  */
 
-const SGIS_API_DOMAIN = process.env.SGIS_API_DOMAIN || "sgisapi.mods.go.kr";
+import fsPromises from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+import { loadEnvConfig } from "@next/env";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const projectDir = path.join(__dirname, "..");
+loadEnvConfig(projectDir);
+
+// 임시: mods 도메인 인증서 미업데이트로 인한 검증 우회
+// TODO: 인증서 업데이트 후 제거 필요
+// 주의: 보안상 프로덕션에서는 사용하지 말 것
+if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  console.warn(
+    "⚠️  임시로 TLS 인증서 검증을 비활성화했습니다. (mods 도메인 인증서 미업데이트)"
+  );
+}
+
+// 환경 변수 가져오기
+const SGIS_API_DOMAIN = process.env.NEXT_PUBLIC_SGIS_API_DOMAIN;
+
 const SGIS_API_BASE_URL = `https://${SGIS_API_DOMAIN}/OpenAPI3`;
 const SGIS_AUTH_URL = `${SGIS_API_BASE_URL}/auth/authentication.json`;
 const SGIS_ADDR_STAGE_URL = `${SGIS_API_BASE_URL}/addr/stage.json`;
 
-const SERVICE_ID =
-  process.env.NEXT_PUBLIC_SGIS_SERVICE_ID || "bb81662452494a028088";
-const SECURE_KEY =
-  process.env.NEXT_PUBLIC_SGIS_SECURE_KEY || "25381982801e4b998a0a";
-
+const SERVICE_ID = process.env.NEXT_PUBLIC_SGIS_SERVICE_ID;
+const SECURE_KEY = process.env.NEXT_PUBLIC_SGIS_SECURE_KEY;
 interface SidoItem {
   code: string;
   name: string;
@@ -183,14 +203,12 @@ async function main() {
     console.log(`\n✅ 모든 지역 데이터 수집 완료 (${regions.length}개 시도)`);
 
     const fileContent = generateRegionsFile(regions);
-    const fs = await import("fs/promises");
-    const path = await import("path");
 
     const filePath = path.join(
       process.cwd(),
       "src/constants/shared/korean-regions.ts"
     );
-    await fs.writeFile(filePath, fileContent, "utf-8");
+    await fsPromises.writeFile(filePath, fileContent, "utf-8");
 
     console.log(`\n✅ ${filePath} 파일 업데이트 완료`);
     console.log(`\n📊 통계:`);

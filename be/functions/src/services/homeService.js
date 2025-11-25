@@ -1,4 +1,5 @@
 const { Client } = require('@notionhq/client');
+const { nowKstIso } = require('../utils/notionHelper');
 
 // 상수 정의
 const QUERY_PAGE_SIZE = 1; // 홈 화면은 최신 1개만 조회
@@ -83,9 +84,8 @@ class HomeService {
       // Lazy initialization
       this.initNotionClient();
 
-      // 오늘 날짜를 ISO 형식으로 변환 (YYYY-MM-DD)
-      const today = new Date();
-      const todayISO = today.toISOString().split('T')[0];
+      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
+      const todayISO = nowKstIso().split('T')[0];
 
       const queryBody = {
         page_size: QUERY_PAGE_SIZE,

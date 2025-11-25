@@ -174,6 +174,74 @@ const authGuard = require("../middleware/authGuard");
  *           type: string
  *           format: date-time
  *           description: 구매일
+ *
+ *     StorePurchase:
+ *       type: object
+ *       description: 스토어 구매신청 내역 (Notion DB 기반)
+ *       properties:
+ *         purchaseId:
+ *           type: string
+ *           description: 구매신청 ID (Notion 페이지 ID)
+ *           example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *         title:
+ *           type: string
+ *           description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
+ *           example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
+ *         userId:
+ *           type: string
+ *           description: 사용자 ID (Firebase UID)
+ *           example: "firebase-uid-123"
+ *         userNickname:
+ *           type: string
+ *           description: 주문자 닉네임
+ *           example: "나다움123"
+ *         productId:
+ *           type: string
+ *           description: 상품 ID (Notion 페이지 ID)
+ *           example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
+ *         quantity:
+ *           type: integer
+ *           description: 구매 개수
+ *           example: 2
+ *         requiredPoints:
+ *           type: number
+ *           nullable: true
+ *           description: 상품의 필요한 나다움 포인트 (Rollup 필드)
+ *           example: 500
+ *         requiresDelivery:
+ *           type: boolean
+ *           description: 상품의 배송 필요 여부 (Rollup 필드)
+ *           example: true
+ *         recipientName:
+ *           type: string
+ *           description: 수령인 이름
+ *           example: "홍길동"
+ *         recipientAddress:
+ *           type: string
+ *           description: 수령인 주소지
+ *           example: "서울시 강남구 테헤란로 123"
+ *         recipientDetailAddress:
+ *           type: string
+ *           description: 수령인 상세 주소지
+ *           example: "456호"
+ *         recipientPhone:
+ *           type: string
+ *           description: 수령인 전화번호
+ *           example: "010-1234-5678"
+ *         deliveryCompleted:
+ *           type: boolean
+ *           description: 지급 완료 여부
+ *           example: false
+ *         orderDate:
+ *           type: string
+ *           format: date-time
+ *           description: 주문 완료 일시
+ *           example: "2025-11-06T15:28:00.000Z"
+ *         lastEditedTime:
+ *           type: string
+ *           format: date-time
+ *           description: 마지막 수정 일시
+ *           example: "2025-11-06T15:30:00.000Z"
  */
 
 // 스토어 상품 목록 조회
@@ -346,539 +414,6 @@ router.get("/products", storeController.getProducts);
  */
 router.get("/products/:productId", storeController.getProductById);
 
-// 상품 구매 신청
-/**
- * @swagger
- * /store/purchase:
- *   post:
- *     tags: [Store]
- *     summary: 상품 구매 신청
- *     description: 특정 상품 구매 신청
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - productId
- *             properties:
- *               productId:
- *                 type: string
- *                 description: 상품 ID
- *                 example: "product123"
- *               quantity:
- *                 type: integer
- *                 default: 1
- *                 description: 구매 수량
- *               selectedVariant:
- *                 type: string
- *                 description: 선택된 옵션
- *               customFieldsRequest:
- *                 type: object
- *                 description: 커스텀 필드 요청
- *                 example:
- *                   custom_1: "홍길동"
- *                   custom_2: "한끗러버"
- *                   custom_3: "20070712"
- *                   custom_4: "서울시 성동구"
- *                   custom_5: "5"
- *                   custom_6: "인스타그램"
- *                   custom_7: "네, 확인했습니다"
- *     responses:
- *       201:
- *         description: 상품 구매 신청 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 201
- *                 data:
- *                   $ref: '#/components/schemas/Purchase'
- *       400:
- *         description: 잘못된 요청 또는 품절
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 400
- *                 message:
- *                   type: string
- *                   example: "잘못된 요청입니다"
- *       404:
- *         description: 상품을 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 404
- *                 message:
- *                   type: string
- *                   example: "상품을 찾을 수 없습니다"
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 500
- *                 message:
- *                   type: string
- *                   example: "서버 내부 오류가 발생했습니다"
- */
-router.post("/purchase", authGuard, storeController.purchaseProduct);
-
-// 상품 좋아요 토글
-/**
- * @swagger
- * /store/products/{productId}/like:
- *   post:
- *     tags: [Store]
- *     summary: 상품 좋아요 토글
- *     description: 특정 상품의 좋아요 토글
- *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema:
- *           type: string
- *         description: 상품 ID
- *     responses:
- *       200:
- *         description: 좋아요 토글 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     productId:
- *                       type: string
- *                     userId:
- *                       type: string
- *                     isLiked:
- *                       type: boolean
- *                       example: true
- *                     likesCount:
- *                       type: integer
- *                       example: 5
- *       404:
- *         description: 상품을 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 404
- *                 message:
- *                   type: string
- *                   example: "상품을 찾을 수 없습니다"
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 500
- *                 message:
- *                   type: string
- *                   example: "서버 내부 오류가 발생했습니다"
- */
-router.post("/products/:productId/like", authGuard, storeController.toggleProductLike);
-
-// 상품 QnA 질문 작성
-/**
- * @swagger
- * /store/products/{productId}/qna:
- *   post:
- *     tags: [Store]
- *     summary: 상품 Q&A 질문 작성
- *     description: 특정 상품에 Q&A 질문 작성
- *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema:
- *           type: string
- *         description: 상품 ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: array
- *                 description: 질문 내용
- *                 example:
- *                   - type: "text"
- *                     text: "이 상품의 배송비는 얼마인가요?"
- *                   - type: "text"
- *                     text: "교환/환불 정책이 어떻게 되나요?"
- *                   - type: "image"
- *                     src: "https://example.com/product-question.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                   - type: "video"
- *                     src: "https://example.com/product-video.mp4"
- *                     width: 1920
- *                     height: 1080
- *                     duration: 25
- *                     thumbUrl: "https://example.com/product-thumb.jpg"
- *                     videoSource: "uploaded"
- *                     provider: "self"
- *                     sizeBytes: 1572864
- *                     mimeType: "video/mp4"
- *                     processingStatus: "ready"
- *     responses:
- *       201:
- *         description: Q&A 질문 작성 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 201
- *                 data:
- *                   type: object
- *                   properties:
- *                     qnaId:
- *                       type: string
- *                       description: Q&A ID
- *                       example: "qna_123"
- *                     productId:
- *                       type: string
- *                       description: 상품 ID
- *                       example: "CP:ONLINE_GIFT_30K"
- *                     userId:
- *                       type: string
- *                       description: 사용자 ID
- *                       example: "user_123"
- *                     content:
- *                       type: array
- *                       description: 질문 내용
- *                       items:
- *                         type: object
- *                     media:
- *                       type: array
- *                       description: 미디어 파일들
- *                       items:
- *                         type: object
- *                         properties:
- *                           url:
- *                             type: string
- *                           type:
- *                             type: string
- *                             enum: [image, video]
- *                           order:
- *                             type: integer
- *                           width:
- *                             type: integer
- *                           height:
- *                             type: integer
- *                           blurHash:
- *                             type: string
- *                           thumbUrl:
- *                             type: string
- *                           videoSource:
- *                             type: string
- *                           provider:
- *                             type: string
- *                           duration:
- *                             type: number
- *                           sizeBytes:
- *                             type: integer
- *                           mimeType:
- *                             type: string
- *                           processingStatus:
- *                             type: string
- *                     answerContent:
- *                       type: array
- *                       nullable: true
- *                       description: 답변 내용 (초기에는 null)
- *                       example: null
- *                     answerMedia:
- *                       type: array
- *                       description: 답변 미디어 (초기에는 빈 배열)
- *                       example: []
- *                     likesCount:
- *                       type: integer
- *                       description: 좋아요 수
- *                       example: 0
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       description: 생성일시
- *                       example: "2025-01-16T10:30:00.000Z"
- *                 likesCount:
- *                   type: integer
- *                   example: 0
- *                 createdAt:
- *                   type: string
- *                   format: date-time
- *       400:
- *         description: 잘못된 요청
- *       500:
- *         description: 서버 오류
- */
-router.post("/products/:productId/qna", authGuard, storeController.createProductQnA);
-
-// 상품 QnA 질문 수정
-/**
- * @swagger
- * /store/products/{productId}/qna/{qnaId}:
- *   put:
- *     tags: [Store]
- *     summary: 상품 Q&A 질문 수정
- *     description: 특정 상품의 Q&A 질문 수정
- *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema:
- *           type: string
- *         description: 상품 ID
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: array
- *                 description: 수정된 질문 내용
- *                 example:
- *                   - type: "text"
- *                     text: "이 상품의 배송비는 얼마인가요? (수정됨)"
- *                   - type: "text"
- *                     text: "교환/환불 정책이 어떻게 되나요?"
- *                   - type: "image"
- *                     src: "https://example.com/updated-product-question.jpg"
- *                     width: 1080
- *                     height: 1080
- *                     blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
- *                   - type: "video"
- *                     src: "https://example.com/updated-product-video.mp4"
- *                     width: 1920
- *                     height: 1080
- *                     duration: 25
- *                     thumbUrl: "https://example.com/updated-product-thumb.jpg"
- *                     videoSource: "uploaded"
- *                     provider: "self"
- *                     sizeBytes: 1572864
- *                     mimeType: "video/mp4"
- *                     processingStatus: "ready"
- *     responses:
- *       200:
- *         description: Q&A 질문 수정 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 200
- *                 data:
- *                   type: object
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 400
- *                 message:
- *                   type: string
- *                   example: "잘못된 요청입니다"
- *       404:
- *         description: Q&A를 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 404
- *                 message:
- *                   type: string
- *                   example: "Q&A를 찾을 수 없습니다"
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 500
- *                 message:
- *                   type: string
- *                   example: "서버 내부 오류가 발생했습니다"
- */
-router.put("/products/:productId/qna/:qnaId", authGuard, storeController.updateProductQnA);
-
-// 상품 QnA 좋아요 토글
-/**
- * @swagger
- * /store/qna/{qnaId}/like:
- *   post:
- *     tags: [Store]
- *     summary: 상품 Q&A 좋아요 토글
- *     description: 특정 Q&A의 좋아요 토글
- *     parameters:
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     responses:
- *       200:
- *         description: Q&A 좋아요 토글 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     qnaId:
- *                       type: string
- *                     userId:
- *                       type: string
- *                     isLiked:
- *                       type: boolean
- *                       example: true
- *                     likesCount:
- *                       type: integer
- *                       example: 3
- *       404:
- *         description: Q&A를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.post("/qna/:qnaId/like", authGuard, storeController.toggleProductQnALike);
-
-// 상품 QnA 삭제
-/**
- * @swagger
- * /store/qna/{qnaId}:
- *   delete:
- *     tags: [Store]
- *     summary: 상품 Q&A 삭제
- *     description: 특정 Q&A 삭제
- *     parameters:
- *       - in: path
- *         name: qnaId
- *         required: true
- *         schema:
- *           type: string
- *         description: Q&A ID
- *     responses:
- *       204:
- *         description: Q&A 삭제 성공
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 400
- *                 message:
- *                   type: string
- *                   example: "잘못된 요청입니다"
- *       403:
- *         description: 권한 없음
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 403
- *                 message:
- *                   type: string
- *                   example: "Q&A 삭제 권한이 없습니다"
- *       404:
- *         description: Q&A를 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 404
- *                 message:
- *                   type: string
- *                   example: "Q&A를 찾을 수 없습니다"
- *       500:
- *         description: 서버 오류
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 500
- *                 message:
- *                   type: string
- *                   example: "서버 내부 오류가 발생했습니다"
- */
-router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
-
 // 스토어 구매신청
 /**
  * @swagger
@@ -941,28 +476,50 @@ router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
  *                       type: string
  *                       description: 구매신청 ID
  *                       example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *                     title:
+ *                       type: string
+ *                       description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
+ *                       example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
  *                     userId:
  *                       type: string
  *                       description: 사용자 ID
  *                       example: "firebase-uid-123"
+ *                     userNickname:
+ *                       type: string
+ *                       description: 주문자 닉네임
+ *                       example: "나다움123"
  *                     productId:
  *                       type: string
  *                       description: 상품 ID
  *                       example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
  *                     quantity:
  *                       type: integer
+ *                       description: 구매 개수
  *                       example: 2
+ *                     requiredPoints:
+ *                       type: number
+ *                       nullable: true
+ *                       description: 상품의 필요한 나다움 포인트 (Rollup 필드)
+ *                       example: 500
+ *                     requiresDelivery:
+ *                       type: boolean
+ *                       description: 상품의 배송 필요 여부 (Rollup 필드)
+ *                       example: true
  *                     recipientName:
  *                       type: string
+ *                       description: 수령인 이름
  *                       example: "홍길동"
  *                     recipientAddress:
  *                       type: string
+ *                       description: 수령인 주소지
  *                       example: "서울시 강남구 테헤란로 123"
  *                     recipientDetailAddress:
  *                       type: string
+ *                       description: 수령인 상세 주소지
  *                       example: "456호"
  *                     recipientPhone:
  *                       type: string
+ *                       description: 수령인 전화번호
  *                       example: "010-1234-5678"
  *                     orderDate:
  *                       type: string
@@ -971,7 +528,13 @@ router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
  *                       example: "2025-11-06T15:28:00.000Z"
  *                     deliveryCompleted:
  *                       type: boolean
+ *                       description: 지급 완료 여부
  *                       example: false
+ *                     lastEditedTime:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 마지막 수정 일시
+ *                       example: "2025-11-06T15:30:00.000Z"
  *       400:
  *         description: 잘못된 요청
  *         content:
@@ -998,6 +561,13 @@ router.delete("/qna/:qnaId", authGuard, storeController.deleteProductQnA);
  *                 message:
  *                   type: string
  *                   example: "인증에 실패했습니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:
@@ -1064,6 +634,10 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             type: string
  *                             description: 구매신청 ID
  *                             example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
+ *                           title:
+ *                             type: string
+ *                             description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
+ *                             example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
  *                           userId:
  *                             type: string
  *                             description: 사용자 ID
@@ -1078,29 +652,46 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
  *                           quantity:
  *                             type: integer
+ *                             description: 구매 개수
  *                             example: 2
+ *                           requiredPoints:
+ *                             type: number
+ *                             nullable: true
+ *                             description: 상품의 필요한 나다움 포인트 (Rollup 필드)
+ *                             example: 500
+ *                           requiresDelivery:
+ *                             type: boolean
+ *                             description: 상품의 배송 필요 여부 (Rollup 필드)
+ *                             example: true
  *                           recipientName:
  *                             type: string
+ *                             description: 수령인 이름
  *                             example: "홍길동"
  *                           recipientAddress:
  *                             type: string
+ *                             description: 수령인 주소지
  *                             example: "서울시 강남구 테헤란로 123"
  *                           recipientDetailAddress:
  *                             type: string
+ *                             description: 수령인 상세 주소지
  *                             example: "456호"
  *                           recipientPhone:
  *                             type: string
+ *                             description: 수령인 전화번호
  *                             example: "010-1234-5678"
  *                           deliveryCompleted:
  *                             type: boolean
+ *                             description: 지급 완료 여부
  *                             example: false
  *                           orderDate:
  *                             type: string
  *                             format: date-time
+ *                             description: 주문 완료 일시
  *                             example: "2025-11-06T15:28:00.000Z"
  *                           lastEditedTime:
  *                             type: string
  *                             format: date-time
+ *                             description: 마지막 수정 일시
  *                             example: "2025-11-06T15:30:00.000Z"
  *                     pagination:
  *                       type: object
@@ -1144,6 +735,13 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                 message:
  *                   type: string
  *                   example: "인증에 실패했습니다"
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  *         content:

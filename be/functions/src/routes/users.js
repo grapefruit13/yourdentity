@@ -14,15 +14,6 @@ const router = express.Router();
  *       bearerFormat: JWT
  *       description: Firebase ID Token
  *   schemas:
- *     ErrorResponse:
- *       type: object
- *       properties:
- *         status:
- *           type: number
- *           example: 400
- *         message:
- *           type: string
- *           example: 잘못된 요청입니다
  *     StandardResponse:
  *       type: object
  *       properties:
@@ -170,7 +161,13 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       409:
  *         description: 닉네임 중복 등 충돌(NICKNAME_TAKEN)
  *         content:
@@ -1029,6 +1026,238 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
 
 /**
  * @swagger
+ * /users/me/rewards-earned:
+ *   get:
+ *     summary: 지급/차감(관리자)받은 나다움 목록 조회
+ *     description: 본인이 지급/차감(관리자)받은 나다움 내역을 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호 (0부터 시작)
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: 히스토리 ID
+ *                             example: "COMMENT-abc123"
+ *                           amount:
+ *                             type: number
+ *                             description: 지급된 나다움 포인트
+ *                             example: 10
+ *                           reason:
+ *                             type: string
+ *                             description: 지급 사유
+ *                             example: "댓글 작성"
+ *                           actionKey:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 액션 키
+ *                             example: "comment"
+ *                           changeType:
+ *                             type: string
+ *                             enum: [add, deduct]
+ *                             description: 변경 타입 (add=지급, deduct=차감)
+ *                             example: "add"
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 지급 일시
+ *                             example: "2024-01-01T00:00:00Z"
+ *                           expiresAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 만료 일시 (createdAt + 120일)
+ *                             example: "2024-05-01T00:00:00Z"
+ *                           isProcessed:
+ *                             type: boolean
+ *                             description: 스토어에서 사용되었는지 여부
+ *                             example: false
+ *                           isExpired:
+ *                             type: boolean
+ *                             description: 만료되었는지 여부
+ *                             example: false
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: number
+ *                           example: 0
+ *                         pageSize:
+ *                           type: number
+ *                           example: 20
+ *                         totalElements:
+ *                           type: number
+ *                           example: 100
+ *                         totalPages:
+ *                           type: number
+ *                           example: 5
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: false
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/me/rewards-earned", authGuard, userController.getRewardsEarned);
+
+/**
+ * @swagger
+ * /users/me/rewards-used:
+ *   get:
+ *     summary: 사용한 나다움 목록 조회 
+ *     description: 본인이 스토어에서 구매한 나다움 사용 내역을 조회합니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 페이지 번호 (0부터 시작)
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 페이지 크기
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: 히스토리 ID
+ *                             example: "abc123"
+ *                           amount:
+ *                             type: number
+ *                             description: 사용된 나다움 포인트
+ *                             example: 80
+ *                           reason:
+ *                             type: string
+ *                             description: 사용 사유 (상품명)
+ *                             example: "기프티콘 구매"
+ *                           changeType:
+ *                             type: string
+ *                             enum: [deduct]
+ *                             description: 변경 타입 (항상 deduct)
+ *                             example: "deduct"
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 사용 일시
+ *                             example: "2024-01-01T00:00:00Z"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         pageNumber:
+ *                           type: number
+ *                           example: 0
+ *                         pageSize:
+ *                           type: number
+ *                           example: 20
+ *                         totalElements:
+ *                           type: number
+ *                           example: 100
+ *                         totalPages:
+ *                           type: number
+ *                           example: 5
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
+ *                         hasPrevious:
+ *                           type: boolean
+ *                           example: false
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/me/rewards-used", authGuard, userController.getRewardsUsed);
+
+/**
+ * @swagger
  * /users/nickname-availability:
  *   get:
  *     summary: 닉네임 가용성 확인
@@ -1335,10 +1564,10 @@ router.put("/:userId", userController.updateUser);
 
 /**
  * @swagger
- * /users/{userId}:
- *   delete:
- *     summary: 사용자 삭제
- *     description: 특정 사용자를 삭제합니다 (Firebase Auth + Firestore)
+ * /users/deletePost/{userId}:
+ *   get:
+ *     summary: 사용자 게시글 및 댓글 삭제
+ *     description: 특정 사용자의 게시글과 댓글을 삭제합니다
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -1380,7 +1609,7 @@ router.put("/:userId", userController.updateUser);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:userId", authGuard, userController.deleteUser);
+router.get("/deletePost/:userId", userController.deleteUser);
 
 module.exports = router;
 

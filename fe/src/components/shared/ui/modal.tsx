@@ -16,8 +16,8 @@ interface ModalProps {
   children?: ReactNode;
   /** 확인 버튼 텍스트 */
   confirmText: string;
-  /** 취소 버튼 텍스트 */
-  cancelText: string;
+  /** 취소 버튼 텍스트 (없으면 취소 버튼 숨김) */
+  cancelText?: string;
   /** 확인 버튼 클릭 핸들러 */
   onConfirm: () => void;
   /** 취소/닫기 핸들러 */
@@ -47,9 +47,6 @@ const Modal = ({
   variant = "primary",
 }: ModalProps) => {
   const previousOverflow = useRef<string>("");
-  const previousPosition = useRef<string>("");
-  const previousTop = useRef<string>("");
-  const scrollY = useRef<number>(0);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
   // 이전 포커스 요소 저장 (모달 열릴 때)
@@ -74,55 +71,16 @@ const Modal = ({
   // Body 스크롤 방지 (모달 열릴 때)
   useEffect(() => {
     if (isOpen) {
-      // 현재 스크롤 위치 저장
-      scrollY.current = window.scrollY;
-
-      // 기존 스타일 저장
       previousOverflow.current = document.body.style.overflow;
-      previousPosition.current = document.body.style.position;
-      previousTop.current = document.body.style.top;
-
-      // body 스크롤 방지 (모바일 포함)
       document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY.current}px`;
-      document.body.style.width = "100%";
-
-      // 터치 스크롤 방지 (추가 보안)
-      const preventTouchMove = (e: TouchEvent) => {
-        // 모달 내부가 아닌 경우에만 preventDefault
-        const target = e.target as HTMLElement;
-        const modal = target.closest('[role="dialog"]');
-        if (!modal) {
-          e.preventDefault();
-        }
-      };
-
-      document.addEventListener("touchmove", preventTouchMove, {
-        passive: false,
-      });
 
       return () => {
-        // 스타일 복원
         document.body.style.overflow = previousOverflow.current;
-        document.body.style.position = previousPosition.current;
-        document.body.style.top = previousTop.current;
-        document.body.style.width = "";
-
-        // 스크롤 위치 복원
-        window.scrollTo(0, scrollY.current);
-
-        // 터치 이벤트 리스너 제거
-        document.removeEventListener("touchmove", preventTouchMove);
       };
     }
 
     return () => {
-      // 닫힐 때도 스타일 복원
       document.body.style.overflow = previousOverflow.current;
-      document.body.style.position = previousPosition.current;
-      document.body.style.top = previousTop.current;
-      document.body.style.width = "";
     };
   }, [isOpen]);
 
@@ -190,22 +148,27 @@ const Modal = ({
 
         {/* 버튼들 */}
         <div className="mt-6 flex gap-3">
-          {/* 취소 버튼 */}
-          <button
-            onClick={handleClose}
-            className="flex-1 grow rounded-lg border border-gray-100 bg-white py-2 text-black shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
-            aria-label={cancelText}
-          >
-            <Typography font="noto" variant="body2M">
-              {cancelText}
-            </Typography>
-          </button>
+          {/* 취소 버튼 - cancelText가 있을 때만 표시 */}
+          {cancelText && (
+            <button
+              onClick={handleClose}
+              className="flex-1 grow rounded-lg border border-gray-100 bg-white py-2 text-black shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
+              aria-label={cancelText}
+            >
+              <Typography font="noto" variant="body2M">
+                {cancelText}
+              </Typography>
+            </button>
+          )}
 
           {/* 확인 버튼 */}
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className="bg-main-600 hover:bg-main-700 flex-1 grow rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className={cn(
+              "bg-main-600 hover:bg-main-700 rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300",
+              "flex-1 grow"
+            )}
             aria-label={confirmText}
           >
             <Typography font="noto" variant="body2M" className="text-white">

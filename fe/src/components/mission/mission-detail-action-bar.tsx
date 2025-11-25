@@ -8,9 +8,9 @@ import { Button } from "../shared/ui/button";
 
 interface MissionDetailActionBarProps {
   /**
-   * @description 인증 마감 시간 (Date 객체)
+   * @description 인증 마감 시간 (Date 객체, 선택적)
    */
-  deadline: Date;
+  deadline?: Date;
   /**
    * @description 하트 버튼 활성화 여부
    */
@@ -40,6 +40,10 @@ const MissionDetailActionBar = ({
   const [remainingMinutes, setRemainingMinutes] = useState<number>(0);
 
   useEffect(() => {
+    if (!deadline) {
+      return;
+    }
+
     const updateCountdown = () => {
       const now = new Date().getTime();
       const end = deadline.getTime();
@@ -70,12 +74,14 @@ const MissionDetailActionBar = ({
   return (
     <div className="sticky bottom-0 z-50 border-t border-gray-200 bg-white px-5 pt-5 pb-10">
       {/* 인증 마감 카운트다운 */}
-      <div className="mb-3 flex items-center justify-center gap-1">
-        <Timer size={16} className="text-main-500" />
-        <Typography font="noto" variant="label1M" className="text-main-500">
-          인증 마감까지 {remainingHours}시간 {remainingMinutes}분 남았어요!
-        </Typography>
-      </div>
+      {deadline && (
+        <div className="mb-3 flex items-center justify-center gap-1">
+          <Timer size={16} className="text-main-500" />
+          <Typography font="noto" variant="label1M" className="text-main-500">
+            인증 마감까지 {remainingHours}시간 {remainingMinutes}분 남았어요!
+          </Typography>
+        </div>
+      )}
 
       {/* 액션 버튼들 */}
       <div className="flex items-center gap-2">

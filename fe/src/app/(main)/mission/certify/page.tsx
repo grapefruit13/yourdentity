@@ -1,24 +1,33 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef, useMemo } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import MissionCertificationStatusCard from "@/components/mission/mission-certification-status-card";
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
 import { Typography } from "@/components/shared/typography";
+import { LoadingOverlay } from "@/components/shared/ui/loading-overlay";
 import Modal from "@/components/shared/ui/modal";
 import SubmitButton from "@/components/shared/ui/submit-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   MAX_FILES,
   WRITE_MESSAGES,
   ERROR_MESSAGES,
 } from "@/constants/community/_write-constants";
-import { MOCK_MISSIONS } from "@/constants/mission/_mock-missions";
+import { missionsKeys } from "@/constants/generated/query-keys";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { MIN_POST_TEXT_LENGTH } from "@/constants/shared/_post-constants";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
+import {
+  useGetMissionsById,
+  usePostMissionsPostsById,
+} from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
@@ -45,7 +54,7 @@ import {
 const MissionCertifyPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isPending = false;
+  const queryClient = useQueryClient();
   const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
 
   // 인증 체크: 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
@@ -56,11 +65,18 @@ const MissionCertifyPageContent = () => {
   // 쿼리 파라미터에서 미션 ID 가져오기
   const missionId = searchParams.get("missionId") || "";
 
-  // 미션 ID로 미션 정보 찾기
-  const selectedMission = MOCK_MISSIONS.find(
-    (mission) => mission.id === missionId
-  );
-  const selectedMissionName = selectedMission?.title || "";
+  // 미션 상세 조회 API
+  const {
+    data: missionResponse,
+    isError,
+    isLoading,
+  } = useGetMissionsById({
+    request: { missionId },
+    enabled: !!missionId,
+  });
+
+  const missionData = missionResponse?.mission;
+  const selectedMissionName = missionData?.title || "";
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
@@ -73,6 +89,23 @@ const MissionCertifyPageContent = () => {
     open: openLeaveConfirm,
     close: closeLeaveConfirm,
   } = useToggle();
+  const {
+    isOpen: isErrorModalOpen,
+    open: openErrorModal,
+    close: closeErrorModal,
+  } = useToggle();
+  const {
+    isOpen: isUploading,
+    open: openUploading,
+    close: closeUploading,
+  } = useToggle();
+  const {
+    isOpen: isSuccessModalOpen,
+    open: openSuccessModal,
+    close: closeSuccessModal,
+  } = useToggle();
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [successPostId, setSuccessPostId] = useState<string | null>(null);
   const allowLeaveCountRef = useRef(0);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const setTitle = useTopBarStore((state) => state.setTitle);
@@ -86,6 +119,9 @@ const MissionCertifyPageContent = () => {
     Array<{ clientId: string; file: File }>
   >([]);
 
+  // 미션 인증글 등록 API
+  const { mutate: createMissionPost, isPending } = usePostMissionsPostsById();
+
   /**
    * 이미지 선택 시 clientId를 발급/등록하고 반환 (즉시 업로드는 하지 않음)
    */
@@ -93,7 +129,8 @@ const MissionCertifyPageContent = () => {
     const clientId = crypto.randomUUID();
     setImageQueue((prev) => {
       if (prev.length >= MAX_FILES) {
-        alert(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
+        setErrorMessage(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
+        openErrorModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -110,7 +147,8 @@ const MissionCertifyPageContent = () => {
       // 중복 체크
       const merged = dedupeFiles([...prev.map((item) => item.file), file]);
       if (merged.length > MAX_FILES) {
-        alert(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        setErrorMessage(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        openErrorModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -131,13 +169,17 @@ const MissionCertifyPageContent = () => {
 
     // 이미지 업로드 실패 확인
     if (imageQueue.length > 0 && imageFailedCount > 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount));
+      setErrorMessage(
+        WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount)
+      );
+      openErrorModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
     // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
     if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      setErrorMessage(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      openErrorModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
@@ -170,7 +212,8 @@ const MissionCertifyPageContent = () => {
         "img[data-client-id]"
       );
       if (imagesWithClientId.length > 0) {
-        alert(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        setErrorMessage(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        openErrorModal();
         throw new Error("IMAGE_URL_REPLACE_FAILED");
       }
     }
@@ -195,12 +238,14 @@ const MissionCertifyPageContent = () => {
     } = await uploadFileQueue(queueToUse, "파일");
 
     if (queueToUse.length > 0 && fileFailedCount > 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      setErrorMessage(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openErrorModal();
       return null;
     }
 
     if (queueToUse.length > 0 && fileIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      setErrorMessage(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openErrorModal();
       return null;
     }
 
@@ -219,15 +264,68 @@ const MissionCertifyPageContent = () => {
   };
 
   /**
+   * 미션 인증글 등록
+   * @param title - 제목
+   * @param content - 콘텐츠 HTML
+   * @param media - 미디어 파일 경로 배열
+   */
+  const handleCreateMissionPost = (
+    title: string,
+    content: string,
+    media: string[]
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      createMissionPost(
+        {
+          missionId,
+          data: {
+            title,
+            content,
+            media,
+          },
+        },
+        {
+          onSuccess: (res) => {
+            const postId = res?.data?.postId;
+
+            if (!postId) {
+              reject(new Error(WRITE_MESSAGES.POST_RESPONSE_INVALID));
+              return;
+            }
+
+            // 미션 관련 쿼리 무효화
+            queryClient.invalidateQueries({
+              queryKey: missionsKeys.getMissionsPosts({}),
+            });
+            queryClient.invalidateQueries({
+              queryKey: missionsKeys.getMissionsMe({}),
+            });
+            queryClient.invalidateQueries({
+              queryKey: missionsKeys.getMissionsStats,
+            });
+
+            resolve(postId);
+          },
+          onError: (err) => {
+            reject(err);
+          },
+        }
+      );
+    });
+  };
+
+  /**
    * 제출 핸들러
    * - 제목/내용 유효성 검사 후 첨부 파일 업로드 → 미션 인증 게시글 등록까지 수행
    * - 실패 시 업로드된 파일들 롤백 삭제
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const onSubmit = async (_values: WriteFormValues) => {
+  const onSubmit = async () => {
+    const currentTitle = getValues("title");
     const currentContent = getValues("content");
     let uploadedImagePaths: string[] = [];
     let uploadedFilePaths: string[] = [];
+
+    openUploading();
 
     try {
       // 1. 이미지 업로드 및 검증
@@ -235,41 +333,55 @@ const MissionCertifyPageContent = () => {
       uploadedImagePaths = imagePaths;
 
       // 2. 이미지 URL 교체 및 검증
-      const contentWithUrls = handleImageUrlReplacement(
+      const contentWithImageUrls = handleImageUrlReplacement(
         currentContent,
         imageUrlMap
       );
 
       // 3. 파일 업로드 및 URL 교체
-      const fileUploadResult = await handleFileUpload(contentWithUrls);
+      const fileUploadResult = await handleFileUpload(contentWithImageUrls);
       if (!fileUploadResult) {
         // 파일 업로드 실패 시 alert는 이미 표시되었으므로 여기서 종료
         return;
       }
-      const { filePaths } = fileUploadResult;
+      const { filePaths, content: contentWithFileUrls } = fileUploadResult;
       uploadedFilePaths = filePaths;
 
-      // 4. 성공 후 처리
-      alert("미션 인증이 완료되었습니다. (API 연동 대기 중)");
+      // 4. 미션 인증글 등록
+      const postId = await handleCreateMissionPost(
+        currentTitle,
+        contentWithFileUrls,
+        uploadedImagePaths
+      );
+
+      // 5. 성공 후 처리
+      closeUploading();
       setImageQueue([]);
       setFileQueue([]);
       reset({
         title: "",
         content: "",
       });
-      router.replace("/mission");
+
+      // 성공 모달 표시
+      setSuccessPostId(postId);
+      openSuccessModal();
     } catch (error) {
+      closeUploading();
       // 에러 발생 시 업로드된 파일들 롤백
       if (uploadedImagePaths.length > 0 || uploadedFilePaths.length > 0) {
         await rollbackUploadedFiles(uploadedImagePaths, uploadedFilePaths);
       }
 
-      // 에러가 이미 처리된 경우 (alert 등)는 다시 alert하지 않음
+      // 에러가 이미 처리된 경우 (alert 등)는 다시 처리하지 않음
       if (isHandledError(error)) {
         return;
       }
 
-      alert(WRITE_MESSAGES.POST_CREATE_FAILED);
+      setErrorMessage(
+        "미션 인증글 작성에 실패했어요. 잠시 후 다시 시도해주세요."
+      );
+      openErrorModal();
     }
   };
 
@@ -282,7 +394,12 @@ const MissionCertifyPageContent = () => {
   const hasImage = hasImageInContent(content);
 
   const isSubmitDisabled =
-    isPending || !hasTitle || !hasContent || !isTextLongEnough || !hasImage;
+    isPending ||
+    !missionId ||
+    !hasTitle ||
+    !hasContent ||
+    !isTextLongEnough ||
+    !hasImage;
 
   /**
    * 화면 렌더 시 topbar 타이틀 및 완료 버튼 설정
@@ -302,6 +419,29 @@ const MissionCertifyPageContent = () => {
     setTitle("인증하기");
     setRightSlot(submitButton);
   }, [setTitle, setRightSlot, submitButton]);
+
+  // TopBar 뒤로가기 버튼 클릭 시 컨펌 모달 열기
+  const setLeftSlot = useTopBarStore((state) => state.setLeftSlot);
+  useEffect(() => {
+    const handleBackClick = () => {
+      openLeaveConfirm();
+    };
+
+    setLeftSlot(
+      <button onClick={handleBackClick} className="hover:cursor-pointer">
+        <Image
+          src={IMAGE_URL.ICON.chevron.left.url}
+          alt={IMAGE_URL.ICON.chevron.left.alt}
+          width={24}
+          height={24}
+        />
+      </button>
+    );
+
+    return () => {
+      setLeftSlot(null);
+    };
+  }, [setLeftSlot, openLeaveConfirm]);
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {
@@ -330,10 +470,18 @@ const MissionCertifyPageContent = () => {
     };
   }, [openLeaveConfirm]);
 
+  // 미션 조회 실패 시 에러 모달 표시
+  useEffect(() => {
+    if (isError) {
+      setErrorMessage("미션 정보를 불러오는 데 실패했어요.");
+      openErrorModal();
+    }
+  }, [isError, openErrorModal]);
+
   // 미션 ID가 없으면 미션 홈으로 리다이렉트
   useEffect(() => {
     if (!missionId) {
-      router.push("/mission");
+      router.replace(LINK_URL.MISSION);
     }
   }, [missionId, router]);
 
@@ -341,6 +489,19 @@ const MissionCertifyPageContent = () => {
   // (useRequireAuth가 자동으로 리다이렉트 처리)
   if (!isReady || !user) {
     return null;
+  }
+
+  // 미션 데이터 로딩 중일 때 로딩 스피너 표시
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white p-4 pt-12">
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -351,12 +512,12 @@ const MissionCertifyPageContent = () => {
           <div className="flex border-collapse flex-col gap-1 rounded-lg border border-gray-200 bg-white">
             {/* 미션 정보 */}
             <div className="flex w-full flex-col gap-1 px-4 py-2">
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg bg-purple-50 p-1">
+              <div className="flex w-full items-center gap-2 overflow-hidden">
+                <span className="shrink-0 rounded-lg bg-purple-50 p-1">
                   <Typography
                     font="noto"
                     variant="body2M"
-                    className="text-purple-500"
+                    className="whitespace-nowrap text-purple-500"
                   >
                     미션
                   </Typography>
@@ -364,7 +525,7 @@ const MissionCertifyPageContent = () => {
                 <Typography
                   font="noto"
                   variant="body2M"
-                  className="text-gray-950"
+                  className="line-clamp-1 min-w-0 flex-1 text-gray-950"
                 >
                   {selectedMissionName}
                 </Typography>
@@ -401,18 +562,11 @@ const MissionCertifyPageContent = () => {
             </ButtonBase>
           </div>
           {isAuthGuideOpen && (
-            // TODO: 인증 가이드 데이터 노션에서 받아와 활용하도록 수정 @grapefruit
             <p
               id="auth-guide-content"
-              className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
+              className="font-noto font-regular text-[13px] leading-normal whitespace-pre-line text-gray-950"
             >
-              1. 인증 글 제목 예시 : 9/17 [아침] 정은 인증 <br />
-              &nbsp;날짜 / [아침,점심,저녁] / 닉네임 <br />
-              2. 9월 한끗루틴은 아침, 점심, 저녁 중 총 세 번의 루틴을 인증하기
-              때문에 <b>태그</b>를 꼭 걸어주세요!
-              <br />
-              3. 모든 루틴 인증글에는 타임스탬프(날짜, 시간포함) 사진이
-              필수입니다! 3. 미션 인증 소감, 이야기도 꼭 남겨주세요!
+              {missionData?.certificationMethod}
             </p>
           )}
         </div>
@@ -464,8 +618,39 @@ const MissionCertifyPageContent = () => {
         onClose={closeLeaveConfirm}
         onConfirm={() => {
           closeLeaveConfirm();
-          // popstate 인터셉트를 통하지 않고 즉시 이전 화면(미션 홈)으로 이동
-          router.replace(`/mission`);
+          // 모달이 완전히 닫힌 후 라우팅 (커뮤니티 글 수정 페이지와 동일한 패턴)
+          setTimeout(() => {
+            router.replace(LINK_URL.MISSION);
+          }, 0);
+        }}
+        variant="primary"
+      />
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        title="오류가 발생했어요"
+        description={errorMessage}
+        confirmText="확인"
+        onClose={closeErrorModal}
+        onConfirm={closeErrorModal}
+        variant="primary"
+      />
+
+      {/* 로딩 오버레이 */}
+      <LoadingOverlay isLoading={isUploading} message="업로드 중입니다" />
+
+      {/* 성공 모달 */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        title="미션 인증 완료!"
+        description="미션 인증글이 성공적으로 등록되었어요."
+        confirmText="확인"
+        onClose={closeSuccessModal}
+        onConfirm={() => {
+          closeSuccessModal();
+          if (successPostId) {
+            router.replace(`${LINK_URL.COMMUNITY_MISSION}/${successPostId}`);
+          }
         }}
         variant="primary"
       />

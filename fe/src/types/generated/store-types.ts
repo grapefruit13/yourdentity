@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
 
 export interface TGETStoreProductsReq {
@@ -31,85 +30,36 @@ export type TGETStoreProductsByIdRes = {
   product?: Schema.Product;
 };
 
-export interface TPOSTStorePurchaseReq {
-  data: {
-    productId: string;
+export interface TGETStorePurchasesReq {
+  pageSize?: number;
+  cursor?: string;
+}
+
+export type TGETStorePurchasesRes = {
+  message?: string;
+  purchases?: {
+    purchaseId?: string;
+    title?: string;
+    userId?: string;
+    userNickname?: string;
+    productId?: string;
     quantity?: number;
-    selectedVariant?: string;
-    customFieldsRequest?: Record<string, any>;
-  };
-}
-
-export type TPOSTStorePurchaseRes = Schema.Purchase;
-
-export interface TPOSTStoreProductsLikeByIdReq {
-  productId: string;
-}
-
-export type TPOSTStoreProductsLikeByIdRes = {
-  productId?: string;
-  userId?: string;
-  isLiked?: boolean;
-  likesCount?: number;
-};
-
-export interface TPOSTStoreProductsQnaByIdReq {
-  productId: string;
-  data: {
-    content: any[];
-  };
-}
-
-export type TPOSTStoreProductsQnaByIdRes = {
-  qnaId?: string;
-  productId?: string;
-  userId?: string;
-  content?: Record<string, any>[];
-  media?: {
-    url?: string;
-    type?: "image" | "video";
-    order?: number;
-    width?: number;
-    height?: number;
-    blurHash?: string;
-    thumbUrl?: string;
-    videoSource?: string;
-    provider?: string;
-    duration?: number;
-    sizeBytes?: number;
-    mimeType?: string;
-    processingStatus?: string;
+    requiredPoints?: number;
+    requiresDelivery?: boolean;
+    recipientName?: string;
+    recipientAddress?: string;
+    recipientDetailAddress?: string;
+    recipientPhone?: string;
+    deliveryCompleted?: boolean;
+    orderDate?: string;
+    lastEditedTime?: string;
   }[];
-  answerContent?: any[];
-  answerMedia?: any[];
-  likesCount?: number;
-  createdAt?: string;
-};
-
-export interface TPUTStoreProductsQnaByTwoIdsReq {
-  productId: string;
-  qnaId: string;
-  data: {
-    content: any[];
+  pagination?: {
+    hasMore?: boolean;
+    nextCursor?: string;
+    currentPageCount?: number;
   };
-}
-
-export type TPUTStoreProductsQnaByTwoIdsRes = Record<string, any>;
-
-export interface TPOSTStoreQnaLikeByIdReq {
-  qnaId: string;
-}
-
-export type TPOSTStoreQnaLikeByIdRes = {
-  qnaId?: string;
-  userId?: string;
-  isLiked?: boolean;
-  likesCount?: number;
 };
-
-export interface TDELETEStoreQnaByIdReq {
-  qnaId: string;
-}
 
 export interface TPOSTStorePurchasesReq {
   data: {
@@ -124,41 +74,18 @@ export interface TPOSTStorePurchasesReq {
 
 export type TPOSTStorePurchasesRes = {
   purchaseId?: string;
+  title?: string;
   userId?: string;
+  userNickname?: string;
   productId?: string;
   quantity?: number;
+  requiredPoints?: number;
+  requiresDelivery?: boolean;
   recipientName?: string;
   recipientAddress?: string;
   recipientDetailAddress?: string;
   recipientPhone?: string;
   orderDate?: string;
   deliveryCompleted?: boolean;
-};
-
-export interface TGETStorePurchasesReq {
-  pageSize?: number;
-  cursor?: string;
-}
-
-export type TGETStorePurchasesRes = {
-  message?: string;
-  purchases?: {
-    purchaseId?: string;
-    userId?: string;
-    userNickname?: string;
-    productId?: string;
-    quantity?: number;
-    recipientName?: string;
-    recipientAddress?: string;
-    recipientDetailAddress?: string;
-    recipientPhone?: string;
-    deliveryCompleted?: boolean;
-    orderDate?: string;
-    lastEditedTime?: string;
-  }[];
-  pagination?: {
-    hasMore?: boolean;
-    nextCursor?: string;
-    currentPageCount?: number;
-  };
+  lastEditedTime?: string;
 };

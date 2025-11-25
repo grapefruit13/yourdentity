@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { commentsKeys } from "@/constants/generated/query-keys";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   useGetCommentsCommunitiesPostsByTwoIds,
   usePostCommentsCommunitiesPostsByTwoIds,
@@ -64,7 +65,9 @@ const CommentsPage = () => {
   // 뒤로가기 핸들러
   const handleBack = useCallback(() => {
     // 게시글 상세 페이지로 명시적으로 이동
-    router.push(`/community/post/${postId}?communityId=${communityId}`);
+    router.push(
+      `${LINK_URL.COMMUNITY_POST}/${postId}?communityId=${communityId}`
+    );
   }, [router, postId, communityId]);
 
   // 댓글 데이터 가져오기
@@ -189,9 +192,7 @@ const CommentsPage = () => {
       if (replyingTo?.isReply && replyingTo.commentId) {
         // 답글에 대한 답글: 원댓글의 id를 parentId로 사용
         const parentComment = comments.find((comment) =>
-          comment.replies?.some(
-            (r) => (r.id || r.commentId) === replyingTo.commentId
-          )
+          comment.replies?.some((r) => r.id === replyingTo.commentId)
         );
         parentId = parentComment?.id;
       } else if (replyingTo?.commentId) {
@@ -372,9 +373,7 @@ const CommentsPage = () => {
                     !replyingTo?.isReply) ||
                   // 답글에 대한 답글인 경우
                   (replyingTo?.isReply &&
-                    comment.replies?.some(
-                      (r) => (r.id || r.commentId) === replyingTo.commentId
-                    ))
+                    comment.replies?.some((r) => r.id === replyingTo.commentId))
                     ? commentInput
                     : ""
                 }

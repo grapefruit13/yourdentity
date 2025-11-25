@@ -11,6 +11,7 @@ import "react-notion-x/src/styles.css";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PROGRAM_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
@@ -165,21 +166,23 @@ const ProgramDetailPage = () => {
     useGetUsersMeParticipatingCommunities({
       enabled: Boolean(currentUser),
       staleTime: 0,
+      refetchOnWindowFocus: true,
     });
 
   // 현재 프로그램의 신청 상태 확인
   const isApplied = (() => {
     if (!participatingCommunitiesData || !programDetailData) return false;
-
     const programType = programDetailData.programType?.toLowerCase();
     let targetGroup:
       | { items?: Array<{ id?: string; status?: string }> }
       | undefined;
 
     switch (programType) {
+      case "한끗루틴":
       case "routine":
         targetGroup = participatingCommunitiesData.routine;
         break;
+      case "월간소모임":
       case "gathering":
         targetGroup = participatingCommunitiesData.gathering;
         break;
@@ -369,41 +372,50 @@ const ProgramDetailPage = () => {
   }> = []; // TODO: QnA API 연동 필요
 
   return (
-    <div className="min-h-screen bg-white pt-12">
-      {/* 썸네일 영역 - 상하좌우 패딩/마진 없이 꽉 채움 */}
+    <div className="min-h-screen bg-white pt-12 pb-24">
       <div className="relative aspect-square w-full max-w-[470px] overflow-hidden">
-        {/* TEMP: 썸네일 사진으로 반영해야 함 */}
-        <div
-          className={`relative flex h-full items-center justify-center ${getProgramBgColor(program.programType)}`}
-        >
-          {/* 일러스트 영역 */}
-          <div className="text-8xl">{getProgramIcon(program.programType)}</div>
-          {/* CHECK: 배지 표시? 아니면 썸네일 사진에 배지 표시? */}
-          {/* {program.recruitmentStatus === "모집 중" && (
-            <div className="absolute top-4 right-4 flex h-10 w-32 items-center justify-center rounded bg-yellow-400 text-xs font-bold text-black">
-              모집중
+        {/* 썸네일 이미지 우선순위: thumbnail.url > coverImage > 일러스트 */}
+        {program.thumbnail?.[0]?.url ? (
+          <img
+            src={program.thumbnail[0].url}
+            alt={program.title || program.programName || "프로그램 썸네일"}
+            className="h-full w-full object-cover"
+          />
+        ) : program.coverImage ? (
+          <img
+            src={program.coverImage}
+            alt={program.title || program.programName || "프로그램 커버 이미지"}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            className={`relative flex h-full items-center justify-center ${getProgramBgColor(program.programType)}`}
+          >
+            {/* 일러스트 영역 */}
+            <div className="text-8xl">
+              {getProgramIcon(program.programType)}
             </div>
-          )} */}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* 모집 중 칩 */}
-      <div className="w-full bg-white px-4 pt-2">
-        {program.recruitmentStatus == "모집 중" && (
-          <Typography
-            font="noto"
-            variant="label1B"
-            className="bg-main-500 inline-flex items-center rounded-lg px-3 py-1.5 pt-3 font-medium text-white"
-          >
-            • 모집 중
-          </Typography>
-        )}
+      <div className="w-full bg-white px-4 pt-5">
+        <Typography
+          font="noto"
+          variant="label1M"
+          className="bg-main-500 inline-flex h-[28px] items-center rounded-lg px-2.5 py-0.5 text-center text-white"
+        >
+          • {program.recruitmentStatus}
+        </Typography>
       </div>
 
       {/* 제목 및 설명 */}
       <div className="w-full bg-white px-4 pt-2">
         <Typography as="h2" font="noto" variant="title5" className="mb-2">
-          {program.title || program.programName || "-"}
+          {program.notionPageTitle ||
+            program.title ||
+            program.programName ||
+            "-"}
         </Typography>
         <Typography font="noto" variant="body2R" className="text-gray-600">
           {program.description || "-"}
@@ -411,7 +423,7 @@ const ProgramDetailPage = () => {
       </div>
 
       {/* 주요 정보 박스 */}
-      <div className="w-full bg-white px-4 pt-4 pb-15">
+      <div className="w-full bg-white px-4 pt-6 pb-15">
         <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-100 px-3 py-4">
           {program.recruitmentStartDate && program.recruitmentEndDate && (
             <div className="flex items-start justify-between gap-4">
@@ -476,55 +488,29 @@ const ProgramDetailPage = () => {
           variant="label2R"
           className="mt-4 text-gray-400"
         >
-          *최소 인원 미달 시 모임은 취소될 수 있습니다.
+          {program.notes}
         </Typography>
       </div>
 
       {/* 탭 네비게이션 */}
-      <div
-        ref={tabRef}
-        className="sticky top-12 z-10 border-b border-gray-200 bg-white"
-      >
-        <div className="flex">
-          <button
-            onClick={() => handleTabClick("detail")}
-            className={cn(
-              "flex-1 border-b-2 px-4 py-3 text-center",
-              activeTab === "detail"
-                ? "border-pink-500 text-pink-500"
-                : "border-transparent text-gray-500"
-            )}
-          >
-            <Typography font="noto" variant="body3B">
-              상세 설명
-            </Typography>
-          </button>
-          <button
-            onClick={() => handleTabClick("reviews")}
-            className={cn(
-              "flex-1 border-b-2 px-4 py-3 text-center",
-              activeTab === "reviews"
-                ? "border-pink-500 text-pink-500"
-                : "border-transparent text-gray-500"
-            )}
-          >
-            <Typography font="noto" variant="body3B">
-              프로그램 후기
-            </Typography>
-          </button>
-          <button
-            onClick={() => handleTabClick("faq")}
-            className={cn(
-              "flex-1 border-b-2 px-4 py-3 text-center",
-              activeTab === "faq"
-                ? "border-pink-500 text-pink-500"
-                : "border-transparent text-gray-500"
-            )}
-          >
-            <Typography font="noto" variant="body3B">
-              자주 묻는 질문
-            </Typography>
-          </button>
+      <div ref={tabRef} className="sticky top-12 z-10 bg-white">
+        <div className="flex px-5">
+          {PROGRAM_DETAIL_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              className={cn(
+                "flex-1 border-b-2 px-4 py-3 text-center",
+                activeTab === tab.id
+                  ? "border-gray-950 text-gray-950"
+                  : "border-transparent text-gray-400"
+              )}
+            >
+              <Typography font="noto" variant="body3B">
+                {tab.label}
+              </Typography>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -788,7 +774,7 @@ const ProgramDetailPage = () => {
       )}
 
       {/* 하단 고정 버튼 */}
-      <div className="sticky bottom-0 z-20 bg-transparent p-4">
+      <div className="pb-safe fixed bottom-0 z-20 w-full max-w-[470px] bg-transparent p-4">
         {isApplied ? (
           <button
             disabled

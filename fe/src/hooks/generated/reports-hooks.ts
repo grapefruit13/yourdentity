@@ -40,24 +40,6 @@ export const usePostReportcontent = <
   });
 };
 
-export const useGetReportcontentSyncNotionReports = <
-  TData = Types.TGETReportContentSyncNotionReportsRes,
->(
-  options?: Omit<
-    UseQueryOptions<Types.TGETReportContentSyncNotionReportsRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery<Types.TGETReportContentSyncNotionReportsRes, Error, TData>({
-    queryKey: reportsKeys.getReportcontentSyncNotionReports,
-    queryFn: async () => {
-      const response = await Api.getReportcontentSyncNotionReports();
-      return response.data;
-    },
-    ...options,
-  });
-};
-
 export const usePostReportcontentMy = <
   TContext = unknown,
   TVariables = Types.TPOSTReportContentMyReq,
@@ -80,6 +62,24 @@ export const usePostReportcontentMy = <
   >({
     mutationFn: (variables: TVariables) =>
       Api.postReportcontentMy(variables as Types.TPOSTReportContentMyReq),
+    ...options,
+  });
+};
+
+export const useGetReportcontentSyncNotionReports = <
+  TData = Types.TGETReportContentSyncNotionReportsRes,
+>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETReportContentSyncNotionReportsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETReportContentSyncNotionReportsRes, Error, TData>({
+    queryKey: reportsKeys.getReportcontentSyncNotionReports,
+    queryFn: async () => {
+      const response = await Api.getReportcontentSyncNotionReports();
+      return response.data;
+    },
     ...options,
   });
 };

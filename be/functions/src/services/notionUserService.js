@@ -37,255 +37,309 @@ class NotionUserService {
   /**
    * Firebase의 users 컬렉션에서 전체회원 조회 후 -> Notion 데이터베이스에 등록
    */  
-async syncUserAccounts() {
-  
-  const snapshot = await db.collection("users").get();
-
-  // Firebase에 lastUpdated 필드 존재 여부 확인
-  //const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdated);
-  const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdatedAt);
-
-  const now = new Date();
-
-  // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
-  const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
-
-  let syncedCount = 0;
-  let failedCount = 0;
-  const syncedUserIds = []; // 동기화된 사용자 ID 목록
-  const failedUserIds = []; // 동기화 실패한 사용자 ID 목록
-
-  for (const doc of snapshot.docs) {
-    const user = doc.data();
-    const userId = doc.id;
-
-    //문자열 or timestamp로 저장되어도 모두 조회
-    //const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdated);
-    const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdatedAt);
-    const firebaseLastUpdated = firebaseLastUpdatedDate
-      ? firebaseLastUpdatedDate.getTime()
-      : 0;
+  async syncUserAccounts() {
     
-    /*
-    - 노션에서 제공하는 최종 편집 일시를 사용하지 않고 동기화 시간으로 관리하는 이유 : 노션에서 변경사항이 생겼을때 비교하는게 아니라 동기화 버튼을 클릭했을 경우의 시간과 비교하기 위함
-      + 노션 데이터
-    */
-    const notionLastUpdated = notionUsers[userId]?.lastUpdated
-      ? new Date(notionUsers[userId].lastUpdated).getTime()
-      : 0;
+    const snapshot = await db.collection("users").get();
 
-    // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
-    //if (!user.lastUpdated || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
-    if (!user.lastUpdatedAt || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
-      try {
-        // 날짜 변환
-        const createdAtIso = safeDateToIso(user.createdAt);
-        const lastLoginIso = safeDateToIso(user.lastLoginAt);
-        const lastUpdatedIso = now;
-        
-        // 노션 페이지 데이터 구성
-        const notionPage = {
-          '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
-          "프로필 사진": {
-            files: [
-              {
-                name: "profile-image",
-                type: "external",
-                external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+    // Firebase에 lastUpdated 필드 존재 여부 확인
+    const hasLastUpdated = snapshot.docs.every(doc => !!doc.data().lastUpdatedAt);
+
+    const now = new Date();
+
+    // 현재 노션에 있는 사용자 목록 가져오기 (ID와 lastUpdated 매핑)
+    const notionUsers = await this.getNotionUsers(this.notionUserAccountDB);
+
+    let syncedCount = 0;
+    let failedCount = 0;
+    const syncedUserIds = []; // 동기화된 사용자 ID 목록
+    const failedUserIds = []; // 동기화 실패한 사용자 ID 목록
+
+    // 배치 처리로 변경
+    for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+      const batch = snapshot.docs.slice(i, i + BATCH_SIZE);
+      console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(snapshot.docs.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, snapshot.docs.length)}번째)`);
+
+      // 배치 내에서 병렬 처리
+      const batchPromises = batch.map(async (doc) => {
+        try {
+          const user = doc.data();
+          const userId = doc.id;
+
+          // 신고 카운트(communities/*/posts/*) 합산
+          let reportCount = 0;
+          try {
+            const reportSnapshot = await db
+              .collectionGroup("posts")
+              .where("authorId", "==", userId)
+              .get();
+
+            reportCount = reportSnapshot.docs.reduce((sum, postDoc) => {
+              const reportsCount = postDoc.data().reportsCount || 0;
+              return sum + reportsCount;
+            }, 0);
+          } catch (countError) {
+            console.warn(
+              `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
+            );
+          }
+
+          //문자열 or timestamp로 저장되어도 모두 조회
+          const firebaseLastUpdatedDate = safeTimestampToDate(user.lastUpdatedAt);
+          const firebaseLastUpdated = firebaseLastUpdatedDate
+            ? firebaseLastUpdatedDate.getTime()
+            : 0;
+          
+          /*
+          - 노션에서 제공하는 최종 편집 일시를 사용하지 않고 동기화 시간으로 관리하는 이유 : 노션에서 변경사항이 생겼을때 비교하는게 아니라 동기화 버튼을 클릭했을 경우의 시간과 비교하기 위함
+            + 노션 데이터
+          */
+          const notionLastUpdated = notionUsers[userId]?.lastUpdated
+            ? new Date(notionUsers[userId].lastUpdated).getTime()
+            : 0;
+
+          // Firebase가 더 최신이면 or lastUpdated가 없는 경우 업데이트 필요
+          if (!user.lastUpdatedAt || firebaseLastUpdated > notionLastUpdated || !notionUsers[userId]) {
+            // 날짜 변환
+            const createdAtIso = safeDateToIso(user.createdAt);
+            const lastLoginIso = safeDateToIso(user.lastLoginAt);
+            const lastUpdatedIso = now;
+            
+            // 노션 페이지 데이터 구성
+            const notionPage = {
+              '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
+              "프로필 사진": {
+                files: [
+                  {
+                    name: "profile-image",
+                    type: "external",
+                    external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+                  },
+                ],
               },
-            ],
-          },
-          "사용자ID": { rich_text: [{ text: { content: userId } }] },
-          "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-          "상태": {
-            select: {
-              name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-                ? "탈퇴" 
-                : "가입"
+              "사용자ID": { rich_text: [{ text: { content: userId } }] },
+              "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
+              "상태": {
+                select: {
+                  name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+                    ? "탈퇴" 
+                    : "가입"
+                }
+              },
+              "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
+              "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
+              "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
+              "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+              "가입 방법": { select: { name: user.authType || "email" } },
+              "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+              "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+              "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
+              "성별": { 
+                select: { 
+                  name: 
+                    user.gender === 'male' ? "남성" : user.gender === 'female' ? "여성" : "미선택",
+                } 
+              },
+              "Push 광고 수신 여부": {
+                select: {
+                  name:
+                    user.pushTermsAgreed === true
+                      ? "동의"
+                      : user.pushTermsAgreed === false
+                      ? "거부"
+                      : "미설정",
+                },
+              },
+              "자격정지 기간(시작)": user.suspensionStartAt ? {
+                date: { 
+                  start: user.suspensionStartAt 
+                }
+              } : { date: null },
+              "자격정지 기간(종료)": user.suspensionEndAt ? {
+                date: { 
+                  start: user.suspensionEndAt 
+                }
+              } : { date: null },
+              "정지 사유": user.suspensionReason ? {
+                rich_text: [{
+                  text: { content: user.suspensionReason }
+                }]
+              } : {
+                rich_text: []
+              },
+              "패널티 카운트": {
+                number: (user.penaltyCount !== null && user.penaltyCount !== undefined) ? user.penaltyCount : 0
+              },
+              "신고 카운트": { number: reportCount },
+              "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+            };
+      
+            // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
+            if (notionUsers[userId]) {
+              // 기존 페이지 업데이트
+              await this.updateNotionPageWithRetry(notionUsers[userId].pageId, notionPage);
+            } else {
+              // 새 페이지 생성
+              await this.createNotionPageWithRetry(notionPage);
             }
-          },
-          "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
-          "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
-          "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
-          "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-          "가입 방법": { select: { name: user.authType || "email" } },
-          "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-          "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-          "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
-          "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
-          "성별": { 
-            select: { 
-              name: 
-                user.gender === 'male' ? "남성" : user.gender === 'female' ? "여성" : "미선택",
-            } 
-          },
-          "Push 광고 수신 여부": {
-            select: {
-              name:
-                user.pushTermsAgreed === true
-                  ? "동의"
-                  : user.pushTermsAgreed === false
-                  ? "거부"
-                  : "미설정",
-            },
-          },
-          "자격정지 기간(시작)": user.suspensionStartAt ? {
-            date: { 
-              start: user.suspensionStartAt 
-            }
-          } : undefined,
-          "자격정지 기간(종료)": user.suspensionEndAt ? {
-            date: { 
-              start: user.suspensionEndAt 
-            }
-          } : undefined,
-          "정지 사유": user.suspensionReason ? {
-            rich_text: [{
-              text: { content: user.suspensionReason }
-            }]
-          } : {
-            rich_text: []
-          },
-          "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
-        };
-  
-        // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
-        if (notionUsers[userId]) {
-          // 기존 페이지 업데이트
-          await this.updateNotionPageWithRetry(notionUsers[userId].pageId, notionPage);
-        } else {
-          // 새 페이지 생성
-          await this.createNotionPageWithRetry(notionPage);
-        }
 
-        // Firebase lastUpdated가 없는 경우에만 초기 설정
-        if (!user.lastUpdated) {
-          await db.collection("users").doc(userId).update({
-            lastUpdatedAt: lastUpdatedIso,
-          });
+            // Firebase lastUpdated가 없는 경우에만 초기 설정
+            if (!user.lastUpdated) {
+              await db.collection("users").doc(userId).update({
+                lastUpdatedAt: lastUpdatedIso,
+              });
+            }
+      
+            syncedCount++;
+            syncedUserIds.push(userId); // 동기화된 사용자 ID 저장
+            return { success: true, userId };
+          } else {
+            // 동기화 불필요한 경우
+            return { success: true, userId, skipped: true };
+          }
+        } catch (error) {
+          // 동기화 실패 처리
+          failedCount++;
+          failedUserIds.push(doc.id);
+          console.error(`[동기화 실패] 사용자 ${doc.id}:`, error.message || error);
+          return { success: false, userId: doc.id, error: error.message };
         }
-  
-        syncedCount++;
-        syncedUserIds.push(userId); // 동기화된 사용자 ID 저장
-
-      } catch (error) {
-        // 동기화 실패 처리
-        failedCount++;
-        failedUserIds.push(userId);
-        console.error(`[동기화 실패] 사용자 ${userId}:`, error.message || error);
-      }
-    }
-  }
-  
-  // Firebase에는 없지만 노션에만 있는 사용자 아카이브 처리
-  const firebaseUserIds = new Set(snapshot.docs.map(doc => doc.id));
-  
-  // 노션의 모든 페이지 가져오기 (사용자ID가 빈값인 페이지도 포함)
-  const allNotionPages = await this.getAllNotionPages(this.notionUserAccountDB);
-  
-  // 아카이브 대상 페이지 찾기
-  const pagesToArchive = [];
-  for (const page of allNotionPages) {
-    const props = page.properties;
-    const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || "";
-    
-    // 사용자ID가 빈값이거나, 사용자ID가 있지만 Firebase에 없는 경우 아카이브 대상
-    if (!userId || !firebaseUserIds.has(userId)) {
-      pagesToArchive.push({
-        pageId: page.id,
-        userId: userId || "(사용자ID 없음)",
       });
+
+      // 배치 결과 처리
+      const batchResults = await Promise.all(batchPromises);
+      const batchSuccess = batchResults.filter(r => r.success && !r.skipped).length;
+      const batchSkipped = batchResults.filter(r => r.success && r.skipped).length;
+      const batchFailed = batchResults.filter(r => !r.success).length;
+
+      console.log(`배치 완료: 성공 ${batchSuccess}명, 건너뜀 ${batchSkipped}명, 실패 ${batchFailed}명 (총 진행률: ${syncedCount + failedCount}/${snapshot.docs.length})`);
+
+      // 마지막 배치가 아니면 지연
+      if (i + BATCH_SIZE < snapshot.docs.length) {
+        console.log(`${DELAY_MS/1000}초 대기 중...`);
+        await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+      }
     }
-  }
-  
-  let archivedCount = 0;
-  if (pagesToArchive.length > 0) {
-    console.log(`Firebase에 없거나 사용자ID가 빈값인 노션 페이지 ${pagesToArchive.length}개 아카이브 처리 중...`);
     
-    for (const page of pagesToArchive) {
-      try {
-        await this.archiveNotionPageWithRetry(page.pageId);
-        archivedCount++;
-      } catch (error) {
-        console.error(`[아카이브 실패] 페이지 ${page.pageId} (사용자ID: ${page.userId}):`, error.message);
+    // Firebase에는 없지만 노션에만 있는 사용자 아카이브 처리
+    const firebaseUserIds = new Set(snapshot.docs.map(doc => doc.id));
+    
+    // 노션의 모든 페이지 가져오기 (사용자ID가 빈값인 페이지도 포함)
+    const allNotionPages = await this.getAllNotionPages(this.notionUserAccountDB);
+    
+    // 아카이브 대상 페이지 찾기
+    const pagesToArchive = [];
+    for (const page of allNotionPages) {
+      const props = page.properties;
+      const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || "";
+      
+      // 사용자ID가 빈값이거나, 사용자ID가 있지만 Firebase에 없는 경우 아카이브 대상
+      if (!userId || !firebaseUserIds.has(userId)) {
+        pagesToArchive.push({
+          pageId: page.id,
+          userId: userId || "(사용자ID 없음)",
+        });
       }
     }
-  }
-  
-  console.log(`동기화 완료: ${syncedCount}명 갱신됨, ${archivedCount}개 페이지 아카이브됨`);
-
-
-  // 동기화 완료 후 백업 실행
-  let backupResult = null;
-  let backupSuccess = false;
-  let backupError = null;
-  try {
-    console.log('동기화 완료 후 백업을 시작합니다...');
-    backupResult = await this.backupNotionUserDatabase();
-    backupSuccess = true;
-    console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨 (생성: ${backupResult.created}개, 업데이트: ${backupResult.updated}개, 삭제: ${backupResult.deleted}개, 실패: ${backupResult.failed}개)`);
-  } catch (error) {
-    backupSuccess = false;
-    backupError = error.message || '알 수 없는 오류가 발생했습니다';
-    console.error('백업 실패:', error);
-  }
-
-
-  // 백업 결과 이력 저장 (별도 action으로 저장)
-  try {
-    const backupLogRef = db.collection("adminLogs").doc();
-    await backupLogRef.set({
-      adminId: "Notion 관리자",
-      action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
-      targetId: "", // 백업 작업이므로 빈 값
-      timestamp: new Date(),
-      metadata: backupSuccess && backupResult ? {
-        syncedCount: backupResult.backedUp,
-        created: backupResult.created,
-        archivedCount: backupResult.deleted,
-        total: backupResult.backedUp + backupResult.failed,
-        failedCount: backupResult.failed,
-        ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
-      } : {
-        logMessage : backupError
+    
+    let archivedCount = 0;
+    if (pagesToArchive.length > 0) {
+      console.log(`Firebase에 없거나 사용자ID가 빈값인 노션 페이지 ${pagesToArchive.length}개 아카이브 처리 중...`);
+      
+      // 배치 처리로 아카이브 (syncAllUserAccounts와 동일한 패턴)
+      for (let i = 0; i < pagesToArchive.length; i += BATCH_SIZE) {
+        const batch = pagesToArchive.slice(i, i + BATCH_SIZE);
+        console.log(`아카이브 배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(pagesToArchive.length / BATCH_SIZE)} 처리 중...`);
+        
+        await Promise.all(batch.map(async (page) => {
+          try {
+            await this.archiveNotionPageWithRetry(page.pageId);
+            archivedCount++;
+            console.log(`[아카이브 성공] 페이지 ${page.pageId} (사용자ID: ${page.userId})`);
+          } catch (error) {
+            console.error(`[아카이브 실패] 페이지 ${page.pageId} (사용자ID: ${page.userId}):`, error.message);
+          }
+        }));
+        
+        // 마지막 배치가 아니면 지연
+        if (i + BATCH_SIZE < pagesToArchive.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+        }
       }
-    });
-    if (backupSuccess) {
-      console.log(`[adminLogs] 백업 결과 저장 완료: 성공 (${backupResult.backedUp}개 백업)`);
-    } else {
-      console.log(`[adminLogs] 백업 결과 저장 완료: 실패 - ${backupError}`);
     }
-  } catch (backupLogError) {
-    console.error("[adminLogs] 백업 로그 저장 실패:", backupLogError);
-    // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
-  }
+    
+    console.log(`동기화 완료: ${syncedCount}명 갱신됨, ${archivedCount}개 페이지 아카이브됨`);
 
 
-  try {
-    const logRef = db.collection("adminLogs").doc();
-    await logRef.set({
-      adminId: "Notion 관리자",
-      action: ADMIN_LOG_ACTIONS.USER_PART_SYNCED,
-      targetId: "", // 전체 동기화 작업이므로 빈 값
-      timestamp: new Date(),
-      metadata: {
-        syncedCount: syncedCount,
-        failedCount: failedCount,
-        archivedCount: archivedCount,  //Firebase -> Notion으로 동기화 하는 경우 존재
-        total: syncedCount + failedCount,
-        syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
-        failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+    // 동기화 완료 후 백업 실행
+    let backupResult = null;
+    let backupSuccess = false;
+    let backupError = null;
+    try {
+      console.log('동기화 완료 후 백업을 시작합니다...');
+      backupResult = await this.backupNotionUserDatabase();
+      backupSuccess = true;
+      console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨 (생성: ${backupResult.created}개, 업데이트: ${backupResult.updated}개, 삭제: ${backupResult.deleted}개, 실패: ${backupResult.failed}개)`);
+    } catch (error) {
+      backupSuccess = false;
+      backupError = error.message || '알 수 없는 오류가 발생했습니다';
+      console.error('백업 실패:', error);
+    }
+
+
+    // 백업 결과 이력 저장 (별도 action으로 저장)
+    try {
+      const backupLogRef = db.collection("adminLogs").doc();
+      await backupLogRef.set({
+        adminId: "Notion 관리자",
+        action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
+        targetId: "", // 백업 작업이므로 빈 값
+        timestamp: new Date(),
+        metadata: backupSuccess && backupResult ? {
+          syncedCount: backupResult.backedUp,
+          created: backupResult.created,
+          archivedCount: backupResult.deleted,
+          total: backupResult.backedUp + backupResult.failed,
+          failedCount: backupResult.failed,
+          ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
+        } : {
+          logMessage : backupError
+        }
+      });
+      if (backupSuccess) {
+        console.log(`[adminLogs] 백업 결과 저장 완료: 성공 (${backupResult.backedUp}개 백업)`);
+      } else {
+        console.log(`[adminLogs] 백업 결과 저장 완료: 실패 - ${backupError}`);
       }
-    });
-    console.log(`[adminLogs] 회원 동기화 이력 저장 완료: ${syncedCount}명`);
-  } catch (logError) {
-    console.error("[adminLogs] 로그 저장 실패:", logError);
-    // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+    } catch (backupLogError) {
+      console.error("[adminLogs] 백업 로그 저장 실패:", backupLogError);
+      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+    }
+
+
+    try {
+      const logRef = db.collection("adminLogs").doc();
+      await logRef.set({
+        adminId: "Notion 관리자",
+        action: ADMIN_LOG_ACTIONS.USER_PART_SYNCED,
+        targetId: "", // 전체 동기화 작업이므로 빈 값
+        timestamp: new Date(),
+        metadata: {
+          syncedCount: syncedCount,
+          failedCount: failedCount,
+          archivedCount: archivedCount,  //Firebase -> Notion으로 동기화 하는 경우 존재
+          total: syncedCount + failedCount,
+          syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+          failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+        }
+      });
+      console.log(`[adminLogs] 회원 동기화 이력 저장 완료: ${syncedCount}명`);
+    } catch (logError) {
+      console.error("[adminLogs] 로그 저장 실패:", logError);
+      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+    }
+
+    return { syncedCount, failedCount, archivedCount };
   }
-
-  return { syncedCount, failedCount, archivedCount };
-}
-
 
 
 
@@ -398,6 +452,25 @@ async syncAllUserAccounts() {
           const userId = doc.id;
           const existingNotionUser = notionUsers[userId];
 
+          //신고 카운트 (firebase 단일필드 authorId 추가)
+          let reportCount = 0;
+          try {
+            const reportSnapshot = await db
+              .collectionGroup("posts")
+              .where("authorId", "==", userId)
+              .get();
+            
+            // 각 문서의 reportsCount 값을 합산
+            reportCount = reportSnapshot.docs.reduce((sum, doc) => {
+              const reportsCount = doc.data().reportsCount || 0;
+              return sum + reportsCount;
+            }, 0);
+          } catch (countError) {
+            console.warn(
+              `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
+            );
+          }
+
           // 날짜 처리
           const createdAtIso = safeDateToIso(user.createdAt);
           const lastLoginIso = safeDateToIso(user.lastLoginAt);
@@ -425,13 +498,12 @@ async syncAllUserAccounts() {
               }
             },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
-            "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
+            "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
             "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "가입 방법": { select: { name: user.authType || "email" } },
             "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-            "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
             "성별": { 
               select: { 
@@ -453,12 +525,12 @@ async syncAllUserAccounts() {
               date: { 
                 start: user.suspensionStartAt 
               }
-            } : undefined,
+            } : { date: null },
             "자격정지 기간(종료)": user.suspensionEndAt ? {
               date: { 
                 start: user.suspensionEndAt 
               }
-            } : undefined,
+            } : { date: null },
             "정지 사유": user.suspensionReason ? {
               rich_text: [{
                 text: { content: user.suspensionReason }
@@ -466,6 +538,10 @@ async syncAllUserAccounts() {
             } : {
               rich_text: []
             },
+            "패널티 카운트": {
+              number: (user.penaltyCount !== null && user.penaltyCount !== undefined) ? user.penaltyCount : 0
+            },
+            "신고 카운트": { number: reportCount },
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
           };
 
@@ -693,12 +769,26 @@ async archivePagesInBatches(pages) {
 }
 
 // 재시도 로직이 포함된 Notion 페이지 생성
-async createNotionPageWithRetry(notionPage, maxRetries = 3) {
+async createNotionPageWithRetry(notionPage, maxRetries = 3, databaseId = null) {
+  const targetDatabaseId = databaseId || this.notionUserAccountDB;
+  
+  // notionPage가 { parent: ..., properties: ... } 형태인지 확인
+  let properties, parent;
+  if (notionPage.parent && notionPage.properties) {
+    // 백업 메서드에서 전달한 형태
+    parent = notionPage.parent;
+    properties = notionPage.properties;
+  } else {
+    // 기존 형태 (properties만)
+    parent = { database_id: targetDatabaseId };
+    properties = notionPage;
+  }
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await this.notion.pages.create({
-        parent: { database_id: this.notionUserAccountDB },
-        properties: notionPage,
+        parent: parent,
+        properties: properties,
       });
       return; // 성공하면 종료
     } catch (error) {
@@ -833,15 +923,10 @@ async syncPenaltyUsers() {
 
       // 시작 값은 빈 값인데 종료 값만 있는 경우 검증
       if (!penaltyPeriodStart && penaltyPeriodEnd) {
-        // const error = new Error(`사용자 ${userName}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
-        // error.code = "SUSPENSION_START_REQUIRED";
-        // throw error;
-
         failedCount++;
         failedUserIds.push(userId);
         console.log("사용자 ${userName}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다");
         continue;
-
       }
 
       // Firebase users 컬렉션에서 해당 사용자 찾기
@@ -987,6 +1072,26 @@ async syncSelectedUsers() {
 
       // 노션 필드에서 데이터 추출
       const nickname = props["기본 닉네임"]?.title?.[0]?.plain_text ||  "";
+
+      //닉네임의 경우 정책상 유일한 값
+      if (nickname) {
+        const duplicateSnapshot = await db
+          .collection("users")
+          .where("nickname", "==", nickname)
+          .get();
+
+        const conflictingDoc = duplicateSnapshot.docs.find((doc) => doc.id !== userId);
+
+        if (conflictingDoc) {
+          console.warn(
+            `사용자 ${userId}의 노션 기본 닉네임(${nickname})이 다른 사용자(${conflictingDoc.id})와 중복되어 동기화를 중단합니다`
+          );
+          validateErrorCount++;
+          failedUserIds.push(userId);
+          continue;
+        }
+      }
+
       const name = props["사용자 실명"]?.rich_text?.[0]?.plain_text || "";
       
       // 프로필 사진 URL 추출 (files 타입)
@@ -997,8 +1102,8 @@ async syncSelectedUsers() {
       }
 
       const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
-      const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
-                        (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
+      const birthDate = props["생년월일"]?.rich_text?.[0]?.plain_text || 
+                        (props["생년월일"]?.number ? String(props["생년월일"].number) : "");
       const email = props["이메일"]?.rich_text?.[0]?.plain_text || "";
 
       // 날짜 필드 추출
@@ -1033,6 +1138,9 @@ async syncSelectedUsers() {
       const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
       const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
 
+      // 패널티 카운트 필드 추출 (number 타입)
+      const penaltyCount = props["패널티 카운트"]?.number ?? 0;
+      
       // 업데이트할 데이터 객체 생성 (undefined가 아닌 값만 업데이트)
       const updateData = {};
       
@@ -1053,14 +1161,10 @@ async syncSelectedUsers() {
         updateData.lastLoginAt = lastLoginDate;
       }
 
-      // 자격정지 필드 처리
-      if (suspensionReason || suspensionReason === "") updateData.suspensionReason = suspensionReason;
-      if (suspensionStartAt) {
-        updateData.suspensionStartAt = suspensionStartAt;
-      }
-      if (suspensionEndAt) {
-        updateData.suspensionEndAt = suspensionEndAt;
-      }
+      // 자격정지 필드 처리 - 값이 없어도 명시적으로 null/빈 문자열로 저장
+      updateData.suspensionReason = suspensionReason || "";
+      updateData.suspensionStartAt = suspensionStartAt || null;
+      updateData.suspensionEndAt = suspensionEndAt || null;
 
 
       if(!suspensionStartAt && !suspensionEndAt && suspensionReason){
@@ -1074,21 +1178,61 @@ async syncSelectedUsers() {
       const now = new Date();
       updateData.lastUpdated = now;
 
+      // 자격정지 시작날짜만 존재하고 종료날짜가 없는 경우
+      if (suspensionStartAt && !suspensionEndAt) {
+        console.warn(
+          `사용자 ${name}의 자격정지 기간(시작)만 있고 종료가 없습니다. 당일 자격정지를 원하면 종료 날짜를 시작 날짜와 동일하게 입력해 주세요.`
+        );
+        validateErrorCount++;
+        failedUserIds.push(userId);
+        continue;
+      }
 
-       // 시작 값은 빈 값인데 종료 값만 있는 경우 검증
-       if (!suspensionStartAt && suspensionEndAt) {
-        const endDate = new Date(suspensionEndAt);
-        const isPermanentSuspension = endDate.getFullYear() === 9999 && 
-                                     endDate.getMonth() === 11 && // 12월은 11 (0부터 시작)
-                                     endDate.getDate() === 31;
+      // 시작 값은 빈 값인데 종료 값만 있는 경우 검증
+      if (!suspensionStartAt && suspensionEndAt) {
+          const endDate = new Date(suspensionEndAt);
+          const isPermanentSuspension = endDate.getFullYear() === 9999 && 
+                                      endDate.getMonth() === 11 && // 12월은 11 (0부터 시작)
+                                      endDate.getDate() === 31;
+                                      
+          if (!isPermanentSuspension) {
+              console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
+              validateErrorCount++;
+              failedUserIds.push(userId);
+              continue;
+          }
                                      
-        if (!isPermanentSuspension) {
-            console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
-            validateErrorCount++;
-            failedUserIds.push(userId);
-            continue;
+      }
+
+      
+      // 자격정지 관련 유효성 검사를 통과한 경우: suspensionStartAt/suspensionEndAt 비교 및 penaltyCount 처리
+      const userData = userDoc.data();
+      const existingSuspensionStartAt = userData.suspensionStartAt || null;
+      const existingSuspensionEndAt = userData.suspensionEndAt || null;
+      const existingPenaltyCount = userData.penaltyCount || 0;
+      
+
+      // suspensionStartAt과 suspensionEndAt에 모두 값이 있거나, suspensionEndAt에만 값이 있는 경우
+      if ((suspensionStartAt && suspensionEndAt) || (!suspensionStartAt && suspensionEndAt)) {
+        // 기존 값과 비교
+        const isStartAtChanged = suspensionStartAt !== existingSuspensionStartAt;
+        const isEndAtChanged = suspensionEndAt !== existingSuspensionEndAt;
+
+        if (isStartAtChanged || isEndAtChanged) {
+          // 다른 값이면 신고 카운트 1 증가
+          updateData.penaltyCount = existingPenaltyCount + 1;
+          console.log(`[패널티 카운트 증가] 사용자 ${userId} (${name || nickname}): ${existingPenaltyCount} -> ${updateData.penaltyCount}`);
+        } else {
+          // 같은 값이면 신고 카운트 증가 없이 노션의 신고 카운트 값 적용
+          if (penaltyCount !== null) {
+            updateData.penaltyCount = penaltyCount;
+          }
         }
-                                     
+      } else {
+        // suspensionStartAt과 suspensionEndAt이 모두 없는 경우, 노션의 신고 카운트 값만 적용
+        if (penaltyCount !== null) {
+          updateData.penaltyCount = penaltyCount;
+        }
       }
 
 
@@ -1097,19 +1241,89 @@ async syncSelectedUsers() {
 
       console.log(`[SUCCESS] ${userId} (${name || nickname}) 업데이트 완료`);
 
-      // 노션의 "선택" 체크박스 해제 (동기화 후 선택 상태 해제)
-      try {
-        await this.notion.pages.update({
-          page_id: pageId,
-          properties: {
-            "선택": {
-              checkbox: false
+       // Firebase에서 업데이트된 최신 데이터 가져오기
+       const updatedUserDoc = await userRef.get();
+       const updatedUserData = updatedUserDoc.data();
+ 
+       // 날짜 변환
+       const createdAtIso = safeDateToIso(updatedUserData.createdAt);
+       const lastLoginIso = safeDateToIso(updatedUserData.lastLoginAt);
+       const lastUpdatedIso = new Date();
+
+      const notionPageUpdate = {
+        '기본 닉네임': { title: [{ text: { content: updatedUserData.nickname || "" } }] },
+        "프로필 사진": {
+          files: [
+            {
+              name: "profile-image",
+              type: "external",
+              external: { url: updatedUserData.profileImageUrl || "https://example.com/default-profile.png" },
             },
-            "동기화 시간": {
-              date: { start: now.toISOString() }
-            }
+          ],
+        },
+        "사용자ID": { rich_text: [{ text: { content: userId } }] },
+        "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
+        "상태": {
+          select: {
+            name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
+              ? "탈퇴" 
+              : "가입"
+          }
+        },
+        "전화번호": { rich_text: [{ text: { content: updatedUserData.phoneNumber || "" } }] },
+        "생년월일": { rich_text: [{ text: { content: updatedUserData.birthDate || "" } }] },
+        "이메일": { rich_text: [{ text: { content: updatedUserData.email || "" } }] },
+        "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+        "가입 방법": { select: { name: updatedUserData.authType || "email" } },
+        "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
+        "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
+        "유입경로": { rich_text: [{ text: { content: updatedUserData.utmSource || "" } }] },
+        "성별": { 
+          select: { 
+            name: 
+              updatedUserData.gender === 'male' ? "남성" : updatedUserData.gender === 'female' ? "여성" : "미선택",
+          } 
+        },
+        "Push 광고 수신 여부": {
+          select: {
+            name:
+              updatedUserData.pushTermsAgreed === true
+                ? "동의"
+                : updatedUserData.pushTermsAgreed === false
+                ? "거부"
+                : "미설정",
           },
-        });
+        },
+        "자격정지 기간(시작)": updatedUserData.suspensionStartAt ? {
+          date: { 
+            start: updatedUserData.suspensionStartAt 
+          }
+        } : { date: null },
+        "자격정지 기간(종료)": updatedUserData.suspensionEndAt ? {
+          date: { 
+            start: updatedUserData.suspensionEndAt 
+          }
+        } : { date: null },
+        "정지 사유": updatedUserData.suspensionReason ? {
+          rich_text: [{
+            text: { content: updatedUserData.suspensionReason }
+          }]
+        } : {
+          rich_text: []
+        },
+        "패널티 카운트": {
+          number: (updatedUserData.penaltyCount !== null && updatedUserData.penaltyCount !== undefined) ? updatedUserData.penaltyCount : 0
+        },
+        "선택": {
+          checkbox: false
+        },
+         "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+      };
+
+      // 노션 페이지 업데이트 (Firebase의 최신 데이터로)
+      try {
+        await this.updateNotionPageWithRetry(pageId, notionPageUpdate);
+        console.log(`[SUCCESS] ${userId} (${name || nickname}) 노션 동기화 완료`);
       } catch (notionUpdateError) {
         console.warn(`[WARN] 노션 페이지 ${pageId} 업데이트 실패:`, notionUpdateError.message);
       }
@@ -1267,19 +1481,19 @@ async syncSelectedUsers() {
 
             // 백업 페이지 생성 또는 업데이트
             if (userId && backupUsers[userId]) {
-              // 기존 페이지 업데이트
-              await this.notion.pages.update({
-                page_id: backupUsers[userId].pageId,
-                properties: backupProperties,
-              });
-              updatedCount++;
-            } else {
-              // 새 페이지 생성
-              await this.notion.pages.create({
-                parent: { database_id: this.notionUserAccountBackupDB },
-                properties: backupProperties,
-              });
-              createdCount++;
+                // 기존 페이지 업데이트
+                await this.updateNotionPageWithRetry(
+                  backupUsers[userId].pageId,
+                  backupProperties
+                );
+                updatedCount++;
+               } else {
+               // 새 페이지 생성
+               await this.createNotionPageWithRetry({
+                  parent: { database_id: this.notionUserAccountBackupDB },
+                  properties: backupProperties,
+               });
+               createdCount++;
             }
 
 
@@ -1471,8 +1685,8 @@ async syncSelectedUsers() {
           }
 
           const phoneNumber = props["전화번호"]?.rich_text?.[0]?.plain_text || "";
-          const birthDate = props["출생연도"]?.rich_text?.[0]?.plain_text || 
-                            (props["출생연도"]?.number ? String(props["출생연도"].number) : "");
+          const birthDate = props["생년월일"]?.rich_text?.[0]?.plain_text || 
+                            (props["생년월일"]?.number ? String(props["생년월일"].number) : "");
           const email = props["이메일"]?.rich_text?.[0]?.plain_text || "";
 
           // 날짜 필드 추출
@@ -1508,6 +1722,9 @@ async syncSelectedUsers() {
           const suspensionEndAt = props["자격정지 기간(종료)"]?.date?.start || null;
           const suspensionReason = props["정지 사유"]?.rich_text?.[0]?.plain_text || "";
 
+          // 패널티 카운트 필드 추출 (number 타입)
+          const penaltyCount = props["패널티 카운트"]?.number ?? null;
+
           // 업데이트할 데이터 객체 생성
           const updateData = {};
           
@@ -1528,13 +1745,16 @@ async syncSelectedUsers() {
             updateData.lastLoginAt = lastLoginDate;
           }
 
-          // 자격정지 필드 처리
-          if (suspensionReason || suspensionReason === "") updateData.suspensionReason = suspensionReason;
-          if (suspensionStartAt) {
-            updateData.suspensionStartAt = suspensionStartAt;
-          }
-          if (suspensionEndAt) {
-            updateData.suspensionEndAt = suspensionEndAt;
+          // 자격정지 필드 처리 - 값이 없어도 명시적으로 null/빈 문자열로 저장
+         updateData.suspensionReason = suspensionReason || "";
+         updateData.suspensionStartAt = suspensionStartAt || null;
+         updateData.suspensionEndAt = suspensionEndAt || null;
+
+          // 패널티 카운트 필드 처리 (null이 아니면 적용, null이면 0으로 설정)
+          if (penaltyCount !== null && penaltyCount !== undefined) {
+            updateData.penaltyCount = penaltyCount;
+          } else {
+            updateData.penaltyCount = 0;
           }
 
           // lastUpdated 업데이트
@@ -1560,6 +1780,35 @@ async syncSelectedUsers() {
                 console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
               }
             }
+            return { success: false, userId, reason: "validation_error" };
+          }
+
+          // 자격정지 시작날짜만 존재하고 종료날짜가 없는 경우
+          if (suspensionStartAt && !suspensionEndAt) {
+            console.warn(
+              `사용자 ${name}의 자격정지 기간(시작)만 있고 종료가 없습니다. 당일 자격정지를 원하면 종료 날짜를 시작 날짜와 동일하게 입력해 주세요.`
+            );
+            validateErrorCount++;
+            failedUserIds.push(userId);
+
+            if (pageId) {
+              try {
+                await this.notion.pages.update({
+                  page_id: pageId,
+                  properties: {
+                    "백업 결과": {
+                      select: { name: "실패" }
+                    }
+                  }
+                });
+              } catch (updateError) {
+                console.warn(
+                  `[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`,
+                  updateError.message
+                );
+              }
+            }
+
             return { success: false, userId, reason: "validation_error" };
           }
 
@@ -1771,13 +2020,12 @@ async syncSingleUserToNotion(userId) {
         }
       },
       "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
-      "출생연도": { rich_text: [{ text: { content: user.birthDate || "" } }] },
+      "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
       "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
       "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
       "가입 방법": { select: { name: user.authType || "email" } },
       "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
       "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
-      "초대자": { rich_text: [{ text: { content: user.inviter || "" } }] },
       "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
       "성별": { 
         select: { 
@@ -1799,12 +2047,12 @@ async syncSingleUserToNotion(userId) {
         date: { 
           start: user.suspensionStartAt 
         }
-      } : undefined,
+      } : { date: null },
       "자격정지 기간(종료)": user.suspensionEndAt ? {
         date: { 
           start: user.suspensionEndAt 
         }
-      } : undefined,
+      } : { date: null },
       "정지 사유": user.suspensionReason ? {
         rich_text: [{
           text: { content: user.suspensionReason }

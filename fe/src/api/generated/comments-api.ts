@@ -7,6 +7,26 @@
 import { get, post, put, patch, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/comments-types";
 
+export const deleteCommentsById = (request: Types.TDELETECommentsByIdReq) => {
+  return del<any>(`/comments/${request.commentId}`);
+};
+
+export const putCommentsById = (request: Types.TPUTCommentsByIdReq) => {
+  const { commentId, ...data } = request;
+  return put<Types.TPUTCommentsByIdRes>(
+    `/comments/${request.commentId}`,
+    data.data ?? data
+  );
+};
+
+export const postCommentsLikeById = (
+  request: Types.TPOSTCommentsLikeByIdReq
+) => {
+  return post<Types.TPOSTCommentsLikeByIdRes>(
+    `/comments/${request.commentId}/like`
+  );
+};
+
 export const getCommentsCommunitiesPostsByTwoIds = (
   request: Types.TGETCommentsCommunitiesPostsByTwoIdsReq
 ) => {
@@ -23,25 +43,5 @@ export const postCommentsCommunitiesPostsByTwoIds = (
   return post<Types.TPOSTCommentsCommunitiesPostsByTwoIdsRes>(
     `/comments/communities/${request.communityId}/posts/${request.postId}`,
     data.data ?? data
-  );
-};
-
-export const putCommentsById = (request: Types.TPUTCommentsByIdReq) => {
-  const { commentId, ...data } = request;
-  return put<Types.TPUTCommentsByIdRes>(
-    `/comments/${request.commentId}`,
-    data.data ?? data
-  );
-};
-
-export const deleteCommentsById = (request: Types.TDELETECommentsByIdReq) => {
-  return del<any>(`/comments/${request.commentId}`);
-};
-
-export const postCommentsLikeById = (
-  request: Types.TPOSTCommentsLikeByIdReq
-) => {
-  return post<Types.TPOSTCommentsLikeByIdRes>(
-    `/comments/${request.commentId}/like`
   );
 };

@@ -13,17 +13,16 @@ import type * as communitiesTypes from "@/types/generated/communities-types";
 import type * as faqsTypes from "@/types/generated/faqs-types";
 import type * as fcmTypes from "@/types/generated/fcm-types";
 import type * as filesTypes from "@/types/generated/files-types";
-import type * as gatheringsTypes from "@/types/generated/gatherings-types";
 import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
+import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
+import type * as qnaTypes from "@/types/generated/qna-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
-import type * as routinesTypes from "@/types/generated/routines-types";
 import type * as storeTypes from "@/types/generated/store-types";
-import type * as tmiTypes from "@/types/generated/tmi-types";
 import type * as usersTypes from "@/types/generated/users-types";
 
 function __normalizeQuery(obj: Record<string, unknown>) {
@@ -93,15 +92,12 @@ export const communitiesKeys = {
       path: {},
       query: { type: request.type, page: request.page, size: request.size },
     }),
-  getCommunitiesPosts: (request: communitiesTypes.TGETCommunitiesPostsReq) =>
-    __buildKey("communities", "getCommunitiesPosts", {
-      path: {},
-      query: {
-        page: request.page,
-        size: request.size,
-        programType: request.programType,
-        programState: request.programState,
-      },
+  getCommunitiesNicknameAvailabilityById: (
+    request: communitiesTypes.TGETCommunitiesNicknameAvailabilityByIdReq
+  ) =>
+    __buildKey("communities", "getCommunitiesNicknameAvailabilityById", {
+      path: { communityId: request.communityId },
+      query: { nickname: request.nickname },
     }),
   getCommunitiesPostsByTwoIds: (
     request: communitiesTypes.TGETCommunitiesPostsByTwoIdsReq
@@ -110,12 +106,16 @@ export const communitiesKeys = {
       path: { communityId: request.communityId, postId: request.postId },
       query: {},
     }),
-  getCommunitiesNicknameAvailabilityById: (
-    request: communitiesTypes.TGETCommunitiesNicknameAvailabilityByIdReq
-  ) =>
-    __buildKey("communities", "getCommunitiesNicknameAvailabilityById", {
-      path: { communityId: request.communityId },
-      query: { nickname: request.nickname },
+  getCommunitiesPosts: (request: communitiesTypes.TGETCommunitiesPostsReq) =>
+    __buildKey("communities", "getCommunitiesPosts", {
+      path: {},
+      query: {
+        page: request.page,
+        size: request.size,
+        programType: request.programType,
+        programState: request.programState,
+        sort: request.sort,
+      },
     }),
 } as const;
 
@@ -145,20 +145,6 @@ export const fcmKeys = {
 // Files Query Keys
 export const filesKeys = {} as const;
 
-// Gatherings Query Keys
-export const gatheringsKeys = {
-  getGatherings: (request: gatheringsTypes.TGETGatheringsReq) =>
-    __buildKey("gatherings", "getGatherings", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getGatheringsById: (request: gatheringsTypes.TGETGatheringsByIdReq) =>
-    __buildKey("gatherings", "getGatheringsById", {
-      path: { gatheringId: request.gatheringId },
-      query: {},
-    }),
-} as const;
-
 // Home Query Keys
 export const homeKeys = {
   getHome: __buildKey("home", "getHome"),
@@ -169,7 +155,6 @@ export const imagesKeys = {} as const;
 
 // Missions Query Keys
 export const missionsKeys = {
-  getMissionsCategories: __buildKey("missions", "getMissionsCategories"),
   getMissions: (request: missionsTypes.TGETMissionsReq) =>
     __buildKey("missions", "getMissions", {
       path: {},
@@ -184,19 +169,55 @@ export const missionsKeys = {
       path: { missionId: request.missionId },
       query: {},
     }),
+  getMissionsCategories: __buildKey("missions", "getMissionsCategories"),
+  getMissionsMe: (request: missionsTypes.TGETMissionsMeReq) =>
+    __buildKey("missions", "getMissionsMe", {
+      path: {},
+      query: { limit: request.limit },
+    }),
+  getMissionsPosts: (request: missionsTypes.TGETMissionsPostsReq) =>
+    __buildKey("missions", "getMissionsPosts", {
+      path: {},
+      query: {
+        sort: request.sort,
+        category: request.category,
+        userId: request.userId,
+      },
+    }),
+  getMissionsPostsById: (request: missionsTypes.TGETMissionsPostsByIdReq) =>
+    __buildKey("missions", "getMissionsPostsById", {
+      path: { postId: request.postId },
+      query: {},
+    }),
+  getMissionsPostsCommentsById: (
+    request: missionsTypes.TGETMissionsPostsCommentsByIdReq
+  ) =>
+    __buildKey("missions", "getMissionsPostsCommentsById", {
+      path: { postId: request.postId },
+      query: {},
+    }),
+  getMissionsStats: __buildKey("missions", "getMissionsStats"),
 } as const;
 
 // Notifications Query Keys
 export const notificationsKeys = {
-  getNotificationsSendAllPending: __buildKey(
-    "notifications",
-    "getNotificationsSendAllPending"
-  ),
   getNotifications: (request: notificationsTypes.TGETNotificationsReq) =>
     __buildKey("notifications", "getNotifications", {
       path: {},
       query: { page: request.page, size: request.size },
     }),
+  getNotificationsSendAllPending: __buildKey(
+    "notifications",
+    "getNotificationsSendAllPending"
+  ),
+} as const;
+
+// NotionRewardHistory Query Keys
+export const notionrewardhistoryKeys = {
+  getNotionrewardhistorySync: __buildKey(
+    "notionrewardhistory",
+    "getNotionrewardhistorySync"
+  ),
 } as const;
 
 // NotionUsers Query Keys
@@ -204,6 +225,10 @@ export const notionusersKeys = {
   getNotionusersSyncActive: __buildKey(
     "notionusers",
     "getNotionusersSyncActive"
+  ),
+  getNotionusersSyncAllUsersRollback: __buildKey(
+    "notionusers",
+    "getNotionusersSyncAllUsersRollback"
   ),
   getNotionusersSyncFull: __buildKey("notionusers", "getNotionusersSyncFull"),
   getNotionusersSyncPenalty: __buildKey(
@@ -214,54 +239,6 @@ export const notionusersKeys = {
     "notionusers",
     "getNotionusersSyncSelected"
   ),
-  getNotionusersSyncAllUsersRollback: __buildKey(
-    "notionusers",
-    "getNotionusersSyncAllUsersRollback"
-  ),
-} as const;
-
-// Users Query Keys
-export const usersKeys = {
-  getUsersMe: __buildKey("users", "getUsersMe"),
-  getUsersMeMyPage: __buildKey("users", "getUsersMeMyPage"),
-  getUsersMePosts: (request: usersTypes.TGETUsersMePostsReq) =>
-    __buildKey("users", "getUsersMePosts", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getUsersMeLikedPosts: (request: usersTypes.TGETUsersMeLikedPostsReq) =>
-    __buildKey("users", "getUsersMeLikedPosts", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getUsersMeCommentedPosts: (
-    request: usersTypes.TGETUsersMeCommentedPostsReq
-  ) =>
-    __buildKey("users", "getUsersMeCommentedPosts", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getUsersMeParticipatingCommunities: __buildKey(
-    "users",
-    "getUsersMeParticipatingCommunities"
-  ),
-  getUsersMeCompletedCommunities: __buildKey(
-    "users",
-    "getUsersMeCompletedCommunities"
-  ),
-  getUsersNicknameAvailability: (
-    request: usersTypes.TGETUsersNicknameAvailabilityReq
-  ) =>
-    __buildKey("users", "getUsersNicknameAvailability", {
-      path: {},
-      query: { nickname: request.nickname },
-    }),
-  getUsers: __buildKey("users", "getUsers"),
-  getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
-    __buildKey("users", "getUsersById", {
-      path: { userId: request.userId },
-      query: {},
-    }),
 } as const;
 
 // Programs Query Keys
@@ -270,18 +247,6 @@ export const programsKeys = {
     __buildKey("programs", "getPrograms", {
       path: {},
       query: {
-        recruitmentStatus: request.recruitmentStatus,
-        programStatus: request.programStatus,
-        programType: request.programType,
-        pageSize: request.pageSize,
-        cursor: request.cursor,
-      },
-    }),
-  getProgramsSearch: (request: programsTypes.TGETProgramsSearchReq) =>
-    __buildKey("programs", "getProgramsSearch", {
-      path: {},
-      query: {
-        q: request.q,
         recruitmentStatus: request.recruitmentStatus,
         programStatus: request.programStatus,
         programType: request.programType,
@@ -314,6 +279,27 @@ export const programsKeys = {
       },
       query: {},
     }),
+  getProgramsSearch: (request: programsTypes.TGETProgramsSearchReq) =>
+    __buildKey("programs", "getProgramsSearch", {
+      path: {},
+      query: {
+        q: request.q,
+        recruitmentStatus: request.recruitmentStatus,
+        programStatus: request.programStatus,
+        programType: request.programType,
+        pageSize: request.pageSize,
+        cursor: request.cursor,
+      },
+    }),
+} as const;
+
+// QnA Query Keys
+export const qnaKeys = {
+  getQnaById: (request: qnaTypes.TGETQnaByIdReq) =>
+    __buildKey("qna", "getQnaById", {
+      path: { pageId: request.pageId },
+      query: { page: request.page, size: request.size },
+    }),
 } as const;
 
 // Reports Query Keys
@@ -322,20 +308,6 @@ export const reportsKeys = {
     "reports",
     "getReportcontentSyncNotionReports"
   ),
-} as const;
-
-// Routines Query Keys
-export const routinesKeys = {
-  getRoutines: (request: routinesTypes.TGETRoutinesReq) =>
-    __buildKey("routines", "getRoutines", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
-  getRoutinesById: (request: routinesTypes.TGETRoutinesByIdReq) =>
-    __buildKey("routines", "getRoutinesById", {
-      path: { routineId: request.routineId },
-      query: {},
-    }),
 } as const;
 
 // Store Query Keys
@@ -361,16 +333,61 @@ export const storeKeys = {
     }),
 } as const;
 
-// TMI Query Keys
-export const tmiKeys = {
-  getTmis: (request: tmiTypes.TGETTmisReq) =>
-    __buildKey("tmi", "getTmis", {
+// Users Query Keys
+export const usersKeys = {
+  getUsers: __buildKey("users", "getUsers"),
+  getUsersById: (request: usersTypes.TGETUsersByIdReq) =>
+    __buildKey("users", "getUsersById", {
+      path: { userId: request.userId },
+      query: {},
+    }),
+  getUsersDeletePostById: (request: usersTypes.TGETUsersDeletePostByIdReq) =>
+    __buildKey("users", "getUsersDeletePostById", {
+      path: { userId: request.userId },
+      query: {},
+    }),
+  getUsersMe: __buildKey("users", "getUsersMe"),
+  getUsersMeCommentedPosts: (
+    request: usersTypes.TGETUsersMeCommentedPostsReq
+  ) =>
+    __buildKey("users", "getUsersMeCommentedPosts", {
       path: {},
       query: { page: request.page, size: request.size },
     }),
-  getTmisById: (request: tmiTypes.TGETTmisByIdReq) =>
-    __buildKey("tmi", "getTmisById", {
-      path: { projectId: request.projectId },
-      query: {},
+  getUsersMeCompletedCommunities: __buildKey(
+    "users",
+    "getUsersMeCompletedCommunities"
+  ),
+  getUsersMeLikedPosts: (request: usersTypes.TGETUsersMeLikedPostsReq) =>
+    __buildKey("users", "getUsersMeLikedPosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeMyPage: __buildKey("users", "getUsersMeMyPage"),
+  getUsersMeParticipatingCommunities: __buildKey(
+    "users",
+    "getUsersMeParticipatingCommunities"
+  ),
+  getUsersMePosts: (request: usersTypes.TGETUsersMePostsReq) =>
+    __buildKey("users", "getUsersMePosts", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeRewardsEarned: (request: usersTypes.TGETUsersMeRewardsEarnedReq) =>
+    __buildKey("users", "getUsersMeRewardsEarned", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersMeRewardsUsed: (request: usersTypes.TGETUsersMeRewardsUsedReq) =>
+    __buildKey("users", "getUsersMeRewardsUsed", {
+      path: {},
+      query: { page: request.page, size: request.size },
+    }),
+  getUsersNicknameAvailability: (
+    request: usersTypes.TGETUsersNicknameAvailabilityReq
+  ) =>
+    __buildKey("users", "getUsersNicknameAvailability", {
+      path: {},
+      query: { nickname: request.nickname },
     }),
 } as const;

@@ -11,10 +11,10 @@ export interface TPOSTFcmTokenReq {
 
 export type TPOSTFcmTokenRes = { user?: Schema.FCMTokenResponse };
 
-export type TGETFcmTokensRes = { user?: Schema.FCMTokenListResponse };
-
 export interface TDELETEFcmTokenByIdReq {
   deviceId: string;
 }
 
 export type TDELETEFcmTokenByIdRes = { user?: Schema.FCMDeleteResponse };
+
+export type TGETFcmTokensRes = { user?: Schema.FCMTokenListResponse };

@@ -64,7 +64,7 @@ export interface User {
 export interface Mission {
   id?: string;
   title?: string;
-  detailPageUrl?: string;
+  missionIntroduction?: string;
   isRecruiting?: boolean;
   isUnlimited?: boolean;
   applicationDeadline?: string;
@@ -73,7 +73,7 @@ export interface Mission {
   detailTags?: string;
   targetAudience?: string;
   notes?: string;
-  certificationMethod?: string;
+  certificationMethod?: string[];
   reactionCount?: number;
   faqRelation?: {
     relations?: {
@@ -84,6 +84,8 @@ export interface Mission {
   isReviewRegistered?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  coverImage?: string;
+  pageContent?: Record<string, any>[];
 }
 
 export interface ImageUpload {
@@ -286,13 +288,13 @@ export interface QnAItem {
   askedAt?: string;
   answeredAt?: string;
   likesCount?: number;
-  userId?: string;
 }
 
 export interface CommunityPostListItem {
   id?: string;
   type?: string;
   author?: string;
+  profileImageUrl?: string;
   title?: string;
   preview?: {
     description?: string;
@@ -315,7 +317,6 @@ export interface CommunityPostListItem {
   commentsCount?: number;
   createdAt?: string;
   timeAgo?: string;
-  profileImageUrl?: string;
 }
 
 export interface CommunityPost {
@@ -323,8 +324,8 @@ export interface CommunityPost {
   type?: string;
   author?: string;
   title?: string;
-  content?: Record<string, any>[];
-  media?: Record<string, any>[];
+  content?: string;
+  media?: string[];
   channel?: string;
   isLocked?: boolean;
   isPublic?: boolean;
@@ -346,8 +347,6 @@ export interface CommunityPost {
     id?: string;
     name?: string;
   };
-  authorId?: string;
-  visibility?: string;
 }
 
 export interface Comment {
@@ -383,6 +382,7 @@ export interface Comment {
   hasAuthorReply?: boolean;
   hasAuthorVote?: boolean;
   isOriginalAuthor?: boolean;
+  isLiked?: boolean;
 }
 
 export interface GatheringListItem {
@@ -567,6 +567,7 @@ export interface Program {
   endDate?: string;
   recruitmentStartDate?: string;
   recruitmentEndDate?: string;
+  displayStartDate?: string;
   orientationDate?: string;
   shareMeetingDate?: string;
   targetAudience?: string;
@@ -575,6 +576,7 @@ export interface Program {
     url?: string;
     type?: string;
   }[];
+  coverImage?: string;
   linkUrl?: string;
   isReviewRegistered?: boolean;
   isBannerRegistered?: boolean;
@@ -662,6 +664,11 @@ export interface Success {
   data?: any;
 }
 
+export interface Error {
+  status: number;
+  message: string;
+}
+
 export interface CommunityMember {
   id?: string;
   userId?: string;
@@ -695,6 +702,23 @@ export interface ProgramApplicationResponse {
   nickname?: string;
   appliedAt?: string;
   notionPageId?: string;
+}
+
+export interface QnA {
+  id?: string;
+  pageId?: string;
+  pageType?: "program" | "announcement" | "store";
+  author?: string;
+  content?: string;
+  parentId?: string;
+  depth?: number;
+  isLocked?: boolean;
+  likesCount?: number;
+  isLiked?: boolean;
+  repliesCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  replies?: Record<string, any>[];
 }
 
 export interface Report {
@@ -768,67 +792,20 @@ export interface Purchase {
   createdAt?: string;
 }
 
-export interface TmiProjectListItem {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "OPEN" | "CLOSED" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  deadline?: {
-    _seconds?: number;
-    _nanoseconds?: number;
-  };
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface TmiProject {
-  id?: string;
-  name?: string;
-  description?: string;
-  status?: "RECRUITING" | "IN_PROGRESS" | "COMPLETED";
-  price?: number;
-  currency?: string;
-  stockCount?: number;
-  soldCount?: number;
-  viewCount?: number;
-  buyable?: boolean;
-  sellerId?: string;
-  sellerName?: string;
-  content?: Schema.ContentItem[];
-  media?: Schema.MediaItem[];
-  options?: Record<string, any>[];
-  primaryDetails?: Record<string, any>[];
-  variants?: Record<string, any>[];
-  customFields?: Record<string, any>[];
-  deadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  qna?: Schema.QnAItem[];
-  communityPosts?: {
-    id?: string;
-    type?: string;
-    author?: string;
-    title?: string;
-    content?: Schema.ContentItem[];
-    media?: Schema.MediaItem[];
-    channel?: string;
-    isLocked?: boolean;
-    visibility?: string;
-    likesCount?: number;
-    commentsCount?: number;
-    createdAt?: string;
-    updatedAt?: string;
-    community?: {
-      id?: string;
-      name?: string;
-    };
-  }[];
+export interface StorePurchase {
+  purchaseId?: string;
+  title?: string;
+  userId?: string;
+  userNickname?: string;
+  productId?: string;
+  quantity?: number;
+  requiredPoints?: number;
+  requiresDelivery?: boolean;
+  recipientName?: string;
+  recipientAddress?: string;
+  recipientDetailAddress?: string;
+  recipientPhone?: string;
+  deliveryCompleted?: boolean;
+  orderDate?: string;
+  lastEditedTime?: string;
 }

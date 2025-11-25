@@ -19,11 +19,6 @@ export type TPOSTReportContentRes = {
   message?: string;
 };
 
-export type TGETReportContentSyncNotionReportsRes = {
-  message?: string;
-  count?: number;
-};
-
 export interface TPOSTReportContentMyReq {
   data: {
     size?: number;
@@ -48,4 +43,9 @@ export type TPOSTReportContentMyRes = {
   }[];
   hasMore?: boolean;
   nextCursor?: string;
+};
+
+export type TGETReportContentSyncNotionReportsRes = {
+  message?: string;
+  count?: number;
 };

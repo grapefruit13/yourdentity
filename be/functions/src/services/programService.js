@@ -10,7 +10,9 @@ const {
   getFileUrls,
   getRelationValues,
   getRollupValues,
-  formatNotionBlocks
+  formatNotionBlocks,
+  nowKstIso,
+  getCoverImageUrl
 } = require('../utils/notionHelper');
 const faqService = require('./faqService');
 const FirestoreService = require('./firestoreService');
@@ -56,6 +58,7 @@ const NOTION_FIELDS = {
   END_DATE: "활동 종료 날짜",
   RECRUITMENT_START_DATE: "모집 시작 날짜",
   RECRUITMENT_END_DATE: "모집 종료 날짜",
+  DISPLAY_START_DATE: "표시 시작일자",
   ORIENTATION_DATE: "오티 날짜",
   SHARE_MEETING_DATE: "공유회 날짜",
   TARGET_AUDIENCE: "참여 대상",
@@ -192,6 +195,9 @@ class ProgramService {
    */
   async getPrograms(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
+      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
+      const todayISO = nowKstIso().split('T')[0];
+
       const queryBody = {
         page_size: normalizePageSize(pageSize),
         sorts: [
@@ -202,38 +208,52 @@ class ProgramService {
         ]
       };
 
-      // 필터 조건 추가
-      if (filters.recruitmentStatus || filters.programStatus || filters.programType) {
-        queryBody.filter = {
-          and: []
-        };
-
-        if (filters.recruitmentStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.RECRUITMENT_STATUS,
-            status: {
-              equals: filters.recruitmentStatus
+      // 필터 조건 추가 (항상 표시 시작일자 필터 적용)
+      queryBody.filter = {
+        and: [
+          // 표시 시작일자가 설정되어 있어야 함
+          {
+            property: NOTION_FIELDS.DISPLAY_START_DATE,
+            date: {
+              is_not_empty: true
             }
-          });
-        }
-
-        if (filters.programStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_STATUS,
-            status: {
-              equals: filters.programStatus
+          },
+          // 표시 시작일자가 현재 날짜 이하여야 함
+          {
+            property: NOTION_FIELDS.DISPLAY_START_DATE,
+            date: {
+              on_or_before: todayISO
             }
-          });
-        }
+          }
+        ]
+      };
 
-        if (filters.programType) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_TYPE,
-            select: {
-              equals: filters.programType
-            }
-          });
-        }
+      // 추가 필터 조건
+      if (filters.recruitmentStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.RECRUITMENT_STATUS,
+          status: {
+            equals: filters.recruitmentStatus
+          }
+        });
+      }
+
+      if (filters.programStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_STATUS,
+          status: {
+            equals: filters.programStatus
+          }
+        });
+      }
+
+      if (filters.programType) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_TYPE,
+          select: {
+            equals: filters.programType
+          }
+        });
       }
 
       if (startCursor) {
@@ -472,8 +492,10 @@ class ProgramService {
       endDate: getDateValue(props[NOTION_FIELDS.END_DATE]),
       recruitmentStartDate: getDateValue(props[NOTION_FIELDS.RECRUITMENT_START_DATE]),
       recruitmentEndDate: getDateValue(props[NOTION_FIELDS.RECRUITMENT_END_DATE]),
+      displayStartDate: getDateValue(props[NOTION_FIELDS.DISPLAY_START_DATE]),
       targetAudience: getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
       thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
+      coverImage: getCoverImageUrl(page),
       linkUrl: getUrlValue(props[NOTION_FIELDS.LINK_URL]),
       isReviewRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
       isBannerRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_BANNER_REGISTERED]),
@@ -505,6 +527,34 @@ class ProgramService {
    */
   async searchPrograms(searchTerm, filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
+      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
+      const todayISO = nowKstIso().split('T')[0];
+
+      // 검색 조건 (OR)
+      const searchFilter = {
+        or: [
+          {
+            property: NOTION_FIELDS.PROGRAM_TITLE,
+            rich_text: {
+              contains: searchTerm
+            }
+          },
+          {
+            property: NOTION_FIELDS.PROGRAM_DESCRIPTION,
+            rich_text: {
+              contains: searchTerm
+            }
+          },
+          {
+            property: NOTION_FIELDS.PROGRAM_NAME,
+            rich_text: {
+              contains: searchTerm
+            }
+          }
+        ]
+      };
+
+      // 항상 표시 시작일자 필터 적용 + 검색 필터
       const queryBody = {
         page_size: normalizePageSize(pageSize),
         sorts: [
@@ -514,23 +564,20 @@ class ProgramService {
           }
         ],
         filter: {
-          or: [
+          and: [
+            searchFilter,
+            // 표시 시작일자가 설정되어 있어야 함
             {
-              property: NOTION_FIELDS.PROGRAM_TITLE,
-              rich_text: {
-                contains: searchTerm
+              property: NOTION_FIELDS.DISPLAY_START_DATE,
+              date: {
+                is_not_empty: true
               }
             },
+            // 표시 시작일자가 현재 날짜 이하여야 함
             {
-              property: NOTION_FIELDS.PROGRAM_DESCRIPTION,
-              rich_text: {
-                contains: searchTerm
-              }
-            },
-            {
-              property: NOTION_FIELDS.PROGRAM_NAME,
-              rich_text: {
-                contains: searchTerm
+              property: NOTION_FIELDS.DISPLAY_START_DATE,
+              date: {
+                on_or_before: todayISO
               }
             }
           ]
@@ -542,37 +589,31 @@ class ProgramService {
       }
 
       // 추가 필터 조건 적용
-      if (filters.recruitmentStatus || filters.programStatus || filters.programType) {
-        queryBody.filter = {
-          and: [queryBody.filter]
-        };
+      if (filters.recruitmentStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.RECRUITMENT_STATUS,
+          status: {
+            equals: filters.recruitmentStatus
+          }
+        });
+      }
 
-        if (filters.recruitmentStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.RECRUITMENT_STATUS,
-            status: {
-              equals: filters.recruitmentStatus
-            }
-          });
-        }
+      if (filters.programStatus) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_STATUS,
+          status: {
+            equals: filters.programStatus
+          }
+        });
+      }
 
-        if (filters.programStatus) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_STATUS,
-            status: {
-              equals: filters.programStatus
-            }
-          });
-        }
-
-        if (filters.programType) {
-          queryBody.filter.and.push({
-            property: NOTION_FIELDS.PROGRAM_TYPE,
-            select: {
-              equals: filters.programType
-            }
-          });
-        }
+      if (filters.programType) {
+        queryBody.filter.and.push({
+          property: NOTION_FIELDS.PROGRAM_TYPE,
+          select: {
+            equals: filters.programType
+          }
+        });
       }
 
       // v5.3.0에서 databases.query가 제거되어 dataSources.query 사용
@@ -684,7 +725,18 @@ class ProgramService {
       }
 
       validateNicknameOrThrow(nickname);
-      // 3. 닉네임 중복 체크
+      
+      // 3. 중복 신청 체크 (먼저 확인하여 Notion 중복 저장 방지)
+      const membersService = new FirestoreService(`communities/${normalizedProgramId}/members`);
+      const existingMember = await membersService.getById(applicantId);
+      if (existingMember) {
+        const duplicateError = new Error('같은 프로그램은 또 신청할 수 없습니다.');
+        duplicateError.code = ERROR_CODES.DUPLICATE_APPLICATION;
+        duplicateError.statusCode = 409;
+        throw duplicateError;
+      }
+      
+      // 4. 닉네임 중복 체크
       const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
       if (!isNicknameAvailable) {
         const error = new Error("이미 사용 중인 닉네임입니다");
@@ -693,18 +745,13 @@ class ProgramService {
         throw error;
       }
 
-
-      // 4. Notion 프로그램신청자DB에 저장
-      const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
-
-      // 5. 멤버 추가 (Firestore)
+      // 5. 멤버 추가 (Firestore) - Notion 저장 전에 먼저 처리
       let memberResult;
       try {
         memberResult = await this.communityService.addMemberToCommunity(
           normalizedProgramId, 
           applicantId, 
-          nickname,
-          { applicantsPageId }
+          nickname
         );
       } catch (memberError) {
         if (memberError.code === 'CONFLICT') {
@@ -720,6 +767,19 @@ class ProgramService {
           throw error;
         }
         throw memberError;
+      }
+
+      // 6. Notion 프로그램신청자DB에 저장 (Firestore 성공 후)
+      const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
+      
+      // 7. Notion 페이지 ID를 Firestore 멤버에 업데이트
+      try {
+        await membersService.update(applicantId, {
+          applicantsPageId: applicantsPageId
+        });
+      } catch (updateError) {
+        console.warn('[ProgramService] Notion 페이지 ID 업데이트 실패:', updateError.message);
+        // 업데이트 실패해도 신청은 완료된 것으로 처리
       }
 
       return {
@@ -879,9 +939,9 @@ class ProgramService {
         }
       };
 
-      // "회원 관리" relation 추가 (사용자를 찾은 경우에만)
+      // "신청자 페이지" relation 추가 (사용자를 찾은 경우에만)
       if (userNotionPageId) {
-        properties['회원 관리'] = {
+        properties['신청자 페이지'] = {
           relation: [
             {
               id: userNotionPageId
@@ -889,7 +949,7 @@ class ProgramService {
           ]
         };
       } else {
-        console.warn(`[ProgramService] "회원 관리" relation 연결 실패: 사용자를 찾을 수 없음 (UID: ${applicantId})`);
+        console.warn(`[ProgramService] "신청자 페이지" relation 연결 실패: 사용자를 찾을 수 없음 (UID: ${applicantId})`);
       }
 
       // 선택적 필드 추가

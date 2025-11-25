@@ -14,32 +14,6 @@ import * as Api from "@/api/generated/files-api";
 import { filesKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/files-types";
 
-export const usePostFilesUploadMultiple = <
-  TContext = unknown,
-  TVariables = FormData,
->(
-  options?: Omit<
-    UseMutationOptions<
-      Awaited<ReturnType<typeof Api.postFilesUploadMultiple>>,
-      Error,
-      TVariables,
-      TContext
-    >,
-    "mutationFn"
-  >
-) => {
-  return useMutation<
-    Awaited<ReturnType<typeof Api.postFilesUploadMultiple>>,
-    Error,
-    TVariables,
-    TContext
-  >({
-    mutationFn: (variables: TVariables) =>
-      Api.postFilesUploadMultiple(variables as FormData),
-    ...options,
-  });
-};
-
 export const useDeleteFilesById = <
   TContext = unknown,
   TVariables = Types.TDELETEFilesByIdReq,
@@ -62,6 +36,32 @@ export const useDeleteFilesById = <
   >({
     mutationFn: (variables: TVariables) =>
       Api.deleteFilesById(variables as Types.TDELETEFilesByIdReq),
+    ...options,
+  });
+};
+
+export const usePostFilesUploadMultiple = <
+  TContext = unknown,
+  TVariables = FormData,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postFilesUploadMultiple>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postFilesUploadMultiple>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postFilesUploadMultiple(variables as FormData),
     ...options,
   });
 };

@@ -60,7 +60,7 @@ const ProfileActionButtons = ({
       <ButtonBase
         onClick={onSettingsClick}
         disabled={disabled}
-        className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="설정"
       >
         <Settings className="h-5 w-5 text-gray-900" />
@@ -97,12 +97,12 @@ const MyPageProfileSection = ({
     return (
       <div className="flex flex-col bg-white pt-7 pb-6">
         {/* 상단: 프로필 이미지 + 통계 정보 */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between gap-2 max-[423px]:gap-1 max-[380px]:gap-0.5">
           {/* 프로필 이미지 스켈레톤 */}
-          <Skeleton className="h-[75px] w-[75px] rounded-full" />
+          <Skeleton className="h-[75px] w-[75px] shrink-0 rounded-full" />
 
           {/* 통계 정보 스켈레톤 */}
-          <div className="flex w-[280px] justify-center gap-12">
+          <div className="flex w-[280px] justify-center gap-12 max-[423px]:w-auto max-[423px]:flex-1 max-[380px]:gap-4">
             {Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="flex flex-col items-center gap-2">
                 <Skeleton className="h-6 w-8" />
@@ -130,7 +130,7 @@ const MyPageProfileSection = ({
   return (
     <div className="flex flex-col bg-white pt-7 pb-6">
       {/* 상단: 프로필 이미지 + 통계 정보 */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-2 max-[423px]:gap-1 max-[380px]:gap-0.5">
         {/* 프로필 이미지 */}
         <div className="relative flex h-[75px] w-[75px] items-center justify-center overflow-hidden rounded-full bg-pink-100">
           {profileImageUrl ? (
@@ -146,11 +146,9 @@ const MyPageProfileSection = ({
             <User className="h-9 w-9 text-pink-400" strokeWidth={1.5} />
           )}
         <div className="h-[75px] w-[75px]">
-          <ProfileImage src={profileImageUrl} size="h-full w-full" />
-        </div>
 
         {/* 통계 정보 */}
-        <div className="flex w-[280px] justify-center gap-12">
+        <div className="flex w-[280px] justify-center gap-12 max-[423px]:w-auto max-[423px]:flex-1 max-[380px]:gap-4">
           {/* 인증 글 */}
           <div className="flex flex-col items-center gap-2">
             <Typography font="noto" variant="body2B" className="text-gray-950">

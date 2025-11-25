@@ -3,8 +3,44 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
+
+export interface TDELETECommentsByIdReq {
+  commentId: string;
+}
+
+export interface TPUTCommentsByIdReq {
+  commentId: string;
+  data: {
+    content: string;
+  };
+}
+
+export type TPUTCommentsByIdRes = {
+  id?: string;
+  communityId?: string;
+  postId?: string;
+  author?: string;
+  content?: string;
+  parentId?: string;
+  depth?: number;
+  isLocked?: boolean;
+  likesCount?: number;
+  isLiked?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export interface TPOSTCommentsLikeByIdReq {
+  commentId: string;
+}
+
+export type TPOSTCommentsLikeByIdRes = {
+  commentId?: string;
+  userId?: string;
+  isLiked?: boolean;
+  likesCount?: number;
+};
 
 export interface TGETCommentsCommunitiesPostsByTwoIdsReq {
   communityId: string;
@@ -23,12 +59,29 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     parentId?: string;
     depth?: number;
     isLocked?: boolean;
+    isDeleted?: boolean;
     likesCount?: number;
     isLiked?: boolean;
     repliesCount?: number;
+    reportsCount?: number;
     createdAt?: string;
     updatedAt?: string;
-    replies?: Record<string, any>[];
+    replies?: {
+      id?: string;
+      communityId?: string;
+      postId?: string;
+      author?: string;
+      content?: string;
+      parentId?: string;
+      depth?: number;
+      isLocked?: boolean;
+      isDeleted?: boolean;
+      likesCount?: number;
+      isLiked?: boolean;
+      reportsCount?: number;
+      createdAt?: string;
+      updatedAt?: string;
+    }[];
   }[];
   pagination?: {
     pageNumber?: number;
@@ -64,41 +117,4 @@ export type TPOSTCommentsCommunitiesPostsByTwoIdsRes = {
   isLiked?: boolean;
   createdAt?: string;
   updatedAt?: string;
-};
-
-export interface TPUTCommentsByIdReq {
-  commentId: string;
-  data: {
-    content: string;
-  };
-}
-
-export type TPUTCommentsByIdRes = {
-  id?: string;
-  communityId?: string;
-  postId?: string;
-  author?: string;
-  content?: string;
-  parentId?: string;
-  depth?: number;
-  isLocked?: boolean;
-  likesCount?: number;
-  isLiked?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-export interface TDELETECommentsByIdReq {
-  commentId: string;
-}
-
-export interface TPOSTCommentsLikeByIdReq {
-  commentId: string;
-}
-
-export type TPOSTCommentsLikeByIdRes = {
-  commentId?: string;
-  userId?: string;
-  isLiked?: boolean;
-  likesCount?: number;
 };

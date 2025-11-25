@@ -19,11 +19,13 @@ const imageRoutes = require("./src/routes/images");
 const fileRoutes = require("./src/routes/files");
 const communityRoutes = require("./src/routes/communities");
 const commentRoutes = require("./src/routes/comments");
+const qnaRoutes = require("./src/routes/qna");
 const storeRoutes = require("./src/routes/store");
 const announcementRoutes = require("./src/routes/announcements");
 const reportContentRoutes = require("./src/routes/reportContent");
 const faqRoutes = require("./src/routes/faqs");
 const notionUserRoutes = require("./src/routes/notionUsers");
+const notionRewardHistoryRoutes = require("./src/routes/notionRewardHistory");
 const fcmRoutes = require("./src/routes/fcm");
 const programRoutes = require("./src/routes/programs");
 const homeRoutes = require("./src/routes/home");
@@ -48,6 +50,9 @@ const {
   storageCleanupScheduler,
   storageCleanupWeeklyScheduler,
 } = require("./src/triggers/storageCleanupScheduler");
+const {
+  missionDailyResetScheduler,
+} = require("./src/triggers/missionResetScheduler");
 
 // 서울 리전 설정 (1st generation에서는 functions.region 사용)
 
@@ -200,10 +205,12 @@ app.use("/files", fileRoutes);
 app.use("/communities", communityRoutes);
 app.use("/store", storeRoutes);
 app.use("/comments", commentRoutes);
+app.use("/qna", qnaRoutes);
 app.use("/announcements", announcementRoutes);
 app.use("/faqs", faqRoutes);
 app.use("/reportContent", reportContentRoutes);
 app.use("/notionUsers", notionUserRoutes);
+app.use("/notionRewardHistory", notionRewardHistoryRoutes);
 app.use("/fcm", fcmRoutes);
 app.use("/programs", programRoutes);
 app.use("/home", homeRoutes);
@@ -229,3 +236,4 @@ exports.deleteUserDocument = deleteUserDocument;
 // Storage Cleanup Scheduler 내보내기
 exports.storageCleanupScheduler = storageCleanupScheduler;
 exports.storageCleanupWeeklyScheduler = storageCleanupWeeklyScheduler;
+exports.missionDailyResetScheduler = missionDailyResetScheduler;

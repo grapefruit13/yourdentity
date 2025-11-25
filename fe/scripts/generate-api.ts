@@ -183,6 +183,58 @@ export interface PaginationResponse {
 function getTypeScriptType(schema: any): string {
   if (!schema) return "any";
 
+  // allOf 처리 (상속/확장)
+  if (schema.allOf) {
+    const extendsTypes: string[] = [];
+    const additionalProps: Array<[string, string, boolean]> = [];
+
+    schema.allOf.forEach((subSchema: any) => {
+      if (subSchema.$ref) {
+        // $ref를 통한 상속
+        const refName = subSchema.$ref.split("/").pop();
+        if (refName) {
+          // availableSchemaNames 체크를 하지 않고 항상 Schema.${refName}으로 참조
+          // (실제 타입이 없으면 TypeScript 컴파일 시 에러가 발생하므로 안전)
+          extendsTypes.push(`Schema.${refName}`);
+        }
+      } else if (subSchema.properties) {
+        // 추가 프로퍼티 수집
+        Object.entries(subSchema.properties).forEach(
+          ([propName, propSchema]: [string, any]) => {
+            const type = getTypeScriptType(propSchema);
+            const optional = subSchema.required?.includes(propName)
+              ? false
+              : true;
+            additionalProps.push([propName, type, optional]);
+          }
+        );
+      }
+    });
+
+    // 타입 생성
+    if (extendsTypes.length > 0 && additionalProps.length === 0) {
+      // extends만 있는 경우
+      return extendsTypes.join(" & ");
+    } else if (extendsTypes.length > 0 && additionalProps.length > 0) {
+      // extends + 추가 프로퍼티
+      let typeStr = `(${extendsTypes.join(" & ")}) & {\n`;
+      additionalProps.forEach(([propName, type, optional]) => {
+        typeStr += `    ${propName}${optional ? "?" : ""}: ${type};\n`;
+      });
+      typeStr += "  }";
+      return typeStr;
+    } else if (additionalProps.length > 0) {
+      // 추가 프로퍼티만 있는 경우
+      let typeStr = "{\n";
+      additionalProps.forEach(([propName, type, optional]) => {
+        typeStr += `    ${propName}${optional ? "?" : ""}: ${type};\n`;
+      });
+      typeStr += "  }";
+      return typeStr;
+    }
+    return "any";
+  }
+
   if (schema.type === "string") {
     if (schema.enum) {
       return schema.enum.map((v: string) => `"${v}"`).join(" | ");
@@ -357,7 +409,17 @@ function generateApiFunctions(endpoints: ApiEndpoint[]): string {
     {} as Record<string, ApiEndpoint[]>
   );
 
-  Object.entries(groupedEndpoints).forEach(([tag, tagEndpoints]) => {
+  // 태그를 알파벳 순으로 정렬하여 일관된 순서 보장
+  const sortedTags = Object.keys(groupedEndpoints).sort();
+  sortedTags.forEach((tag) => {
+    const tagEndpoints = groupedEndpoints[tag];
+
+    // 엔드포인트를 path와 method로 정렬하여 일관된 순서 보장
+    const sortedEndpoints = [...tagEndpoints].sort((a, b) => {
+      const pathCompare = a.path.localeCompare(b.path);
+      if (pathCompare !== 0) return pathCompare;
+      return a.method.localeCompare(b.method);
+    });
     const fileName = `${tag.toLowerCase()}-api.ts`;
     const filePath = path.join(API_DIR, fileName);
 
@@ -371,7 +433,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
 
 `;
 
-    tagEndpoints.forEach((endpoint) => {
+    sortedEndpoints.forEach((endpoint) => {
       const {
         path: endpointPath,
         method,
@@ -523,7 +585,17 @@ function generateTypeFiles(endpoints: ApiEndpoint[]): void {
     {} as Record<string, ApiEndpoint[]>
   );
 
-  Object.entries(groupedEndpoints).forEach(([tag, tagEndpoints]) => {
+  // 태그를 알파벳 순으로 정렬하여 일관된 순서 보장
+  const sortedTags = Object.keys(groupedEndpoints).sort();
+  sortedTags.forEach((tag) => {
+    const tagEndpoints = groupedEndpoints[tag];
+
+    // 엔드포인트를 path와 method로 정렬하여 일관된 순서 보장
+    const sortedEndpoints = [...tagEndpoints].sort((a, b) => {
+      const pathCompare = a.path.localeCompare(b.path);
+      if (pathCompare !== 0) return pathCompare;
+      return a.method.localeCompare(b.method);
+    });
     const fileName = `${tag.toLowerCase()}-types.ts`;
     const filePath = path.join(TYPES_DIR, fileName);
 
@@ -537,7 +609,7 @@ import type * as Schema from "./api-schema";
 
 `;
 
-    tagEndpoints.forEach((endpoint) => {
+    sortedEndpoints.forEach((endpoint) => {
       const {
         path: endpointPath,
         method,
@@ -703,7 +775,10 @@ function generateQueryKeys(endpoints: ApiEndpoint[]): string {
   );
 
   // 타입 임포트 추가 (요청 파라미터가 있는 태그에 한해)
-  const tagNames = Object.keys(groupedEndpoints).map((t) => t.toLowerCase());
+  // 알파벳 순으로 정렬하여 일관된 순서 보장
+  const tagNames = Object.keys(groupedEndpoints)
+    .map((t) => t.toLowerCase())
+    .sort();
   const uniqueTagNames = Array.from(new Set(tagNames));
   if (uniqueTagNames.length > 0) {
     uniqueTagNames.forEach((name) => {
@@ -729,11 +804,21 @@ function generateQueryKeys(endpoints: ApiEndpoint[]): string {
   queryKeys += `  return [tag, name, path ?? {}, __normalizeQuery(query ?? {})] as const;\n`;
   queryKeys += `}\n\n`;
 
-  Object.entries(groupedEndpoints).forEach(([tag, tagEndpoints]) => {
+  // 태그를 알파벳 순으로 정렬하여 일관된 순서 보장
+  const sortedTags = Object.keys(groupedEndpoints).sort();
+  sortedTags.forEach((tag) => {
     const tagName = tag.toLowerCase();
+    const tagEndpoints = groupedEndpoints[tag];
     queryKeys += `// ${tag} Query Keys\nexport const ${tagName}Keys = {\n`;
 
-    tagEndpoints.forEach((endpoint) => {
+    // 엔드포인트를 path와 method로 정렬하여 일관된 순서 보장
+    const sortedEndpoints = [...tagEndpoints].sort((a, b) => {
+      const pathCompare = a.path.localeCompare(b.path);
+      if (pathCompare !== 0) return pathCompare;
+      return a.method.localeCompare(b.method);
+    });
+
+    sortedEndpoints.forEach((endpoint) => {
       const {
         method,
         operationId,
@@ -790,7 +875,17 @@ function generateHooks(endpoints: ApiEndpoint[]): string {
     {} as Record<string, ApiEndpoint[]>
   );
 
-  Object.entries(groupedEndpoints).forEach(([tag, tagEndpoints]) => {
+  // 태그를 알파벳 순으로 정렬하여 일관된 순서 보장
+  const sortedTags = Object.keys(groupedEndpoints).sort();
+  sortedTags.forEach((tag) => {
+    const tagEndpoints = groupedEndpoints[tag];
+
+    // 엔드포인트를 path와 method로 정렬하여 일관된 순서 보장
+    const sortedEndpoints = [...tagEndpoints].sort((a, b) => {
+      const pathCompare = a.path.localeCompare(b.path);
+      if (pathCompare !== 0) return pathCompare;
+      return a.method.localeCompare(b.method);
+    });
     const fileName = `${tag.toLowerCase()}-hooks.ts`;
     const filePath = path.join(HOOKS_DIR, fileName);
 
@@ -807,7 +902,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
 
 `;
 
-    tagEndpoints.forEach((endpoint) => {
+    sortedEndpoints.forEach((endpoint) => {
       const {
         method,
         operationId,
@@ -955,10 +1050,101 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
   return "";
 }
 
+// Backup 및 Restore 함수
+const BACKUP_DIR = path.join(__dirname, "../.generated-backup");
+
+function backupGeneratedFiles() {
+  try {
+    // 기존 backup 디렉토리가 있으면 삭제
+    if (fs.existsSync(BACKUP_DIR)) {
+      fs.rmSync(BACKUP_DIR, { recursive: true, force: true });
+    }
+
+    // backup 디렉토리 생성
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+
+    // generated 디렉토리들 백업 (상대 경로 구조 유지)
+    const dirsToBackup = [
+      { dir: TYPES_DIR, relativePath: "types/generated" },
+      { dir: API_DIR, relativePath: "api/generated" },
+      { dir: HOOKS_DIR, relativePath: "hooks/generated" },
+      { dir: CONSTANTS_DIR, relativePath: "constants/generated" },
+    ];
+    dirsToBackup.forEach(({ dir, relativePath }) => {
+      if (fs.existsSync(dir)) {
+        const backupPath = path.join(BACKUP_DIR, relativePath);
+        const backupParent = path.dirname(backupPath);
+        fs.mkdirSync(backupParent, { recursive: true });
+        fs.cpSync(dir, backupPath, { recursive: true });
+        debug.log(`📦 ${relativePath} 백업 완료`);
+      }
+    });
+
+    debug.log("✅ Generated 파일 백업 완료");
+  } catch (error) {
+    debug.error("❌ 백업 실패:", error);
+    throw error;
+  }
+}
+
+function restoreGeneratedFiles() {
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) {
+      debug.log("⚠️  백업 디렉토리가 없어 복원할 수 없습니다");
+      return;
+    }
+
+    debug.log("🔄 Generated 파일 복원 중...");
+
+    // 백업된 디렉토리들 복원
+    const dirsToRestore = [
+      { relativePath: "types/generated", targetDir: TYPES_DIR },
+      { relativePath: "api/generated", targetDir: API_DIR },
+      { relativePath: "hooks/generated", targetDir: HOOKS_DIR },
+      { relativePath: "constants/generated", targetDir: CONSTANTS_DIR },
+    ];
+
+    dirsToRestore.forEach(({ relativePath, targetDir }) => {
+      const backupPath = path.join(BACKUP_DIR, relativePath);
+      if (fs.existsSync(backupPath)) {
+        // 기존 디렉토리 삭제
+        if (fs.existsSync(targetDir)) {
+          fs.rmSync(targetDir, { recursive: true, force: true });
+        }
+        // 백업 복원
+        const targetParent = path.dirname(targetDir);
+        fs.mkdirSync(targetParent, { recursive: true });
+        fs.cpSync(backupPath, targetDir, { recursive: true });
+        debug.log(`🔄 ${relativePath} 복원 완료`);
+      }
+    });
+
+    debug.log("✅ Generated 파일 복원 완료");
+  } catch (error) {
+    debug.error("❌ 복원 실패:", error);
+    throw error;
+  }
+}
+
+function cleanupBackup() {
+  try {
+    if (fs.existsSync(BACKUP_DIR)) {
+      fs.rmSync(BACKUP_DIR, { recursive: true, force: true });
+      debug.log("🗑️  백업 디렉토리 삭제 완료");
+    }
+  } catch (error) {
+    debug.error("⚠️  백업 디렉토리 삭제 실패 (무시):", error);
+  }
+}
+
 // 메인 실행 함수
 function generateApiCode() {
   try {
     debug.log("🔄 API 코드 생성 시작...");
+
+    // 1. 기존 generated 파일들 백업
+    debug.log("📦 기존 Generated 파일 백업 중...");
+    backupGeneratedFiles();
 
     // Swagger 파일 읽기
     if (!fs.existsSync(SWAGGER_FILE)) {
@@ -982,10 +1168,14 @@ function generateApiCode() {
     ensureDir(HOOKS_DIR);
     ensureDir(CONSTANTS_DIR);
 
-    // 엔드포인트 추출
+    // 엔드포인트 추출 (경로와 메서드 순으로 정렬하여 일관된 순서 보장)
     const endpoints: ApiEndpoint[] = [];
-    Object.entries(swaggerSpec.paths || {}).forEach(([path, methods]) => {
-      Object.entries(methods).forEach(([method, spec]) => {
+    const sortedPaths = Object.keys(swaggerSpec.paths || {}).sort();
+    sortedPaths.forEach((path) => {
+      const methods = swaggerSpec.paths![path];
+      const sortedMethods = Object.keys(methods).sort();
+      sortedMethods.forEach((method) => {
+        const spec = methods[method];
         endpoints.push({
           path,
           method: method.toUpperCase(),
@@ -1035,8 +1225,14 @@ function generateApiCode() {
     debug.log(`  - ${path.join(CONSTANTS_DIR, "query-keys.ts")}`);
     debug.log(`  - ${API_DIR}/*.ts`);
     debug.log(`  - ${HOOKS_DIR}/*.ts`);
+
+    // 2. 생성 성공 시 백업 디렉토리 삭제
+    debug.log("🗑️  백업 디렉토리 정리 중...");
+    cleanupBackup();
   } catch (error) {
     debug.error("❌ API 코드 생성 실패:", error);
+    debug.log("🔄 백업된 파일로 복원 중...");
+    restoreGeneratedFiles();
     throw error;
   }
 }

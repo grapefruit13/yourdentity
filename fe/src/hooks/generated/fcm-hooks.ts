@@ -40,22 +40,6 @@ export const usePostFcmToken = <
   });
 };
 
-export const useGetFcmTokens = <TData = Types.TGETFcmTokensRes>(
-  options?: Omit<
-    UseQueryOptions<Types.TGETFcmTokensRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery<Types.TGETFcmTokensRes, Error, TData>({
-    queryKey: fcmKeys.getFcmTokens,
-    queryFn: async () => {
-      const response = await Api.getFcmTokens();
-      return response.data;
-    },
-    ...options,
-  });
-};
-
 export const useDeleteFcmTokenById = <
   TContext = unknown,
   TVariables = Types.TDELETEFcmTokenByIdReq,
@@ -78,6 +62,22 @@ export const useDeleteFcmTokenById = <
   >({
     mutationFn: (variables: TVariables) =>
       Api.deleteFcmTokenById(variables as Types.TDELETEFcmTokenByIdReq),
+    ...options,
+  });
+};
+
+export const useGetFcmTokens = <TData = Types.TGETFcmTokensRes>(
+  options?: Omit<
+    UseQueryOptions<Types.TGETFcmTokensRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery<Types.TGETFcmTokensRes, Error, TData>({
+    queryKey: fcmKeys.getFcmTokens,
+    queryFn: async () => {
+      const response = await Api.getFcmTokens();
+      return response.data;
+    },
     ...options,
   });
 };

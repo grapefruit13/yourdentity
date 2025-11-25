@@ -119,7 +119,7 @@ export const ActivityPickerBottomSheet = ({
         <div className="flex-1 overflow-y-auto">
           {sidoList.map((sido) => {
             // 세종특별자치시는 구/군이 없으므로 바로 선택 가능
-            const isSejong = sido.code === "36"; // 세종특별자치시 코드
+            const isSejong = sido.code === "29"; // 세종특별자치시 코드
 
             return (
               <button
@@ -145,7 +145,7 @@ export const ActivityPickerBottomSheet = ({
           })}
         </div>
         {/* 구/군 목록 */}
-        {selectedRegionCode && (
+        {selectedRegionCode && selectedSido && (
           <div className="flex-1 overflow-y-auto border-l border-gray-200 pl-4">
             {isLoadingSigungu ? (
               <div className="flex items-center justify-center py-8">
@@ -167,14 +167,12 @@ export const ActivityPickerBottomSheet = ({
                   구/군이 없습니다
                 </Typography>
               </div>
-            ) : (
+            ) : sigunguList.length > 0 ? (
               sigunguList.map((sigungu) => (
                 <button
                   key={sigungu.code}
                   onClick={() => {
-                    if (selectedSido) {
-                      onRegionSelect?.(selectedSido.name, sigungu.name);
-                    }
+                    onRegionSelect?.(selectedSido.name, sigungu.name);
                   }}
                   className="w-full rounded-lg bg-white px-4 py-3 text-left text-gray-900 transition-colors hover:bg-gray-50"
                 >
@@ -183,7 +181,7 @@ export const ActivityPickerBottomSheet = ({
                   </Typography>
                 </button>
               ))
-            )}
+            ) : null}
           </div>
         )}
       </div>

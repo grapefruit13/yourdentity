@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import {
   useGetStoreProductsById,
-  usePostStorePurchase,
+  usePostStorePurchases,
 } from "@/hooks/generated/store-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
@@ -185,7 +185,7 @@ const StoreProductDetailPage = () => {
   });
 
   // 구매 mutation
-  const purchaseMutation = usePostStorePurchase({
+  const purchaseMutation = usePostStorePurchases({
     onSuccess: () => {
       setIsQuantityPopupOpen(false);
       // TODO: 성공 토스트 메시지 표시

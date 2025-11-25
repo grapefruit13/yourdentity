@@ -1,16 +1,18 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { onAuthStateChanged, User } from "firebase/auth";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
-import { signInWithKakao } from "@/lib/auth";
+import { signInWithKakao, handleKakaoRedirectResult } from "@/lib/auth";
+import { auth } from "@/lib/firebase";
 import { setKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 
@@ -20,7 +22,26 @@ import { debug } from "@/utils/shared/debugger";
 const LoginPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
+
+  // URL 파라미터와 해시 확인하여 redirect 후 돌아왔는지 즉시 감지
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+    const hasAuthParams =
+      urlParams.has("code") ||
+      urlParams.has("error") ||
+      urlParams.has("state") ||
+      hashParams.has("code") ||
+      hashParams.has("error") ||
+      hashParams.has("state");
+
+    // redirect 후 돌아온 경우 로딩 상태로 시작
+    return hasAuthParams;
+  });
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { registerFCMToken } = useFCM();
 
@@ -38,6 +59,159 @@ const LoginPageContent = () => {
       return data?.user;
     },
   });
+
+  /**
+   * @description 카카오 redirect 결과 처리 (페이지 로드 시 즉시 호출)
+   *
+   * Firebase 공식 문서에 따르면, getRedirectResult는 페이지가 로드되자마자 즉시 호출해야 합니다.
+   * onAuthStateChanged를 기다리면 안 되며, redirect 후 결과가 소비될 수 있습니다.
+   *
+   * 참고: https://firebase.google.com/docs/auth/web/redirect-best-practices
+   */
+  useEffect(() => {
+    let isProcessing = false;
+
+    const processRedirectResult = async () => {
+      // 이미 처리 중이면 무시
+      if (isProcessing) return;
+      isProcessing = true;
+
+      // redirect 후 돌아왔는지 확인 (URL 파라미터 체크)
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hasAuthParams =
+        urlParams.has("code") ||
+        urlParams.has("error") ||
+        urlParams.has("state") ||
+        hashParams.has("code") ||
+        hashParams.has("error") ||
+        hashParams.has("state");
+
+      // redirect로 돌아온 경우, auth 파라미터만 제거하여 깔끔한 URL 유지
+      if (hasAuthParams && typeof window !== "undefined") {
+        const originalNext = urlParams.get("next") || searchParams.get("next");
+        const cleanSearchParams = new URLSearchParams();
+        if (originalNext) {
+          cleanSearchParams.set("next", originalNext);
+        }
+        const cleanQuery = cleanSearchParams.toString();
+        const cleanUrl = `${window.location.origin}${LINK_URL.LOGIN}${cleanQuery ? `?${cleanQuery}` : ""}`;
+
+        // 현재 히스토리 엔트리를 교체하여 auth 파라미터 제거
+        window.history.replaceState(
+          { ...window.history.state, as: cleanUrl, url: cleanUrl },
+          "",
+          cleanUrl
+        );
+      }
+
+      try {
+        // 페이지 로드 시 즉시 getRedirectResult 호출 (Firebase 권장 방식)
+        // iOS PWA에서는 cacheStorage를 통해 쿼리스트링 손실 문제를 해결
+        const redirectResult = await handleKakaoRedirectResult();
+
+        if (redirectResult) {
+          const { kakaoAccessToken, isNewUser } = redirectResult;
+
+          setIsLoading(true);
+          debug.log("로그인 결과 처리 시작", { isNewUser });
+
+          // 신규 회원 처리
+          if (isNewUser) {
+            if (!kakaoAccessToken) {
+              debug.error("신규 회원인데 카카오 액세스 토큰이 없습니다.");
+              setIsLoading(false);
+              setErrorMessage(
+                "카카오 로그인 권한이 필요합니다. 다시 시도해 주세요."
+              );
+              return;
+            }
+
+            setKakaoAccessToken(kakaoAccessToken);
+            await registerFCMTokenSafely();
+            setIsLoading(false);
+
+            debug.log("신규 회원 처리 완료, 온보딩 페이지로 이동");
+            router.replace(LINK_URL.MY_PAGE_EDIT);
+            return;
+          }
+
+          // 기존 사용자 처리
+          const { data: userData } = await refetchUserData();
+          const hasNickname = !!userData?.nickname;
+          await registerFCMTokenSafely();
+          setIsLoading(false);
+
+          debug.log("기존 사용자 처리 완료", { hasNickname });
+          handlePostLoginRouting(hasNickname);
+        } else {
+          debug.log("redirectResult가 null - 일반 로그인 화면");
+        }
+      } catch (error) {
+        debug.error("카카오 redirect 결과 처리 실패:", error);
+        setIsLoading(false);
+        setErrorMessage("카카오 로그인 처리에 실패했습니다.");
+      } finally {
+        isProcessing = false;
+      }
+    };
+
+    // 페이지 로드 시 즉시 redirect 결과 확인
+    processRedirectResult();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * @description 일반 인증 상태 관찰 (redirect 결과가 없을 때 사용)
+   *
+   * 이미 로그인된 사용자가 로그인 페이지에 접근한 경우를 처리합니다.
+   * redirect 결과 처리는 위의 useEffect에서 먼저 처리되므로,
+   * 여기서는 일반적인 인증 상태만 확인합니다.
+   */
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
+    unsubscribe = onAuthStateChanged(auth, (user) => {
+      // redirect 결과 처리는 위의 useEffect에서 처리하므로,
+      // 여기서는 redirect 파라미터가 없고 이미 로그인된 경우만 처리
+      if (!user) return;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+      const hasAuthParams =
+        urlParams.has("code") ||
+        urlParams.has("error") ||
+        urlParams.has("state") ||
+        hashParams.has("code") ||
+        hashParams.has("error") ||
+        hashParams.has("state");
+
+      // redirect 파라미터가 없고 이미 로그인된 사용자인 경우
+      if (!hasAuthParams) {
+        debug.log("이미 로그인된 사용자:", user.uid);
+        try {
+          refetchUserData()
+            .then(({ data: userData }) => {
+              const hasNickname = !!userData?.nickname;
+              handlePostLoginRouting(hasNickname);
+            })
+            .catch((error) => {
+              debug.error("사용자 정보 조회 실패:", error);
+            });
+        } catch (error) {
+          debug.error("사용자 정보 조회 실패:", error);
+        }
+      }
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * @description FCM 토큰 등록 (실패해도 로그인은 계속 진행)
@@ -129,7 +303,7 @@ const LoginPageContent = () => {
         }
       }
     } catch (error) {
-      debug.error("카카오 로그인(handleKakaoLogin) 실패:", error);
+      debug.error("카카오 로그인 실패:", error);
       setIsLoading(false);
       setErrorMessage("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
     }

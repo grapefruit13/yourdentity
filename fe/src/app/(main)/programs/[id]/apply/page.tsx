@@ -21,7 +21,10 @@ import {
   useGetProgramsById,
   usePostProgramsApplyById,
 } from "@/hooks/generated/programs-hooks";
-import { useGetUsersMe } from "@/hooks/generated/users-hooks";
+import {
+  useGetUsersMe,
+  useGetUsersMeParticipatingCommunities,
+} from "@/hooks/generated/users-hooks";
 import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { ProgramDetailResponse } from "@/types/generated/api-schema";
@@ -67,20 +70,6 @@ interface ApplicationFormData {
   customMotivation: string;
   agreedToTerms: boolean;
 }
-
-/**
- * @description 이전 입력 필드를 읽기 전용으로 표시하는 헬퍼 컴포넌트
- */
-const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
-  <div className="mb-4">
-    <label className="mb-2 block">
-      <Typography font="noto" variant="label1B" className="text-gray-700">
-        {label}
-      </Typography>
-    </label>
-    <Input type="text" value={value} readOnly className="bg-gray-100" />
-  </div>
-);
 
 /**
  * @description 활동 신청 페이지
@@ -251,6 +240,11 @@ const ProgramApplyPage = () => {
     applicationMotivation?: string;
   }>({});
 
+  const { data, refetch: refetchParticipatingCommunities } =
+    useGetUsersMeParticipatingCommunities({
+      enabled: false,
+    });
+
   // 신청하기 mutation
   const applyMutation = usePostProgramsApplyById({
     onSuccess: () => {
@@ -258,6 +252,8 @@ const ProgramApplyPage = () => {
       if (typeof window !== "undefined") {
         localStorage.removeItem(STORAGE_KEY);
       }
+      // 참여 중인 커뮤니티 목록 refetch (신청 상태 업데이트 반영)
+      refetchParticipatingCommunities();
       updateStep("complete");
       setShowTermsSheet(false);
     },

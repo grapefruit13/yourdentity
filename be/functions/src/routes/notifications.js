@@ -150,6 +150,13 @@ router.get("/send-all-pending", notificationController.sendAllPending);
  *                       type: integer
  *       401:
  *         description: 인증 실패
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  */
@@ -185,6 +192,13 @@ router.get("/", authGuard, notificationController.getNotifications);
  *                       type: integer
  *       401:
  *         description: 인증 실패
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       500:
  *         description: 서버 오류
  */
@@ -230,6 +244,13 @@ router.patch("/read-all", authGuard, notificationController.markAllAsRead);
  *         description: 잘못된 요청 (알림 ID 누락)
  *       401:
  *         description: 인증 실패
+
+ *       423:
+ *         description: 계정 자격정지
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccountSuspendedResponse'
  *       403:
  *         description: 권한 없음
  *       404:

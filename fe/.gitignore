@@ -62,3 +62,6 @@ certificates
 
 swagger.json
 
+# generated backup
+.generated-backup
+

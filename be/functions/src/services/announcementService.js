@@ -3,7 +3,8 @@ const {
   getTitleValue,
   getCheckboxValue,
   getDateValue,
-  getCreatedByValue
+  getCreatedByValue,
+  getCoverImageUrl
 } = require('../utils/notionHelper');
 
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -137,6 +138,7 @@ class AnnouncementService {
       pinned,
       startDate,
       endDate,
+      coverImage: getCoverImageUrl(page),
       createdAt: page.created_time || new Date().toISOString(),
       updatedAt: page.last_edited_time || new Date().toISOString(),
       isDeleted: false,

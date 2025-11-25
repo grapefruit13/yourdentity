@@ -160,9 +160,20 @@ export const ActivityApplicationForm = ({
             <Typography
               font="noto"
               variant="caption1R"
-              className="mt-1 text-right text-gray-400"
+              className={cn(
+                "mt-1 text-right",
+                formData.customMotivation.length < MIN_MOTIVATION_LENGTH
+                  ? "text-pink-500"
+                  : "text-gray-400"
+              )}
             >
               {formData.customMotivation.length}/200
+              {formData.customMotivation.length < MIN_MOTIVATION_LENGTH && (
+                <span className="ml-1">
+                  ({MIN_MOTIVATION_LENGTH - formData.customMotivation.length}자
+                  부족)
+                </span>
+              )}
             </Typography>
             {motivationError && (
               <Typography

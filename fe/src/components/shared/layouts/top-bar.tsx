@@ -34,8 +34,13 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
     "\n";
 
   const handleClick = () => {
+    // 로그인 페이지에서 뒤로가기 시 홈으로 이동
+    if (pathname === LINK_URL.LOGIN) {
+      router.replace(LINK_URL.HOME);
+      return;
+    }
     // 커뮤니티 상세 페이지에서 작성 페이지로 돌아가지 않도록 커뮤니티 목록으로 리다이렉트
-    if (pathname?.startsWith("/community/post/")) {
+    if (pathname?.startsWith(`${LINK_URL.COMMUNITY_POST}/`)) {
       router.replace(LINK_URL.COMMUNITY);
     } else {
       router.back();

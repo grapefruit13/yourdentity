@@ -3,16 +3,17 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { signOut } from "firebase/auth";
 import { Camera, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as FilesApi from "@/api/generated/files-api";
 import { deleteFilesById } from "@/api/generated/files-api";
 import * as UsersApi from "@/api/generated/users-api";
 import ProfileImageBottomSheet from "@/components/my-page/ProfileImageBottomSheet";
-import UnsavedChangesModal from "@/components/my-page/UnsavedChangesModal";
 import Input from "@/components/shared/input";
 import Textarea from "@/components/shared/textarea";
 import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
 import ProfileImage from "@/components/shared/ui/profile-image";
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
@@ -24,12 +25,14 @@ import {
   PROFILE_EDIT_LABELS,
 } from "@/constants/my-page/_profile-edit-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useDeleteAuthDeleteAccount } from "@/hooks/generated/auth-hooks";
 import {
   useGetUsersMe,
   usePatchUsersMeOnboarding,
   usePostUsersMeSyncKakaoProfile,
 } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
+import { auth } from "@/lib/firebase";
 import type { FileUploadResponse } from "@/types/generated/api-schema";
 import type { ProfileEditFormValues } from "@/types/my-page/_profile-edit-types";
 import {
@@ -57,8 +60,13 @@ const ProfileEditPage = () => {
   const { mutateAsync: patchOnboardingAsync } = usePatchUsersMeOnboarding();
   const { mutateAsync: syncKakaoProfileAsync } =
     usePostUsersMeSyncKakaoProfile();
+  const { mutateAsync: deleteAccountAsync, isPending: isDeletingAccount } =
+    useDeleteAuthDeleteAccount();
 
   const actualUserData = userData;
+  // userData가 로드된 이후에만 온보딩 여부를 true로 판단
+  const isOnboarding =
+    !!actualUserData && actualUserData.nickname?.trim().length === 0;
 
   const {
     register,
@@ -84,7 +92,16 @@ const ProfileEditPage = () => {
     close: closeBottomSheet,
     open: openBottomSheet,
   } = useToggle();
-  const [isUnsavedModalOpen, setIsUnsavedModalOpen] = useState(false);
+  const {
+    isOpen: isUnsavedModalOpen,
+    open: openUnsavedModal,
+    close: closeUnsavedModal,
+  } = useToggle();
+  const {
+    isOpen: isErrorModalOpen,
+    open: openErrorModal,
+    close: closeErrorModal,
+  } = useToggle();
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
   const isNicknameValid = nickname.trim().length > 0;
@@ -171,25 +188,14 @@ const ProfileEditPage = () => {
 
   /**
    * 브라우저 뒤로가기 시 변경사항 확인 모달 표시
-   * 닉네임이 비어있으면 이동을 막음
+   * 온보딩 중이거나 변경사항이 있으면 모달 표시
    */
   useEffect(() => {
     const handlePopState = () => {
-      const trimmedNickname = nickname.trim();
-      const initialNickname = actualUserData?.nickname ?? "";
-      const isNicknameEmpty = trimmedNickname.length === 0;
-      const isInitialNicknameEmpty = initialNickname.length === 0;
-
-      // 닉네임이 비어있고 초기 닉네임도 비어있는 경우 (신규 가입자/온보딩 미완료 사용자)
-      if (isNicknameEmpty && isInitialNicknameEmpty) {
+      // 온보딩 중이거나 변경사항이 있으면 모달 표시
+      if (isOnboarding || isDirty) {
         window.history.pushState(null, "", window.location.href);
-        alert(PROFILE_EDIT_MESSAGES.NICKNAME_REQUIRED);
-        return;
-      }
-
-      if (isDirty) {
-        window.history.pushState(null, "", window.location.href);
-        setIsUnsavedModalOpen(true);
+        openUnsavedModal();
       }
     };
 
@@ -202,29 +208,21 @@ const ProfileEditPage = () => {
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [isDirty, nickname, actualUserData?.nickname]);
+  }, [isDirty, isOnboarding, openUnsavedModal]);
 
   /**
    * 뒤로가기 버튼 클릭 핸들러
-   * 닉네임이 비어있으면 이동을 막고, 변경사항이 있으면 확인 모달을 표시하고, 없으면 마이페이지로 이동
+   * 온보딩 중이거나 변경사항이 있으면 확인 모달을 표시하고, 없으면 마이페이지로 이동
    */
   const handleBack = () => {
-    const trimmedNickname = nickname.trim();
-    const initialNickname = actualUserData?.nickname ?? "";
-    const isNicknameEmpty = trimmedNickname.length === 0;
-    const isInitialNicknameEmpty = initialNickname.length === 0;
-
-    // 닉네임이 비어있고 초기 닉네임도 비어있는 경우 (신규 가입자/온보딩 미완료 사용자)
-    if (isNicknameEmpty && isInitialNicknameEmpty) {
-      alert(PROFILE_EDIT_MESSAGES.NICKNAME_REQUIRED);
+    // 온보딩 중이거나 변경사항이 있으면 모달 표시
+    if (isOnboarding || isDirty) {
+      openUnsavedModal();
       return;
     }
 
-    if (isDirty) {
-      setIsUnsavedModalOpen(true);
-    } else {
-      router.push(LINK_URL.MY_PAGE);
-    }
+    // 일반 편집이고 변경사항이 없으면 마이페이지로 이동
+    router.push(LINK_URL.MY_PAGE);
   };
 
   /**
@@ -395,8 +393,8 @@ const ProfileEditPage = () => {
         {
           onSuccess: () => {
             invalidateUserQueries();
-            alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_SUCCESS);
-            router.push(LINK_URL.MY_PAGE);
+            // 온보딩 완료 시 홈으로, 일반 편집 시 마이페이지로 이동
+            router.push(isOnboarding ? LINK_URL.HOME : LINK_URL.MY_PAGE);
           },
         }
       );
@@ -451,11 +449,47 @@ const ProfileEditPage = () => {
 
   /**
    * 변경사항 저장 확인 모달의 확인 버튼 핸들러
-   * 변경사항을 저장하지 않고 마이페이지로 이동
+   * 온보딩 중이면 회원탈퇴 API 호출 후 로그인 페이지로 이동
+   * 일반 편집 중이면 마이페이지로 이동
    */
-  const handleUnsavedConfirm = () => {
-    setIsUnsavedModalOpen(false);
-    router.push(LINK_URL.MY_PAGE);
+  const handleUnsavedConfirm = async () => {
+    if (isOnboarding) {
+      // 온보딩 중이면 회원탈퇴 API 호출
+      try {
+        const kakaoAccessToken = getKakaoAccessToken();
+        await deleteAccountAsync({
+          data: kakaoAccessToken ? { kakaoAccessToken } : {},
+        });
+
+        // 토큰 정리
+        if (kakaoAccessToken) {
+          removeKakaoAccessToken();
+        }
+
+        // Firebase Auth 로그아웃 (백엔드에서 이미 사용자 삭제 처리됨)
+        try {
+          await signOut(auth);
+        } catch (signOutError) {
+          // signOut 실패해도 계속 진행 (백엔드에서 이미 사용자 삭제 처리됨)
+          debug.warn("Firebase 로그아웃 실패 (무시됨):", signOutError);
+        }
+
+        // 모달 닫기
+        closeUnsavedModal();
+
+        // 로그인 페이지로 이동
+        router.push(LINK_URL.LOGIN);
+      } catch (error) {
+        debug.error("회원탈퇴 실패:", error);
+        // 에러 모달을 열기 전에 기존 모달 닫기
+        closeUnsavedModal();
+        openErrorModal();
+      }
+    } else {
+      // 일반 편집 중이면 마이페이지로 이동
+      closeUnsavedModal();
+      router.push(LINK_URL.MY_PAGE);
+    }
   };
 
   return (
@@ -602,10 +636,33 @@ const ProfileEditPage = () => {
         onSelectGallery={handleGallerySelect}
       />
 
-      <UnsavedChangesModal
+      <Modal
         isOpen={isUnsavedModalOpen}
-        onClose={() => setIsUnsavedModalOpen(false)}
+        onClose={() => {
+          if (!isDeletingAccount) {
+            closeUnsavedModal();
+          }
+        }}
         onConfirm={handleUnsavedConfirm}
+        title={isOnboarding ? "회원가입을 그만두시겠어요?" : "그만둘까요?"}
+        description={
+          isOnboarding
+            ? "입력하신 정보가 저장되지 않아요. 정말 나가시겠어요?"
+            : "작성 중인 내용이 사라져요."
+        }
+        cancelText="계속하기"
+        confirmText={isDeletingAccount ? "처리 중..." : "그만두기"}
+        confirmDisabled={isDeletingAccount}
+      />
+
+      <Modal
+        isOpen={isErrorModalOpen}
+        onClose={closeErrorModal}
+        onConfirm={closeErrorModal}
+        title="오류가 발생했습니다"
+        description="회원탈퇴 중 오류가 발생했습니다. 다시 시도해주세요."
+        confirmText="확인"
+        variant="danger"
       />
 
       <input

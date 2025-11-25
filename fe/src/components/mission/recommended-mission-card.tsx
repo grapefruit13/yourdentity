@@ -21,7 +21,7 @@ export const RecommendedMissionCard = ({
 }: RecommendedMissionCardProps) => {
   return (
     <button
-      className="flex h-25 w-[35%] max-w-[35%] min-w-[35%] flex-shrink-0 flex-col justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-left"
+      className="flex h-25 w-[50%] max-w-[50%] min-w-[50%] shrink-0 flex-col justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-left"
       onClick={onClick}
     >
       <Typography

@@ -3,7 +3,7 @@
  * @note 이 파일은 API 실패 시 fallback으로 사용됩니다.
  * API 응답이 있으면 API 데이터를 우선 사용하고, 이 파일의 데이터는 보조적으로 사용됩니다.
  *
- * 이 파일은 scripts/update-regions-fallback.ts 스크립트로 업데이트 가능합니다.
+ * 이 파일은 scripts/update-regions-fallback.ts 스크립트로 자동 업데이트됩니다.
  * API 응답이 변경되면 해당 스크립트를 실행하여 fallback 데이터를 업데이트하세요.
  */
 

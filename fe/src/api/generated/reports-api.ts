@@ -13,15 +13,15 @@ export const postReportcontent = (request: Types.TPOSTReportContentReq) => {
   );
 };
 
-export const getReportcontentSyncNotionReports = () => {
-  return get<Types.TGETReportContentSyncNotionReportsRes>(
-    `/reportContent/syncNotionReports`
-  );
-};
-
 export const postReportcontentMy = (request: Types.TPOSTReportContentMyReq) => {
   return post<Types.TPOSTReportContentMyRes>(
     `/reportContent/my`,
     request.data ?? request
+  );
+};
+
+export const getReportcontentSyncNotionReports = () => {
+  return get<Types.TGETReportContentSyncNotionReportsRes>(
+    `/reportContent/syncNotionReports`
   );
 };

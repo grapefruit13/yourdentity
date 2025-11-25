@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
 
 export interface TGETCommunitiesReq {
@@ -26,25 +25,13 @@ export type TGETCommunitiesRes = {
   };
 };
 
-export interface TGETCommunitiesPostsReq {
-  page?: number;
-  size?: number;
-  programType?: "ROUTINE" | "GATHERING" | "TMI";
-  programState?: "ongoing" | "finished";
+export interface TGETCommunitiesNicknameAvailabilityByIdReq {
+  communityId: string;
+  nickname: string;
 }
 
-export type TGETCommunitiesPostsRes = {
-  posts?: Schema.CommunityPost[];
-  pagination?: {
-    pageNumber?: number;
-    pageSize?: number;
-    totalElements?: number;
-    totalPages?: number;
-    hasNext?: boolean;
-    hasPrevious?: boolean;
-    isFirst?: boolean;
-    isLast?: boolean;
-  };
+export type TGETCommunitiesNicknameAvailabilityByIdRes = {
+  available?: boolean;
 };
 
 export interface TPOSTCommunitiesPostsByIdReq {
@@ -87,12 +74,31 @@ export type TPOSTCommunitiesPostsByIdRes = {
   };
 };
 
+export interface TDELETECommunitiesPostsByTwoIdsReq {
+  communityId: string;
+  postId: string;
+}
+
 export interface TGETCommunitiesPostsByTwoIdsReq {
   communityId: string;
   postId: string;
 }
 
-export type TGETCommunitiesPostsByTwoIdsRes = any;
+export type TGETCommunitiesPostsByTwoIdsRes = Schema.CommunityPost & {
+  preview?: {
+    description?: string;
+    thumbnail?: {
+      url?: string;
+      blurHash?: string;
+      width?: number;
+      height?: number;
+    };
+  };
+  programType?: "ROUTINE" | "GATHERING" | "TMI";
+  isReview?: boolean;
+  reportsCount?: number;
+  isAuthor?: boolean;
+};
 
 export interface TPUTCommunitiesPostsByTwoIdsReq {
   communityId: string;
@@ -133,11 +139,6 @@ export type TPUTCommunitiesPostsByTwoIdsRes = {
   };
 };
 
-export interface TDELETECommunitiesPostsByTwoIdsReq {
-  communityId: string;
-  postId: string;
-}
-
 export interface TPOSTCommunitiesPostsLikeByTwoIdsReq {
   communityId: string;
   postId: string;
@@ -150,11 +151,24 @@ export type TPOSTCommunitiesPostsLikeByTwoIdsRes = {
   likesCount?: number;
 };
 
-export interface TGETCommunitiesNicknameAvailabilityByIdReq {
-  communityId: string;
-  nickname: string;
+export interface TGETCommunitiesPostsReq {
+  page?: number;
+  size?: number;
+  programType?: "ROUTINE" | "GATHERING" | "TMI";
+  programState?: "ongoing" | "finished";
+  sort?: "popular";
 }
 
-export type TGETCommunitiesNicknameAvailabilityByIdRes = {
-  available?: boolean;
+export type TGETCommunitiesPostsRes = {
+  posts?: Schema.CommunityPost[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
+  };
 };

@@ -17,6 +17,23 @@ const withPWA = withPWAInit({
     clientsClaim: true, // 모든 클라이언트에서 즉시 활성화
     runtimeCaching: [
       {
+        // API 프록시 요청은 제외 (네트워크로 직접 요청)
+        urlPattern: /^https?:\/\/.*\/api-proxy\/.*/i,
+        handler: "NetworkOnly",
+      },
+      {
+        // Firebase Auth 도메인은 제외
+        urlPattern:
+          /^https?:\/\/.*\.(firebaseapp\.com|firebasestorage\.app|googleapis\.com)\/.*/i,
+        handler: "NetworkOnly",
+      },
+      {
+        // 카카오 OAuth 도메인은 제외
+        urlPattern: /^https?:\/\/.*\.(kakao\.com|kauth\.kakao\.com)\/.*/i,
+        handler: "NetworkOnly",
+      },
+      {
+        // 나머지 요청은 NetworkFirst 전략 사용
         urlPattern: /^https?.*/,
         handler: "NetworkFirst",
         options: {
@@ -49,6 +66,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "**.firebasestorage.app",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
         protocol: "https",

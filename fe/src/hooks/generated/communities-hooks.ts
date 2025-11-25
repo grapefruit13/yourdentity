@@ -33,19 +33,30 @@ export const useGetCommunities = <TData = Types.TGETCommunitiesRes>(
   });
 };
 
-export const useGetCommunitiesPosts = <TData = Types.TGETCommunitiesPostsRes>(
+export const useGetCommunitiesNicknameAvailabilityById = <
+  TData = Types.TGETCommunitiesNicknameAvailabilityByIdRes,
+>(
   options: {
-    request: Types.TGETCommunitiesPostsReq;
+    request: Types.TGETCommunitiesNicknameAvailabilityByIdReq;
   } & Omit<
-    UseQueryOptions<Types.TGETCommunitiesPostsRes, Error, TData>,
+    UseQueryOptions<
+      Types.TGETCommunitiesNicknameAvailabilityByIdRes,
+      Error,
+      TData
+    >,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETCommunitiesPostsRes, Error, TData>({
-    queryKey: communitiesKeys.getCommunitiesPosts(request),
+  return useQuery<
+    Types.TGETCommunitiesNicknameAvailabilityByIdRes,
+    Error,
+    TData
+  >({
+    queryKey: communitiesKeys.getCommunitiesNicknameAvailabilityById(request),
     queryFn: async () => {
-      const response = await Api.getCommunitiesPosts(request);
+      const response =
+        await Api.getCommunitiesNicknameAvailabilityById(request);
       return response.data;
     },
     ...queryOptions,
@@ -75,6 +86,34 @@ export const usePostCommunitiesPostsById = <
     mutationFn: (variables: TVariables) =>
       Api.postCommunitiesPostsById(
         variables as Types.TPOSTCommunitiesPostsByIdReq
+      ),
+    ...options,
+  });
+};
+
+export const useDeleteCommunitiesPostsByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TDELETECommunitiesPostsByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.deleteCommunitiesPostsByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.deleteCommunitiesPostsByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.deleteCommunitiesPostsByTwoIds(
+        variables as Types.TDELETECommunitiesPostsByTwoIdsReq
       ),
     ...options,
   });
@@ -129,34 +168,6 @@ export const usePutCommunitiesPostsByTwoIds = <
   });
 };
 
-export const useDeleteCommunitiesPostsByTwoIds = <
-  TContext = unknown,
-  TVariables = Types.TDELETECommunitiesPostsByTwoIdsReq,
->(
-  options?: Omit<
-    UseMutationOptions<
-      Awaited<ReturnType<typeof Api.deleteCommunitiesPostsByTwoIds>>,
-      Error,
-      TVariables,
-      TContext
-    >,
-    "mutationFn"
-  >
-) => {
-  return useMutation<
-    Awaited<ReturnType<typeof Api.deleteCommunitiesPostsByTwoIds>>,
-    Error,
-    TVariables,
-    TContext
-  >({
-    mutationFn: (variables: TVariables) =>
-      Api.deleteCommunitiesPostsByTwoIds(
-        variables as Types.TDELETECommunitiesPostsByTwoIdsReq
-      ),
-    ...options,
-  });
-};
-
 export const usePostCommunitiesPostsLikeByTwoIds = <
   TContext = unknown,
   TVariables = Types.TPOSTCommunitiesPostsLikeByTwoIdsReq,
@@ -185,30 +196,19 @@ export const usePostCommunitiesPostsLikeByTwoIds = <
   });
 };
 
-export const useGetCommunitiesNicknameAvailabilityById = <
-  TData = Types.TGETCommunitiesNicknameAvailabilityByIdRes,
->(
+export const useGetCommunitiesPosts = <TData = Types.TGETCommunitiesPostsRes>(
   options: {
-    request: Types.TGETCommunitiesNicknameAvailabilityByIdReq;
+    request: Types.TGETCommunitiesPostsReq;
   } & Omit<
-    UseQueryOptions<
-      Types.TGETCommunitiesNicknameAvailabilityByIdRes,
-      Error,
-      TData
-    >,
+    UseQueryOptions<Types.TGETCommunitiesPostsRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
   const { request, ...queryOptions } = options;
-  return useQuery<
-    Types.TGETCommunitiesNicknameAvailabilityByIdRes,
-    Error,
-    TData
-  >({
-    queryKey: communitiesKeys.getCommunitiesNicknameAvailabilityById(request),
+  return useQuery<Types.TGETCommunitiesPostsRes, Error, TData>({
+    queryKey: communitiesKeys.getCommunitiesPosts(request),
     queryFn: async () => {
-      const response =
-        await Api.getCommunitiesNicknameAvailabilityById(request);
+      const response = await Api.getCommunitiesPosts(request);
       return response.data;
     },
     ...queryOptions,

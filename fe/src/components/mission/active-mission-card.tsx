@@ -68,7 +68,7 @@ export function ActiveMissionCard({
   return (
     <div
       className={cn(
-        "flex w-[85%] max-w-[85%] min-w-[85%] flex-shrink-0 flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4",
+        "flex w-full shrink-0 flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4",
         onClick && "cursor-pointer"
       )}
       onClick={onClick}
@@ -109,7 +109,11 @@ export function ActiveMissionCard({
 
       {/* 미션 정보 */}
       <div className="flex flex-col gap-1">
-        <Typography font="noto" variant="body1B" className="text-gray-950">
+        <Typography
+          font="noto"
+          variant="body1B"
+          className="line-clamp-2 text-gray-950"
+        >
           {title}
         </Typography>
       </div>

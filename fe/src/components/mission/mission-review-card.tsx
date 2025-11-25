@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Typography } from "@/components/shared/typography";
+import { cn } from "@/utils/shared/cn";
 
 interface MissionReviewCardProps {
   /**
@@ -18,6 +19,10 @@ interface MissionReviewCardProps {
    * @description 후기 내용
    */
   content: string;
+  /**
+   * @description 카드 클릭 핸들러
+   */
+  onClick: () => void;
 }
 
 /**
@@ -28,9 +33,15 @@ const MissionReviewCard = ({
   imageAlt = "미션 후기",
   title,
   content,
+  onClick,
 }: MissionReviewCardProps) => {
   return (
-    <div className="flex max-w-[90%] min-w-[90%] flex-shrink-0 border-collapse items-center rounded-xl border border-gray-200">
+    <div
+      className={cn(
+        "flex w-full shrink-0 border-collapse items-center rounded-xl border border-gray-200"
+      )}
+      onClick={onClick}
+    >
       <Image
         src={imageUrl}
         alt={imageAlt}

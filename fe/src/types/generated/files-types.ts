@@ -5,8 +5,8 @@
 
 import type * as Schema from "./api-schema";
 
-export type TPOSTFilesUploadMultipleRes = Schema.FileUploadResponse;
-
 export interface TDELETEFilesByIdReq {
   filePath: string;
 }
+
+export type TPOSTFilesUploadMultipleRes = Schema.FileUploadResponse;

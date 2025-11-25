@@ -158,6 +158,21 @@ class UserService {
       }
     }
 
+
+    // Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
+    const notionUserService = require("./notionUserService");
+    notionUserService.syncSingleUserToNotion(uid)
+        .then(result => {
+          if (result.success) {
+            console.log(`Notion 동기화 완료: ${uid}`);
+          } else {
+            console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
+          }
+        })
+        .catch(error => {
+          console.error(`Notion 동기화 오류: ${uid}`, error);
+        });
+
     return {success: true};
   }
 
@@ -288,23 +303,6 @@ class UserService {
       // 3. 댓글 삭제 (게시글에 속하지 않은 댓글들)
       await this._deleteUserComments(uid);
 
-      // 4. 프로필 이미지 삭제
-      if (user.profileImagePath) {
-        try {
-          await fileService.deleteFile(user.profileImagePath, uid);
-          console.log(`[ACCOUNT_DELETION] 프로필 이미지 삭제 완료: ${user.profileImagePath}`);
-        } catch (profileError) {
-          console.error(`[ACCOUNT_DELETION] 프로필 이미지 삭제 실패:`, profileError.message);
-          // 프로필 이미지 삭제 실패해도 계속 진행
-        }
-      }
-
-      // 5. Firebase Auth에서 사용자 삭제
-      await admin.auth().deleteUser(uid);
-
-      // 6. Firestore users 문서 삭제
-      await this.firestoreService.delete(uid);
-
       console.log(`[ACCOUNT_DELETION] 완료: userId=${uid}`);
       return {success: true};
     } catch (error) {
@@ -342,61 +340,81 @@ class UserService {
         if (!postId || !communityId) continue;
 
         try {
-          // 1. 해당 게시글의 모든 댓글 조회 (순환 참조 방지를 위해 lazy require)
+          // 1. 해당 게시글의 모든 원댓글 조회 (순환 참조 방지를 위해 lazy require)
           const CommentService = require("./commentService");
           const commentsService = new CommentService();
-          const comments = await commentsService.firestoreService.getCollectionWhereMultiple(
+          const parentComments = await commentsService.firestoreService.getCollectionWhereMultiple(
             "comments",
             [
-              {field: "postId", operator: "==", value: postId}
+              {field: "postId", operator: "==", value: postId},
+              {field: "parentId", operator: "==", value: null}
             ]
           );
 
-          // 2. 각 댓글별로 대댓글 확인 후 삭제 처리
-          if (comments && comments.length > 0) {
-            const batch = db.batch();
-            const softDeleteComments = [];
-            let hardDeleteCount = 0;
+          // 2. 각 원댓글별로 대댓글 확인 후 삭제 처리
+          if (parentComments && parentComments.length > 0) {
+            let totalHardDeleteCount = 0;
+            let totalSoftDeleteCount = 0;
             
-            for (const comment of comments) {
-              // 대댓글 확인
-              const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
-                "comments",
-                [
-                  {field: "parentId", operator: "==", value: comment.id},
-                  {field: "isDeleted", operator: "==", value: false}
-                ]
-              );
+            for (const comment of parentComments) {
+              try {
+                // 대댓글 확인 (삭제되지 않은 댓글만)
+                const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
+                  "comments",
+                  [
+                    {field: "parentId", operator: "==", value: comment.id},
+                    {field: "isDeleted", operator: "==", value: false}
+                  ]
+                );
 
-              if (replies && replies.length > 0) {
-                // 대댓글이 있으면 소프트 딜리트로 처리 (배치에서 제외)
-                softDeleteComments.push({comment, repliesCount: replies.length});
-              } else {
-                // 대댓글이 없으면 하드 딜리트
-                const commentRef = db.collection("comments").doc(comment.id);
-                batch.delete(commentRef);
-                hardDeleteCount++;
+                // 대댓글을 본인/타인으로 분류
+                const myReplies = replies.filter(reply => reply.userId === uid);
+                const otherReplies = replies.filter(reply => reply.userId !== uid);
+
+                // 게시글 삭제 시에는 모든 댓글을 하드 딜리트
+                if (replies.length > 0) {
+                  await commentsService.firestoreService.runTransaction(async (transaction) => {
+                    const commentRef = db.collection("comments").doc(comment.id);
+
+                    transaction.delete(commentRef);
+
+                    for (const reply of replies) {
+                      const replyRef = db.collection("comments").doc(reply.id);
+                      transaction.delete(replyRef);
+                    }
+                  });
+                  totalHardDeleteCount += 1 + replies.length;
+                  console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} + 대댓글 ${replies.length}개 모두 하드 딜리트`);
+                } else if (myReplies.length > 0) {
+                  await commentsService.firestoreService.runTransaction(async (transaction) => {
+                    const commentRef = db.collection("comments").doc(comment.id);
+
+                    transaction.delete(commentRef);
+
+                    for (const myReply of myReplies) {
+                      const replyRef = db.collection("comments").doc(myReply.id);
+                      transaction.delete(replyRef);
+                    }
+                  });
+                  totalHardDeleteCount += 1 + myReplies.length;
+                  console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} + 대댓글 ${myReplies.length}개 모두 하드 딜리트`);
+                } else {
+                  // 대댓글이 없으면 원댓글만 하드 딜리트
+                  await commentsService.firestoreService.runTransaction(async (transaction) => {
+                    const commentRef = db.collection("comments").doc(comment.id);
+
+                    transaction.delete(commentRef);
+                  });
+                  totalHardDeleteCount++;
+                  console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} 하드 딜리트`);
+                }
+              } catch (commentError) {
+                console.error(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} 삭제 실패:`, commentError.message);
+                // 개별 댓글 삭제 실패해도 계속 진행
               }
             }
             
-            // 하드 딜리트 배치 실행
-            if (hardDeleteCount > 0) {
-              await batch.commit();
-            }
-            
-            // 소프트 딜리트 처리
-            for (const {comment, repliesCount} of softDeleteComments) {
-              const commentRef = db.collection("comments").doc(comment.id);
-              await commentRef.update({
-                isDeleted: true,
-                author: "알 수 없음",
-                content: "삭제된 댓글입니다",
-                updatedAt: FieldValue.serverTimestamp(),
-              });
-              console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 ${comment.id} 소프트 딜리트 (대댓글 ${repliesCount}개)`);
-            }
-            
-            console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 처리 완료: 하드딜리트 ${hardDeleteCount}개, 소프트딜리트 ${softDeleteComments.length}개`);
+            console.log(`[ACCOUNT_DELETION] 게시글 ${postId}의 댓글 처리 완료: 하드딜리트 ${totalHardDeleteCount}개, 소프트딜리트 ${totalSoftDeleteCount}개`);
           }
 
           // 3. 게시글 삭제 (이미지 포함, communityService 사용)
@@ -435,7 +453,6 @@ class UserService {
       if (!likedPostsSnapshot.empty) {
         const batch = db.batch();
         likedPostsSnapshot.forEach((doc) => {
-          // doc.ref.path에서 userId 추출: users/{userId}/likedPosts/{postId}
           const pathParts = doc.ref.path.split("/");
           if (pathParts.length >= 4 && pathParts[0] === "users") {
             const userId = pathParts[1];
@@ -489,25 +506,34 @@ class UserService {
       const CommentService = require("./commentService");
       const commentsService = new CommentService();
       
-      // 사용자가 작성한 모든 댓글 조회
-      const comments = await commentsService.firestoreService.getCollectionWhere(
+      // 사용자가 작성한 모든 원댓글 조회 (parentId가 null인 것만)
+      const parentComments = await commentsService.firestoreService.getCollectionWhereMultiple(
         "comments",
-        "userId",
-        "==",
-        uid
+        [
+          {field: "userId", operator: "==", value: uid},
+          {field: "parentId", operator: "==", value: null}
+        ]
       );
 
-      if (!comments || comments.length === 0) {
+      // 사용자가 작성한 모든 대댓글 조회 (다른 사람 원댓글에 단 대댓글)
+      const myReplies = await commentsService.firestoreService.getCollectionWhereMultiple(
+        "comments",
+        [
+          {field: "userId", operator: "==", value: uid},
+          {field: "parentId", operator: "!=", value: null},
+          {field: "isDeleted", operator: "==", value: false}
+        ]
+      );
+
+      if ((!parentComments || parentComments.length === 0) && (!myReplies || myReplies.length === 0)) {
         console.log(`[ACCOUNT_DELETION] 작성한 댓글 없음: userId=${uid}`);
         return;
       }
 
-      console.log(`[ACCOUNT_DELETION] 댓글 삭제 시작: ${comments.length}개`);
+      console.log(`[ACCOUNT_DELETION] 댓글 삭제 시작: 원댓글 ${parentComments?.length || 0}개, 대댓글 ${myReplies?.length || 0}개`);
 
-      // 각 댓글별로 처리
-      for (const comment of comments) {
+      for (const comment of parentComments || []) {
         try {
-          // 대댓글 확인 (삭제되지 않은 댓글만)
           const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
             "comments",
             [
@@ -516,33 +542,89 @@ class UserService {
             ]
           );
 
-          if (replies && replies.length > 0) {
-            // 대댓글이 있으면 소프트 딜리트
-            const commentRef = db.collection("comments").doc(comment.id);
-            await commentRef.update({
-              isDeleted: true,
-              author: "알 수 없음",
-              content: "삭제된 댓글입니다",
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-            console.log(`[ACCOUNT_DELETION] 댓글 소프트 딜리트: commentId=${comment.id} (대댓글 ${replies.length}개)`);
-          } else {
-            // 대댓글이 없으면 하드 딜리트
+          const myReplies = replies.filter(reply => reply.userId === uid);
+          const otherReplies = replies.filter(reply => reply.userId !== uid);
+
+          if (otherReplies.length > 0) {
             await commentsService.firestoreService.runTransaction(async (transaction) => {
               const commentRef = db.collection("comments").doc(comment.id);
               const postRef = db.collection(`communities/${comment.communityId}/posts`).doc(comment.postId);
               const commentedPostRef = db.collection(`users/${uid}/commentedPosts`).doc(comment.postId);
 
-              // 댓글 삭제
-              transaction.delete(commentRef);
+              // ===== 모든 읽기 작업 먼저 수행 =====
+              const remainingSnapshot = await transaction.get(
+                db.collection("comments")
+                  .where("postId", "==", comment.postId)
+                  .where("userId", "==", uid)
+              );
+              
+              const remainingCount = remainingSnapshot.docs.filter(
+                (doc) => doc.id !== comment.id && !myReplies.some(reply => reply.id === doc.id)
+              ).length;
 
-              // 게시글 commentsCount 감소
-              transaction.update(postRef, {
-                commentsCount: FieldValue.increment(-1),
+              transaction.update(commentRef, {
+                isDeleted: true,
+                userId: null,
+                author: "알 수 없음",
+                content: "삭제된 댓글입니다",
                 updatedAt: FieldValue.serverTimestamp(),
               });
 
-              // 해당 게시글에 남은 댓글이 있는지 확인
+              for (const myReply of myReplies) {
+                const replyRef = db.collection("comments").doc(myReply.id);
+                transaction.delete(replyRef);
+              }
+
+              if (myReplies.length > 0) {
+                transaction.update(postRef, {
+                  commentsCount: FieldValue.increment(-myReplies.length),
+                  updatedAt: FieldValue.serverTimestamp(),
+                });
+              }
+
+              if (remainingCount === 0) {
+                transaction.delete(commentedPostRef);
+              }
+            });
+            console.log(`[ACCOUNT_DELETION] 댓글 소프트 딜리트 + 본인 대댓글 ${myReplies.length}개 하드 딜리트: commentId=${comment.id}`);
+          } else if (myReplies.length > 0) {
+            await commentsService.firestoreService.runTransaction(async (transaction) => {
+              const commentRef = db.collection("comments").doc(comment.id);
+              const postRef = db.collection(`communities/${comment.communityId}/posts`).doc(comment.postId);
+              const commentedPostRef = db.collection(`users/${uid}/commentedPosts`).doc(comment.postId);
+
+              const remainingSnapshot = await transaction.get(
+                db.collection("comments")
+                  .where("postId", "==", comment.postId)
+                  .where("userId", "==", uid)
+              );
+              
+              const remainingCount = remainingSnapshot.docs.filter(
+                (doc) => doc.id !== comment.id && !myReplies.some(reply => reply.id === doc.id)
+              ).length;
+              transaction.delete(commentRef);
+
+              for (const myReply of myReplies) {
+                const replyRef = db.collection("comments").doc(myReply.id);
+                transaction.delete(replyRef);
+              }
+
+              transaction.update(postRef, {
+                commentsCount: FieldValue.increment(-1 - myReplies.length),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+
+              if (remainingCount === 0) {
+                transaction.delete(commentedPostRef);
+              }
+            });
+            console.log(`[ACCOUNT_DELETION] 댓글 + 대댓글 ${myReplies.length}개 모두 하드 딜리트: commentId=${comment.id}`);
+          } else {
+            await commentsService.firestoreService.runTransaction(async (transaction) => {
+              const commentRef = db.collection("comments").doc(comment.id);
+              const postRef = db.collection(`communities/${comment.communityId}/posts`).doc(comment.postId);
+              const commentedPostRef = db.collection(`users/${uid}/commentedPosts`).doc(comment.postId);
+
               const remainingSnapshot = await transaction.get(
                 db.collection("comments")
                   .where("postId", "==", comment.postId)
@@ -553,7 +635,13 @@ class UserService {
                 (doc) => doc.id !== comment.id
               ).length;
 
-              // 남은 댓글이 없으면 commentedPosts에서 제거
+              transaction.delete(commentRef);
+
+              transaction.update(postRef, {
+                commentsCount: FieldValue.increment(-1),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+
               if (remainingCount === 0) {
                 transaction.delete(commentedPostRef);
               }
@@ -562,7 +650,75 @@ class UserService {
           }
         } catch (commentError) {
           console.error(`[ACCOUNT_DELETION] 댓글 삭제 실패: commentId=${comment.id}`, commentError.message);
-          // 개별 댓글 삭제 실패해도 계속 진행
+        }
+      }
+
+      if (myReplies && myReplies.length > 0) {
+        const processedReplyIds = new Set();
+        for (const parentComment of parentComments || []) {
+          const replies = await commentsService.firestoreService.getCollectionWhereMultiple(
+            "comments",
+            [
+              {field: "parentId", operator: "==", value: parentComment.id},
+              {field: "isDeleted", operator: "==", value: false}
+            ]
+          );
+          replies.filter(reply => reply.userId === uid).forEach(reply => {
+            processedReplyIds.add(reply.id);
+          });
+        }
+
+        const unprocessedReplies = myReplies.filter(reply => !processedReplyIds.has(reply.id));
+
+        for (const reply of unprocessedReplies) {
+          try {
+            const parentComment = await commentsService.firestoreService.getDocument("comments", reply.parentId);
+            if (!parentComment) {
+              console.warn(`[ACCOUNT_DELETION] 부모 댓글을 찾을 수 없음: parentId=${reply.parentId}`);
+              continue;
+            }
+
+            const allRepliesToParent = await commentsService.firestoreService.getCollectionWhereMultiple(
+              "comments",
+              [
+                {field: "parentId", operator: "==", value: reply.parentId},
+                {field: "isDeleted", operator: "==", value: false}
+              ]
+            );
+
+            const otherRepliesToParent = allRepliesToParent.filter(r => r.userId !== uid && r.id !== reply.id);
+
+            await commentsService.firestoreService.runTransaction(async (transaction) => {
+              const replyRef = db.collection("comments").doc(reply.id);
+              const postRef = db.collection(`communities/${reply.communityId}/posts`).doc(reply.postId);
+              const commentedPostRef = db.collection(`users/${uid}/commentedPosts`).doc(reply.postId);
+
+              const remainingSnapshot = await transaction.get(
+                db.collection("comments")
+                  .where("postId", "==", reply.postId)
+                  .where("userId", "==", uid)
+              );
+              
+              const remainingCount = remainingSnapshot.docs.filter(
+                (doc) => doc.id !== reply.id
+              ).length;
+
+              transaction.delete(replyRef);
+
+              transaction.update(postRef, {
+                commentsCount: FieldValue.increment(-1),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+
+              if (remainingCount === 0) {
+                transaction.delete(commentedPostRef);
+              }
+            });
+            console.log(`[ACCOUNT_DELETION] 다른 사람 원댓글에 단 대댓글 하드 딜리트: replyId=${reply.id}, parentId=${reply.parentId}`);
+          } catch (replyError) {
+            console.error(`[ACCOUNT_DELETION] 대댓글 삭제 실패: replyId=${reply.id}`, replyError.message);
+            // 개별 대댓글 삭제 실패해도 계속 진행
+          }
         }
       }
     } catch (error) {
@@ -740,20 +896,6 @@ class UserService {
     // 카카오 상세 정보로 업데이트
     await this.firestoreService.update(uid, update);
     console.log(`[USER_DOCUMENT_UPDATED] uid=${uid} (카카오 정보 + 약관 포함)`)
-
-    // 4. Notion에 사용자 동기화 (비동기로 실행, 실패해도 메인 프로세스에 영향 없음)
-    const notionUserService = require("./notionUserService");
-    notionUserService.syncSingleUserToNotion(uid)
-      .then(result => {
-        if (result.success) {
-          console.log(`Notion 동기화 완료: ${uid}`);
-        } else {
-          console.warn(`Notion 동기화 실패: ${uid} - ${result.error || result.reason}`);
-        }
-      })
-      .catch(error => {
-        console.error(`Notion 동기화 오류: ${uid}`, error);
-      });
 
     const totalDuration = Date.now() - startTime;
     console.log(`[KAKAO_SYNC_SUCCESS] uid=${uid}, totalDuration=${totalDuration}ms`);
