@@ -15,9 +15,31 @@ import {
 } from "firebase/functions";
 import { debug } from "@/utils/shared/debugger";
 
+/**
+ * authDomain 설정
+ * iOS PWA에서 firebaseapp.com → 앱 도메인 redirect 시 쿼리스트링이 유실되는 문제를 해결하기 위해
+ * 앱 도메인을 authDomain으로 사용하고, /__/auth/* 경로를 reverse proxy로 firebaseapp.com으로 전달
+ *
+ * 참고: https://firebase.google.com/docs/auth/web/redirect-best-practices
+ */
+const getAuthDomain = () => {
+  // 개발 환경에서는 localhost 사용
+  // if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+  //   return "localhost:3000";
+  // }
+
+  // 프로덕션에서는 현재 도메인 사용
+  if (typeof window !== "undefined") {
+    return window.location.host;
+  }
+
+  // SSR 환경에서는 환경 변수 사용 (fallback)
+  return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+};
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain: getAuthDomain(),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,

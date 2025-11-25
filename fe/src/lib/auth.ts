@@ -303,8 +303,6 @@ export const handleKakaoRedirectResult = async (): Promise<{
     // Firebase Auth 초기화 대기 (중요: redirect 후 Auth가 완전히 초기화되도록)
     await waitForAuthReady();
 
-    debug.log("Firebase Auth 초기화 완료, getRedirectResult 호출");
-
     // iOS PWA에서 cacheStorage에 redirect 대기 상태가 있고 쿼리스트링이 손실된 경우
     // Firebase Auth 상태를 확인하여 로그인 완료 여부 확인
     if (isIOSPWA() && !hasAuthParams && isRedirectFromCache) {
@@ -315,13 +313,6 @@ export const handleKakaoRedirectResult = async (): Promise<{
       // Firebase Auth 상태 확인
       const currentUser = auth.currentUser;
       if (currentUser) {
-        debug.log(
-          "iOS PWA: 쿼리스트링 손실했지만 Firebase Auth에서 로그인 상태 확인",
-          {
-            uid: currentUser.uid,
-          }
-        );
-
         // cacheStorage에서 인증 상태 저장
         await setCachedAuthState({
           uid: currentUser.uid,
