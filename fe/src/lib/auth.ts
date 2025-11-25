@@ -32,13 +32,6 @@ import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 import { post, del } from "./axios";
 
 /**
- * @description iOS PWA 여부 확인
- */
-const isIOSPWA = (): boolean => {
-  return isIOSDevice() && isStandalone();
-};
-
-/**
  * @description 카카오 OAuth 제공업체 생성
  */
 export const createKakaoProvider = () => {
@@ -157,21 +150,72 @@ const handleKakaoAuthError = (error: FirebaseError): ErrorResponse => {
 };
 
 /**
- * @description 카카오 로그인
+ * @description iOS PWA 여부 확인
+ */
+const isIOSPWA = (): boolean => {
+  return isIOSDevice() && isStandalone();
+};
+
+/**
+ * @description iOS PWA에서 Safari로 로그인 안내
  *
- * iOS PWA에서도 cacheStorage를 활용하여 로그인 상태를 유지합니다.
- * - Popup 방식 우선 시도
- * - Popup 실패 시 Redirect 방식으로 자동 재시도
- * - iOS PWA에서 redirect 전후로 cacheStorage에 상태 저장
+ * iOS PWA (standalone 모드)의 근본적 제약사항:
+ * - WKWebView 환경에서 OAuth 리다이렉트 불가
+ * - 외부 리다이렉트 후 원래 PWA 컨텍스트로 복귀 불가
+ * - 팝업 및 쿼리 파라미터 손실
+ *
+ * 해결책:
+ * - Safari에서 로그인 → PWA와 쿠키/세션 공유
+ * - PWA 재실행 시 자동 로그인 상태 유지
+ */
+const redirectToSafariForLogin = () => {
+  const message =
+    "🔐 iOS 앱에서는 보안상 로그인이 제한됩니다.\n\n" +
+    "✅ Safari 브라우저에서 로그인하시면,\n" +
+    "다음부터 앱에서 자동으로 로그인됩니다!\n\n" +
+    "📱 Safari로 이동하시겠습니까?";
+
+  if (confirm(message)) {
+    // 현재 경로 저장 (로그인 후 복귀용)
+    const currentPath = window.location.pathname + window.location.search;
+    sessionStorage.setItem("ios_pwa_return_path", currentPath);
+
+    // Safari로 로그인 페이지 열기
+    const loginUrl = window.location.origin + "/login";
+    window.location.href = loginUrl;
+  }
+
+  const error: ErrorResponse = {
+    status: 403,
+    message: "iOS PWA에서는 Safari를 통한 로그인이 필요합니다.",
+  };
+  throw error;
+};
+
+/**
+ * @description 카카오 로그인 - iOS PWA에서는 Safari로 안내, 일반 환경에서는 Popup 방식
  */
 export const signInWithKakao = async (): Promise<{
   isNewUser: boolean;
   kakaoAccessToken?: string;
 }> => {
+  // iOS PWA 환경에서는 Safari로 안내
+  if (isIOSPWA()) {
+    redirectToSafariForLogin();
+    // 여기는 도달하지 않음 (에러 throw)
+    return { isNewUser: false };
+  }
+
+  // 일반 환경에서는 Firebase Auth Popup 사용
   try {
     const provider = createKakaoProvider();
 
-    // Popup 방식으로 로그인 시도
+    // iOS PWA에서는 리다이렉트 전에 cacheStorage에 상태 저장
+    if (isIOSPWA() && typeof window !== "undefined") {
+      await setRedirectPending(window.location.href);
+    }
+
+    // 일반 환경에서는 popup 방식 사용
     const result = await signInWithPopup(auth, provider);
 
     // null 체크 및 검증
