@@ -91,19 +91,36 @@ const nextConfig: NextConfig = {
   // eslint-disable-next-line require-await
   async rewrites() {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 
-    // 환경 변수가 없으면 빈 배열 반환 (프록시 비활성화)
-    if (!baseUrl) {
-      console.warn("⚠️ NEXT_PUBLIC_BASE_URL is not set. API proxy disabled.");
-      return [];
+    const rewrites = [];
+
+    // Firebase Auth 프록시 설정 (iOS PWA 쿼리스트링 유실 문제 해결)
+    // Firebase Auth Helper를 앱 도메인으로 프록시하여 cross-origin redirect 방지
+    if (authDomain) {
+      rewrites.push(
+        {
+          source: "/__/auth/:path*",
+          destination: `https://${authDomain}/__/auth/:path*`,
+        },
+        {
+          source: "/__/firebase/:path*",
+          destination: `https://${authDomain}/__/firebase/:path*`,
+        }
+      );
     }
 
-    return [
-      {
+    // API 프록시
+    if (baseUrl) {
+      rewrites.push({
         source: "/api-proxy/:path*",
         destination: `${baseUrl}/:path*`,
-      },
-    ];
+      });
+    } else {
+      console.warn("⚠️ NEXT_PUBLIC_BASE_URL is not set. API proxy disabled.");
+    }
+
+    return rewrites;
   },
 };
 

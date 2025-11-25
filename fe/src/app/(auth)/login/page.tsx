@@ -13,14 +13,8 @@ import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao, handleKakaoRedirectResult } from "@/lib/auth";
 import { auth } from "@/lib/firebase";
-import {
-  getCachedRedirectData,
-  setCachedRedirectData,
-  clearCachedRedirectData,
-} from "@/utils/auth/cache-auth";
 import { setKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
-import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 
 /**
  * @description 로그인 페이지 콘텐츠 (useSearchParams 사용)
@@ -93,87 +87,8 @@ const LoginPageContent = () => {
         hashParams.has("error") ||
         hashParams.has("state");
 
-      // iOS PWA 플래그 확인
-      const isPWAFlag = urlParams.get("isPWA") === "true";
-
-      // iOS PWA에서 WebView로 열린 경우: 쿼리스트링을 캐시스토리지에 저장하고 창 닫기
-      if (isPWAFlag && hasAuthParams) {
-        debug.log("iOS PWA WebView에서 redirect 돌아옴 - 캐시스토리지에 저장");
-
-        try {
-          // 쿼리스트링 데이터를 캐시스토리지에 저장
-          await setCachedRedirectData({
-            code: urlParams.get("code") || hashParams.get("code") || undefined,
-            error:
-              urlParams.get("error") || hashParams.get("error") || undefined,
-            state:
-              urlParams.get("state") || hashParams.get("state") || undefined,
-            hashParams: {
-              code: hashParams.get("code") || undefined,
-              error: hashParams.get("error") || undefined,
-              state: hashParams.get("state") || undefined,
-            },
-          });
-
-          debug.log("캐시스토리지 저장 완료, WebView 닫기 시도");
-
-          // WebView 닫기
-          window.close();
-
-          // 만약 window.close()가 작동하지 않는 경우를 위한 안내 메시지
-          setTimeout(() => {
-            setIsLoading(false);
-            setErrorMessage("창을 닫고 앱으로 돌아가주세요.");
-          }, 1000);
-
-          return;
-        } catch (error) {
-          debug.error("캐시스토리지 저장 실패:", error);
-          setIsLoading(false);
-          setErrorMessage("로그인 처리 중 오류가 발생했습니다.");
-          return;
-        }
-      }
-
-      // iOS PWA에서 캐시스토리지에 저장된 redirect 데이터가 있는지 확인
-      if (!isPWAFlag && isIOSDevice() && isStandalone()) {
-        const cachedData = await getCachedRedirectData();
-
-        if (cachedData) {
-          debug.log("캐시스토리지에서 redirect 데이터 발견:", cachedData);
-
-          // 캐시 데이터를 URL로 복원 (handleKakaoRedirectResult가 읽을 수 있도록)
-          const restoreParams = new URLSearchParams();
-          if (cachedData.code) restoreParams.set("code", cachedData.code);
-          if (cachedData.error) restoreParams.set("error", cachedData.error);
-          if (cachedData.state) restoreParams.set("state", cachedData.state);
-
-          // 원래 next 파라미터 유지
-          const originalNext = searchParams.get("next");
-          if (originalNext) {
-            restoreParams.set("next", originalNext);
-          }
-
-          // URL을 복원 (history.replaceState로 실제 URL 변경)
-          const restoredUrl = `${window.location.origin}${LINK_URL.LOGIN}?${restoreParams.toString()}`;
-          window.history.replaceState(
-            { ...window.history.state, as: restoredUrl, url: restoredUrl },
-            "",
-            restoredUrl
-          );
-
-          // 캐시 삭제
-          await clearCachedRedirectData();
-
-          debug.log("URL 복원 완료, redirect 처리 계속 진행");
-
-          // URL이 복원되었으므로 hasAuthParams를 true로 설정
-          // 하지만 실제로는 현재 루프에서 계속 진행
-        }
-      }
-
       // redirect로 돌아온 경우, auth 파라미터만 제거하여 깔끔한 URL 유지
-      if (hasAuthParams && !isPWAFlag && typeof window !== "undefined") {
+      if (hasAuthParams && typeof window !== "undefined") {
         const originalNext = urlParams.get("next") || searchParams.get("next");
         const cleanSearchParams = new URLSearchParams();
         if (originalNext) {
@@ -192,7 +107,7 @@ const LoginPageContent = () => {
 
       try {
         // 페이지 로드 시 즉시 getRedirectResult 호출 (Firebase 권장 방식)
-        // iOS PWA에서는 cacheStorage를 통해 쿼리스트링 손실 문제를 해결
+        // authDomain을 앱 도메인으로 설정하고 reverse proxy를 통해 cross-origin redirect 방지
         const redirectResult = await handleKakaoRedirectResult();
 
         if (redirectResult) {
@@ -337,68 +252,17 @@ const LoginPageContent = () => {
    *    3-2. FCM 토큰 등록 (실패해도 계속 진행)
    *    3-3. 닉네임 여부에 따라 온보딩 페이지 또는 홈으로 이동
    *
-   * iOS PWA의 경우:
-   * - isPWA 플래그가 없는 메인 PWA: WKWebView로 로그인 창을 열고 대기
-   * - isPWA 플래그가 있는 WebView: 실제 로그인 수행, redirect 후 캐시스토리지에 저장
+   * iOS PWA 쿼리스트링 유실 문제 해결:
+   * - authDomain을 앱 도메인으로 설정 (firebase.ts)
+   * - /__/auth/* 경로를 reverse proxy로 firebaseapp.com으로 전달 (next.config.ts)
+   * - cross-origin redirect가 발생하지 않아 쿼리스트링 유실 방지
+   *
+   * 로그인 방식:
+   * - signInWithPopup() 먼저 시도
+   * - 실패 시 signInWithRedirect()로 자동 폴백
+   * - redirect 후 getRedirectResult()가 자동으로 처리
    */
   const handleKakaoLogin = async () => {
-    // 현재 URL에 isPWA 플래그가 있는지 확인
-    const urlParams = new URLSearchParams(window.location.search);
-    const isPWAFlag = urlParams.get("isPWA") === "true";
-
-    // iOS PWA에서 isPWA 플래그가 없는 경우: WKWebView로 로그인 페이지 열기
-    if (isIOSDevice() && isStandalone() && !isPWAFlag) {
-      debug.log("iOS PWA (메인) - WKWebView로 로그인 페이지 열기");
-
-      // 현재 페이지의 next 파라미터 유지
-      const currentNext = returnTo || "";
-      const loginParams = new URLSearchParams();
-      loginParams.set("isPWA", "true");
-      if (currentNext) {
-        loginParams.set("next", currentNext);
-      }
-
-      const loginUrl = `${window.location.origin}${LINK_URL.LOGIN}?${loginParams.toString()}`;
-
-      // window.open으로 WKWebView 열기
-      const windowRef = window.open(loginUrl, "_blank");
-
-      // 팝업 차단 확인
-      if (
-        !windowRef ||
-        windowRef.closed ||
-        typeof windowRef.closed === "undefined"
-      ) {
-        debug.warn("팝업이 차단되었습니다. 일반 네비게이션으로 폴백");
-        // 팝업 차단 시 일반 로그인 진행 (아래로 계속)
-      } else {
-        // WKWebView가 성공적으로 열린 경우
-        debug.log("WKWebView로 로그인 페이지 열기 성공, 캐시 데이터 대기");
-
-        // 주기적으로 캐시스토리지 확인
-        const checkInterval = setInterval(async () => {
-          const cachedData = await getCachedRedirectData();
-          if (cachedData) {
-            clearInterval(checkInterval);
-            debug.log("캐시스토리지에서 로그인 데이터 수신, 처리 시작");
-
-            // 캐시 데이터로 로그인 처리 (페이지 새로고침)
-            window.location.reload();
-          }
-        }, 500); // 500ms마다 확인
-
-        // 30초 후 타임아웃
-        setTimeout(() => {
-          clearInterval(checkInterval);
-        }, 30000);
-
-        return; // 함수 종료
-      }
-    }
-
-    // WebView 내부 또는 일반 브라우저: 실제 로그인 수행
-    debug.log("실제 카카오 로그인 수행", { isPWAFlag });
-
     setIsLoading(true);
     setErrorMessage(null);
 
