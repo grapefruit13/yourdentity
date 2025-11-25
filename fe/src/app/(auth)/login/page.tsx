@@ -10,9 +10,10 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
-import { signInWithKakao, getKakaoRedirectResult } from "@/lib/auth";
+import { signInWithKakao } from "@/lib/auth";
 import { setKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
+import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 
 /**
  * @description 로그인 페이지 콘텐츠 (useSearchParams 사용)
@@ -23,6 +24,7 @@ const LoginPageContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { registerFCMToken } = useFCM();
+  const [isIOSPWA, setIsIOSPWA] = useState(false);
 
   // 로그인 후 돌아갈 경로 (next 쿼리 파라미터)
   const rawNext = searchParams.get("next") || null;
@@ -39,63 +41,21 @@ const LoginPageContent = () => {
     },
   });
 
-  /**
-   * @description Redirect 결과 처리 (iOS PWA용)
-   * 페이지 로드 시 Redirect 결과가 있는지 확인하고 처리
-   */
+  // iOS PWA 감지 및 안내 메시지 표시
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        setIsLoading(true);
-        const redirectResult = await getKakaoRedirectResult();
+    if (typeof window !== "undefined") {
+      const isPWA = isIOSDevice() && isStandalone();
+      setIsIOSPWA(isPWA);
 
-        // Redirect 결과가 없으면 아무것도 하지 않음
-        if (!redirectResult) {
-          setIsLoading(false);
-          return;
+      // iOS PWA에서 Safari로부터 돌아온 경우 안내
+      if (isPWA) {
+        const intendedPath = sessionStorage.getItem("ios_pwa_intended_path");
+        if (intendedPath && intendedPath !== "/login") {
+          sessionStorage.removeItem("ios_pwa_intended_path");
         }
-
-        const { kakaoAccessToken, isNewUser } = redirectResult;
-
-        // 신규 회원 처리
-        if (isNewUser) {
-          if (!kakaoAccessToken) {
-            debug.error("신규 회원인데 카카오 액세스 토큰이 없습니다.");
-            setIsLoading(false);
-            setErrorMessage(
-              "카카오 로그인 권한이 필요합니다. 다시 시도해 주세요."
-            );
-            return;
-          }
-
-          setKakaoAccessToken(kakaoAccessToken);
-          await registerFCMTokenSafely();
-          setIsLoading(false);
-          router.replace(LINK_URL.MY_PAGE_EDIT);
-          return;
-        }
-
-        // 기존 사용자 처리
-        try {
-          const { data: userData } = await refetchUserData();
-          const hasNickname = !!userData?.nickname;
-          await registerFCMTokenSafely();
-          setIsLoading(false);
-          handlePostLoginRouting(hasNickname);
-        } catch (error) {
-          debug.error("사용자 정보 조회 실패:", error);
-          setIsLoading(false);
-          setErrorMessage("사용자 정보 조회에 실패했습니다.");
-        }
-      } catch (error) {
-        debug.error("Redirect 결과 처리 실패:", error);
-        setIsLoading(false);
-        setErrorMessage("로그인에 실패했어요. 다시 시도해 주세요.");
       }
-    };
-
-    handleRedirectResult();
-  }, [refetchUserData, router, returnTo]); // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }, []);
 
   /**
    * @description FCM 토큰 등록 (실패해도 로그인은 계속 진행)
@@ -222,6 +182,30 @@ const LoginPageContent = () => {
             </Typography>
           </ButtonBase>
         </div>
+        {isIOSPWA && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+            <Typography
+              font="noto"
+              variant="label1B"
+              className="mb-2 text-amber-900"
+            >
+              💡 iOS 앱 로그인 안내
+            </Typography>
+            <Typography
+              font="noto"
+              variant="label2M"
+              className="text-amber-800"
+            >
+              iOS 앱에서는 보안상 로그인이 제한됩니다.
+              <br />
+              버튼 클릭 시 Safari로 이동하여 로그인해 주세요.
+              <br />
+              <span className="font-semibold text-amber-900">
+                로그인 후 다시 앱 아이콘을 눌러 접속하시면 됩니다.
+              </span>
+            </Typography>
+          </div>
+        )}
         {errorMessage && (
           <div className="mt-3 text-center">
             <Typography font="noto" variant="label1M" className="text-red-500">
