@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,37 +18,6 @@ import { debug } from "@/utils/shared/debugger";
  * @description 로그인 페이지 콘텐츠 (useSearchParams 사용)
  */
 const LoginPageContent = () => {
-  // 로그인 페이지에서 서비스워커를 일시적으로 비활성화하여
-  // OAuth 리다이렉트 후 컨텍스트 유지 문제 방지
-  useEffect(() => {
-    const disableServiceWorker = async () => {
-      if ("serviceWorker" in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.getRegistration();
-          if (registration && registration.active) {
-            // 서비스워커 unregister
-            const unregistered = await registration.unregister();
-            if (unregistered) {
-              debug.log("[Login] Service Worker unregistered for login page");
-              // 서비스워커가 제거되었으므로 페이지를 새로고침하여
-              // 서비스워커 없이 로드되도록 함
-              // 단, 이미 새로고침된 경우는 무한 루프 방지
-              const hasRefreshed = sessionStorage.getItem("sw_unregistered");
-              if (!hasRefreshed) {
-                sessionStorage.setItem("sw_unregistered", "true");
-                window.location.reload();
-              }
-            }
-          }
-        } catch (error) {
-          debug.error("[Login] Failed to unregister service worker:", error);
-        }
-      }
-    };
-
-    // 페이지 로드 시 서비스워커가 활성화되어 있는지 확인하고 비활성화
-    disableServiceWorker();
-  }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
