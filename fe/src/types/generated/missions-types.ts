@@ -78,7 +78,7 @@ export type TGETMissionsMeRes = {
 
 export interface TGETMissionsPostsReq {
   sort?: "latest" | "popular";
-  category?: string;
+  categories?: string;
   userId?: string;
 }
 

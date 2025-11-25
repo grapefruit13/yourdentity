@@ -180,7 +180,7 @@ export const missionsKeys = {
       path: {},
       query: {
         sort: request.sort,
-        category: request.category,
+        categories: request.categories,
         userId: request.userId,
       },
     }),

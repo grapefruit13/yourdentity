@@ -179,6 +179,19 @@ export interface ErrorResponse {
   message: string;
 }
 
+export interface UnauthorizedResponse {
+  status: number;
+  message: string;
+}
+
+export interface AccountSuspendedResponse {
+  status: number;
+  message: string;
+  data?: {
+    suspensionEndAt?: string;
+  };
+}
+
 export interface PaginatedResponse {
   status: number;
   data: Record<string, any>[];
