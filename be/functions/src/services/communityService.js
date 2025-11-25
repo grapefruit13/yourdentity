@@ -1290,6 +1290,14 @@ class CommunityService {
             certificationPosts: FieldValue.increment(1),
             updatedAt: FieldValue.serverTimestamp(),
           });
+
+          const memberRef = this.firestoreService.db
+            .collection(`communities/${communityId}/members`)
+            .doc(userId);
+          transaction.update(memberRef, {
+            certificationPostsCount: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
         }
         
         console.log("[COMMUNITY][createPost] 트랜잭션 내 작업 완료", {
