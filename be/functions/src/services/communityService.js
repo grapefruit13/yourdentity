@@ -1724,6 +1724,15 @@ class CommunityService {
             certificationPosts: FieldValue.increment(-1),
             updatedAt: FieldValue.serverTimestamp(),
           });
+
+          // members 컬렉션의 certificationPostsCount 감소
+          const memberRef = this.firestoreService.db
+            .collection(`communities/${communityId}/members`)
+            .doc(userId);
+          transaction.update(memberRef, {
+            certificationPostsCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
         }
       });
     } catch (error) {
