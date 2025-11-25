@@ -5,6 +5,8 @@ import { FirebaseError } from "firebase/app";
 import {
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   UserCredential,
@@ -19,6 +21,12 @@ import { FIREBASE_AUTH_ERROR_CODES } from "@/constants/auth/_firebase-error-code
 import { AUTH_MESSAGE } from "@/constants/auth/_message";
 import { auth, functions } from "@/lib/firebase";
 import { ErrorResponse, Result } from "@/types/shared/response";
+import {
+  setRedirectPending,
+  clearCachedAuthState,
+  getCachedAuthState,
+  setCachedAuthState,
+} from "@/utils/auth/cache-auth";
 import { debug } from "@/utils/shared/debugger";
 import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 import { post, del } from "./axios";
@@ -201,6 +209,13 @@ export const signInWithKakao = async (): Promise<{
   // 일반 환경에서는 Firebase Auth Popup 사용
   try {
     const provider = createKakaoProvider();
+
+    // iOS PWA에서는 리다이렉트 전에 cacheStorage에 상태 저장
+    if (isIOSPWA() && typeof window !== "undefined") {
+      await setRedirectPending(window.location.href);
+    }
+
+    // 일반 환경에서는 popup 방식 사용
     const result = await signInWithPopup(auth, provider);
 
     // null 체크 및 검증
@@ -221,6 +236,215 @@ export const signInWithKakao = async (): Promise<{
     return { isNewUser, kakaoAccessToken };
   } catch (error) {
     debug.warn("카카오 로그인 실패:", error);
+
+    if (error instanceof FirebaseError) {
+      // 팝업 관련 에러인 경우, redirect 방식으로 재시도
+      const shouldUseRedirect =
+        error.code === FIREBASE_AUTH_ERROR_CODES.POPUP_BLOCKED ||
+        error.code === FIREBASE_AUTH_ERROR_CODES.POPUP_CLOSED_BY_USER ||
+        error.code === FIREBASE_AUTH_ERROR_CODES.CANCELLED_POPUP_REQUEST ||
+        isNetworkError(error.code);
+
+      if (shouldUseRedirect) {
+        debug.log("Popup 실패: redirect 방식으로 재시도", {
+          errorCode: error.code,
+        });
+        try {
+          // 팝업 실패 시 redirect 방식으로 재시도
+          const provider = createKakaoProvider();
+
+          // iOS PWA에서는 리다이렉트 전에 cacheStorage에 상태 저장
+          if (isIOSPWA() && typeof window !== "undefined") {
+            await setRedirectPending(window.location.href);
+          }
+
+          // redirect는 페이지 이동이 발생하므로 Promise는 resolve되지 않음
+          await signInWithRedirect(auth, provider);
+          // 이 코드는 실행되지 않지만 (redirect로 페이지 리로드), 타입 체크를 위해 필요
+          const redirectError: ErrorResponse = {
+            status: 500,
+            message: "리다이렉트 중입니다...",
+          };
+          throw redirectError;
+        } catch (redirectError) {
+          // redirect 실패 시 원래 에러 처리
+          throw handleKakaoAuthError(error);
+        }
+      }
+
+      throw handleKakaoAuthError(error);
+    }
+
+    // 알 수 없는 에러
+    const unknownError: ErrorResponse = {
+      status: 500,
+      message: AUTH_MESSAGE.ERROR.UNKNOWN_ERROR,
+    };
+    throw unknownError;
+  }
+};
+
+/**
+ * @description Firebase Auth 초기화 대기
+ * redirect 후 getRedirectResult를 호출하기 전에 Auth가 완전히 초기화되도록 대기
+ *
+ * 참고: redirect 후에는 auth.currentUser가 null일 수 있으므로,
+ * onAuthStateChanged로 초기화 완료를 기다립니다.
+ */
+const waitForAuthReady = (): Promise<void> => {
+  return new Promise((resolve) => {
+    // Auth 상태 변경 리스너로 초기화 완료 대기
+    // redirect 후에는 currentUser가 null일 수 있으므로 항상 리스너를 설정
+    const unsubscribe = onAuthStateChanged(auth, () => {
+      unsubscribe();
+      resolve();
+    });
+
+    // 최대 1초 대기 (타임아웃) - Firebase Auth는 보통 빠르게 초기화됨
+    setTimeout(() => {
+      unsubscribe();
+      resolve();
+    }, 1000);
+  });
+};
+
+/**
+ * @description 카카오 로그인 Redirect 결과 처리
+ *
+ * 참고: Firebase Auth의 getRedirectResult는 한 번만 호출 가능하며,
+ * 호출 후 결과가 소비됩니다. redirect 후 페이지 로드 시 즉시 호출해야 합니다.
+ *
+ * 카카오 공식 문서: https://developers.kakao.com/docs/latest/ko/kakaologin/js
+ */
+export const handleKakaoRedirectResult = async (): Promise<{
+  isNewUser: boolean;
+  kakaoAccessToken?: string;
+} | null> => {
+  try {
+    // iOS PWA에서 cacheStorage를 통해 리다이렉트 대기 중인지 확인
+    const cachedState = await getCachedAuthState();
+    const isRedirectFromCache = cachedState?.isRedirectPending ?? false;
+
+    // 전체 URL 정보 확인 (redirect 후 돌아왔는지 확인)
+    const fullUrl = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+    const hasAuthParams =
+      urlParams.has("code") ||
+      urlParams.has("error") ||
+      urlParams.has("state") ||
+      hashParams.has("code") ||
+      hashParams.has("error") ||
+      hashParams.has("state");
+
+    debug.log("handleKakaoRedirectResult 호출", {
+      fullUrl,
+      hasAuthParams,
+      isRedirectFromCache,
+    });
+
+    // Firebase Auth 초기화 대기 (중요: redirect 후 Auth가 완전히 초기화되도록)
+    await waitForAuthReady();
+
+    debug.log("Firebase Auth 초기화 완료, getRedirectResult 호출");
+
+    // iOS PWA에서 cacheStorage에 redirect 대기 상태가 있고 쿼리스트링이 손실된 경우
+    // Firebase Auth 상태를 확인하여 로그인 완료 여부 확인
+    if (isIOSPWA() && !hasAuthParams && isRedirectFromCache) {
+      // 쿼리스트링이 손실되었지만 리다이렉트가 진행 중이었을 수 있음
+      // Firebase Auth 상태를 확인하여 이미 로그인된 경우 처리
+      await new Promise((resolve) => setTimeout(resolve, 500)); // 추가 대기
+
+      // Firebase Auth 상태 확인
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        debug.log(
+          "iOS PWA: 쿼리스트링 손실했지만 Firebase Auth에서 로그인 상태 확인",
+          {
+            uid: currentUser.uid,
+          }
+        );
+
+        // cacheStorage에서 인증 상태 저장
+        await setCachedAuthState({
+          uid: currentUser.uid,
+          isRedirectPending: false,
+          timestamp: Date.now(),
+        });
+
+        // 캐시 정리
+        await clearCachedAuthState();
+
+        // 로그인 완료 상태로 반환
+        return {
+          isNewUser: false, // 기존 사용자로 가정 (정확한 판단은 어려움)
+          kakaoAccessToken: undefined, // 토큰은 없을 수 있음
+        };
+      }
+    }
+
+    // getRedirectResult는 한 번만 호출 가능하며, 호출 후 결과가 소비됩니다
+    const result = await getRedirectResult(auth);
+
+    debug.log(
+      "getRedirectResult 결과:",
+      result ? { hasUser: !!result.user, uid: result.user?.uid } : null
+    );
+
+    if (!result) {
+      // redirect 결과가 없음
+      if (hasAuthParams) {
+        // URL에 인증 파라미터가 있는데 결과가 없으면 에러
+        debug.warn("카카오 로그인 redirect 결과가 없습니다.", {
+          fullUrl,
+          hasAuthParams,
+        });
+        throw new Error("카카오 로그인 redirect 결과가 없습니다.");
+      }
+
+      // iOS PWA에서 리다이렉트 대기 중이었지만 결과가 없는 경우
+      if (isRedirectFromCache) {
+        await clearCachedAuthState();
+        debug.log("iOS PWA: 리다이렉트 대기 중이었지만 결과 없음");
+      }
+
+      return null;
+    }
+
+    // null 체크 및 검증
+    if (!result.user) {
+      const invalidResultError: ErrorResponse = {
+        status: 500,
+        message: AUTH_MESSAGE.KAKAO.FAILURE,
+      };
+      throw invalidResultError;
+    }
+
+    const additionalInfo = getAdditionalUserInfo(result);
+    const isNewUser = additionalInfo?.isNewUser ?? false;
+    const credential = OAuthProvider.credentialFromResult(result);
+    const kakaoAccessToken = credential?.accessToken;
+
+    // iOS PWA에서 cacheStorage에 인증 상태 저장
+    if (isIOSPWA()) {
+      await setCachedAuthState({
+        uid: result.user.uid,
+        isRedirectPending: false,
+        timestamp: Date.now(),
+      });
+    }
+
+    // 캐시 정리
+    await clearCachedAuthState();
+
+    debug.log(AUTH_MESSAGE.KAKAO.SUCCESS, result.user);
+    return { isNewUser, kakaoAccessToken };
+  } catch (error) {
+    debug.warn("카카오 redirect 결과 처리 실패:", error);
+
+    // 캐시 정리
+    await clearCachedAuthState();
 
     if (error instanceof FirebaseError) {
       throw handleKakaoAuthError(error);
