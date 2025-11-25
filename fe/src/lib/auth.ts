@@ -5,6 +5,8 @@ import { FirebaseError } from "firebase/app";
 import {
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   UserCredential,
@@ -13,6 +15,7 @@ import {
   getIdToken,
   getAdditionalUserInfo,
   reauthenticateWithPopup,
+  reauthenticateWithRedirect,
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { FIREBASE_AUTH_ERROR_CODES } from "@/constants/auth/_firebase-error-codes";
@@ -20,6 +23,7 @@ import { AUTH_MESSAGE } from "@/constants/auth/_message";
 import { auth, functions } from "@/lib/firebase";
 import { ErrorResponse, Result } from "@/types/shared/response";
 import { debug } from "@/utils/shared/debugger";
+import { isIOSDevice, isStandalone } from "@/utils/shared/device";
 import { post, del } from "./axios";
 
 /**
@@ -141,7 +145,14 @@ const handleKakaoAuthError = (error: FirebaseError): ErrorResponse => {
 };
 
 /**
- * @description 카카오 로그인 - Popup 방식(test)
+ * @description iOS PWA 여부 확인
+ */
+const isIOSPWA = (): boolean => {
+  return isIOSDevice() && isStandalone();
+};
+
+/**
+ * @description 카카오 로그인 - iOS PWA에서는 Redirect, 그 외에는 Popup 방식
  */
 export const signInWithKakao = async (): Promise<{
   isNewUser: boolean;
@@ -149,6 +160,14 @@ export const signInWithKakao = async (): Promise<{
 }> => {
   try {
     const provider = createKakaoProvider();
+
+    // iOS PWA에서는 Redirect 방식 사용
+    if (isIOSPWA()) {
+      debug.log("iOS PWA 감지: signInWithRedirect 사용");
+      await signInWithRedirect(auth, provider);
+    }
+
+    // 일반 웹/앱에서는 Popup 방식 사용
     const result = await signInWithPopup(auth, provider);
 
     // null 체크 및 검증
@@ -169,6 +188,53 @@ export const signInWithKakao = async (): Promise<{
     return { isNewUser, kakaoAccessToken };
   } catch (error) {
     debug.warn("카카오 로그인 실패:", error);
+
+    if (error instanceof FirebaseError) {
+      throw handleKakaoAuthError(error);
+    }
+
+    // 알 수 없는 에러
+    const unknownError: ErrorResponse = {
+      status: 500,
+      message: AUTH_MESSAGE.ERROR.UNKNOWN_ERROR,
+    };
+    throw unknownError;
+  }
+};
+
+/**
+ * @description 카카오 Redirect 결과 처리 (iOS PWA용)
+ */
+export const getKakaoRedirectResult = async (): Promise<{
+  isNewUser: boolean;
+  kakaoAccessToken?: string;
+} | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+
+    // Redirect 결과가 없으면 null 반환 (정상적인 경우)
+    if (!result) {
+      return null;
+    }
+
+    // null 체크 및 검증
+    if (!result.user) {
+      const invalidResultError: ErrorResponse = {
+        status: 500,
+        message: AUTH_MESSAGE.KAKAO.FAILURE,
+      };
+      throw invalidResultError;
+    }
+
+    const additionalInfo = getAdditionalUserInfo(result);
+    const isNewUser = additionalInfo?.isNewUser ?? false;
+    const credential = OAuthProvider.credentialFromResult(result);
+    const kakaoAccessToken = credential?.accessToken;
+
+    debug.log("카카오 Redirect 로그인 성공:", result.user);
+    return { isNewUser, kakaoAccessToken };
+  } catch (error) {
+    debug.warn("카카오 Redirect 결과 처리 실패:", error);
 
     if (error instanceof FirebaseError) {
       throw handleKakaoAuthError(error);
@@ -309,6 +375,101 @@ export const checkEmailAvailability = async (
 };
 
 /**
+ * @description 카카오 재인증 (iOS PWA에서는 Redirect, 그 외에는 Popup)
+ */
+export const reauthenticateWithKakao = async (): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) {
+    const notLoggedInError: ErrorResponse = {
+      status: 401,
+      message: "로그인된 사용자가 없습니다",
+    };
+    throw notLoggedInError;
+  }
+
+  try {
+    const provider = createKakaoProvider();
+
+    // iOS PWA에서는 Redirect 방식 사용
+    if (isIOSPWA()) {
+      debug.log("iOS PWA 감지: reauthenticateWithRedirect 사용");
+      // Redirect 방식은 localStorage에 상태 저장 필요
+      localStorage.setItem("pending_reauth", "true");
+      await reauthenticateWithRedirect(user, provider);
+      // 실제로는 여기에 도달하지 않음 (페이지 리로드)
+      throw new Error("Redirect 진행 중");
+    }
+
+    // 일반 웹/앱에서는 Popup 방식 사용
+    const result = await reauthenticateWithPopup(user, provider);
+    const credential = OAuthProvider.credentialFromResult(result);
+    const kakaoAccessToken = credential?.accessToken;
+
+    if (!kakaoAccessToken) {
+      const tokenError: ErrorResponse = {
+        status: 500,
+        message: "카카오 액세스 토큰을 가져올 수 없습니다",
+      };
+      throw tokenError;
+    }
+
+    debug.log("카카오 재인증 성공, 액세스 토큰 발급 완료");
+    return kakaoAccessToken;
+  } catch (reauthError) {
+    debug.warn("카카오 재인증 실패:", reauthError);
+
+    if (reauthError instanceof FirebaseError) {
+      throw handleKakaoAuthError(reauthError);
+    }
+
+    throw reauthError;
+  }
+};
+
+/**
+ * @description 카카오 재인증 Redirect 결과 처리 (iOS PWA용)
+ */
+export const getReauthRedirectResult = async (): Promise<string | null> => {
+  try {
+    // pending_reauth 플래그 확인
+    const isPendingReauth = localStorage.getItem("pending_reauth") === "true";
+    if (!isPendingReauth) {
+      return null;
+    }
+
+    localStorage.removeItem("pending_reauth");
+
+    const result = await getRedirectResult(auth);
+
+    if (!result) {
+      return null;
+    }
+
+    const credential = OAuthProvider.credentialFromResult(result);
+    const kakaoAccessToken = credential?.accessToken;
+
+    if (!kakaoAccessToken) {
+      const tokenError: ErrorResponse = {
+        status: 500,
+        message: "카카오 액세스 토큰을 가져올 수 없습니다",
+      };
+      throw tokenError;
+    }
+
+    debug.log("카카오 재인증 Redirect 성공:", kakaoAccessToken);
+    return kakaoAccessToken;
+  } catch (error) {
+    debug.warn("카카오 재인증 Redirect 결과 처리 실패:", error);
+
+    if (error instanceof FirebaseError) {
+      throw handleKakaoAuthError(error);
+    }
+
+    throw error;
+  }
+};
+
+/**
  * @description 회원 탈퇴
  * 1. 카카오 재인증으로 새로운 액세스 토큰 발급
  * 2. 백엔드 API 호출 (카카오 연결 해제 + Firestore 가명처리)
@@ -334,30 +495,7 @@ export const deleteUserAccount = async (): Promise<void> => {
 
     // 카카오 사용자인 경우 재인증으로 새로운 액세스 토큰 발급
     if (isKakaoUser) {
-      try {
-        const provider = createKakaoProvider();
-        const result = await reauthenticateWithPopup(user, provider);
-        const credential = OAuthProvider.credentialFromResult(result);
-        kakaoAccessToken = credential?.accessToken;
-
-        if (!kakaoAccessToken) {
-          const tokenError: ErrorResponse = {
-            status: 500,
-            message: "카카오 액세스 토큰을 가져올 수 없습니다",
-          };
-          throw tokenError;
-        }
-
-        debug.log("카카오 재인증 성공, 액세스 토큰 발급 완료");
-      } catch (reauthError) {
-        debug.warn("카카오 재인증 실패:", reauthError);
-
-        if (reauthError instanceof FirebaseError) {
-          throw handleKakaoAuthError(reauthError);
-        }
-
-        throw reauthError;
-      }
+      kakaoAccessToken = await reauthenticateWithKakao();
     }
 
     // 백엔드 API 호출 (카카오 연결 해제 + Firestore 가명처리 + Auth 사용자 삭제)
