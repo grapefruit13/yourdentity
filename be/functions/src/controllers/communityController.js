@@ -231,6 +231,32 @@ class CommunityController {
       return next(error);
     }
   }
+
+  /**
+   * 커뮤니티 멤버 닉네임 조회 API
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async getMemberNickname(req, res, next) {
+    try {
+      const {communityId, userId} = req.params;
+      const requestUserId = req.user?.uid;
+
+      // 본인만 조회 가능하도록 검증
+      if (!requestUserId || requestUserId !== userId) {
+        const error = new Error("본인의 정보만 조회할 수 있습니다");
+        error.code = "FORBIDDEN";
+        throw error;
+      }
+
+      const member = await communityService.getMemberNickname(communityId, userId);
+
+      return res.success(member);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new CommunityController();

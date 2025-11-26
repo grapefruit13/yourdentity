@@ -1055,4 +1055,69 @@ router.post(
  */
 router.get("/:communityId/nickname-availability", communityController.checkNicknameAvailability);
 
+// 커뮤니티 멤버 닉네임 조회
+/**
+ * @swagger
+ * /communities/{communityId}/members/{userId}:
+ *   get:
+ *     summary: 커뮤니티 멤버 닉네임 조회
+ *     description: 특정 커뮤니티의 멤버 컬렉션에서 본인의 닉네임을 조회합니다. 본인만 조회 가능합니다.
+ *     tags: [Communities]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: communityId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 커뮤니티 ID
+ *         example: "CP:VYTTZW33IH"
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 사용자 ID (본인만 조회 가능)
+ *         example: "abc123def456"
+ *     responses:
+ *       200:
+ *         description: 멤버 닉네임 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   $ref: '#/components/schemas/CommunityMember'
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 권한 없음 (본인만 조회 가능)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 멤버를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/:communityId/members/:userId", authGuard, communityController.getMemberNickname);
+
 module.exports = router;

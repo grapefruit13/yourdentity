@@ -2111,6 +2111,52 @@ class CommunityService {
       throw new Error("커뮤니티 멤버 추가에 실패했습니다");
     }
   }
+
+  /**
+   * 커뮤니티 멤버 닉네임 조회
+   * @param {string} communityId - 커뮤니티 ID
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object|null>} 멤버 정보 (nickname 포함)
+   */
+  async getMemberNickname(communityId, userId) {
+    try {
+      if (!communityId) {
+        const error = new Error("커뮤니티 ID가 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      if (!userId) {
+        const error = new Error("사용자 ID가 필요합니다");
+        error.code = "BAD_REQUEST";
+        throw error;
+      }
+
+      const membersService = new FirestoreService(`communities/${communityId}/members`);
+      const member = await membersService.getById(userId);
+
+      if (!member) {
+        const error = new Error("멤버를 찾을 수 없습니다");
+        error.code = "NOT_FOUND";
+        throw error;
+      }
+
+      return {
+        id: member.id || userId,
+        userId: member.userId || userId,
+        nickname: member.nickname || null,
+        role: member.role || "member",
+        status: member.status || null,
+        joinedAt: member.joinedAt?.toDate?.()?.toISOString?.() || member.joinedAt,
+      };
+    } catch (error) {
+      console.error("[COMMUNITY] 멤버 닉네임 조회 오류:", error.message);
+      if (error.code === "BAD_REQUEST" || error.code === "NOT_FOUND") {
+        throw error;
+      }
+      throw new Error("멤버 닉네임 조회에 실패했습니다");
+    }
+  }
 }
 
 module.exports = CommunityService;

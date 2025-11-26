@@ -1889,6 +1889,59 @@ const options = {
             },
           },
         },
+        CommunityMember: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "멤버 ID",
+              example: "member_123",
+            },
+            userId: {
+              type: "string",
+              description: "사용자 ID",
+              example: "user_123",
+            },
+            nickname: {
+              type: "string",
+              nullable: true,
+              description: "사용자 닉네임",
+              example: "사용자닉네임",
+            },
+            avatar: {
+              type: "string",
+              nullable: true,
+              description: "프로필 이미지 URL",
+              example: "https://example.com/avatar.jpg",
+            },
+            role: {
+              type: "string",
+              enum: ["member", "admin", "moderator"],
+              description: "멤버 역할",
+              example: "member",
+            },
+            status: {
+              type: "string",
+              nullable: true,
+              description: "멤버 상태 (pending, approved 등)",
+              example: "approved",
+            },
+            joinedAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "가입일시",
+              example: "2025-10-03T17:15:07.862Z",
+            },
+            lastActiveAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "마지막 활동일시",
+              example: "2025-10-03T18:30:15.123Z",
+            },
+          },
+        },
         Post: {
           type: "object",
           properties: {
