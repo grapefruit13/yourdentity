@@ -68,8 +68,6 @@ const CommentItem = ({
   replyingTo,
   onCancelReply,
   onCommentSubmit,
-  commentInput,
-  onCommentInputChange,
   openMenuId = null,
   onMenuToggle,
   replyToReplyInput,
