@@ -30,7 +30,7 @@ export interface TPUTUsersByIdReq {
     rewards?: number;
     authType?: string;
     snsProvider?: string;
-    status?: "pending" | "active" | "suspended";
+    status?: "pending" | "approved" | "suspended";
     serviceTermsVersion?: string;
     privacyTermsVersion?: string;
     age14TermsAgreed?: boolean;

@@ -24,7 +24,7 @@ export interface PaginationResponse {
   totalPages: number;
 }
 export interface User {
-  uid?: string;
+  id?: string;
   name?: string;
   email?: string;
   profileImageUrl?: string;
@@ -335,6 +335,7 @@ export interface CommunityPostListItem {
 export interface CommunityPost {
   id?: string;
   type?: string;
+  programType?: "ROUTINE" | "GATHERING" | "TMI";
   author?: string;
   title?: string;
   content?: string;
@@ -462,7 +463,7 @@ export interface CommunityMember {
   nickname?: string;
   avatar?: string;
   role?: "member" | "admin" | "moderator";
-  status?: "active" | "inactive" | "banned";
+  status?: "pending" | "approved" | "suspended";
   joinedAt?: string;
   lastActiveAt?: string;
 }
