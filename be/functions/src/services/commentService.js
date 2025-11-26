@@ -163,6 +163,10 @@ class CommentService {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
+      if (parentId && parentComment && parentComment.author) {
+        newComment.parentAuthor = parentComment.author;
+      }
+
       const result = await this.firestoreService.runTransaction(async (transaction) => {
         const commentRef = this.firestoreService.db.collection("comments").doc();
         const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc(postId);
@@ -237,6 +241,7 @@ class CommentService {
         id: commentId,
         ...commentWithoutDeleted,
         isLocked: commentWithoutDeleted.isLocked || false,
+        parentAuthor: commentWithoutDeleted.parentAuthor || null,
       };
     } catch (error) {
       console.error("Create comment error:", error.message);
@@ -367,17 +372,18 @@ class CommentService {
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .slice(0, 50)
             .map(reply => {
-              const { media, userId: _userId, ...replyWithoutDeleted } = reply;
+              const { media, userId: _userId, parentAuthor: _parentAuthor, ...replyWithoutDeleted } = reply;
               const replyResult = {
                 ...replyWithoutDeleted,
                 isDeleted: reply.isDeleted || false,
                 isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
                 reportsCount: reply.reportsCount || 0,
+                parentAuthor: reply.parentAuthor || null,
               };
               return replyResult;
             });
 
-          const { media, userId: _userId, ...commentWithoutDeleted } = comment;
+          const { media, userId: _userId, parentAuthor: _parentAuthor, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
@@ -386,6 +392,7 @@ class CommentService {
             repliesCount: replies.length,
             isLiked: viewerId ? likedCommentIds.has(comment.id) : false,
             reportsCount: comment.reportsCount || 0,
+            parentAuthor: comment.parentAuthor || null,
           };
 
           commentsWithReplies.push(processedComment);

@@ -144,6 +144,11 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             nullable: true
  *                             description: 부모 댓글 ID
  *                             example: "comment_456"
+ *                           parentAuthor:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
+ *                             example: "사용자닉네임"
  *                           depth:
  *                             type: number
  *                             description: 댓글 깊이
@@ -212,6 +217,11 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                                   type: string
  *                                   description: 부모 댓글 ID
  *                                   example: "comment_123"
+ *                                 parentAuthor:
+ *                                   type: string
+ *                                   nullable: true
+ *                                   description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
+ *                                   example: "사용자닉네임"
  *                                 depth:
  *                                   type: number
  *                                   description: 댓글 깊이
@@ -366,6 +376,11 @@ router.get(
  *                       nullable: true
  *                       description: 부모 댓글 ID
  *                       example: "comment_456"
+ *                     parentAuthor:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
+ *                       example: "사용자닉네임"
  *                     depth:
  *                       type: number
  *                       description: 댓글 깊이
