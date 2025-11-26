@@ -685,7 +685,7 @@ const ProgramApplyPage = () => {
     formHook.updateFormData({ agreedToTerms: true });
     // 신청 API 호출
     const currentUser = getCurrentUser();
-    const applicantId = currentUser?.uid || userData?.uid || "";
+    const applicantId = currentUser?.uid || userData?.id || "";
 
     if (!applicantId) {
       alert("로그인이 필요합니다.");

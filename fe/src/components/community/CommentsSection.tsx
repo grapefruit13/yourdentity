@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentItem from "@/components/community/CommentItem";
@@ -21,7 +21,6 @@ import {
   usePutCommentsById,
   useDeleteCommentsById,
 } from "@/hooks/generated/comments-hooks";
-import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
 import type { ReplyingToState } from "@/types/shared/comment";
 import { getCommentInputForItem } from "@/utils/shared/comment";
@@ -31,6 +30,7 @@ interface CommentsSectionProps {
   postId: string;
   communityId: string;
   postType?: string;
+  authorName?: string;
   commentInputRef?: React.RefObject<HTMLTextAreaElement | null>;
   onFocusRequestRef?: React.RefObject<(() => void) | null>;
 }
@@ -44,7 +44,7 @@ interface CommentsSectionProps {
 const CommentsSection = ({
   postId,
   communityId,
-  postType,
+  authorName = "",
   commentInputRef,
   onFocusRequestRef,
 }: CommentsSectionProps) => {
@@ -75,15 +75,6 @@ const CommentsSection = ({
     setCommentInput,
     inputRef,
   });
-
-  // 현재 사용자 정보
-  const { data: userData } = useGetUsersMe({
-    select: (data) => data?.user,
-  });
-
-  // TMI 타입 게시글인 경우 실명 사용, 아니면 닉네임 사용
-  const isTMIPost = postType === "TMI" || postType === "TMI_CERT";
-  const userName = isTMIPost ? userData?.name || "" : userData?.nickname || "";
 
   // 댓글 데이터 가져오기
   const { data: commentsData, isLoading: isCommentsLoading } =
@@ -311,7 +302,7 @@ const CommentsSection = ({
               <CommentItem
                 key={comment.id}
                 comment={comment}
-                userName={userName}
+                userName={authorName}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={handleStartReplyToRoot}
@@ -350,7 +341,7 @@ const CommentsSection = ({
             onCommentSubmit={handleCommentSubmit}
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
-            userName={userName}
+            userName={authorName}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />

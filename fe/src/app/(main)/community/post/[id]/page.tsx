@@ -19,7 +19,12 @@ import {
   useGetCommunitiesPostsByTwoIds,
   usePostCommunitiesPostsLikeByTwoIds,
   useDeleteCommunitiesPostsByTwoIds,
+  useGetCommunitiesMembersByTwoIds,
 } from "@/hooks/generated/communities-hooks";
+import {
+  useGetUsersMe,
+  useGetUsersMeParticipatingCommunities,
+} from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
@@ -56,7 +61,7 @@ const PostDetailPage = () => {
 
   // API 연동 - useGetCommunitiesPostsByTwoIds 사용 (communityId와 postId 모두 필요)
   const {
-    data: postData,
+    data: post,
     isLoading,
     error,
   } = useGetCommunitiesPostsByTwoIds({
@@ -67,8 +72,6 @@ const PostDetailPage = () => {
     enabled: !!postId && !!communityId, // communityId가 있을 때만 요청
   });
 
-  // postData를 Schema.CommunityPost 타입으로 변환
-  const post = postData as Schema.CommunityPost & { isLiked?: boolean };
   const postQueryKey = useMemo(
     () =>
       communitiesKeys.getCommunitiesPostsByTwoIds({
@@ -89,6 +92,76 @@ const PostDetailPage = () => {
   );
   const isLiked = post?.isLiked ?? false;
   const isAuthor = post?.isAuthor ?? false;
+
+  // 현재 사용자 정보
+  const { data: userData } = useGetUsersMe({
+    select: (data) => data?.user,
+  });
+
+  // 내가 참여 중인 커뮤니티 조회
+  const { data: participatingCommunitiesData } =
+    useGetUsersMeParticipatingCommunities({
+      enabled: Boolean(userData),
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+    });
+
+  // 내가 참여중인 프로그램인지 확인
+  const isParticipating = useMemo(() => {
+    console.log("zizizi");
+    if (!participatingCommunitiesData || !communityId) return false;
+
+    const allItems = [
+      ...(participatingCommunitiesData.routine?.items || []),
+      ...(participatingCommunitiesData.gathering?.items || []),
+      ...(participatingCommunitiesData.tmi?.items || []),
+    ];
+
+    return allItems.some((item) => item.id === communityId);
+  }, [participatingCommunitiesData, communityId]);
+
+  // 커뮤니티 멤버 닉네임 조회 (참여중인 프로그램인 경우에만)
+  const { data: memberData } = useGetCommunitiesMembersByTwoIds({
+    request: {
+      communityId: communityId || "",
+      userId: userData?.id || "",
+    },
+    enabled: Boolean(
+      isParticipating &&
+        userData?.id &&
+        communityId &&
+        post?.programType !== "TMI"
+    ),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+
+  // 댓글 작성용 이름 계산
+  const authorName = useMemo(() => {
+    if (!userData) return "";
+
+    const programType = post?.programType;
+    const isTMIPost = programType === "TMI";
+
+    // TMI 타입이면 실명 사용
+    if (isTMIPost) {
+      return userData.name || "";
+    }
+
+    // 내가 참여중인 프로그램이면 members nickname 사용
+    if (
+      isParticipating &&
+      memberData?.status === "approved" &&
+      memberData?.nickname
+    ) {
+      return memberData.nickname;
+    }
+
+    // 내가 참여중이지 않거나 member nickname이 없으면 user nickname 사용
+    return userData.nickname || "";
+  }, [userData, post?.programType, isParticipating, memberData?.nickname]);
 
   // 공유하기 기능
   const handleShare = useCallback(async () => {
@@ -278,7 +351,7 @@ const PostDetailPage = () => {
   }
 
   // 에러 처리 또는 communityId가 없는 경우
-  if (error || !postData || !communityId) {
+  if (error || !post || !communityId) {
     const errorMessage = error
       ? "포스트를 불러오는 중 오류가 발생했습니다."
       : !communityId
@@ -373,6 +446,7 @@ const PostDetailPage = () => {
           postId={postId}
           communityId={communityId}
           postType={post?.type}
+          authorName={authorName}
           commentInputRef={commentInputRef}
           onFocusRequestRef={focusCommentInputRef}
         />
