@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Target } from "lucide-react";
@@ -31,6 +31,7 @@ import {
   useGetMissionsStats,
   usePostMissionsQuitById,
 } from "@/hooks/generated/missions-hooks";
+import { useInfiniteMissionPosts } from "@/hooks/mission/useInfiniteMissionPosts";
 import useToggle from "@/hooks/shared/useToggle";
 import { getNextDay5AM } from "@/utils/shared/date";
 import { showToast } from "@/utils/shared/toast";
@@ -65,6 +66,7 @@ const MissionPageContent = () => {
   const [successPostId, setSuccessPostId] = useState<string | undefined>(
     undefined
   );
+  const missionPostsLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // 진행중인 미션 조회 API
   const { data: myMissionsResponse, isLoading: isMissionsMeLoading } =
@@ -145,6 +147,54 @@ const MissionPageContent = () => {
 
   const recommendedMissions =
     recommendedMissionsResponse?.missions?.slice(0, 4) || [];
+
+  // 미션 인증글 목록 무한 스크롤 (친구들이 인증한 미션)
+  const {
+    data: missionPostsPages,
+    isLoading: isMissionPostsLoading,
+    error: missionPostsError,
+    fetchNextPage: fetchNextMissionPosts,
+    hasNextPage: hasNextMissionPosts,
+    isFetchingNextPage: isFetchingNextMissionPosts,
+  } = useInfiniteMissionPosts({
+    sort: "latest",
+  });
+
+  const missionPosts = useMemo(() => {
+    if (!missionPostsPages?.pages) return [];
+    return missionPostsPages.pages.flatMap((page) => page.posts ?? []);
+  }, [missionPostsPages]);
+
+  // 친구들이 인증한 미션 - 무한 스크롤 Intersection Observer
+  useEffect(() => {
+    if (!hasNextMissionPosts || !missionPostsLoadMoreRef.current) return;
+
+    const target = missionPostsLoadMoreRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (
+          entry.isIntersecting &&
+          hasNextMissionPosts &&
+          !isFetchingNextMissionPosts
+        ) {
+          fetchNextMissionPosts();
+        }
+      },
+      {
+        root: null,
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.unobserve(target);
+      observer.disconnect();
+    };
+  }, [hasNextMissionPosts, isFetchingNextMissionPosts, fetchNextMissionPosts]);
 
   // 이미 처리된 쿼리 파라미터인지 확인하는 ref
   const hasProcessedSuccessParams = useRef(false);
@@ -458,39 +508,68 @@ const MissionPageContent = () => {
               </Typography>
               <MoreButton onClick={() => router.push(LINK_URL.COMMUNITY)} />
             </div>
-            {/* 후기 슬라이딩 */}
+            {/* 후기 슬라이딩 (친구들이 인증한 미션) */}
             <HorizontalScrollContainer
               className="-mx-5"
               containerClassName="flex gap-3 px-5"
             >
-              {/* TODO: 카드 클릭 시 미션 인증이 올라간 피드 상세로 이동 */}
-              <MissionCertificationCard
-                title="오늘 하늘이 이뻤어요!"
-                thumbnailText="두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요! 두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
-                thumbnailImageUrl="/imgs/mockup3.jpg"
-                tagName="건강한 아침 러닝 30분 하기"
-                postId="1"
-              />
-              <MissionCertificationCard
-                title="오늘 하늘이 이뻤어요!"
-                thumbnailText="두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요! 두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
-                thumbnailImageUrl="/imgs/mockup3.jpg"
-                tagName="건강한 아침 러닝 30분 하기"
-                postId="1"
-              />
-              <MissionCertificationCard
-                title="오늘 하늘이 이뻤어요!"
-                thumbnailText="두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요! 두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
-                thumbnailImageUrl="/imgs/mockup3.jpg"
-                tagName="건강한 아침 러닝 30분 하기"
-                postId="1"
-              />
-              <MissionCertificationCard
-                title="오늘 하늘이 이뻤어요!"
-                thumbnailText="두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요! 두줄까지 미리보기로 보이게!! 구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
-                thumbnailImageUrl="/imgs/mockup3.jpg"
-                tagName="건강한 아침 러닝 30분 하기"
-                postId="1"
+              {isMissionPostsLoading && missionPosts.length === 0 && (
+                <div className="flex items-center justify-center py-6">
+                  <Typography
+                    font="noto"
+                    variant="body2R"
+                    className="text-gray-400"
+                  >
+                    친구들의 인증글을 불러오는 중...
+                  </Typography>
+                </div>
+              )}
+
+              {missionPostsError && (
+                <div className="flex items-center justify-center py-6">
+                  <Typography
+                    font="noto"
+                    variant="body2R"
+                    className="text-red-500"
+                  >
+                    친구들의 인증글을 불러오는 중 오류가 발생했습니다.
+                  </Typography>
+                </div>
+              )}
+
+              {!isMissionPostsLoading &&
+                !missionPostsError &&
+                missionPosts.length === 0 && (
+                  <div className="flex items-center justify-center py-6">
+                    <Typography
+                      font="noto"
+                      variant="body2R"
+                      className="text-gray-400"
+                    >
+                      아직 올라온 인증글이 없습니다.
+                    </Typography>
+                  </div>
+                )}
+
+              {missionPosts.map((post) => (
+                <MissionCertificationCard
+                  key={post?.id}
+                  title={post?.title || "제목 없음"}
+                  thumbnailText={
+                    post?.preview?.description || "인증글 내용을 확인해보세요."
+                  }
+                  thumbnailImageUrl={
+                    post?.preview?.thumbnail?.url || "/imgs/mockup3.jpg"
+                  }
+                  tagName={post?.missionTitle || ""}
+                  postId={post?.id || ""}
+                />
+              ))}
+
+              {/* 무한 스크롤 트리거 (가로 스크롤 끝에서 다음 페이지 로드) */}
+              <div
+                ref={missionPostsLoadMoreRef}
+                className="h-px w-px shrink-0"
               />
             </HorizontalScrollContainer>
           </>
