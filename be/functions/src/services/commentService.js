@@ -101,12 +101,6 @@ class CommentService {
           error.code = "NOT_FOUND";
           throw error;
         }
-
-        if (parentComment.parentId) {
-          const error = new Error("대댓글은 2레벨까지만 허용됩니다.");
-          error.code = "BAD_REQUEST";
-          throw error;
-        }
       }
 
       let author = "익명";
@@ -151,6 +145,9 @@ class CommentService {
         console.warn("Failed to get member info for comment creation:", memberError.message);
       }
 
+      // depth 계산: parentId가 있으면 부모의 depth + 1, 없으면 0
+      const depth = parentId && parentComment ? (parentComment.depth || 0) + 1 : 0;
+
       const newComment = {
         communityId,
         postId,
@@ -161,7 +158,7 @@ class CommentService {
         likesCount: 0,
         isDeleted: false,
         isLocked: false,
-        depth: parentId ? 1 : 0,
+        depth,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       };
@@ -299,19 +296,55 @@ class CommentService {
           parentIds.splice(CommentService.MAX_PARENT_COMMENTS_FOR_REPLIES);
         }
 
+        // 모든 하위 댓글 조회 (parentId가 null이 아닌 모든 댓글)
         const allReplies = await this.firestoreService.getCollectionWhereMultiple(
           "comments",
           [
-            { field: "parentId", operator: "in", value: parentIds }
+            { field: "postId", operator: "==", value: postId },
+            { field: "parentId", operator: "!=", value: null }
           ]
         );
 
-        const repliesByParentId = {};
-        allReplies.forEach(reply => {
-          if (!repliesByParentId[reply.parentId]) {
-            repliesByParentId[reply.parentId] = [];
+        // 원댓글 ID를 키로 하는 맵 생성
+        const rootCommentMap = {};
+        paginatedParentComments.forEach(comment => {
+          rootCommentMap[comment.id] = true;
+        });
+
+        // 각 댓글의 원댓글을 찾는 함수
+        const findRootCommentId = (comment, allCommentsMap) => {
+          if (!comment.parentId) {
+            return comment.id;
           }
-          repliesByParentId[reply.parentId].push(reply);
+          const parent = allCommentsMap[comment.parentId];
+          if (!parent) {
+            return null;
+          }
+          if (rootCommentMap[parent.id]) {
+            return parent.id;
+          }
+          return findRootCommentId(parent, allCommentsMap);
+        };
+
+        // 모든 댓글을 맵으로 변환 (빠른 조회를 위해)
+        const allCommentsMap = {};
+        paginatedParentComments.forEach(comment => {
+          allCommentsMap[comment.id] = comment;
+        });
+        allReplies.forEach(reply => {
+          allCommentsMap[reply.id] = reply;
+        });
+
+        // 원댓글별로 모든 하위 댓글 그룹화
+        const repliesByRootId = {};
+        allReplies.forEach(reply => {
+          const rootId = findRootCommentId(reply, allCommentsMap);
+          if (rootId && rootCommentMap[rootId]) {
+            if (!repliesByRootId[rootId]) {
+              repliesByRootId[rootId] = [];
+            }
+            repliesByRootId[rootId].push(reply);
+          }
         });
 
         if (viewerId) {
@@ -323,7 +356,7 @@ class CommentService {
         }
 
         for (const comment of paginatedParentComments) {
-          const replies = repliesByParentId[comment.id] || [];
+          const replies = repliesByRootId[comment.id] || [];
          
           const ts = (t) => {
             if (t && typeof t.toMillis === "function") return t.toMillis();
