@@ -169,10 +169,10 @@ class MissionLikeService {
 
     let nextCursor = null;
     if (hasNext) {
-      const lastDoc = docs[docs.length - 1];
-      const lastCreatedAt = lastDoc.get("createdAt");
+      const lastReturnedDoc = docsToProcess[docsToProcess.length - 1];
+      const lastCreatedAt = lastReturnedDoc.get("createdAt");
       nextCursor = {
-        docId: lastDoc.id,
+        docId: lastReturnedDoc.id,
         createdAtMillis: lastCreatedAt?.toMillis?.() || null,
       };
     }
