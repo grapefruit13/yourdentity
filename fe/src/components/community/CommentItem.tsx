@@ -267,7 +267,7 @@ const CommentItem = ({
                 variant="body2M"
                 className="text-gray-800"
               >
-                {comment.author || "익명"}
+                {comment.author || COMMENT_ANONYMOUS_NAME}
               </Typography>
               {comment.createdAt && (
                 <Typography
@@ -302,7 +302,7 @@ const CommentItem = ({
                     variant="body2M"
                     className="text-gray-800"
                   >
-                    {comment.author || "익명"}
+                    {comment.author || COMMENT_ANONYMOUS_NAME}
                   </Typography>
                 </div>
                 <button
@@ -414,7 +414,7 @@ const CommentItem = ({
           {visibleReplies.length > 0 ? (
             visibleReplies.map((reply) => {
               const replyId = reply.id || "";
-              const replyAuthor = reply.author || "익명";
+              const replyAuthor = reply.author || COMMENT_ANONYMOUS_NAME;
               const isEditingReply = editingCommentId === replyId;
               const isReplyingToThisReply =
                 replyingTo?.commentId === replyId &&
@@ -498,7 +498,7 @@ const CommentItem = ({
                               variant="body2M"
                               className="text-gray-800"
                             >
-                              {replyAuthor || "익명"}
+                              {replyAuthor || COMMENT_ANONYMOUS_NAME}
                             </Typography>
                           </div>
                           <button
