@@ -145,18 +145,18 @@ class NotionUserService {
               },
               "사용자ID": { rich_text: [{ text: { content: userId } }] },
               "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-              "상태": {
-                select: {
-                  name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-                    ? "탈퇴" 
-                    : "가입"
-                }
-              },
+              // "상태": {
+              //   select: {
+              //     name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+              //       ? "탈퇴" 
+              //       : "가입"
+              //   }
+              // },
               "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
               "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
               "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
               "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-              "가입 방법": { select: { name: user.authType || "email" } },
+              //"가입 방법": { select: { name: user.authType || "email" } },
               "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
               "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
               "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
@@ -542,18 +542,18 @@ async syncAllUserAccounts() {
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            "상태": {
-              select: {
-                name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-                  ? "탈퇴" 
-                  : "가입"
-              }
-            },
+            // "상태": {
+            //   select: {
+            //     name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+            //       ? "탈퇴" 
+            //       : "가입"
+            //   }
+            // },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
             "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-            "가입 방법": { select: { name: user.authType || "email" } },
+            //"가입 방법": { select: { name: user.authType || "email" } },
             "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
@@ -1315,18 +1315,18 @@ async syncSelectedUsers() {
         },
         "사용자ID": { rich_text: [{ text: { content: userId } }] },
         "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
-        "상태": {
-          select: {
-            name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
-              ? "탈퇴" 
-              : "가입"
-          }
-        },
+        // "상태": {
+        //   select: {
+        //     name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
+        //       ? "탈퇴" 
+        //       : "가입"
+        //   }
+        // },
         "전화번호": { rich_text: [{ text: { content: updatedUserData.phoneNumber || "" } }] },
         "생년월일": { rich_text: [{ text: { content: updatedUserData.birthDate || "" } }] },
         "이메일": { rich_text: [{ text: { content: updatedUserData.email || "" } }] },
         "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-        "가입 방법": { select: { name: updatedUserData.authType || "email" } },
+        //"가입 방법": { select: { name: updatedUserData.authType || "email" } },
         "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
         "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
         "유입경로": { rich_text: [{ text: { content: updatedUserData.utmSource || "" } }] },
