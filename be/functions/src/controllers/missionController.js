@@ -2,28 +2,17 @@ const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
 const { MISSION_STATUS } = require("../constants/missionConstants");
+const {
+  parsePageSize,
+  sanitizeCursor,
+} = require("../utils/paginationHelper");
 
 const DEFAULT_MISSION_PAGE_SIZE = 20;
 const MAX_MISSION_PAGE_SIZE = 50;
 const DEFAULT_POST_PAGE_SIZE = 20;
 const MAX_POST_PAGE_SIZE = 50;
-const MIN_PAGE_SIZE = 1;
-
-const clampPageSize = (value, defaultValue, maxValue) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return defaultValue;
-  }
-  return Math.min(maxValue, Math.max(MIN_PAGE_SIZE, Math.trunc(parsed)));
-};
-
-const sanitizeCursor = (value) => {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
+const DEFAULT_COMMENT_PAGE_SIZE = 10;
+const MAX_COMMENT_PAGE_SIZE = 20;
 
 class MissionController {
   constructor() {
@@ -209,7 +198,7 @@ class MissionController {
         startCursor: startCursorParam,
       } = req.query;
 
-      const pageSize = clampPageSize(
+      const pageSize = parsePageSize(
         pageSizeParam,
         DEFAULT_MISSION_PAGE_SIZE,
         MAX_MISSION_PAGE_SIZE,
@@ -333,7 +322,7 @@ class MissionController {
 
       const viewerId = req.user?.uid || null;
 
-      const pageSize = clampPageSize(
+      const pageSize = parsePageSize(
         pageSizeParam,
         DEFAULT_POST_PAGE_SIZE,
         MAX_POST_PAGE_SIZE,
@@ -392,6 +381,7 @@ class MissionController {
     try {
       const { postId } = req.params;
       const viewerId = req.user?.uid || null;
+      const { pageSize: pageSizeParam, startCursor: startCursorParam } = req.query;
 
       if (!postId) {
         const error = new Error("인증글 ID가 필요합니다.");
@@ -400,9 +390,19 @@ class MissionController {
         return next(error);
       }
 
-      const comments = await missionPostService.getComments(postId, viewerId);
+      const pageSize = parsePageSize(
+        pageSizeParam,
+        DEFAULT_COMMENT_PAGE_SIZE,
+        MAX_COMMENT_PAGE_SIZE,
+      );
+      const startCursor = sanitizeCursor(startCursorParam);
 
-      return res.success({ comments });
+      const result = await missionPostService.getComments(postId, viewerId, {
+        pageSize,
+        startCursor,
+      });
+
+      return res.success(result);
     } catch (error) {
       console.error("[MissionController] 미션 인증글 댓글 목록 조회 오류:", error.message);
       return next(error);

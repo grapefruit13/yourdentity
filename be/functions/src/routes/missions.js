@@ -755,6 +755,19 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *           type: string
  *         description: 미션 인증글 ID
  *         example: "post-123"
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 20
+ *         description: 페이지당 원댓글 수
+ *       - in: query
+ *         name: startCursor
+ *         schema:
+ *           type: string
+ *         description: 다음 페이지 조회용 cursor (마지막으로 받은 원댓글 ID)
  *     responses:
  *       200:
  *         description: 댓글 목록 조회 성공
@@ -854,6 +867,19 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                           updatedAt:
  *                             type: string
  *                             format: date-time
+ *                     pageInfo:
+ *                       type: object
+ *                       properties:
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                           example: "root-comment-123"
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
  *       400:
  *         description: 잘못된 요청
  *         content:

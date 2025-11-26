@@ -6,31 +6,20 @@ const FirestoreService = require("./firestoreService");
 const UserService = require("./userService");
 const fcmHelper = require("../utils/fcmHelper");
 const {
+  parsePageSize,
+  sanitizeCursor,
+} = require("../utils/paginationHelper");
+const {
   USER_MISSIONS_COLLECTION,
   USER_MISSION_STATS_COLLECTION,
   MISSION_POSTS_COLLECTION,
   MISSION_STATUS,
 } = require("../constants/missionConstants");
 
-const DEFAULT_PAGE_SIZE = 20;
-const MAX_PAGE_SIZE = 50;
-const MIN_PAGE_SIZE = 1;
-
-const normalizePageSize = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return DEFAULT_PAGE_SIZE;
-  }
-  return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.trunc(parsed)));
-};
-
-const sanitizeCursor = (value) => {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
+const POST_LIST_DEFAULT_PAGE_SIZE = 20;
+const POST_LIST_MAX_PAGE_SIZE = 50;
+const COMMENT_LIST_DEFAULT_PAGE_SIZE = 10;
+const COMMENT_LIST_MAX_PAGE_SIZE = 20;
 
 function buildError(message, code, statusCode) {
   const error = new Error(message);
@@ -387,11 +376,15 @@ class MissionPostService {
         sort = "latest",
         categories = [],
         userId: filterUserId,
-        pageSize: requestedPageSize = DEFAULT_PAGE_SIZE,
+        pageSize: pageSizeInput,
         startCursor,
       } = options;
 
-      const pageSize = normalizePageSize(requestedPageSize);
+      const pageSize = parsePageSize(
+        pageSizeInput,
+        POST_LIST_DEFAULT_PAGE_SIZE,
+        POST_LIST_MAX_PAGE_SIZE,
+      );
       const cursorId = sanitizeCursor(startCursor);
 
       let query = db.collection(MISSION_POSTS_COLLECTION);
@@ -766,9 +759,10 @@ class MissionPostService {
    * 미션 인증글 댓글 목록 조회
    * @param {string} postId - 인증글 ID
    * @param {string|null} viewerId - 조회 사용자 ID (선택)
-   * @return {Promise<Array>} 댓글 목록
+   * @param {Object} options - 페이지네이션 옵션
+   * @return {Promise<{comments: Array, pageInfo: Object}>} 댓글 목록과 페이지 정보
    */
-  async getComments(postId, viewerId) {
+  async getComments(postId, viewerId, options = {}) {
     try {
       if (!postId || typeof postId !== "string") {
         throw buildError("인증글 ID가 필요합니다.", "BAD_REQUEST", 400);
@@ -782,16 +776,20 @@ class MissionPostService {
       }
 
       const postAuthorId = postDoc.data()?.userId || null;
+      const {
+        pageSize: pageSizeInput,
+        startCursor,
+      } = options;
 
-      const commentsSnapshot = await db
-        .collection("comments")
-        .where("postId", "==", postId)
-        .get();
+      const pageSize = parsePageSize(
+        pageSizeInput,
+        COMMENT_LIST_DEFAULT_PAGE_SIZE,
+        COMMENT_LIST_MAX_PAGE_SIZE,
+      );
+      const cursorId = sanitizeCursor(startCursor);
 
       const toIsoString = (value) => {
-        if (!value) {
-          return null;
-        }
+        if (!value) return null;
         if (typeof value.toDate === "function") {
           return value.toDate().toISOString();
         }
@@ -799,17 +797,77 @@ class MissionPostService {
         return Number.isNaN(date.getTime()) ? null : date.toISOString();
       };
 
-      const processedComments = [];
+      const sortByCreatedAt = (list) =>
+        list.sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return aTime - bTime;
+        });
 
-      commentsSnapshot.docs.forEach((doc) => {
-        const data = doc.data();
+      const baseQuery = db
+        .collection("comments")
+        .where("postId", "==", postId)
+        .orderBy("createdAt", "asc")
+        .orderBy("__name__", "asc");
 
-        // 커뮤니티 댓글 (communityId 존재) 제외
-        if (data.communityId) {
-          return;
+      let pagingCursorDoc = null;
+      if (cursorId) {
+        const cursorDoc = await db.collection("comments").doc(cursorId).get();
+        if (!cursorDoc.exists) {
+          throw buildError("유효하지 않은 cursor 입니다.", "BAD_REQUEST", 400);
+        }
+        const cursorData = cursorDoc.data();
+        if (
+          cursorData.postId !== postId ||
+          (cursorData.depth || 0) !== 0 ||
+          cursorData.communityId
+        ) {
+          throw buildError("유효하지 않은 cursor 입니다.", "BAD_REQUEST", 400);
+        }
+        pagingCursorDoc = cursorDoc;
+      }
+
+      const targetRootCount = pageSize + 1;
+      const batchLimit = Math.max(pageSize * 3, targetRootCount);
+      const collectedRootDocs = [];
+
+      let hasMoreDocuments = true;
+      while (collectedRootDocs.length < targetRootCount && hasMoreDocuments) {
+        let queryInstance = baseQuery;
+        if (pagingCursorDoc) {
+          queryInstance = queryInstance.startAfter(pagingCursorDoc);
         }
 
-        const formatted = {
+        const snapshot = await queryInstance.limit(batchLimit).get();
+        if (snapshot.empty) {
+          break;
+        }
+
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (!data.communityId && (data.depth || 0) === 0) {
+            collectedRootDocs.push(doc);
+          }
+        });
+
+        pagingCursorDoc = snapshot.docs[snapshot.docs.length - 1];
+        if (snapshot.size < batchLimit) {
+          hasMoreDocuments = false;
+        }
+      }
+
+      const hasNext = collectedRootDocs.length > pageSize;
+      const docsToProcess = hasNext
+        ? collectedRootDocs.slice(0, pageSize)
+        : collectedRootDocs;
+      const nextCursor =
+        hasNext && docsToProcess.length > 0
+          ? docsToProcess[docsToProcess.length - 1].id
+          : null;
+
+      const formatComment = (doc) => {
+        const data = doc.data();
+        return {
           id: doc.id,
           postId,
           userId: data.userId || null,
@@ -824,54 +882,57 @@ class MissionPostService {
           updatedAt: toIsoString(data.updatedAt),
           isMine: Boolean(viewerId && data.userId && viewerId === data.userId),
           isAuthor: Boolean(postAuthorId && data.userId && postAuthorId === data.userId),
-          replies: [],
         };
+      };
 
-        processedComments.push(formatted);
-      });
+      const rootComments = docsToProcess
+        .map((doc) => formatComment(doc))
+        .map((comment) => ({
+          ...comment,
+          replies: [],
+        }));
 
-      const commentMap = new Map();
-      processedComments.forEach((comment) => {
-        commentMap.set(comment.id, comment);
-      });
+      const rootIds = rootComments.map((comment) => comment.id);
+      const repliesByParent = new Map();
 
-      const rootComments = [];
+      if (rootIds.length > 0) {
+        for (let i = 0; i < rootIds.length; i += 10) {
+          const chunk = rootIds.slice(i, i + 10);
+          const repliesSnapshot = await db
+            .collection("comments")
+            .where("parentId", "in", chunk)
+            .get();
 
-      const sortByCreatedAt = (list) =>
-        list.sort((a, b) => {
-          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return aTime - bTime;
-        });
-
-      processedComments.forEach((comment) => {
-        if (comment.parentId) {
-          const parent = commentMap.get(comment.parentId);
-          if (parent) {
-            parent.replies.push(comment);
-          } else {
-            rootComments.push(comment);
-          }
-        } else {
-          rootComments.push(comment);
+          repliesSnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.communityId || data.postId !== postId) {
+              return;
+            }
+            const formattedReply = formatComment(doc);
+            const existingReplies = repliesByParent.get(formattedReply.parentId) || [];
+            existingReplies.push(formattedReply);
+            repliesByParent.set(formattedReply.parentId, existingReplies);
+          });
         }
-      });
+      }
 
-      const formattedRoots = sortByCreatedAt(rootComments).map((comment) => {
-        const replies = sortByCreatedAt(comment.replies || []).map((reply) => {
-          const { replies, ...rest } = reply;
-          return rest;
-        });
-
-        const { replies: _replies, ...base } = comment;
+      const enrichedRoots = rootComments.map((comment) => {
+        const replies = sortByCreatedAt(repliesByParent.get(comment.id) || []);
         return {
-          ...base,
+          ...comment,
           replies,
           repliesCount: replies.length,
         };
       });
 
-      return formattedRoots;
+      return {
+        comments: sortByCreatedAt(enrichedRoots),
+        pageInfo: {
+          pageSize,
+          nextCursor,
+          hasNext,
+        },
+      };
     } catch (error) {
       console.error("[MISSION_POST] 댓글 목록 조회 실패:", error.message);
       if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
