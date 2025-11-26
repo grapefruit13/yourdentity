@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import FilterBar from "@/components/mission/FilterBar";
 import MissionFirstEnterMessage from "@/components/mission/MissionFirstEnterMessage";
@@ -16,10 +16,10 @@ import {
 } from "@/constants/mission/_filter-options";
 import { MISSION_SORT_OPTIONS } from "@/constants/mission/_sort-options";
 import {
-  useGetMissions,
   useGetMissionsCategories,
   useGetMissionsMe,
 } from "@/hooks/generated/missions-hooks";
+import { useInfiniteMissions } from "@/hooks/mission/useInfiniteMissions";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { Mission } from "@/types/generated/api-schema";
 import type { TGETMissionsReq } from "@/types/generated/missions-types";
@@ -70,40 +70,62 @@ const Page = () => {
       label: category,
     })) ?? [];
 
-  // API 요청 파라미터
+  // API 요청 파라미터 (페이지네이션 공통 값)
   const apiRequestParams: TGETMissionsReq = {
     sortBy: sortValue,
     ...(filters.rightSelect && { category: filters.rightSelect }),
     ...(excludeParticipated && { excludeParticipated: true }),
   };
+  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
 
-  // API 호출
+  // 미션 목록 무한 스크롤 API 호출
   const {
-    data: missionsResponse,
+    data: missionsPages,
     isLoading,
     error,
-  } = useGetMissions({
-    request: apiRequestParams,
-  });
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteMissions(apiRequestParams);
 
-  // API 응답 필터링
+  // API 응답 필터링 + 페이지 병합
   const missions = useMemo((): Mission[] => {
-    if (!missionsResponse?.missions) {
+    if (!missionsPages?.pages) {
       return [];
     }
 
-    let filteredMissions = missionsResponse.missions as Mission[];
+    return missionsPages.pages.flatMap(
+      (page) => (page.missions as Mission[] | undefined) ?? []
+    );
+  }, [missionsPages]);
 
-    // "liked" 필터는 클라이언트 측 필터링 (API에 해당 필터가 없음)
-    // TODO: 찜한 미션 필터링은 추후 API 지원 시 서버 측으로 이동
-    if (filters.leftSelect === LIKED_FILTER_ID) {
-      // 현재는 API 응답에 isLiked 정보가 없으므로 빈 배열 반환
-      // 추후 API에서 찜한 미션 목록을 제공하면 해당 API 호출
-      filteredMissions = [];
-    }
+  // 무한 스크롤 Intersection Observer
+  useEffect(() => {
+    if (!hasNextPage || !loadMoreTriggerRef.current) return;
 
-    return filteredMissions;
-  }, [missionsResponse, filters.leftSelect]);
+    const target = loadMoreTriggerRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "0px 0px 200px 0px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.unobserve(target);
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleFiltersChange = (
     newFilters: DualFilterState<SingleSelectFilterId, string>
@@ -160,7 +182,7 @@ const Page = () => {
       </div>
       {/* 미션 목록 */}
       <div className="flex flex-col">
-        {isLoading && (
+        {isLoading && !missions.length && (
           <div className="flex items-center justify-center py-12">
             <Typography font="noto" variant="body2R" className="text-gray-400">
               미션 목록을 불러오는 중...
@@ -181,8 +203,7 @@ const Page = () => {
             </Typography>
           </div>
         )}
-        {!isLoading &&
-          !error &&
+        {!error &&
           missions.map((mission) => (
             <MissionListCard
               key={mission.id}
@@ -199,6 +220,17 @@ const Page = () => {
               isLiked={false} // TODO: 찜한 미션 필터링 구현 시 수정
             />
           ))}
+
+        {/* 무한 스크롤 로딩 트리거 & 상태 표시 */}
+        <div ref={loadMoreTriggerRef} className="flex justify-center py-4">
+          {hasNextPage && !error && (
+            <Typography font="noto" variant="body2R" className="text-gray-400">
+              {isFetchingNextPage
+                ? "미션을 불러오는 중..."
+                : "아래로 스크롤하여 더 보기"}
+            </Typography>
+          )}
+        </div>
       </div>
     </div>
   );

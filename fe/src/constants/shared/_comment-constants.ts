@@ -9,3 +9,4 @@ export const COMMENT_DELETE_MODAL_CONFIRM = "삭제";
 export const COMMENT_DELETE_MODAL_CANCEL = "취소";
 export const COMMENT_SUBMIT_BUTTON = "등록";
 export const COMMENT_ANONYMOUS_NAME = "알 수 없음";
+export const COMMENT_PAGE_SIZE = 15;
