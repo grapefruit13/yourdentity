@@ -3,6 +3,28 @@ const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
 const { MISSION_STATUS } = require("../constants/missionConstants");
 
+const DEFAULT_MISSION_PAGE_SIZE = 20;
+const MAX_MISSION_PAGE_SIZE = 50;
+const DEFAULT_POST_PAGE_SIZE = 20;
+const MAX_POST_PAGE_SIZE = 50;
+const MIN_PAGE_SIZE = 1;
+
+const clampPageSize = (value, defaultValue, maxValue) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return defaultValue;
+  }
+  return Math.min(maxValue, Math.max(MIN_PAGE_SIZE, Math.trunc(parsed)));
+};
+
+const sanitizeCursor = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 class MissionController {
   constructor() {
     // 메서드 바인딩
@@ -173,46 +195,58 @@ class MissionController {
    * @param {Object} res - Express 응답 객체
    * @param {Function} next - Express next 함수
    * 
-   * @note MVP: 전체 미션 반환 (페이지네이션 없음)
+   * @note Notion cursor 기반 페이지네이션 지원
    * @note 정렬: latest(최신순), popular(인기순)
    * @note 필터: category(카테고리), excludeParticipated(참여 미션 제외)
    */
   async getMissions(req, res, next) {
     try {
-      const { 
-        category, 
-        sortBy = 'latest',
-        excludeParticipated 
+      const {
+        category,
+        sortBy = "latest",
+        excludeParticipated,
+        pageSize: pageSizeParam,
+        startCursor: startCursorParam,
       } = req.query;
-      
+
+      const pageSize = clampPageSize(
+        pageSizeParam,
+        DEFAULT_MISSION_PAGE_SIZE,
+        MAX_MISSION_PAGE_SIZE,
+      );
+      const startCursor = sanitizeCursor(startCursorParam);
+
       const userId = req.user?.uid; // optionalAuth에서 가져옴
 
-      // 필터 조건 구성
       const filters = {
-        sortBy, // 'latest' or 'popular'
+        sortBy,
+        pageSize,
+        startCursor,
       };
-      
+
       if (category) {
         filters.category = category;
       }
 
-      // 노션에서 미션 조회
       let result = await notionMissionService.getMissions(filters);
+      let missions = Array.isArray(result.missions) ? result.missions : [];
 
-      // 참여 미션 제외 (로그인 유저 & 옵션 활성화 시)
-      if (userId && excludeParticipated === 'true') {
+      if (userId && excludeParticipated === "true") {
         const participatedIds = await this.getParticipatedMissionIds(userId);
-        result.missions = result.missions.filter(
-          mission => !participatedIds.includes(mission.id)
+        missions = missions.filter(
+          (mission) => !participatedIds.includes(mission.id),
         );
-        result.totalCount = result.missions.length;
       }
 
       res.success({
-        missions: result.missions,
-        totalCount: result.totalCount
+        missions,
+        totalCount: missions.length,
+        pageInfo: {
+          pageSize,
+          nextCursor: result.nextCursor || null,
+          hasNext: Boolean(result.hasMore && result.nextCursor),
+        },
       });
-
     } catch (error) {
       console.error("[MissionController] 미션 목록 조회 오류:", error.message);
       return next(error);
@@ -277,7 +311,12 @@ class MissionController {
    */
   async getAllMissionPosts(req, res, next) {
     try {
-      const { sort = "latest", userId } = req.query;
+      const {
+        sort = "latest",
+        userId,
+        pageSize: pageSizeParam,
+        startCursor: startCursorParam,
+      } = req.query;
       const rawCategories = req.query.categories;
 
       let categories = [];
@@ -294,11 +333,20 @@ class MissionController {
 
       const viewerId = req.user?.uid || null;
 
+      const pageSize = clampPageSize(
+        pageSizeParam,
+        DEFAULT_POST_PAGE_SIZE,
+        MAX_POST_PAGE_SIZE,
+      );
+      const startCursor = sanitizeCursor(startCursorParam);
+
       const result = await missionPostService.getAllMissionPosts(
         {
           sort,
           categories,
           userId,
+          pageSize,
+          startCursor,
         },
         viewerId,
       );

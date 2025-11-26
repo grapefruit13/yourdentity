@@ -12,6 +12,26 @@ const {
   MISSION_STATUS,
 } = require("../constants/missionConstants");
 
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 50;
+const MIN_PAGE_SIZE = 1;
+
+const normalizePageSize = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_PAGE_SIZE;
+  }
+  return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.trunc(parsed)));
+};
+
+const sanitizeCursor = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 function buildError(message, code, statusCode) {
   const error = new Error(message);
   error.code = code;
@@ -363,43 +383,83 @@ class MissionPostService {
    */
   async getAllMissionPosts(options = {}, viewerId = null) {
     try {
-      const { sort = "latest", categories = [], userId: filterUserId } = options;
+      const {
+        sort = "latest",
+        categories = [],
+        userId: filterUserId,
+        pageSize: requestedPageSize = DEFAULT_PAGE_SIZE,
+        startCursor,
+      } = options;
+
+      const pageSize = normalizePageSize(requestedPageSize);
+      const cursorId = sanitizeCursor(startCursor);
 
       let query = db.collection(MISSION_POSTS_COLLECTION);
 
-      // 필터: 내가 인증한 미션만 보기
       if (filterUserId) {
         query = query.where("userId", "==", filterUserId);
       }
 
-      // 카테고리 필터 (다중 선택)
       if (Array.isArray(categories) && categories.length > 0) {
-        const uniqueCategories = [...new Set(categories.filter((item) => typeof item === "string" && item.trim().length > 0))];
+        const uniqueCategories = [
+          ...new Set(
+            categories.filter(
+              (item) => typeof item === "string" && item.trim().length > 0,
+            ),
+          ),
+        ];
         if (uniqueCategories.length === 1) {
           query = query.where("categories", "array-contains", uniqueCategories[0]);
         } else if (uniqueCategories.length > 1) {
-          query = query.where("categories", "array-contains-any", uniqueCategories.slice(0, 10));
+          query = query.where(
+            "categories",
+            "array-contains-any",
+            uniqueCategories.slice(0, 10),
+          );
         }
       }
 
-      // 정렬
       if (sort === "popular") {
         query = query.orderBy("viewCount", "desc").orderBy("createdAt", "desc");
       } else {
         query = query.orderBy("createdAt", "desc");
       }
 
-      // 전체 조회 (페이지네이션은 나중에)
-      const snapshot = await query.get();
+      if (cursorId) {
+        const cursorDoc = await db
+          .collection(MISSION_POSTS_COLLECTION)
+          .doc(cursorId)
+          .get();
+        if (!cursorDoc.exists) {
+          throw buildError("유효하지 않은 cursor 입니다.", "BAD_REQUEST", 400);
+        }
+        query = query.startAfter(cursorDoc);
+      }
 
-      if (snapshot.empty) {
-        return { posts: [] };
+      const snapshot = await query.limit(pageSize + 1).get();
+      const documents = snapshot.docs;
+      const hasNext = documents.length > pageSize;
+      const docsToProcess = hasNext ? documents.slice(0, pageSize) : documents;
+      const nextCursor =
+        hasNext && docsToProcess.length > 0
+          ? docsToProcess[docsToProcess.length - 1].id
+          : null;
+
+      if (docsToProcess.length === 0) {
+        return {
+          posts: [],
+          pageInfo: {
+            pageSize,
+            nextCursor: null,
+            hasNext: false,
+          },
+        };
       }
 
       const posts = [];
       const userIds = [];
 
-      for (const doc of snapshot.docs) {
+      for (const doc of docsToProcess) {
         const postData = doc.data();
         if (postData.userId) {
           userIds.push(postData.userId);
@@ -410,10 +470,9 @@ class MissionPostService {
         });
       }
 
-      // 사용자 프로필 정보 배치 조회
-      const profileMap = userIds.length > 0 ? await this.loadUserProfiles(userIds) : {};
+      const profileMap =
+        userIds.length > 0 ? await this.loadUserProfiles(userIds) : {};
 
-      // 응답 데이터 구성
       const processedPosts = posts.map((post) => {
         const createdAtDate = post.createdAt?.toDate?.() || new Date(post.createdAt);
         const userProfile = profileMap[post.userId] || {};
@@ -429,15 +488,25 @@ class MissionPostService {
           mediaCount: Array.isArray(post.media) ? post.media.length : 0,
           commentsCount: post.commentsCount || 0,
           viewCount: post.viewCount || 0,
-           categories: Array.isArray(post.categories) ? post.categories : [],
+          categories: Array.isArray(post.categories) ? post.categories : [],
           createdAt: createdAtDate.toISOString(),
           timeAgo: this.getTimeAgo(createdAtDate),
         };
       });
 
-      return { posts: processedPosts };
+      return {
+        posts: processedPosts,
+        pageInfo: {
+          pageSize,
+          nextCursor,
+          hasNext,
+        },
+      };
     } catch (error) {
       console.error("[MISSION_POST] 인증글 목록 조회 실패:", error.message);
+      if (error.code === "BAD_REQUEST") {
+        throw error;
+      }
       throw buildError("인증글 목록을 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
     }
   }

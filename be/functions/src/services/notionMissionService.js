@@ -127,14 +127,23 @@ class NotionMissionService {
    * @returns {Promise<Object>} 미션 목록
    * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
    * 
-   * @note MVP: 페이지네이션 없이 전체 미션 반환
+   * @note Notion dataSources.cursor 기반 페이지네이션
    * @note 정렬: 최신순(기본) | 인기순(반응 수)
    * @note 필터: 카테고리 칩
    */
   async getMissions(filters = {}) {
     try {
+      const requestedPageSize =
+        typeof filters.pageSize !== "undefined"
+          ? normalizePageSize(filters.pageSize)
+          : DEFAULT_PAGE_SIZE;
+      const startCursor =
+        typeof filters.startCursor === "string" && filters.startCursor.trim().length > 0
+          ? filters.startCursor.trim()
+          : undefined;
+
       const queryBody = {
-        page_size: 100, // MVP: 전체 미션 조회
+        page_size: requestedPageSize,
       };
 
       // 정렬 조건
@@ -181,7 +190,10 @@ class NotionMissionService {
         });
       }
 
-      // 필터 조건 적용 (항상 최소 1개 이상: IS_RECRUITING 필터)
+      if (startCursor) {
+        queryBody.start_cursor = startCursor;
+      }
+
       queryBody.filter = {
         and: filterConditions
       };
@@ -193,10 +205,14 @@ class NotionMissionService {
       });
       
       const missions = data.results.map(page => this.formatMissionData(page));
+      const hasMore = Boolean(data.has_more);
+      const nextCursor = data.next_cursor || null;
       
       return {
         missions,
-        totalCount: missions.length
+        totalCount: missions.length,
+        hasMore,
+        nextCursor,
       };
 
     } catch (error) {
