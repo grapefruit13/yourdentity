@@ -265,6 +265,12 @@ class MissionController {
           return next(error);
         }
 
+        // 찜 목록에서도 "참여한 미션 제외" 옵션을 지원
+        let participatedIds = [];
+        if (excludeParticipated === "true") {
+          participatedIds = await this.getParticipatedMissionIds(userId);
+        }
+
         return this.respondWithLikedMissions({
           res,
           next,
@@ -272,6 +278,7 @@ class MissionController {
           pageSize,
           category,
           decodedCursor,
+          participatedIds,
         });
       }
 
@@ -674,7 +681,15 @@ class MissionController {
     }
   }
 
-  async respondWithLikedMissions({ res, next, userId, pageSize, category, decodedCursor }) {
+  async respondWithLikedMissions({
+    res,
+    next,
+    userId,
+    pageSize,
+    category,
+    decodedCursor,
+    participatedIds = [],
+  }) {
     try {
       const responseMissions = [];
       const bufferQueue = Array.isArray(decodedCursor.bufferedMissions)
@@ -708,6 +723,11 @@ class MissionController {
         entries.forEach((entry, index) => {
           const mission = missionDetails[index];
           if (!mission) {
+            return;
+          }
+
+          // 참여한 미션 제외 옵션 적용
+          if (Array.isArray(participatedIds) && participatedIds.includes(mission.id)) {
             return;
           }
 
