@@ -1,5 +1,5 @@
 const { db, Timestamp } = require("../config/database");
-const { FieldPath } = require("firebase-admin/firestore");
+const { FieldPath, FieldValue } = require("firebase-admin/firestore");
 const {
   MISSION_LIKES_COLLECTION,
   MISSION_LIKES_STATS_COLLECTION,
@@ -26,46 +26,57 @@ class MissionLikeService {
 
     await db.runTransaction(async (transaction) => {
       const likeDoc = await transaction.get(likeRef);
-      const statsDoc = await transaction.get(statsRef);
-      const currentCount = statsDoc.exists ? statsDoc.data().likesCount || 0 : 0;
+      // 통계 문서 존재 여부는 한 번만 확인
+      await transaction.get(statsRef);
+
+      let liked = false;
 
       if (likeDoc.exists) {
+        // UNLIKE: 좋아요 취소
         transaction.delete(likeRef);
-        const updatedCount = Math.max(0, currentCount - 1);
+
         transaction.set(
           statsRef,
           {
             missionId,
-            likesCount: updatedCount,
+            likesCount: FieldValue.increment(-1),
             updatedAt: now,
           },
           { merge: true },
         );
-        result = {
-          liked: false,
-          likesCount: updatedCount,
-        };
+
+        liked = false;
       } else {
+        // LIKE: 좋아요 추가
         transaction.set(likeRef, {
           userId,
           missionId,
           createdAt: now,
         });
-        const updatedCount = currentCount + 1;
+
         transaction.set(
           statsRef,
           {
             missionId,
-            likesCount: updatedCount,
+            likesCount: FieldValue.increment(1),
             updatedAt: now,
           },
           { merge: true },
         );
-        result = {
-          liked: true,
-          likesCount: updatedCount,
-        };
+
+        liked = true;
       }
+
+      // 증가/감소 적용 후 최신 통계값 재조회
+      const updatedStatsDoc = await transaction.get(statsRef);
+      const finalLikesCount = updatedStatsDoc.exists
+        ? updatedStatsDoc.data().likesCount || 0
+        : 0;
+
+      result = {
+        liked,
+        likesCount: Math.max(0, finalLikesCount),
+      };
     });
 
     return result;
