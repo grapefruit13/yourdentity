@@ -3,6 +3,7 @@ const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 const {admin} = require("../config/database");
 const crypto = require("crypto");
+
 /*
 - 1초, 10배치 : 100명에서 끊어짐
 - 1.5초, 20배치 : 200명 문제X
@@ -65,18 +66,34 @@ class NotionUserService {
           const user = doc.data();
           const userId = doc.id;
 
-          // 신고 카운트(communities/*/posts/*) 합산
+          // 신고 카운트(게시글 + 댓글) 합산
           let reportCount = 0;
           try {
-            const reportSnapshot = await db
+
+            // collectionGroup 쿼리로 모든 posts에서 authorId로 필터링 (인덱스 필요)
+            const postsSnapshot = await db
               .collectionGroup("posts")
               .where("authorId", "==", userId)
               .get();
-
-            reportCount = reportSnapshot.docs.reduce((sum, postDoc) => {
+            
+            const postReports = postsSnapshot.docs.reduce((sum, postDoc) => {
               const reportsCount = postDoc.data().reportsCount || 0;
               return sum + reportsCount;
             }, 0);
+        
+
+            // 2) comments 컬렉션에서 userId가 동일한 문서의 reportsCount 합산
+            const commentSnapshot = await db
+              .collection("comments")
+              .where("userId", "==", userId)
+              .get();
+
+            const commentReports = commentSnapshot.docs.reduce((sum, commentDoc) => {
+              const reportsCount = commentDoc.data().reportsCount || 0;
+              return sum + reportsCount;
+            }, 0);
+            
+            reportCount = postReports + commentReports;
           } catch (countError) {
             console.warn(
               `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
@@ -118,18 +135,18 @@ class NotionUserService {
               },
               "사용자ID": { rich_text: [{ text: { content: userId } }] },
               "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-              "상태": {
-                select: {
-                  name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-                    ? "탈퇴" 
-                    : "가입"
-                }
-              },
+              // "상태": {
+              //   select: {
+              //     name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+              //       ? "탈퇴" 
+              //       : "가입"
+              //   }
+              // },
               "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
               "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
               "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
               "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-              "가입 방법": { select: { name: user.authType || "email" } },
+              //"가입 방법": { select: { name: user.authType || "email" } },
               "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
               "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
               "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
@@ -452,19 +469,32 @@ async syncAllUserAccounts() {
           const userId = doc.id;
           const existingNotionUser = notionUsers[userId];
 
-          //신고 카운트 (firebase 단일필드 authorId 추가)
+          // 신고 카운트(게시글 + 댓글) 합산
           let reportCount = 0;
           try {
-            const reportSnapshot = await db
+            // collectionGroup 쿼리로 모든 posts에서 authorId로 필터링 (인덱스 필요)
+            const postsSnapshot = await db
               .collectionGroup("posts")
               .where("authorId", "==", userId)
               .get();
             
-            // 각 문서의 reportsCount 값을 합산
-            reportCount = reportSnapshot.docs.reduce((sum, doc) => {
-              const reportsCount = doc.data().reportsCount || 0;
+            const postReports = postsSnapshot.docs.reduce((sum, postDoc) => {
+              const reportsCount = postDoc.data().reportsCount || 0;
               return sum + reportsCount;
             }, 0);
+
+            // 2) comments 컬렉션에서 userId가 동일한 문서의 reportsCount 합산
+            const commentSnapshot = await db
+              .collection("comments")
+              .where("userId", "==", userId)
+              .get();
+
+            const commentReports = commentSnapshot.docs.reduce((sum, commentDoc) => {
+              const reportsCount = commentDoc.data().reportsCount || 0;
+              return sum + reportsCount;
+            }, 0);
+            
+            reportCount = postReports + commentReports;
           } catch (countError) {
             console.warn(
               `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
@@ -490,18 +520,18 @@ async syncAllUserAccounts() {
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            "상태": {
-              select: {
-                name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-                  ? "탈퇴" 
-                  : "가입"
-              }
-            },
+            // "상태": {
+            //   select: {
+            //     name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+            //       ? "탈퇴" 
+            //       : "가입"
+            //   }
+            // },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
             "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-            "가입 방법": { select: { name: user.authType || "email" } },
+            //"가입 방법": { select: { name: user.authType || "email" } },
             "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
@@ -1263,18 +1293,18 @@ async syncSelectedUsers() {
         },
         "사용자ID": { rich_text: [{ text: { content: userId } }] },
         "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
-        "상태": {
-          select: {
-            name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
-              ? "탈퇴" 
-              : "가입"
-          }
-        },
+        // "상태": {
+        //   select: {
+        //     name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
+        //       ? "탈퇴" 
+        //       : "가입"
+        //   }
+        // },
         "전화번호": { rich_text: [{ text: { content: updatedUserData.phoneNumber || "" } }] },
         "생년월일": { rich_text: [{ text: { content: updatedUserData.birthDate || "" } }] },
         "이메일": { rich_text: [{ text: { content: updatedUserData.email || "" } }] },
         "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-        "가입 방법": { select: { name: updatedUserData.authType || "email" } },
+        //"가입 방법": { select: { name: updatedUserData.authType || "email" } },
         "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
         "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
         "유입경로": { rich_text: [{ text: { content: updatedUserData.utmSource || "" } }] },
@@ -1695,7 +1725,7 @@ async syncSelectedUsers() {
                                props["앱 첫 로그인"]?.date?.start || null;
 
           // 가입 방법 매핑
-          const authTypeSelect = props["가입 방법"]?.select?.name || "";
+          //const authTypeSelect = props["가입 방법"]?.select?.name || "";
 
           // Push 광고 수신 여부
           const pushAgreeSelect = props["Push 광고 수신 여부"]?.select?.name || "";
