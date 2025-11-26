@@ -1511,6 +1511,11 @@ const options = {
               nullable: true,
               description: "사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)",
             },
+            isAuthor: {
+              type: "boolean",
+              description: "작성자 여부 (본인 게시글인지, 인증된 요청일 때만 포함)",
+              example: false,
+            },
             commentsCount: {
               type: "integer",
               description: "댓글 수",
