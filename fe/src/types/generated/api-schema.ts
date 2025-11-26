@@ -456,6 +456,17 @@ export interface Community {
   updatedAt?: string;
 }
 
+export interface CommunityMember {
+  id?: string;
+  userId?: string;
+  nickname?: string;
+  avatar?: string;
+  role?: "member" | "admin" | "moderator";
+  status?: "active" | "inactive" | "banned";
+  joinedAt?: string;
+  lastActiveAt?: string;
+}
+
 export interface Post {
   id?: string;
   type?: "ROUTINE_CERT" | "TMI" | "GATHERING_REVIEW";
@@ -681,17 +692,6 @@ export interface Success {
 export interface Error {
   status: number;
   message: string;
-}
-
-export interface CommunityMember {
-  id?: string;
-  userId?: string;
-  nickname?: string;
-  avatar?: string;
-  role?: "member" | "admin" | "moderator";
-  status?: "active" | "inactive" | "banned";
-  joinedAt?: string;
-  lastActiveAt?: string;
 }
 
 export interface ProgramApplicationRequest {

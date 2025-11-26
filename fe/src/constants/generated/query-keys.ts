@@ -5,23 +5,14 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-import type * as adminlogsTypes from "@/types/generated/adminlogs-types";
 import type * as announcementsTypes from "@/types/generated/announcements-types";
-import type * as authTypes from "@/types/generated/auth-types";
 import type * as commentsTypes from "@/types/generated/comments-types";
 import type * as communitiesTypes from "@/types/generated/communities-types";
 import type * as faqsTypes from "@/types/generated/faqs-types";
-import type * as fcmTypes from "@/types/generated/fcm-types";
-import type * as filesTypes from "@/types/generated/files-types";
-import type * as homeTypes from "@/types/generated/home-types";
-import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
-import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
-import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as qnaTypes from "@/types/generated/qna-types";
-import type * as reportsTypes from "@/types/generated/reports-types";
 import type * as storeTypes from "@/types/generated/store-types";
 import type * as usersTypes from "@/types/generated/users-types";
 
@@ -91,6 +82,13 @@ export const communitiesKeys = {
     __buildKey("communities", "getCommunities", {
       path: {},
       query: { type: request.type, page: request.page, size: request.size },
+    }),
+  getCommunitiesMembersByTwoIds: (
+    request: communitiesTypes.TGETCommunitiesMembersByTwoIdsReq
+  ) =>
+    __buildKey("communities", "getCommunitiesMembersByTwoIds", {
+      path: { communityId: request.communityId, userId: request.userId },
+      query: {},
     }),
   getCommunitiesNicknameAvailabilityById: (
     request: communitiesTypes.TGETCommunitiesNicknameAvailabilityByIdReq

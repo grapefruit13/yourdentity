@@ -11,6 +11,14 @@ export const getCommunities = (request: Types.TGETCommunitiesReq) => {
   return get<Types.TGETCommunitiesRes>(`/communities`, { params: request });
 };
 
+export const getCommunitiesMembersByTwoIds = (
+  request: Types.TGETCommunitiesMembersByTwoIdsReq
+) => {
+  return get<Types.TGETCommunitiesMembersByTwoIdsRes>(
+    `/communities/${request.communityId}/members/${request.userId}`
+  );
+};
+
 export const getCommunitiesNicknameAvailabilityById = (
   request: Types.TGETCommunitiesNicknameAvailabilityByIdReq
 ) => {

@@ -3,7 +3,6 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-
 import {
   useQuery,
   useMutation,
@@ -27,6 +26,27 @@ export const useGetCommunities = <TData = Types.TGETCommunitiesRes>(
     queryKey: communitiesKeys.getCommunities(request),
     queryFn: async () => {
       const response = await Api.getCommunities(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
+export const useGetCommunitiesMembersByTwoIds = <
+  TData = Types.TGETCommunitiesMembersByTwoIdsRes,
+>(
+  options: {
+    request: Types.TGETCommunitiesMembersByTwoIdsReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETCommunitiesMembersByTwoIdsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETCommunitiesMembersByTwoIdsRes, Error, TData>({
+    queryKey: communitiesKeys.getCommunitiesMembersByTwoIds(request),
+    queryFn: async () => {
+      const response = await Api.getCommunitiesMembersByTwoIds(request);
       return response.data;
     },
     ...queryOptions,

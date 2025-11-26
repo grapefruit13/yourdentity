@@ -25,6 +25,13 @@ export type TGETCommunitiesRes = {
   };
 };
 
+export interface TGETCommunitiesMembersByTwoIdsReq {
+  communityId: string;
+  userId: string;
+}
+
+export type TGETCommunitiesMembersByTwoIdsRes = Schema.CommunityMember;
+
 export interface TGETCommunitiesNicknameAvailabilityByIdReq {
   communityId: string;
   nickname: string;
