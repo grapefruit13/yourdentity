@@ -30,7 +30,11 @@ import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { ProgramDetailResponse } from "@/types/generated/api-schema";
 import * as Schema from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
-import { formatDateRange } from "@/utils/shared/date";
+import {
+  formatDateRange,
+  formatDateTimeWithDay,
+  formatDateSlash,
+} from "@/utils/shared/date";
 import { validateNickname } from "@/utils/shared/nickname-validator";
 
 /**
@@ -907,9 +911,9 @@ const ProgramApplyPage = () => {
   if (isLoading || !programDetailData) {
     return (
       <div className="min-h-screen bg-white pt-12">
-        <div className="mx-auto max-w-[470px] px-4">
+        <div className="mx-auto max-w-[470px] pb-24">
           {/* 프로그램 정보 카드 스켈레톤 */}
-          <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="border border-gray-300 bg-gray-50 p-4">
             <div className="flex gap-4">
               <Skeleton className="h-[110px] w-[110px] shrink-0 rounded-lg" />
               <div className="flex flex-1 flex-col gap-2">
@@ -921,11 +925,11 @@ const ProgramApplyPage = () => {
               </div>
             </div>
           </div>
-          {/* 질문 스켈레톤 */}
-          <Skeleton className="mb-3 h-8 w-full" />
-          <Skeleton className="mb-6 h-4 w-full" />
-          {/* 버튼 스켈레톤 */}
-          <Skeleton className="h-12 w-full rounded-lg" />
+          <div className="p-5">
+            {/* 질문 스켈레톤 */}
+            <Skeleton className="mb-3 h-8 w-full" />
+            <Skeleton className="mb-6 h-4 w-full" />
+          </div>
         </div>
       </div>
     );
@@ -941,10 +945,23 @@ const ProgramApplyPage = () => {
         {currentStep === "schedule-confirm" && (
           <div>
             {/* 프로그램 정보 카드 */}
-            <div className="rounded-lg border-b border-gray-200 p-4">
+            <div className="border-b border-gray-300 p-4">
               <div className="flex gap-4">
                 {/* 이미지 영역 */}
-                <div className="h-[110px] w-[110px] shrink-0 rounded-lg bg-gray-200" />
+                <div className="relative h-[110px] w-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-200">
+                  {((program.thumbnail && program.thumbnail[0]?.url) ||
+                    program.coverImage) && (
+                    <Image
+                      src={
+                        program.thumbnail?.[0]?.url || program.coverImage || ""
+                      }
+                      alt={program.programName || "프로그램 이미지"}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  )}
+                </div>
                 {/* 텍스트 영역 */}
                 <div className="flex flex-1 flex-col gap-1">
                   <div className="mb-2 line-clamp-1">
@@ -953,14 +970,14 @@ const ProgramApplyPage = () => {
                       variant="label1R"
                       className="text-main-500 bg-main-100 mr-[11px] mb-1 inline-block rounded-[2px] p-1"
                     >
-                      한끗루틴
+                      {program.programType}
                     </Typography>
                     <Typography
                       font="noto"
                       variant="heading3B"
                       className="mb-1 text-gray-700"
                     >
-                      {program.description || "-"}
+                      {program.programName || "-"}
                     </Typography>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -974,42 +991,49 @@ const ProgramApplyPage = () => {
                         {formatDateRange(program.startDate, program.endDate)}
                       </Typography>
                     )}
-                    <Typography
-                      font="noto"
-                      variant="label1R"
-                      className="text-gray-950"
-                    >
-                      오티: 10월 14일 20시
-                    </Typography>
-                    <Typography
-                      font="noto"
-                      variant="label1R"
-                      className="text-gray-950"
-                    >
-                      공유회: 10월 28일 20시
-                    </Typography>
+                    {program.orientationDate && (
+                      <Typography
+                        font="noto"
+                        variant="label1R"
+                        className="text-gray-950"
+                      >
+                        오티: {formatDateTimeWithDay(program.orientationDate)}
+                      </Typography>
+                    )}
+                    {program.shareMeetingDate && (
+                      <Typography
+                        font="noto"
+                        variant="label1R"
+                        className="text-gray-950"
+                      >
+                        공유회:{" "}
+                        {formatDateTimeWithDay(program.shareMeetingDate)}
+                      </Typography>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="p-5">
-              <Typography
-                as="h2"
-                font="noto"
-                variant="heading2B"
-                className="mb-3"
-              >
-                오티(10월 14일), 공유회(10월 28일) 20시 일정을 확인하셨나요?
-              </Typography>
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="mb-6 text-gray-600"
-              >
-                오티와 공유회 참석은 필수입니다. 참석 불가능한 경우 10월
-                한끗루틴 참여가 어렵습니다.
-              </Typography>
-            </div>
+            {Boolean(program.orientationDate && program.shareMeetingDate) && (
+              <div className="p-5">
+                <Typography
+                  as="h2"
+                  font="noto"
+                  variant="heading2B"
+                  className="mb-3"
+                >
+                  {`오티(${formatDateSlash(program.orientationDate)}), 공유회(${formatDateSlash(program.shareMeetingDate)}) 일정을 확인하셨나요?`}
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="body2R"
+                  className="mb-6 text-gray-600"
+                >
+                  오티와 공유회 참석은 필수입니다. 참석 불가능한 경우 프로그램
+                  참여가 어렵습니다.
+                </Typography>
+              </div>
+            )}
           </div>
         )}
 

@@ -149,3 +149,34 @@ export const getTomorrow4AM59 = (): Date => {
 
   return tomorrow;
 };
+
+/**
+ * 날짜를 "M월 D일 (요일) H시" 형식으로 변환
+ * @param dateString - ISO 8601 문자열 또는 Date 객체
+ * @returns "M월 D일 (요일) H시" 형식의 문자열 (예: "11월 12일 (수) 9시")
+ */
+export const formatDateTimeWithDay = (dateString?: string | Date): string => {
+  if (!dateString) return "";
+  const date =
+    typeof dateString === "string" ? new Date(dateString) : dateString;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = date.getHours();
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const dayName = dayNames[date.getDay()];
+  return `${month}월 ${day}일 (${dayName}) ${hour}시`;
+};
+
+/**
+ * 날짜를 "M/D" 형식으로 변환
+ * @param dateString - ISO 8601 문자열 또는 Date 객체
+ * @returns "M/D" 형식의 문자열 (예: "11/12")
+ */
+export const formatDateSlash = (dateString?: string | Date): string => {
+  if (!dateString) return "";
+  const date =
+    typeof dateString === "string" ? new Date(dateString) : dateString;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
+};
