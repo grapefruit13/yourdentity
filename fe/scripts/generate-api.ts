@@ -547,7 +547,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
       fileContent += `};\n\n`;
     });
 
-    // any가 실제로 사용되는지 확인하여 eslint-disable 주석 추가
+    // any가 실제로 사용되는지 확인하여 eslint-disable 주석 추가/제거
     const hasAnyUsage =
       fileContent.includes(": any") ||
       fileContent.includes(" as any") ||
@@ -556,11 +556,21 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
       fileContent.includes("= any") ||
       /(^|\s)any\b/.test(fileContent);
 
-    if (hasAnyUsage) {
-      // any 사용 시 파일 상단에 eslint-disable 주석 추가 (JSDoc 주석 밖에)
+    const hasEslintDisable = fileContent.includes(
+      "/* eslint-disable @typescript-eslint/no-explicit-any */"
+    );
+
+    if (hasAnyUsage && !hasEslintDisable) {
+      // any 사용 시 주석이 없으면 추가 (JSDoc 주석 밖에)
       fileContent = fileContent.replace(
         /^(\/\*\*[\s\S]*?\*\/\s*)\n(import)/,
         `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n$2`
+      );
+    } else if (!hasAnyUsage && hasEslintDisable) {
+      // any 사용하지 않을 때 주석이 있으면 제거
+      fileContent = fileContent.replace(
+        /^\/\* eslint-disable @typescript-eslint\/no-explicit-any \*\/\s*\n/im,
+        ""
       );
     }
 
@@ -737,8 +747,15 @@ import type * as Schema from "./api-schema";
       fileContent.includes("= any") ||
       /(^|\s)any\b/.test(fileContent);
 
-    if (!hasAnyUsage) {
-      // any 사용하지 않는 경우 eslint-disable 주석 제거
+    const hasEslintDisable = fileContent.includes(
+      "/* eslint-disable @typescript-eslint/no-explicit-any */"
+    );
+
+    if (hasAnyUsage && !hasEslintDisable) {
+      // any 사용 시 주석이 없으면 추가
+      fileContent = `/* eslint-disable @typescript-eslint/no-explicit-any */\n${fileContent}`;
+    } else if (!hasAnyUsage && hasEslintDisable) {
+      // any 사용하지 않을 때 주석이 있으면 제거
       fileContent = fileContent.replace(
         /^\/\* eslint-disable @typescript-eslint\/no-explicit-any \*\/\s*\n/im,
         ""
@@ -754,8 +771,6 @@ import type * as Schema from "./api-schema";
 // Query Keys 생성
 function generateQueryKeys(endpoints: ApiEndpoint[]): string {
   let queryKeys = `
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /**
  * @description Swagger에서 자동 생성된 Query Keys
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -859,6 +874,33 @@ function generateQueryKeys(endpoints: ApiEndpoint[]): string {
     queryKeys += `} as const;\n\n`;
   });
 
+  // any가 실제로 사용되는지 확인하여 eslint-disable 주석 추가/제거
+  const hasAnyUsage =
+    queryKeys.includes(": any") ||
+    queryKeys.includes(" as any") ||
+    queryKeys.includes("any[]") ||
+    queryKeys.includes("any>") ||
+    queryKeys.includes("= any") ||
+    /(^|\s)any\b/.test(queryKeys);
+
+  const hasEslintDisable = queryKeys.includes(
+    "/* eslint-disable @typescript-eslint/no-explicit-any */"
+  );
+
+  if (hasAnyUsage && !hasEslintDisable) {
+    // any 사용 시 주석이 없으면 추가 (JSDoc 주석 밖에)
+    queryKeys = queryKeys.replace(
+      /^(\/\*\*[\s\S]*?\*\/\s*)\n(import|function)/,
+      `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n$2`
+    );
+  } else if (!hasAnyUsage && hasEslintDisable) {
+    // any 사용하지 않을 때 주석이 있으면 제거
+    queryKeys = queryKeys.replace(
+      /^\/\* eslint-disable @typescript-eslint\/no-explicit-any \*\/\s*\n/im,
+      ""
+    );
+  }
+
   return queryKeys;
 }
 
@@ -894,7 +936,6 @@ function generateHooks(endpoints: ApiEndpoint[]): string {
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import * as Api from "@/api/generated/${tag.toLowerCase()}-api";
 import { ${tag.toLowerCase()}Keys } from "@/constants/generated/query-keys";
@@ -1041,6 +1082,33 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
         }
       }
     });
+
+    // any가 실제로 사용되는지 확인하여 eslint-disable 주석 추가/제거
+    const hasAnyUsage =
+      fileContent.includes(": any") ||
+      fileContent.includes(" as any") ||
+      fileContent.includes("any[]") ||
+      fileContent.includes("any>") ||
+      fileContent.includes("= any") ||
+      /(^|\s)any\b/.test(fileContent);
+
+    const hasEslintDisable = fileContent.includes(
+      "/* eslint-disable @typescript-eslint/no-explicit-any */"
+    );
+
+    if (hasAnyUsage && !hasEslintDisable) {
+      // any 사용 시 주석이 없으면 추가 (JSDoc 주석 밖에)
+      fileContent = fileContent.replace(
+        /^(\/\*\*[\s\S]*?\*\/\s*)\n(import)/,
+        `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n$2`
+      );
+    } else if (!hasAnyUsage && hasEslintDisable) {
+      // any 사용하지 않을 때 주석이 있으면 제거
+      fileContent = fileContent.replace(
+        /^\/\* eslint-disable @typescript-eslint\/no-explicit-any \*\/\s*\n/im,
+        ""
+      );
+    }
 
     fs.writeFileSync(filePath, fileContent);
     formatGeneratedFile(filePath);
