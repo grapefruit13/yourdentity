@@ -164,9 +164,10 @@ const rewardHandler = require("../middleware/rewardHandler");
  *           example: "member"
  *         status:
  *           type: string
- *           enum: [active, inactive, banned]
- *           description: 멤버 상태
- *           example: "active"
+ *           nullable: true
+ *           enum: [pending, approved]
+ *           description: 멤버 상태 (승인 전/후)
+ *           example: "approved"
  *         joinedAt:
  *           type: string
  *           format: date-time

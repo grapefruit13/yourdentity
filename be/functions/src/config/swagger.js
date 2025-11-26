@@ -1923,7 +1923,8 @@ const options = {
             status: {
               type: "string",
               nullable: true,
-              description: "멤버 상태 (pending, approved 등)",
+              enum: ["pending", "approved", "suspended"],
+              description: "멤버 상태 (승인대기/승인/정지)",
               example: "approved",
             },
             joinedAt: {

@@ -1521,7 +1521,7 @@ router.get("/:userId", authGuard, userController.getUserById);
  *                 example: kakao
  *               status:
  *                 type: string
- *                 enum: [pending, active, suspended]
+ *                 enum: [pending, approved, suspended]
  *                 example: active
  *               serviceTermsVersion:
  *                 type: string
