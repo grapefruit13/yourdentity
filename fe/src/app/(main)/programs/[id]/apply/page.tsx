@@ -949,8 +949,7 @@ const ProgramApplyPage = () => {
               <div className="flex gap-4">
                 {/* 이미지 영역 */}
                 <div className="relative h-[110px] w-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-200">
-                  {((program.thumbnail && program.thumbnail[0]?.url) ||
-                    program.coverImage) && (
+                  {(program.thumbnail?.[0]?.url || program.coverImage) && (
                     <Image
                       src={
                         program.thumbnail?.[0]?.url || program.coverImage || ""

@@ -11,6 +11,7 @@ import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { commentsKeys } from "@/constants/generated/query-keys";
 import { communitiesKeys } from "@/constants/generated/query-keys";
+import { COMMENT_ANONYMOUS_NAME } from "@/constants/shared/_comment-constants";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import {
@@ -61,6 +62,7 @@ const CommentsPage = () => {
     select: (data) => data?.user,
   });
   const currentUserNickname = userData?.nickname || "";
+  const userName = userData?.nickname || "";
 
   // 뒤로가기 핸들러
   const handleBack = useCallback(() => {
@@ -343,7 +345,7 @@ const CommentsPage = () => {
               <CommentItem
                 key={comment.id}
                 comment={comment}
-                currentUserNickname={currentUserNickname}
+                userName={userName}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={(commentId, author) =>
@@ -405,7 +407,7 @@ const CommentsPage = () => {
                     replyingTo?.isReply && "text-gray-400"
                   )}
                 >
-                  {currentUserNickname || "익명"}
+                  {userName || COMMENT_ANONYMOUS_NAME}
                 </Typography>
                 {replyingTo && !replyingTo.isReply && (
                   <Typography

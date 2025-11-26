@@ -83,10 +83,7 @@ const CommentsSection = ({
 
   // TMI 타입 게시글인 경우 실명 사용, 아니면 닉네임 사용
   const isTMIPost = postType === "TMI" || postType === "TMI_CERT";
-  const currentUserDisplayName = isTMIPost
-    ? userData?.name || ""
-    : userData?.nickname || "";
-  const currentUserNickname = userData?.nickname || "";
+  const userName = isTMIPost ? userData?.name || "" : userData?.nickname || "";
 
   // 댓글 데이터 가져오기
   const { data: commentsData, isLoading: isCommentsLoading } =
@@ -324,8 +321,7 @@ const CommentsSection = ({
               <CommentItem
                 key={comment.id}
                 comment={comment}
-                currentUserNickname={currentUserNickname}
-                currentUserDisplayName={currentUserDisplayName}
+                userName={userName}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={handleStartReplyToRoot}
@@ -364,7 +360,7 @@ const CommentsSection = ({
             onCommentSubmit={handleCommentSubmit}
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
-            currentUserDisplayName={currentUserDisplayName}
+            userName={userName}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />

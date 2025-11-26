@@ -303,7 +303,7 @@ const MissionCommentsSection = ({
               <CommentItem
                 key={comment.id}
                 comment={comment}
-                currentUserNickname={currentUserNickname}
+                userName={currentUserNickname}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={handleStartReplyToRoot}
@@ -342,7 +342,7 @@ const MissionCommentsSection = ({
             onCommentSubmit={handleCommentSubmit}
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
-            currentUserNickname={currentUserNickname}
+            userName={currentUserNickname}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />

@@ -14,8 +14,7 @@ interface CommentItemProps {
   comment: NonNullable<
     Types.TGETCommentsCommunitiesPostsByTwoIdsRes["comments"]
   >[number];
-  currentUserNickname: string;
-  currentUserDisplayName: string;
+  userName: string;
   isExpanded?: boolean;
   onToggleReplies: () => void;
   onStartReply: (commentId: string, author: string) => void;
@@ -52,8 +51,7 @@ interface CommentItemProps {
  */
 const CommentItem = ({
   comment,
-  currentUserNickname,
-  currentUserDisplayName,
+  userName,
   isExpanded = false,
   onToggleReplies,
   onStartReply,
@@ -103,7 +101,7 @@ const CommentItem = ({
   const hiddenRepliesCount = Math.max(0, repliesCount - 1);
   const shouldShowMoreButton = repliesCount >= 2 && !isExpanded;
 
-  const isOwnComment = comment.author === currentUserNickname;
+  const isOwnComment = comment.author === userName;
   const isEditing = editingCommentId === commentId;
   const isReplying =
     replyingTo?.commentId === commentId && !replyingTo?.isReply;
@@ -466,7 +464,7 @@ const CommentItem = ({
                       {!isReplyingToThisReply && !isEditingReply && (
                         <KebabMenu
                           onEdit={
-                            replyAuthor === currentUserNickname
+                            replyAuthor === userName
                               ? () => {
                                   if (reply.content) {
                                     onStartEdit(replyId, reply.content);
@@ -475,12 +473,12 @@ const CommentItem = ({
                               : undefined
                           }
                           onDelete={
-                            replyAuthor === currentUserNickname
+                            replyAuthor === userName
                               ? () => onDelete(replyId)
                               : undefined
                           }
                           onReport={
-                            replyAuthor !== currentUserNickname && onReport
+                            replyAuthor !== userName && onReport
                               ? () => onReport(replyId)
                               : undefined
                           }
@@ -638,7 +636,7 @@ const CommentItem = ({
                               <span className="text-main-500">
                                 @{replyingTo?.author}
                               </span>{" "}
-                              {currentUserDisplayName}
+                              {userName}
                             </Typography>
                           </div>
                           <button
