@@ -13,8 +13,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
 import { getCommunitiesPosts } from "@/api/generated/communities-api";
+import CommunityTabs from "@/components/community/community-tabs";
+import { CommunitySearchBar } from "@/components/community/CommunitySearchBar";
 import FilterChipsSection from "@/components/community/FilterChipsSection";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
+import { MyCertificationToggle } from "@/components/community/MyCertificationToggle";
 import PostFeed from "@/components/community/PostFeed";
 import ProgramFilterBottomSheet, {
   type ProgramCategoryFilter,
@@ -22,12 +25,8 @@ import ProgramFilterBottomSheet, {
   type ProgramStateFilter,
 } from "@/components/community/ProgramFilterBottomSheet";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
-import AlarmButton from "@/components/shared/AlarmButton";
-import GrayCheckbox from "@/components/shared/GrayCheckbox";
 import { Typography } from "@/components/shared/typography";
-import Icon from "@/components/shared/ui/icon";
 import { communitiesKeys } from "@/constants/generated/query-keys";
-import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
@@ -35,7 +34,6 @@ import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import type { ProgramListResponse } from "@/types/generated/api-schema";
 import type { TGETCommunitiesPostsRes } from "@/types/generated/communities-types";
-import { cn } from "@/utils/shared/cn";
 
 const COMMUNITY_POST_LIST_SIZE = 20;
 
@@ -661,90 +659,32 @@ const CommunityPageContent = () => {
       {/* 검색 & 필터 섹션 */}
       <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5">
         <div className="relative">
-          <div className="flex h-12 items-center justify-between bg-white">
-            <div className="flex items-center gap-4">
-              <Typography font="noto" variant="title4" className="text-black">
-                프로그램
-              </Typography>
-              {/* <Typography font="noto" variant="title4" className="text-black">
-                미션
-              </Typography> */}
-            </div>
-            <AlarmButton />
-          </div>
+          <CommunityTabs activeTab="program" />
 
           {/* 검색 입력 */}
-          <div className="flex items-center gap-[10px]">
-            <div className="my-3 flex h-[40px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3">
-              <input
-                ref={searchInputRef}
-                id="community-search-input"
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchInputChange}
-                onKeyDown={handleSearchKeyDown}
-                onBlur={handleSearchBlur}
-                placeholder="관심있는 키워드를 검색해보세요."
-                className="flex-1 bg-transparent text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleSearch}
-                aria-label="검색"
-                className="flex items-center justify-center"
-              >
-                <Icon
-                  src={IMAGE_URL.ICON.search.url}
-                  aria-hidden="true"
-                  className="text-gray-800"
-                  width={20}
-                  height={20}
-                />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsFilterSheetOpen(true)}
-              className={cn(
-                "flex size-10 items-center justify-center rounded-[6px] border border-gray-100 transition-colors",
-                hasFilterChanges
-                  ? "border-main-500 bg-main-50 text-main-500"
-                  : "border-gray-200 text-gray-700"
-              )}
-            >
-              <Icon
-                src={IMAGE_URL.ICON.filter.url}
-                aria-hidden="true"
-                className={hasFilterChanges ? "text-main-500" : "text-gray-700"}
-                width={20}
-                height={20}
-              />
-            </button>
-          </div>
+          <CommunitySearchBar
+            inputRef={searchInputRef}
+            value={searchQuery}
+            onChange={handleSearchInputChange}
+            onKeyDown={handleSearchKeyDown}
+            onBlur={handleSearchBlur}
+            onSearchClick={handleSearch}
+            hasFilterChanges={hasFilterChanges}
+            onFilterClick={() => setIsFilterSheetOpen(true)}
+          />
 
           {/* 선택된 필터 칩 */}
           <FilterChipsSection chips={filterChips} />
 
           {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
           {currentUser && (
-            <div
-              className="flex w-fit cursor-pointer items-center gap-2 py-[9px]"
-              onClick={() => setOnlyMyPrograms(!onlyMyPrograms)}
-            >
-              <GrayCheckbox
-                id="only-my-programs"
-                checked={onlyMyPrograms}
-                aria-label="내가 참여중인 프로그램 게시글만 보기"
-                onCheckedChange={(checked) => setOnlyMyPrograms(checked)}
-              />
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-gray-500"
-              >
-                내가 참여중인 프로그램만 보기
-              </Typography>
-            </div>
+            <MyCertificationToggle
+              id="only-my-programs"
+              checked={onlyMyPrograms}
+              label="내가 참여중인 프로그램만 보기"
+              ariaLabel="내가 참여중인 프로그램 게시글만 보기"
+              onChange={setOnlyMyPrograms}
+            />
           )}
         </div>
       </div>
