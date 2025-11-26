@@ -170,10 +170,10 @@ router.get("/categories", missionController.getCategories);
  * @swagger
  * /missions:
  *   get:
- *     summary: 미션 목록 조회 (MVP)
+*     summary: 미션 목록 조회
  *     tags: [Missions]
  *     description: |
- *       전체 미션 목록을 조회합니다. (약 30~100개, 페이지네이션 없음)
+*       전체 미션 목록을 조회합니다. Notion cursor 기반 페이지네이션을 지원합니다.
  *       
  *       **자동 필터링:**
  *       - 현재 모집 여부가 체크된 미션만 조회됩니다.
@@ -182,9 +182,9 @@ router.get("/categories", missionController.getCategories);
  *       - latest: 최신순 (기본값)
  *       - popular: 인기순 (반응 수 많은 순)
  *       
- *       필터:
- *       - category: 카테고리 칩 (예: 자기 탐색, 자기 만족 등)
- *       - excludeParticipated: 참여한 미션 제외 (로그인 필요)
+*       필터:
+*       - category: 카테고리 칩 (예: 자기 탐색, 자기 만족 등)
+*       - excludeParticipated: 참여한 미션 제외 (로그인 필요)
  *     parameters:
  *       - in: query
  *         name: sortBy
@@ -203,6 +203,19 @@ router.get("/categories", missionController.getCategories);
  *         schema:
  *           type: boolean
  *         description: 참여한 미션 제외 (로그인 필요)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 50
+ *         description: 페이지당 미션 수
+ *       - in: query
+ *         name: startCursor
+ *         schema:
+ *           type: string
+ *         description: 다음 페이지 조회용 cursor (Notion next_cursor)
  *     responses:
  *       200:
  *         description: 미션 목록 조회 성공
@@ -224,6 +237,19 @@ router.get("/categories", missionController.getCategories);
  *                     totalCount:
  *                       type: integer
  *                       example: 30
+ *                     pageInfo:
+ *                       type: object
+ *                       properties:
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 20
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                           example: "1f6a3..."
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
  *       500:
  *         description: 서버 오류
  *         content:
@@ -409,7 +435,7 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *   get:
  *     summary: 미션 인증글 목록 조회
  *     tags: [Missions]
- *     description: 미션 인증글 목록을 조회합니다. 페이지네이션은 추후 추가 예정입니다. 인증은 선택사항이며, 인증 시 추가 정보를 제공할 수 있습니다.
+ *     description: 미션 인증글 목록을 조회합니다. cursor 기반 페이지네이션을 지원하며, 인증은 선택사항입니다.
  *     parameters:
  *       - in: query
  *         name: sort
@@ -431,6 +457,19 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *           type: string
  *         description: 내가 인증한 미션만 보기 (userId 필터)
  *         example: "user-123"
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 50
+ *         description: 페이지당 인증글 수
+ *       - in: query
+ *         name: startCursor
+ *         schema:
+ *           type: string
+ *         description: 다음 페이지 조회용 cursor (마지막으로 받은 postId)
  *     responses:
  *       200:
  *         description: 미션 인증글 목록 조회 성공
@@ -507,6 +546,19 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *                           timeAgo:
  *                             type: string
  *                             example: "1시간 전"
+ *                     pageInfo:
+ *                       type: object
+ *                       properties:
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 20
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                           example: "mission-post-abc123"
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
  *             example:
  *               status: 200
  *               data:
@@ -529,6 +581,10 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *                     viewCount: 100
  *                     createdAt: "2024-01-20T10:00:00.000Z"
  *                     timeAgo: "1시간 전"
+ *                 pageInfo:
+ *                   pageSize: 20
+ *                   nextCursor: "mission-post-abc123"
+ *                   hasNext: true
  *       400:
  *         description: 잘못된 요청
  *         content:
@@ -699,6 +755,19 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *           type: string
  *         description: 미션 인증글 ID
  *         example: "post-123"
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 20
+ *         description: 페이지당 원댓글 수
+ *       - in: query
+ *         name: startCursor
+ *         schema:
+ *           type: string
+ *         description: 다음 페이지 조회용 cursor (마지막으로 받은 원댓글 ID)
  *     responses:
  *       200:
  *         description: 댓글 목록 조회 성공
@@ -798,6 +867,19 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                           updatedAt:
  *                             type: string
  *                             format: date-time
+ *                     pageInfo:
+ *                       type: object
+ *                       properties:
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                           example: "root-comment-123"
+ *                         hasNext:
+ *                           type: boolean
+ *                           example: true
  *       400:
  *         description: 잘못된 요청
  *         content:

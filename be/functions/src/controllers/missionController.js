@@ -2,6 +2,53 @@ const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
 const { MISSION_STATUS } = require("../constants/missionConstants");
+const {
+  parsePageSize,
+  sanitizeCursor,
+} = require("../utils/paginationHelper");
+const paginationConstants = require("../constants/paginationConstants");
+const {
+  DEFAULT_MISSION_PAGE_SIZE,
+  MAX_MISSION_PAGE_SIZE,
+  NOTION_MAX_PAGE_SIZE,
+  DEFAULT_POST_PAGE_SIZE,
+  MAX_POST_PAGE_SIZE,
+  DEFAULT_COMMENT_PAGE_SIZE,
+  MAX_COMMENT_PAGE_SIZE,
+} = paginationConstants;
+
+const encodePaginationCursor = (payload) => {
+  try {
+    return Buffer.from(JSON.stringify(payload)).toString("base64");
+  } catch (error) {
+    console.warn("[MissionController] Failed to encode pagination cursor:", error.message);
+    return null;
+  }
+};
+
+const decodePaginationCursor = (cursor) => {
+  if (!cursor || typeof cursor !== "string") {
+    return {
+      bufferedMissions: [],
+      notionCursor: null,
+    };
+  }
+
+  try {
+    const decoded = Buffer.from(cursor, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded);
+    return {
+      bufferedMissions: Array.isArray(parsed.bufferedMissions) ? parsed.bufferedMissions : [],
+      notionCursor: typeof parsed.notionCursor === "string" ? parsed.notionCursor : null,
+    };
+  } catch (error) {
+    console.warn("[MissionController] Failed to decode pagination cursor:", error.message);
+    return {
+      bufferedMissions: [],
+      notionCursor: null,
+    };
+  }
+};
 
 class MissionController {
   constructor() {
@@ -173,46 +220,120 @@ class MissionController {
    * @param {Object} res - Express 응답 객체
    * @param {Function} next - Express next 함수
    * 
-   * @note MVP: 전체 미션 반환 (페이지네이션 없음)
+   * @note Notion cursor 기반 페이지네이션 지원
    * @note 정렬: latest(최신순), popular(인기순)
    * @note 필터: category(카테고리), excludeParticipated(참여 미션 제외)
    */
   async getMissions(req, res, next) {
     try {
-      const { 
-        category, 
-        sortBy = 'latest',
-        excludeParticipated 
+      const {
+        category,
+        sortBy = "latest",
+        excludeParticipated,
+        pageSize: pageSizeParam,
+        startCursor: startCursorParam,
       } = req.query;
-      
+
+      const pageSize = parsePageSize(
+        pageSizeParam,
+        DEFAULT_MISSION_PAGE_SIZE,
+        MAX_MISSION_PAGE_SIZE,
+      );
+      const sanitizedCursor = sanitizeCursor(startCursorParam);
+      const { bufferedMissions: initialBufferedMissions, notionCursor: initialNotionCursor } =
+        decodePaginationCursor(sanitizedCursor);
+
       const userId = req.user?.uid; // optionalAuth에서 가져옴
+      const needsExclude = Boolean(userId && excludeParticipated === "true");
 
-      // 필터 조건 구성
-      const filters = {
-        sortBy, // 'latest' or 'popular'
+      const responseMissions = [];
+      const bufferQueue = Array.isArray(initialBufferedMissions) ? [...initialBufferedMissions] : [];
+
+      while (responseMissions.length < pageSize && bufferQueue.length > 0) {
+        responseMissions.push(bufferQueue.shift());
+      }
+
+      let participatedIds = [];
+      if (needsExclude) {
+        participatedIds = await this.getParticipatedMissionIds(userId);
+      }
+
+      const shouldIncludeMission = (mission) =>
+        !needsExclude || !participatedIds.includes(mission.id);
+
+      let notionCursor = initialNotionCursor;
+      let notionHasMore = false;
+      const bufferedOverflow = [];
+      const fetchSize = needsExclude
+        ? Math.min(pageSize * 3, NOTION_MAX_PAGE_SIZE)
+        : pageSize;
+
+      const buildNotionRequest = () => {
+        const requestPayload = {
+          sortBy,
+          pageSize: fetchSize,
+        };
+
+        if (category) {
+          requestPayload.category = category;
+        }
+
+        if (notionCursor) {
+          requestPayload.startCursor = notionCursor;
+        }
+
+        return requestPayload;
       };
-      
-      if (category) {
-        filters.category = category;
+
+      while (responseMissions.length < pageSize) {
+        const notionRequest = buildNotionRequest();
+        const result = await notionMissionService.getMissions(notionRequest);
+        notionCursor = result.nextCursor || null;
+        notionHasMore = Boolean(result.hasMore && notionCursor);
+
+        let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
+        fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
+
+        if (fetchedMissions.length === 0) {
+          if (!notionHasMore) {
+            break;
+          }
+          continue;
+        }
+
+        fetchedMissions.forEach((mission) => {
+          if (responseMissions.length < pageSize) {
+            responseMissions.push(mission);
+          } else {
+            bufferedOverflow.push(mission);
+          }
+        });
+
+        if (!notionHasMore) {
+          break;
+        }
       }
 
-      // 노션에서 미션 조회
-      let result = await notionMissionService.getMissions(filters);
+      const finalBuffer = bufferQueue.concat(bufferedOverflow);
+      const hasBufferedItems = finalBuffer.length > 0;
+      const hasNext = hasBufferedItems || notionHasMore;
+      const nextCursorPayload = hasNext
+        ? encodePaginationCursor({
+            bufferedMissions: finalBuffer,
+            notionCursor: notionHasMore ? notionCursor : null,
+          })
+        : null;
 
-      // 참여 미션 제외 (로그인 유저 & 옵션 활성화 시)
-      if (userId && excludeParticipated === 'true') {
-        const participatedIds = await this.getParticipatedMissionIds(userId);
-        result.missions = result.missions.filter(
-          mission => !participatedIds.includes(mission.id)
-        );
-        result.totalCount = result.missions.length;
-      }
+      const pageInfo = {
+        pageSize,
+        nextCursor: nextCursorPayload,
+        hasNext,
+      };
 
       res.success({
-        missions: result.missions,
-        totalCount: result.totalCount
+        missions: responseMissions,
+        pageInfo,
       });
-
     } catch (error) {
       console.error("[MissionController] 미션 목록 조회 오류:", error.message);
       return next(error);
@@ -277,7 +398,12 @@ class MissionController {
    */
   async getAllMissionPosts(req, res, next) {
     try {
-      const { sort = "latest", userId } = req.query;
+      const {
+        sort = "latest",
+        userId,
+        pageSize: pageSizeParam,
+        startCursor: startCursorParam,
+      } = req.query;
       const rawCategories = req.query.categories;
 
       let categories = [];
@@ -294,11 +420,20 @@ class MissionController {
 
       const viewerId = req.user?.uid || null;
 
+      const pageSize = parsePageSize(
+        pageSizeParam,
+        DEFAULT_POST_PAGE_SIZE,
+        MAX_POST_PAGE_SIZE,
+      );
+      const startCursor = sanitizeCursor(startCursorParam);
+
       const result = await missionPostService.getAllMissionPosts(
         {
           sort,
           categories,
           userId,
+          pageSize,
+          startCursor,
         },
         viewerId,
       );
@@ -344,6 +479,7 @@ class MissionController {
     try {
       const { postId } = req.params;
       const viewerId = req.user?.uid || null;
+      const { pageSize: pageSizeParam, startCursor: startCursorParam } = req.query;
 
       if (!postId) {
         const error = new Error("인증글 ID가 필요합니다.");
@@ -352,9 +488,19 @@ class MissionController {
         return next(error);
       }
 
-      const comments = await missionPostService.getComments(postId, viewerId);
+      const pageSize = parsePageSize(
+        pageSizeParam,
+        DEFAULT_COMMENT_PAGE_SIZE,
+        MAX_COMMENT_PAGE_SIZE,
+      );
+      const startCursor = sanitizeCursor(startCursorParam);
 
-      return res.success({ comments });
+      const result = await missionPostService.getComments(postId, viewerId, {
+        pageSize,
+        startCursor,
+      });
+
+      return res.success(result);
     } catch (error) {
       console.error("[MissionController] 미션 인증글 댓글 목록 조회 오류:", error.message);
       return next(error);
