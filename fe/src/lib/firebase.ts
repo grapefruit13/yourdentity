@@ -23,13 +23,12 @@ import { debug } from "@/utils/shared/debugger";
  * 참고: https://firebase.google.com/docs/auth/web/redirect-best-practices
  */
 const getAuthDomain = () => {
-  // 개발 환경에서는 localhost 사용
-  // if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-  //   return "localhost:3000";
-  // }
-
-  // 프로덕션에서는 현재 도메인 사용
   if (typeof window !== "undefined") {
+    // 개발 환경에서는 localhost 사용
+    if (window.location.hostname === "localhost") {
+      return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+    }
+    // 프로덕션에서는 현재 도메인 사용
     return window.location.host;
   }
 
