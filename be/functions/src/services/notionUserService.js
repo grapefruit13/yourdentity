@@ -3,6 +3,7 @@ const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 const {admin} = require("../config/database");
 const crypto = require("crypto");
+const { makeConsoleLogger } = require('@notionhq/client/build/src/logging');
 /*
 - 1초, 10배치 : 100명에서 끊어짐
 - 1.5초, 20배치 : 200명 문제X
@@ -65,18 +66,44 @@ class NotionUserService {
           const user = doc.data();
           const userId = doc.id;
 
-          // 신고 카운트(communities/*/posts/*) 합산
+          // 신고 카운트(게시글 + 댓글) 합산
           let reportCount = 0;
           try {
-            const reportSnapshot = await db
-              .collectionGroup("posts")
-              .where("authorId", "==", userId)
+            // 1) 모든 커뮤니티의 posts/* 컬렉션에서 authorId가 동일한 문서의 reportsCount 합산
+            // collectionGroup은 인덱스가 필요하므로, 각 커뮤니티를 순회하면서 조회
+            let postReports = 0;
+            const communitiesSnapshot = await db.collection("communities").get();
+            
+            const postPromises = communitiesSnapshot.docs.map(async (communityDoc) => {
+              const communityId = communityDoc.id;
+              const postsSnapshot = await db
+                .collection("communities")
+                .doc(communityId)
+                .collection("posts")
+                .where("authorId", "==", userId)
+                .get();
+              
+              return postsSnapshot.docs.reduce((sum, postDoc) => {
+                const reportsCount = postDoc.data().reportsCount || 0;
+                return sum + reportsCount;
+              }, 0);
+            });
+            
+            const postResults = await Promise.all(postPromises);
+            postReports = postResults.reduce((sum, count) => sum + count, 0);
+
+            // 2) comments 컬렉션에서 userId가 동일한 문서의 reportsCount 합산
+            const commentSnapshot = await db
+              .collection("comments")
+              .where("userId", "==", userId)
               .get();
 
-            reportCount = reportSnapshot.docs.reduce((sum, postDoc) => {
-              const reportsCount = postDoc.data().reportsCount || 0;
+            const commentReports = commentSnapshot.docs.reduce((sum, commentDoc) => {
+              const reportsCount = commentDoc.data().reportsCount || 0;
               return sum + reportsCount;
             }, 0);
+            
+            reportCount = postReports + commentReports;
           } catch (countError) {
             console.warn(
               `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
@@ -452,19 +479,44 @@ async syncAllUserAccounts() {
           const userId = doc.id;
           const existingNotionUser = notionUsers[userId];
 
-          //신고 카운트 (firebase 단일필드 authorId 추가)
+          // 신고 카운트(게시글 + 댓글) 합산
           let reportCount = 0;
           try {
-            const reportSnapshot = await db
-              .collectionGroup("posts")
-              .where("authorId", "==", userId)
-              .get();
+            // 1) 모든 커뮤니티의 posts/* 컬렉션에서 authorId가 동일한 문서의 reportsCount 합산
+            // collectionGroup은 인덱스가 필요하므로, 각 커뮤니티를 순회하면서 조회
+            let postReports = 0;
+            const communitiesSnapshot = await db.collection("communities").get();
             
-            // 각 문서의 reportsCount 값을 합산
-            reportCount = reportSnapshot.docs.reduce((sum, doc) => {
-              const reportsCount = doc.data().reportsCount || 0;
+            const postPromises = communitiesSnapshot.docs.map(async (communityDoc) => {
+              const communityId = communityDoc.id;
+              const postsSnapshot = await db
+                .collection("communities")
+                .doc(communityId)
+                .collection("posts")
+                .where("authorId", "==", userId)
+                .get();
+              
+              return postsSnapshot.docs.reduce((sum, postDoc) => {
+                const reportsCount = postDoc.data().reportsCount || 0;
+                return sum + reportsCount;
+              }, 0);
+            });
+            
+            const postResults = await Promise.all(postPromises);
+            postReports = postResults.reduce((sum, count) => sum + count, 0);
+
+            // 2) comments 컬렉션에서 userId가 동일한 문서의 reportsCount 합산
+            const commentSnapshot = await db
+              .collection("comments")
+              .where("userId", "==", userId)
+              .get();
+
+            const commentReports = commentSnapshot.docs.reduce((sum, commentDoc) => {
+              const reportsCount = commentDoc.data().reportsCount || 0;
               return sum + reportsCount;
             }, 0);
+            
+            reportCount = postReports + commentReports;
           } catch (countError) {
             console.warn(
               `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
