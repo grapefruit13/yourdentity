@@ -21,7 +21,7 @@ interface CommentInputFormProps {
   ) => void | Promise<void>;
   replyingTo: ReplyingToState;
   onCancelReply: () => void;
-  currentUserNickname: string;
+  currentUserDisplayName: string;
   inputRef: RefObject<HTMLTextAreaElement>;
   isSubmitting?: boolean;
 }
@@ -35,7 +35,7 @@ export const CommentInputForm = ({
   onCommentSubmit,
   replyingTo,
   onCancelReply,
-  currentUserNickname,
+  currentUserDisplayName,
   inputRef,
   isSubmitting = false,
 }: CommentInputFormProps) => {
@@ -64,7 +64,7 @@ export const CommentInputForm = ({
               replyingTo?.isReply && "text-gray-400"
             )}
           >
-            {currentUserNickname || COMMENT_ANONYMOUS_NAME}
+            {currentUserDisplayName || COMMENT_ANONYMOUS_NAME}
           </Typography>
           {replyingTo && !replyingTo.isReply && (
             <Typography font="noto" variant="body2R" className="text-gray-500">

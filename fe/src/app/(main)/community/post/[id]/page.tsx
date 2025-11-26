@@ -376,6 +376,7 @@ const PostDetailPage = () => {
         <CommentsSection
           postId={postId}
           communityId={communityId}
+          postType={post?.type}
           commentInputRef={commentInputRef}
           onFocusRequestRef={focusCommentInputRef}
         />

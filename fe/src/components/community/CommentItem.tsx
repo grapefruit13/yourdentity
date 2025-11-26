@@ -15,6 +15,7 @@ interface CommentItemProps {
     Types.TGETCommentsCommunitiesPostsByTwoIdsRes["comments"]
   >[number];
   currentUserNickname: string;
+  currentUserDisplayName: string;
   isExpanded?: boolean;
   onToggleReplies: () => void;
   onStartReply: (commentId: string, author: string) => void;
@@ -52,6 +53,7 @@ interface CommentItemProps {
 const CommentItem = ({
   comment,
   currentUserNickname,
+  currentUserDisplayName,
   isExpanded = false,
   onToggleReplies,
   onStartReply,
@@ -636,7 +638,7 @@ const CommentItem = ({
                               <span className="text-main-500">
                                 @{replyingTo?.author}
                               </span>{" "}
-                              {currentUserNickname}
+                              {currentUserDisplayName}
                             </Typography>
                           </div>
                           <button

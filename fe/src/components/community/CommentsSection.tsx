@@ -30,6 +30,7 @@ import { debug } from "@/utils/shared/debugger";
 interface CommentsSectionProps {
   postId: string;
   communityId: string;
+  postType?: string;
   commentInputRef?: React.RefObject<HTMLTextAreaElement | null>;
   onFocusRequestRef?: React.RefObject<(() => void) | null>;
 }
@@ -43,6 +44,7 @@ interface CommentsSectionProps {
 const CommentsSection = ({
   postId,
   communityId,
+  postType,
   commentInputRef,
   onFocusRequestRef,
 }: CommentsSectionProps) => {
@@ -78,6 +80,12 @@ const CommentsSection = ({
   const { data: userData } = useGetUsersMe({
     select: (data) => data?.user,
   });
+
+  // TMI 타입 게시글인 경우 실명 사용, 아니면 닉네임 사용
+  const isTMIPost = postType === "TMI" || postType === "TMI_CERT";
+  const currentUserDisplayName = isTMIPost
+    ? userData?.name || ""
+    : userData?.nickname || "";
   const currentUserNickname = userData?.nickname || "";
 
   // 댓글 데이터 가져오기
@@ -317,6 +325,7 @@ const CommentsSection = ({
                 key={comment.id}
                 comment={comment}
                 currentUserNickname={currentUserNickname}
+                currentUserDisplayName={currentUserDisplayName}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={handleStartReplyToRoot}
@@ -355,7 +364,7 @@ const CommentsSection = ({
             onCommentSubmit={handleCommentSubmit}
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
-            currentUserNickname={currentUserNickname}
+            currentUserDisplayName={currentUserDisplayName}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />
