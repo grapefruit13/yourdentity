@@ -2,10 +2,23 @@
  * @description 텍스트 에디터 관련 상수 정의
  */
 
+/**
+ * 현재 날짜를 MM/DD 형식으로 반환
+ */
+export const getTodayPrefix = (): string => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${month}/${day} `;
+};
+
 export const TEXT_EDITOR = {
   PLACEHOLDER: {
     TITLE: "제목을 입력하세요",
     CONTENT: "내용을 입력하세요",
+  },
+  getTitlePlaceholder: (): string => {
+    return `${getTodayPrefix()}제목을 입력하세요`;
   },
   COLOR_PALETTE: [
     { name: "빨강", value: "#FB2C36" },

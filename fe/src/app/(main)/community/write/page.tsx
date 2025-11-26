@@ -36,7 +36,6 @@ import {
   isHandledError,
 } from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
-import { getCurrentDateTime } from "@/utils/shared/date";
 import {
   extractTextFromHtml,
   checkPostTextLength,

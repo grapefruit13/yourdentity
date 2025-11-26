@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
-import { TEXT_EDITOR } from "@/constants/shared/_text-editor";
+import { TEXT_EDITOR, getTodayPrefix } from "@/constants/shared/_text-editor";
 import { useGlobalClickOutside } from "@/hooks/shared/useGlobalClickOutside";
 import type {
   TextEditorProps,
@@ -35,6 +35,7 @@ import {
   elementToHtml,
   normalizeBrTags,
 } from "@/utils/shared/text-editor";
+import { Typography } from "../typography";
 import { Button } from "../ui/button";
 import Icon from "../ui/icon";
 import { ToolbarButton } from "./toolbar-button";
@@ -99,6 +100,7 @@ const TextEditor = ({
   const [linkTextInput, setLinkTextInput] = useState("");
   const [linkError, setLinkError] = useState<string>("");
   const linkPopoverRef = useRef<HTMLDivElement>(null);
+  const [showDatePrefix, setShowDatePrefix] = useState(false);
 
   /**
    * 현재 선택 영역을 저장
@@ -285,6 +287,7 @@ const TextEditor = ({
   /**
    * 제목 입력 처리
    * 제목 내용 변경 시 호출되며 플레이스홀더 상태도 업데이트
+   * 최종 제출 시에는 날짜 프리픽스를 붙여서 전송
    */
   const handleTitleInput = () => {
     if (titleRef.current && onTitleChange) {
@@ -298,7 +301,17 @@ const TextEditor = ({
         }
       });
 
-      onTitleChange(titleRef.current.innerHTML);
+      const currentText = titleRef.current.textContent || "";
+      const currentHtml = titleRef.current.innerHTML;
+
+      // 입력값이 있으면 날짜 표시
+      setShowDatePrefix(currentText.trim().length > 0);
+
+      // 날짜 프리픽스를 붙여서 전송
+      const datePrefix = getTodayPrefix();
+      const finalHtml = currentHtml ? datePrefix + currentHtml : "";
+
+      onTitleChange(finalHtml);
     }
     checkPlaceholder(titleRef.current);
   };
@@ -1242,12 +1255,24 @@ const TextEditor = ({
   /**
    * 외부에서 전달된 초기 콘텐츠를 ref에 반영
    * - 최초 마운트 이후 값이 바뀌어도 반영되도록 의존성 포함
+   * - 날짜 프리픽스를 제거하고 실제 내용만 표시
    */
   useEffect(() => {
     if (typeof initialTitleHtml === "string" && titleRef.current) {
-      titleRef.current.innerHTML = initialTitleHtml || "";
+      const datePrefix = getTodayPrefix();
+      // 날짜 프리픽스가 있으면 제거
+      const htmlWithoutPrefix = initialTitleHtml.startsWith(datePrefix)
+        ? initialTitleHtml.substring(datePrefix.length)
+        : initialTitleHtml;
+
+      titleRef.current.innerHTML = htmlWithoutPrefix || "";
+
+      // 입력값이 있으면 날짜 표시
+      const textContent = titleRef.current.textContent || "";
+      setShowDatePrefix(textContent.trim().length > 0);
+
       // 외부 값 반영 후 폼 동기화
-      if (onTitleChange) onTitleChange(titleRef.current.innerHTML);
+      if (onTitleChange) onTitleChange(initialTitleHtml);
       checkPlaceholder(titleRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1670,48 +1695,61 @@ const TextEditor = ({
       {/* Editor Content Container */}
       <div className="relative flex-1 overflow-hidden">
         {/* Title area */}
-        <div
-          ref={titleRef}
-          contentEditable
-          suppressContentEditableWarning
-          className={cn(
-            "word-break-break-word overflow-wrap-break-word w-full p-4 pb-0 text-2xl font-bold break-words outline-none",
-            "[&:empty]:before:text-base [&:empty]:before:leading-[150%] [&:empty]:before:font-bold [&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
-            "touch-manipulation",
-            "[&_a]:cursor-pointer [&_a]:text-blue-500 [&_a]:underline"
+        <div className="relative flex items-start p-4 pb-0">
+          {/* 날짜 프리픽스 (시각적으로만 표시) */}
+          {showDatePrefix && (
+            <Typography
+              variant="title4"
+              className="pointer-events-none mr-1 flex-shrink-0"
+            >
+              {getTodayPrefix()}
+            </Typography>
           )}
-          onInput={handleTitleInput}
-          onFocus={handleTitleFocus}
-          onBlur={handleBlur}
-          onKeyDown={handleTitleKeyDown}
-          onMouseUp={() => {
-            saveSelection();
-            updateColorFromSelection();
-            updateFormatFromSelection();
-            updateHeadingFromSelection();
-          }}
-          onKeyUp={() => {
-            saveSelection();
-            updateColorFromSelection();
-            updateFormatFromSelection();
-            updateHeadingFromSelection();
-          }}
-          onSelect={() => {
-            saveSelection();
-            updateColorFromSelection();
-            updateFormatFromSelection();
-            updateHeadingFromSelection();
-          }}
-          onClick={() => {
-            updateColorFromSelection();
-            updateFormatFromSelection();
-            updateHeadingFromSelection();
-          }}
-          data-placeholder={TEXT_EDITOR.PLACEHOLDER.TITLE}
-          role="textbox"
-          aria-label="제목"
-          tabIndex={0}
-        />
+
+          {/* 제목 입력 필드 */}
+          <div
+            ref={titleRef}
+            contentEditable
+            suppressContentEditableWarning
+            className={cn(
+              "word-break-break-word overflow-wrap-break-word flex-1 text-[22px] font-bold break-words outline-none",
+              "[&:empty]:before:text-base [&:empty]:before:leading-[150%] [&:empty]:before:font-bold [&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
+              "touch-manipulation",
+              "[&_a]:cursor-pointer [&_a]:text-blue-500 [&_a]:underline"
+            )}
+            onInput={handleTitleInput}
+            onFocus={handleTitleFocus}
+            onBlur={handleBlur}
+            onKeyDown={handleTitleKeyDown}
+            onMouseUp={() => {
+              saveSelection();
+              updateColorFromSelection();
+              updateFormatFromSelection();
+              updateHeadingFromSelection();
+            }}
+            onKeyUp={() => {
+              saveSelection();
+              updateColorFromSelection();
+              updateFormatFromSelection();
+              updateHeadingFromSelection();
+            }}
+            onSelect={() => {
+              saveSelection();
+              updateColorFromSelection();
+              updateFormatFromSelection();
+              updateHeadingFromSelection();
+            }}
+            onClick={() => {
+              updateColorFromSelection();
+              updateFormatFromSelection();
+              updateHeadingFromSelection();
+            }}
+            data-placeholder={TEXT_EDITOR.getTitlePlaceholder()}
+            role="textbox"
+            aria-label="제목"
+            tabIndex={0}
+          />
+        </div>
 
         {/* Content area */}
         <div
