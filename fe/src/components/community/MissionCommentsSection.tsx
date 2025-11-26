@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, RefObject } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { getMissionsPostsCommentsById } from "@/api/generated/missions-api";
 import CommentItem from "@/components/community/CommentItem";
 import { CommentEmptyMessage } from "@/components/shared/comment-empty-message";
 import { CommentInputForm } from "@/components/shared/comment-input-form";
@@ -13,15 +14,16 @@ import {
   COMMENT_DELETE_MODAL_TITLE,
   COMMENT_DELETE_MODAL_CONFIRM,
   COMMENT_DELETE_MODAL_CANCEL,
+  COMMENT_PAGE_SIZE,
 } from "@/constants/shared/_comment-constants";
 import {
-  useGetMissionsPostsCommentsById,
   usePostMissionsPostsCommentsById,
   usePutMissionsPostsCommentsByTwoIds,
   useDeleteMissionsPostsCommentsByTwoIds,
 } from "@/hooks/generated/missions-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
+import type { TGETMissionsPostsCommentsByIdRes } from "@/types/generated/missions-types";
 import type { ReplyingToState } from "@/types/shared/comment";
 import { getCommentInputForItem } from "@/utils/shared/comment";
 import { debug } from "@/utils/shared/debugger";
@@ -56,6 +58,7 @@ const MissionCommentsSection = ({
   );
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const bottomTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // commentInputRef가 전달되면 그것을 사용, 없으면 내부 ref 사용
   const inputRef =
@@ -75,25 +78,50 @@ const MissionCommentsSection = ({
     select: (data) => data?.user?.nickname || "",
   });
 
-  // 댓글 목록 조회 API
-  const { data: commentsData, isLoading: isCommentsLoading } =
-    useGetMissionsPostsCommentsById({
-      request: {
+  // 댓글 목록 조회 API (무한 스크롤)
+  const {
+    data: commentsPagesData,
+    isLoading: isCommentsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<TGETMissionsPostsCommentsByIdRes, Error>({
+    queryKey: missionsKeys.getMissionsPostsCommentsById({
+      postId,
+      pageSize: COMMENT_PAGE_SIZE,
+    }),
+    queryFn: async ({ pageParam }) => {
+      const response = await getMissionsPostsCommentsById({
         postId,
-      },
-      enabled: !!postId,
-    });
+        pageSize: COMMENT_PAGE_SIZE,
+        startCursor: pageParam as string | undefined,
+      });
+      return response.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      if (lastPage?.pageInfo?.hasNext && lastPage?.pageInfo?.nextCursor) {
+        return lastPage.pageInfo.nextCursor;
+      }
+      return undefined;
+    },
+    enabled: !!postId,
+  });
 
-  // 댓글 목록 (최신순 정렬)
+  // 댓글 목록 (모든 페이지의 댓글을 합치고 최신순 정렬)
   const comments = useMemo(() => {
-    if (!commentsData?.comments) return [];
+    if (!commentsPagesData?.pages) return [];
 
-    return [...commentsData.comments].sort((a, b) => {
+    const allComments = commentsPagesData.pages.flatMap(
+      (page) => page?.comments || []
+    );
+
+    return [...allComments].sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return dateB - dateA; // 최신순 (내림차순)
     });
-  }, [commentsData?.comments]);
+  }, [commentsPagesData?.pages]);
 
   // 미션 게시글 및 댓글 쿼리 무효화 헬퍼
   const invalidateCommentQueries = useCallback(() => {
@@ -101,9 +129,12 @@ const MissionCommentsSection = ({
     queryClient.invalidateQueries({
       queryKey: missionsKeys.getMissionsPostsById({ postId }),
     });
-    // 댓글 목록 refetch
+    // 댓글 목록 refetch (무한 스크롤 쿼리 무효화)
     queryClient.invalidateQueries({
-      queryKey: missionsKeys.getMissionsPostsCommentsById({ postId }),
+      queryKey: missionsKeys.getMissionsPostsCommentsById({
+        postId,
+        pageSize: COMMENT_PAGE_SIZE,
+      }),
     });
   }, [queryClient, postId]);
 
@@ -272,6 +303,40 @@ const MissionCommentsSection = ({
     [replyingTo, commentInput, comments]
   );
 
+  // 무한 스크롤 트리거 핸들러
+  const handleFetchNextPage = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) {
+      return;
+    }
+    fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  // Intersection Observer로 무한 스크롤 트리거
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          handleFetchNextPage();
+        }
+      },
+      {
+        rootMargin: "120px",
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleFetchNextPage]);
+
   // 로딩 중
   if (isCommentsLoading) {
     return <CommentSkeleton />;
@@ -316,6 +381,16 @@ const MissionCommentsSection = ({
           </div>
         ) : (
           <CommentEmptyMessage />
+        )}
+
+        {/* 무한 스크롤 트리거 요소 */}
+        {hasNextPage && <div ref={loadMoreRef} className="h-4" />}
+
+        {/* 로딩 인디케이터 */}
+        {isFetchingNextPage && (
+          <div className="flex items-center justify-center py-4">
+            <div className="text-sm text-gray-400">댓글을 불러오는 중...</div>
+          </div>
         )}
 
         {/* 하단 댓글 작성칸 */}
