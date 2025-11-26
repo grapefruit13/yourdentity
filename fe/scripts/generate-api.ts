@@ -551,10 +551,12 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
     const hasAnyUsage =
       fileContent.includes(": any") ||
       fileContent.includes(" as any") ||
+      fileContent.includes("(any") ||
       fileContent.includes("any[]") ||
       fileContent.includes("any>") ||
       fileContent.includes("= any") ||
-      /(^|\s)any\b/.test(fileContent);
+      fileContent.includes("<any") ||
+      /\bany\b/.test(fileContent);
 
     const hasEslintDisable = fileContent.includes(
       "/* eslint-disable @typescript-eslint/no-explicit-any */"
@@ -614,7 +616,6 @@ function generateTypeFiles(endpoints: ApiEndpoint[]): void {
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as Schema from "./api-schema";
 
 `;
@@ -742,10 +743,12 @@ import type * as Schema from "./api-schema";
     const hasAnyUsage =
       fileContent.includes(": any") ||
       fileContent.includes(" as any") ||
+      fileContent.includes("(any") ||
       fileContent.includes("any[]") ||
       fileContent.includes("any>") ||
       fileContent.includes("= any") ||
-      /(^|\s)any\b/.test(fileContent);
+      fileContent.includes("<any") ||
+      /\bany\b/.test(fileContent);
 
     const hasEslintDisable = fileContent.includes(
       "/* eslint-disable @typescript-eslint/no-explicit-any */"
@@ -878,21 +881,35 @@ function generateQueryKeys(endpoints: ApiEndpoint[]): string {
   const hasAnyUsage =
     queryKeys.includes(": any") ||
     queryKeys.includes(" as any") ||
+    queryKeys.includes("(any") ||
     queryKeys.includes("any[]") ||
     queryKeys.includes("any>") ||
     queryKeys.includes("= any") ||
-    /(^|\s)any\b/.test(queryKeys);
+    queryKeys.includes("<any") ||
+    /\bany\b/.test(queryKeys);
 
   const hasEslintDisable = queryKeys.includes(
     "/* eslint-disable @typescript-eslint/no-explicit-any */"
   );
 
   if (hasAnyUsage && !hasEslintDisable) {
-    // any 사용 시 주석이 없으면 추가 (JSDoc 주석 밖에)
+    // any 사용 시 주석이 없으면 추가 (JSDoc 주석 바로 다음에)
+    // JSDoc 주석 다음에 빈 줄이 오는 패턴을 찾아서 그 사이에 주석 추가
     queryKeys = queryKeys.replace(
-      /^(\/\*\*[\s\S]*?\*\/\s*)\n(import|function)/,
-      `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n$2`
+      /(\/\*\*[\s\S]*?\*\/\s*)\n\n/,
+      `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n\n`
     );
+    // 위 패턴이 매칭되지 않으면 (빈 줄이 하나만 있는 경우) 다른 패턴 시도
+    if (
+      !queryKeys.includes(
+        "/* eslint-disable @typescript-eslint/no-explicit-any */"
+      )
+    ) {
+      queryKeys = queryKeys.replace(
+        /(\/\*\*[\s\S]*?\*\/\s*)\n(import|function)/,
+        `$1\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n$2`
+      );
+    }
   } else if (!hasAnyUsage && hasEslintDisable) {
     // any 사용하지 않을 때 주석이 있으면 제거
     queryKeys = queryKeys.replace(
@@ -1087,10 +1104,12 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
     const hasAnyUsage =
       fileContent.includes(": any") ||
       fileContent.includes(" as any") ||
+      fileContent.includes("(any") ||
       fileContent.includes("any[]") ||
       fileContent.includes("any>") ||
       fileContent.includes("= any") ||
-      /(^|\s)any\b/.test(fileContent);
+      fileContent.includes("<any") ||
+      /\bany\b/.test(fileContent);
 
     const hasEslintDisable = fileContent.includes(
       "/* eslint-disable @typescript-eslint/no-explicit-any */"
