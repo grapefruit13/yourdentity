@@ -17,6 +17,39 @@ const {
   MAX_COMMENT_PAGE_SIZE,
 } = paginationConstants;
 
+const encodePaginationCursor = (payload) => {
+  try {
+    return Buffer.from(JSON.stringify(payload)).toString("base64");
+  } catch (error) {
+    console.warn("[MissionController] Failed to encode pagination cursor:", error.message);
+    return null;
+  }
+};
+
+const decodePaginationCursor = (cursor) => {
+  if (!cursor || typeof cursor !== "string") {
+    return {
+      bufferedMissions: [],
+      notionCursor: null,
+    };
+  }
+
+  try {
+    const decoded = Buffer.from(cursor, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded);
+    return {
+      bufferedMissions: Array.isArray(parsed.bufferedMissions) ? parsed.bufferedMissions : [],
+      notionCursor: typeof parsed.notionCursor === "string" ? parsed.notionCursor : null,
+    };
+  } catch (error) {
+    console.warn("[MissionController] Failed to decode pagination cursor:", error.message);
+    return {
+      bufferedMissions: [],
+      notionCursor: null,
+    };
+  }
+};
+
 class MissionController {
   constructor() {
     // 메서드 바인딩
@@ -206,52 +239,99 @@ class MissionController {
         DEFAULT_MISSION_PAGE_SIZE,
         MAX_MISSION_PAGE_SIZE,
       );
-      const startCursor = sanitizeCursor(startCursorParam);
+      const sanitizedCursor = sanitizeCursor(startCursorParam);
+      const { bufferedMissions: initialBufferedMissions, notionCursor: initialNotionCursor } =
+        decodePaginationCursor(sanitizedCursor);
 
       const userId = req.user?.uid; // optionalAuth에서 가져옴
-
       const needsExclude = Boolean(userId && excludeParticipated === "true");
-      const notionPageSize = needsExclude
+
+      const responseMissions = [];
+      const bufferQueue = Array.isArray(initialBufferedMissions) ? [...initialBufferedMissions] : [];
+
+      while (responseMissions.length < pageSize && bufferQueue.length > 0) {
+        responseMissions.push(bufferQueue.shift());
+      }
+
+      let participatedIds = [];
+      if (needsExclude) {
+        participatedIds = await this.getParticipatedMissionIds(userId);
+      }
+
+      const shouldIncludeMission = (mission) =>
+        !needsExclude || !participatedIds.includes(mission.id);
+
+      let notionCursor = initialNotionCursor;
+      let notionHasMore = false;
+      const bufferedOverflow = [];
+      const fetchSize = needsExclude
         ? Math.min(pageSize * 3, NOTION_MAX_PAGE_SIZE)
         : pageSize;
 
-      const filters = {
-        sortBy,
-        pageSize: notionPageSize,
-        startCursor,
+      const buildNotionRequest = () => {
+        const requestPayload = {
+          sortBy,
+          pageSize: fetchSize,
+        };
+
+        if (category) {
+          requestPayload.category = category;
+        }
+
+        if (notionCursor) {
+          requestPayload.startCursor = notionCursor;
+        }
+
+        return requestPayload;
       };
 
-      if (category) {
-        filters.category = category;
-      }
+      while (responseMissions.length < pageSize) {
+        const notionRequest = buildNotionRequest();
+        const result = await notionMissionService.getMissions(notionRequest);
+        notionCursor = result.nextCursor || null;
+        notionHasMore = Boolean(result.hasMore && notionCursor);
 
-      let result = await notionMissionService.getMissions(filters);
-      let missions = Array.isArray(result.missions) ? result.missions : [];
-      let hasNext = Boolean(result.hasMore && result.nextCursor);
-      let nextCursor = result.nextCursor || null;
+        let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
+        fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
 
-      if (needsExclude) {
-        const participatedIds = await this.getParticipatedMissionIds(userId);
-        const filteredMissions = missions.filter(
-          (mission) => !participatedIds.includes(mission.id),
-        );
-        const hasExtra = filteredMissions.length > pageSize;
-        missions = filteredMissions.slice(0, pageSize);
-        hasNext = hasExtra || hasNext;
-        if (!hasNext) {
-          nextCursor = null;
+        if (fetchedMissions.length === 0) {
+          if (!notionHasMore) {
+            break;
+          }
+          continue;
+        }
+
+        fetchedMissions.forEach((mission) => {
+          if (responseMissions.length < pageSize) {
+            responseMissions.push(mission);
+          } else {
+            bufferedOverflow.push(mission);
+          }
+        });
+
+        if (!notionHasMore) {
+          break;
         }
       }
 
+      const finalBuffer = bufferQueue.concat(bufferedOverflow);
+      const hasBufferedItems = finalBuffer.length > 0;
+      const hasNext = hasBufferedItems || notionHasMore;
+      const nextCursorPayload = hasNext
+        ? encodePaginationCursor({
+            bufferedMissions: finalBuffer,
+            notionCursor: notionHasMore ? notionCursor : null,
+          })
+        : null;
+
       const pageInfo = {
         pageSize,
-        nextCursor,
+        nextCursor: nextCursorPayload,
         hasNext,
       };
 
       res.success({
-        missions,
-        totalCount: missions.length,
+        missions: responseMissions,
         pageInfo,
       });
     } catch (error) {
