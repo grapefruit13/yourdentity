@@ -88,11 +88,7 @@ const PostDetailPage = () => {
     []
   );
   const isLiked = post?.isLiked ?? false;
-
-  // 작성자 여부 확인 (API 응답에서 isAuthor 필드 사용)
-  // TODO: CommunityPost 타입에 isAuthor 필드가 추가되면 타입 단언 제거
-  const isAuthor =
-    (post as Schema.CommunityPost & { isAuthor?: boolean })?.isAuthor ?? false;
+  const isAuthor = post?.isAuthor ?? false;
 
   // 공유하기 기능
   const handleShare = useCallback(async () => {

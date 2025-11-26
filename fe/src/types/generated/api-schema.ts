@@ -344,6 +344,7 @@ export interface CommunityPost {
   isPublic?: boolean;
   likesCount?: number;
   isLiked?: boolean;
+  isAuthor?: boolean;
   commentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
