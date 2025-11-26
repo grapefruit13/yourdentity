@@ -515,6 +515,15 @@ class MissionController {
       const viewerId = req.user?.uid || null;
       const { pageSize: pageSizeParam, startCursor: startCursorParam } = req.query;
 
+      console.info("[MissionController] getMissionPostComments 요청", {
+        method: req.method,
+        originalUrl: req.originalUrl,
+        postId,
+        hasViewer: Boolean(viewerId),
+        pageSizeParam,
+        startCursorParam,
+      });
+
       if (!postId) {
         const error = new Error("인증글 ID가 필요합니다.");
         error.code = "BAD_REQUEST";
