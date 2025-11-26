@@ -14,13 +14,15 @@ class MissionLikeService {
    */
   async toggleLike(userId, missionId) {
     if (!userId || !missionId) {
-      throw new Error("userId와 missionId가 필요합니다.");
+      const err = new Error("userId와 missionId가 필요합니다.");
+      err.code = "BAD_REQUEST";
+      throw err;
     }
 
     const likeDocId = `${userId}_${missionId}`;
     const likeRef = db.collection(MISSION_LIKES_COLLECTION).doc(likeDocId);
     const statsRef = db.collection(MISSION_LIKES_STATS_COLLECTION).doc(missionId);
-    const now = Timestamp.now();
+    const now = FieldValue.serverTimestamp();
 
     let result = { liked: false, likesCount: 0 };
 
@@ -136,7 +138,9 @@ class MissionLikeService {
    */
   async getUserLikedEntries(userId, pageSize, cursor = null) {
     if (!userId) {
-      throw new Error("userId가 필요합니다.");
+      const err = new Error("userId가 필요합니다.");
+      err.code = "MISSING_USER_ID";
+      throw err;
     }
 
     let query = db
