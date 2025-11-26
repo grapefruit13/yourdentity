@@ -6,14 +6,16 @@ const {
   parsePageSize,
   sanitizeCursor,
 } = require("../utils/paginationHelper");
-
-const DEFAULT_MISSION_PAGE_SIZE = 20;
-const MAX_MISSION_PAGE_SIZE = 50;
-const NOTION_MAX_PAGE_SIZE = 100;
-const DEFAULT_POST_PAGE_SIZE = 20;
-const MAX_POST_PAGE_SIZE = 50;
-const DEFAULT_COMMENT_PAGE_SIZE = 10;
-const MAX_COMMENT_PAGE_SIZE = 20;
+const paginationConstants = require("../constants/paginationConstants");
+const {
+  DEFAULT_MISSION_PAGE_SIZE,
+  MAX_MISSION_PAGE_SIZE,
+  NOTION_MAX_PAGE_SIZE,
+  DEFAULT_POST_PAGE_SIZE,
+  MAX_POST_PAGE_SIZE,
+  DEFAULT_COMMENT_PAGE_SIZE,
+  MAX_COMMENT_PAGE_SIZE,
+} = paginationConstants;
 
 class MissionController {
   constructor() {
