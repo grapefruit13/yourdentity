@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
+import { COMMENT_ANONYMOUS_NAME } from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
 import type * as Types from "@/types/generated/comments-types";
 import { cn } from "@/utils/shared/cn";
@@ -447,8 +448,8 @@ const CommentItem = ({
                           className="text-gray-800"
                         >
                           <span className="text-main-500">
-                            @{comment.author || "익명"}
-                          </span>{" "}
+                            {`${reply.depth && reply.depth! > 1 ? `@${reply.author || COMMENT_ANONYMOUS_NAME} ` : ""}`}
+                          </span>
                           {replyAuthor}
                         </Typography>
                         {reply.createdAt && (

@@ -192,11 +192,8 @@ const CommentsPage = () => {
       let parentId: string | undefined;
 
       if (replyingTo?.isReply && replyingTo.commentId) {
-        // 답글에 대한 답글: 원댓글의 id를 parentId로 사용
-        const parentComment = comments.find((comment) =>
-          comment.replies?.some((r) => r.id === replyingTo.commentId)
-        );
-        parentId = parentComment?.id;
+        // 답글에 대한 답글: 답글을 달고자 하는 해당 댓글의 id를 parentId로 사용
+        parentId = replyingTo.commentId;
       } else if (replyingTo?.commentId) {
         // 원댓글에 대한 답글
         parentId = replyingTo.commentId;
@@ -217,6 +214,7 @@ const CommentsPage = () => {
 
   // 원댓글에 답글 작성 시작 (하단 입력창에 포커스만)
   const handleStartReplyToRoot = (commentId: string, author: string) => {
+    console.log("kk 원댓글에 답글 작성 시작 commentId", commentId);
     setEditingCommentId(null);
     setReplyingTo({ commentId, author, isReply: false });
     setCommentInput("");
@@ -228,6 +226,7 @@ const CommentsPage = () => {
 
   // 답글에 답글 작성 시작 (해당 답글 아래에 입력창 표시)
   const handleStartReplyToReply = (commentId: string, author: string) => {
+    console.log("kk 답글에 답글 작성 시작 commentId", commentId);
     setEditingCommentId(null);
     setReplyingTo({ commentId, author, isReply: true });
     setCommentInput("");

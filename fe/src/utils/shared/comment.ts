@@ -10,32 +10,6 @@ type Comment = {
 };
 
 /**
- * parentId 계산 로직
- * @param replyingToState - 답글 작성 상태
- * @param comments - 댓글 목록
- * @returns parentId 또는 undefined
- */
-export function getParentId(
-  replyingToState: ReplyingToState,
-  comments: Comment[]
-): string | undefined {
-  if (!replyingToState) return undefined;
-
-  if (replyingToState.isReply && replyingToState.commentId) {
-    const parentComment = comments.find((comment) =>
-      comment.replies?.some((r) => r.id === replyingToState.commentId)
-    );
-    return parentComment?.id;
-  }
-
-  if (replyingToState.commentId) {
-    return replyingToState.commentId;
-  }
-
-  return undefined;
-}
-
-/**
  * 특정 댓글에 대한 입력값 계산
  * @param commentId - 댓글 ID
  * @param replyingTo - 답글 작성 상태

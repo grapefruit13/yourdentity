@@ -24,7 +24,7 @@ import {
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
 import type { ReplyingToState } from "@/types/shared/comment";
-import { getParentId, getCommentInputForItem } from "@/utils/shared/comment";
+import { getCommentInputForItem } from "@/utils/shared/comment";
 import { debug } from "@/utils/shared/debugger";
 
 interface CommentsSectionProps {
@@ -154,13 +154,6 @@ const CommentsSection = ({
     },
   });
 
-  // parentId 계산 로직 (메모이제이션)
-  const getParentIdMemoized = useCallback(
-    (replyingToState: ReplyingToState) =>
-      getParentId(replyingToState, comments),
-    [comments]
-  );
-
   // 댓글 제출 핸들러
   const handleCommentSubmit = useCallback(
     async (e: FormEvent, customContent?: string) => {
@@ -170,14 +163,12 @@ const CommentsSection = ({
       if (!contentToSubmit.trim() || !communityId || !postId) return;
 
       try {
-        const parentId = getParentIdMemoized(replyingTo);
-
         await postCommentAsync({
           communityId,
           postId,
           data: {
             content: contentToSubmit.trim(),
-            parentId,
+            parentId: replyingTo?.commentId,
           },
         });
       } catch (error) {
@@ -189,7 +180,6 @@ const CommentsSection = ({
       communityId,
       postId,
       replyingTo,
-      getParentIdMemoized,
       postCommentAsync,
       isPostCommentPending,
     ]

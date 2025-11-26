@@ -23,7 +23,7 @@ import {
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
 import type { ReplyingToState } from "@/types/shared/comment";
-import { getParentId, getCommentInputForItem } from "@/utils/shared/comment";
+import { getCommentInputForItem } from "@/utils/shared/comment";
 import { debug } from "@/utils/shared/debugger";
 
 interface MissionCommentsSectionProps {
@@ -136,13 +136,6 @@ const MissionCommentsSection = ({
       },
     });
 
-  // parentId 계산 로직 (메모이제이션)
-  const getParentIdMemoized = useCallback(
-    (replyingToState: ReplyingToState) =>
-      getParentId(replyingToState, comments),
-    [comments]
-  );
-
   // 댓글 제출 핸들러
   const handleCommentSubmit = useCallback(
     async (e: FormEvent, customContent?: string) => {
@@ -152,27 +145,18 @@ const MissionCommentsSection = ({
       if (!contentToSubmit.trim() || !postId) return;
 
       try {
-        const parentId = getParentIdMemoized(replyingTo);
-
         await postCommentAsync({
           postId,
           data: {
             content: contentToSubmit.trim(),
-            parentId,
+            parentId: replyingTo?.commentId,
           },
         });
       } catch (error) {
         debug.error("댓글 작성 실패:", error);
       }
     },
-    [
-      commentInput,
-      postId,
-      replyingTo,
-      getParentIdMemoized,
-      postCommentAsync,
-      isPostCommentPending,
-    ]
+    [commentInput, postId, replyingTo, postCommentAsync, isPostCommentPending]
   );
 
   // 원댓글에 답글 작성 시작

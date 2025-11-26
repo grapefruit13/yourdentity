@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import Image from "next/image";
 import ProfileImage from "@/components/shared/ui/profile-image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { POST_ANONYMOUS_NAME } from "@/constants/shared/_post-constants";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
@@ -187,7 +188,7 @@ const PostFeed = ({
                 variant="label2R"
                 className="text-gray-400"
               >
-                {post.author || "(알 수 없는 사용자)"}
+                {post.author || POST_ANONYMOUS_NAME}
               </Typography>
               <span className="h-[6px] w-px bg-gray-200" />
               {post.createdAt && (
