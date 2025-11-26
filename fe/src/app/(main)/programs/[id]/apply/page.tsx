@@ -172,8 +172,8 @@ const ProgramApplyPage = () => {
     }
     return {
       canAttendEvents: false,
-      nickname: "",
-      phoneNumber: "",
+      nickname: userData?.nickname || "",
+      phoneNumber: userData?.phoneNumber || "",
       region: null,
       currentSituation: "",
       applicationSource: "",
@@ -181,7 +181,7 @@ const ProgramApplyPage = () => {
       customMotivation: "",
       agreedToTerms: false,
     };
-  }, [STORAGE_KEY]);
+  }, [STORAGE_KEY, userData]);
 
   // 현재 단계
   const [currentStep, setCurrentStep] = useState<ApplicationStep>(initialStep);
@@ -936,7 +936,11 @@ const ProgramApplyPage = () => {
   }
 
   const program = programDetailData;
-  const programName = program?.title || program?.programName || "활동";
+  const programName =
+    program?.programName ||
+    program?.notionPageTitle ||
+    program?.title ||
+    "활동";
 
   return (
     <div className="min-h-screen bg-white pt-12">

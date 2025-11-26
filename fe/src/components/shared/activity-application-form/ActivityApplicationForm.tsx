@@ -387,7 +387,7 @@ export const ActivityApplicationForm = ({
                       e.target.value
                     )
                   }
-                  placeholder="닉네임을 입력하세요"
+                  placeholder="새로운닉네임"
                   maxLength={8}
                   className={cn(
                     "pr-10",
