@@ -1,5 +1,5 @@
 const { Client } = require('@notionhq/client');
-const { 
+const {
   getTextContent,
   getTitleValue,
   getMultiSelectNames,
@@ -9,8 +9,12 @@ const {
   getUrlValue,
   getRelationValues,
   formatNotionBlocks,
-  getCoverImageUrl
+  getCoverImageUrl,
 } = require('../utils/notionHelper');
+const { db } = require("../config/database");
+const {
+  MISSION_LIKES_STATS_COLLECTION,
+} = require("../constants/missionConstants");
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -33,6 +37,7 @@ const ERROR_CODES = {
   MISSION_NOT_FOUND: 'MISSION_NOT_FOUND',
   INVALID_PAGE_SIZE: 'INVALID_PAGE_SIZE',
   SEARCH_ERROR: 'SEARCH_ERROR',
+  SYNC_ERROR: "NOTION_SYNC_ERROR",
 };
 
 // Notion 필드명 상수 (실제 노션 DB 구조 반영)
@@ -248,17 +253,20 @@ class NotionMissionService {
    * @throws {Error} MISSION_NOT_FOUND - 미션을 찾을 수 없음
    * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
    */
-  async getMissionById(missionId) {
+  async getMissionById(missionId, options = {}) {
     try {
+      const { includePageContent = true } = options;
       // Notion 페이지 조회
       const page = await this.notion.pages.retrieve({
         page_id: missionId
       });
-      const missionData = this.formatMissionData(page, true);
+      const missionData = this.formatMissionData(page, includePageContent);
 
-      // 미션 페이지 블록 내용 조회
-      const pageBlocks = await this.getMissionPageBlocks(missionId);
-      missionData.pageContent = pageBlocks;
+      if (includePageContent) {
+        // 미션 페이지 블록 내용 조회
+        const pageBlocks = await this.getMissionPageBlocks(missionId);
+        missionData.pageContent = pageBlocks;
+      }
 
       return missionData;
 
@@ -361,6 +369,64 @@ class NotionMissionService {
     };
 
     return missionData;
+  }
+
+  /**
+   * Firestore의 미션 좋아요 통계를 Notion "반응 수" 필드에 동기화
+   * @returns {Promise<{total:number, syncedCount:number, failedCount:number}>}
+   */
+  async syncReactionCountsFromFirestore() {
+    try {
+      const snapshot = await db.collection(MISSION_LIKES_STATS_COLLECTION).get();
+
+      if (snapshot.empty) {
+        return {
+          total: 0,
+          syncedCount: 0,
+          failedCount: 0,
+        };
+      }
+
+      let syncedCount = 0;
+      let failedCount = 0;
+
+      for (const doc of snapshot.docs) {
+        const missionId = doc.id;
+        const data = doc.data() || {};
+        const likesCount = data.likesCount || 0;
+
+        try {
+          await this.notion.pages.update({
+            page_id: missionId,
+            properties: {
+              [NOTION_FIELDS.REACTION_COUNT]: {
+                number: likesCount,
+              },
+            },
+          });
+          syncedCount += 1;
+        } catch (error) {
+          failedCount += 1;
+          console.warn("[NotionMissionService] 반응 수 동기화 실패", {
+            missionId,
+            likesCount,
+            message: error.message,
+          });
+        }
+      }
+
+      return {
+        total: snapshot.size,
+        syncedCount,
+        failedCount,
+      };
+    } catch (error) {
+      console.error("[NotionMissionService] 반응 수 동기화 중 오류:", error.message);
+      const syncError = new Error(`미션 반응 수 동기화 중 오류가 발생했습니다: ${error.message}`);
+      syncError.code = ERROR_CODES.SYNC_ERROR;
+      syncError.originalError = error;
+      throw syncError;
+    }
   }
 }
 

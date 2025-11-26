@@ -216,6 +216,11 @@ router.get("/categories", missionController.getCategories);
  *         schema:
  *           type: string
  *         description: 다음 페이지 조회용 cursor (Notion next_cursor)
+ *       - in: query
+ *         name: likedOnly
+ *         schema:
+ *           type: boolean
+ *         description: 찜한 미션만 조회 (로그인 필요)
  *     responses:
  *       200:
  *         description: 미션 목록 조회 성공
@@ -234,9 +239,6 @@ router.get("/categories", missionController.getCategories);
  *                       type: array
  *                       items:
  *                         $ref: "#/components/schemas/Mission"
- *                     totalCount:
- *                       type: integer
- *                       example: 30
  *                     pageInfo:
  *                       type: object
  *                       properties:
@@ -1366,6 +1368,52 @@ router.delete("/posts/:postId/comments/:commentId", authGuard, missionController
  *                   message: "서버 내부 오류가 발생했습니다"
  */
 router.get("/:missionId", optionalAuth, missionController.getMissionById);
+
+/**
+ * @swagger
+ * /missions/{missionId}/like:
+ *   post:
+ *     summary: 미션 찜 토글
+ *     tags: [Missions]
+ *     description: 미션 상세 또는 목록에서 찜(하트)을 토글합니다. 이미 찜한 상태라면 취소됩니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: missionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 ID (Notion 페이지 ID)
+ *         example: "2b345f52-4cd0-81b3-81b8-ccd63ace93fc"
+ *     responses:
+ *       200:
+ *         description: 찜 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     liked:
+ *                       type: boolean
+ *                       description: true면 찜됨, false면 찜 취소됨
+ *                       example: true
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 전체 찜 수
+ *                       example: 42
+ *       400:
+ *         description: 잘못된 요청 (미션 ID 누락 등)
+ *       401:
+ *         description: 인증 필요
+ */
+router.post("/:missionId/like", authGuard, missionController.toggleMissionLike);
 
 /**
  * @swagger

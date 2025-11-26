@@ -323,6 +323,16 @@ const options = {
               description: "찜/반응 수",
               example: 219,
             },
+            likesCount: {
+              type: "integer",
+              description: "앱에서 집계한 찜 수",
+              example: 12,
+            },
+            isLiked: {
+              type: "boolean",
+              description: "현재 사용자가 찜했는지 여부 (비로그인 시 false)",
+              example: true,
+            },
             faqRelation: {
               type: "object",
               description: "FAQ 관계 정보",

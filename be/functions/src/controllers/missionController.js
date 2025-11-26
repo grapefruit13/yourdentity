@@ -1,6 +1,7 @@
 const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
+const missionLikeService = require("../services/missionLikeService");
 const { MISSION_STATUS } = require("../constants/missionConstants");
 const {
   parsePageSize,
@@ -17,7 +18,7 @@ const {
   MAX_COMMENT_PAGE_SIZE,
 } = paginationConstants;
 
-const encodePaginationCursor = (payload) => {
+const encodePaginationCursor = (payload = {}) => {
   try {
     return Buffer.from(JSON.stringify(payload)).toString("base64");
   } catch (error) {
@@ -31,6 +32,7 @@ const decodePaginationCursor = (cursor) => {
     return {
       bufferedMissions: [],
       notionCursor: null,
+      likedCursor: null,
     };
   }
 
@@ -40,12 +42,17 @@ const decodePaginationCursor = (cursor) => {
     return {
       bufferedMissions: Array.isArray(parsed.bufferedMissions) ? parsed.bufferedMissions : [],
       notionCursor: typeof parsed.notionCursor === "string" ? parsed.notionCursor : null,
+      likedCursor:
+        parsed.likedCursor && parsed.likedCursor.docId && parsed.likedCursor.createdAtMillis
+          ? parsed.likedCursor
+          : null,
     };
   } catch (error) {
     console.warn("[MissionController] Failed to decode pagination cursor:", error.message);
     return {
       bufferedMissions: [],
       notionCursor: null,
+      likedCursor: null,
     };
   }
 };
@@ -68,6 +75,7 @@ class MissionController {
     this.getMissionPostComments = this.getMissionPostComments.bind(this);
     this.updateMissionPostComment = this.updateMissionPostComment.bind(this);
     this.deleteMissionPostComment = this.deleteMissionPostComment.bind(this);
+    this.toggleMissionLike = this.toggleMissionLike.bind(this);
   }
 
   /**
@@ -232,6 +240,7 @@ class MissionController {
         excludeParticipated,
         pageSize: pageSizeParam,
         startCursor: startCursorParam,
+        likedOnly,
       } = req.query;
 
       const pageSize = parsePageSize(
@@ -240,12 +249,33 @@ class MissionController {
         MAX_MISSION_PAGE_SIZE,
       );
       const sanitizedCursor = sanitizeCursor(startCursorParam);
-      const { bufferedMissions: initialBufferedMissions, notionCursor: initialNotionCursor } =
-        decodePaginationCursor(sanitizedCursor);
+      const decodedCursor = decodePaginationCursor(sanitizedCursor);
+      const {
+        bufferedMissions: initialBufferedMissions,
+        notionCursor: initialNotionCursor,
+      } = decodedCursor;
 
-      const userId = req.user?.uid; // optionalAuth에서 가져옴
+      const userId = req.user?.uid || null; // optionalAuth에서 가져옴
+
+      if (likedOnly === "true") {
+        if (!userId) {
+          const error = new Error("찜한 미션을 보려면 로그인이 필요합니다.");
+          error.code = "UNAUTHORIZED";
+          error.statusCode = 401;
+          return next(error);
+        }
+
+        return this.respondWithLikedMissions({
+          res,
+          next,
+          userId,
+          pageSize,
+          category,
+          decodedCursor,
+        });
+      }
+
       const needsExclude = Boolean(userId && excludeParticipated === "true");
-
       const responseMissions = [];
       const bufferQueue = Array.isArray(initialBufferedMissions) ? [...initialBufferedMissions] : [];
 
@@ -261,32 +291,26 @@ class MissionController {
       const shouldIncludeMission = (mission) =>
         !needsExclude || !participatedIds.includes(mission.id);
 
-      let notionCursor = initialNotionCursor;
-      let notionHasMore = false;
+      let notionCursor = initialNotionCursor || null;
+      let notionHasMore = Boolean(notionCursor);
       const bufferedOverflow = [];
       const fetchSize = needsExclude
         ? Math.min(pageSize * 3, NOTION_MAX_PAGE_SIZE)
         : pageSize;
 
-      const buildNotionRequest = () => {
-        const requestPayload = {
+      while (responseMissions.length < pageSize) {
+        const notionRequest = {
           sortBy,
           pageSize: fetchSize,
         };
 
         if (category) {
-          requestPayload.category = category;
+          notionRequest.category = category;
         }
-
         if (notionCursor) {
-          requestPayload.startCursor = notionCursor;
+          notionRequest.startCursor = notionCursor;
         }
 
-        return requestPayload;
-      };
-
-      while (responseMissions.length < pageSize) {
-        const notionRequest = buildNotionRequest();
         const result = await notionMissionService.getMissions(notionRequest);
         notionCursor = result.nextCursor || null;
         notionHasMore = Boolean(result.hasMore && notionCursor);
@@ -315,12 +339,18 @@ class MissionController {
       }
 
       const finalBuffer = bufferQueue.concat(bufferedOverflow);
-      const hasBufferedItems = finalBuffer.length > 0;
+      const totalMissionsForLikes = responseMissions.concat(finalBuffer);
+      const enrichedMissions = await this.enrichMissionsWithLikes(totalMissionsForLikes, userId);
+      const enrichedResponses = enrichedMissions.slice(0, responseMissions.length);
+      const enrichedBuffer = enrichedMissions.slice(responseMissions.length);
+
+      const hasBufferedItems = enrichedBuffer.length > 0;
       const hasNext = hasBufferedItems || notionHasMore;
       const nextCursorPayload = hasNext
         ? encodePaginationCursor({
-            bufferedMissions: finalBuffer,
+            bufferedMissions: enrichedBuffer,
             notionCursor: notionHasMore ? notionCursor : null,
+            likedCursor: null,
           })
         : null;
 
@@ -331,7 +361,7 @@ class MissionController {
       };
 
       res.success({
-        missions: responseMissions,
+        missions: enrichedResponses,
         pageInfo,
       });
     } catch (error) {
@@ -379,9 +409,13 @@ class MissionController {
       }
 
       const mission = await notionMissionService.getMissionById(missionId);
+      const [missionWithLikes] = await this.enrichMissionsWithLikes(
+        [mission],
+        req.user?.uid || null,
+      );
 
       res.success({
-        mission
+        mission: missionWithLikes,
       });
 
     } catch (error) {
@@ -604,6 +638,180 @@ class MissionController {
     }
   }
 
+  async toggleMissionLike(req, res, next) {
+    try {
+      const { missionId } = req.params;
+      const userId = req.user?.uid;
+
+      if (!missionId) {
+        const error = new Error("미션 ID가 필요합니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      if (!userId) {
+        const error = new Error("찜 기능을 사용하려면 로그인이 필요합니다.");
+        error.code = "UNAUTHORIZED";
+        error.statusCode = 401;
+        return next(error);
+      }
+
+      const result = await missionLikeService.toggleLike(userId, missionId);
+      return res.success(result);
+    } catch (error) {
+      console.error("[MissionController] 미션 찜 토글 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  async respondWithLikedMissions({ res, next, userId, pageSize, category, decodedCursor }) {
+    try {
+      const responseMissions = [];
+      const bufferQueue = Array.isArray(decodedCursor.bufferedMissions)
+        ? [...decodedCursor.bufferedMissions]
+        : [];
+
+      while (responseMissions.length < pageSize && bufferQueue.length > 0) {
+        responseMissions.push(bufferQueue.shift());
+      }
+
+      let likedCursor = decodedCursor.likedCursor || null;
+      let hasMoreLikes = true;
+      const bufferedOverflow = [];
+
+      while (responseMissions.length < pageSize && hasMoreLikes) {
+        const { entries, nextCursor, hasNext } = await missionLikeService.getUserLikedEntries(
+          userId,
+          pageSize,
+          likedCursor,
+        );
+
+        if (entries.length === 0) {
+          hasMoreLikes = false;
+          likedCursor = null;
+          break;
+        }
+
+        const missionIds = entries.map((entry) => entry.missionId);
+        const missionDetails = await this.fetchMissionSummaries(missionIds);
+
+        entries.forEach((entry, index) => {
+          const mission = missionDetails[index];
+          if (!mission) {
+            return;
+          }
+
+          if (category && (!Array.isArray(mission.categories) || !mission.categories.includes(category))) {
+            return;
+          }
+
+          if (responseMissions.length < pageSize) {
+            responseMissions.push(mission);
+          } else {
+            bufferedOverflow.push(mission);
+          }
+        });
+
+        if (hasNext) {
+          likedCursor = nextCursor;
+        } else {
+          likedCursor = null;
+          hasMoreLikes = false;
+        }
+      }
+
+      const finalBuffer = bufferQueue.concat(bufferedOverflow);
+      const totalMissionsForLikes = responseMissions.concat(finalBuffer);
+      const enriched = await this.enrichMissionsWithLikes(totalMissionsForLikes, userId, {
+        forceLiked: true,
+      });
+      const enrichedResponses = enriched.slice(0, responseMissions.length);
+      const enrichedBuffer = enriched.slice(responseMissions.length);
+
+      const hasBufferedItems = enrichedBuffer.length > 0;
+      const hasNext = hasBufferedItems || Boolean(likedCursor);
+      const nextCursorPayload = hasNext
+        ? encodePaginationCursor({
+            bufferedMissions: enrichedBuffer,
+            notionCursor: null,
+            likedCursor,
+          })
+        : null;
+
+      return res.success({
+        missions: enrichedResponses,
+        pageInfo: {
+          pageSize,
+          nextCursor: nextCursorPayload,
+          hasNext,
+        },
+      });
+    } catch (error) {
+      console.error("[MissionController] 찜한 미션 목록 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  async fetchMissionSummaries(missionIds = []) {
+    if (!Array.isArray(missionIds) || missionIds.length === 0) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(missionIds)];
+    const missionsMap = new Map();
+
+    const results = await Promise.all(
+      uniqueIds.map(async (missionId) => {
+        try {
+          const mission = await notionMissionService.getMissionById(missionId, {
+            includePageContent: false,
+          });
+          return { missionId, mission };
+        } catch (error) {
+          console.warn("[MissionController] 미션 정보 조회 실패", {
+            missionId,
+            message: error.message,
+          });
+          return { missionId, mission: null };
+        }
+      }),
+    );
+
+    results.forEach(({ missionId, mission }) => {
+      missionsMap.set(missionId, mission);
+    });
+
+    return missionIds.map((missionId) => missionsMap.get(missionId) || null);
+  }
+
+  async enrichMissionsWithLikes(missions = [], userId = null, options = {}) {
+    if (!Array.isArray(missions) || missions.length === 0) {
+      return [];
+    }
+
+    const missionIds = missions.map((mission) => mission?.id).filter(Boolean);
+    if (missionIds.length === 0) {
+      return missions;
+    }
+
+    const { forceLiked = false } = options;
+    const metadata = await missionLikeService.getLikesMetadata(missionIds, forceLiked ? null : userId);
+    const likesCountMap = metadata.likesCountMap || {};
+    const likedSet = forceLiked ? new Set(missionIds) : metadata.likedSet || new Set();
+
+    return missions.map((mission) => {
+      if (!mission || !mission.id) {
+        return mission;
+      }
+
+      return {
+        ...mission,
+        likesCount: likesCountMap[mission.id] || 0,
+        isLiked: likedSet.has(mission.id),
+      };
+    });
+  }
 }
 
 module.exports = new MissionController();
