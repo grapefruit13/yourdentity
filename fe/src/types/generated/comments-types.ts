@@ -57,6 +57,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     author?: string;
     content?: string;
     parentId?: string;
+    parentAuthor?: string;
     depth?: number;
     isLocked?: boolean;
     isDeleted?: boolean;
@@ -73,6 +74,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
       author?: string;
       content?: string;
       parentId?: string;
+      parentAuthor?: string;
       depth?: number;
       isLocked?: boolean;
       isDeleted?: boolean;
@@ -111,6 +113,7 @@ export type TPOSTCommentsCommunitiesPostsByTwoIdsRes = {
   author?: string;
   content?: string;
   parentId?: string;
+  parentAuthor?: string;
   depth?: number;
   isLocked?: boolean;
   likesCount?: number;

@@ -9,11 +9,18 @@ export interface TGETMissionsReq {
   sortBy?: "latest" | "popular";
   category?: string;
   excludeParticipated?: boolean;
+  pageSize?: number;
+  startCursor?: string;
 }
 
 export type TGETMissionsRes = {
   missions?: Schema.Mission[];
   totalCount?: number;
+  pageInfo?: {
+    pageSize?: number;
+    nextCursor?: string;
+    hasNext?: boolean;
+  };
 };
 
 export interface TGETMissionsByIdReq {
@@ -80,6 +87,8 @@ export interface TGETMissionsPostsReq {
   sort?: "latest" | "popular";
   categories?: string;
   userId?: string;
+  pageSize?: number;
+  startCursor?: string;
 }
 
 export type TGETMissionsPostsRes = {
@@ -105,6 +114,11 @@ export type TGETMissionsPostsRes = {
     createdAt?: string;
     timeAgo?: string;
   }[];
+  pageInfo?: {
+    pageSize?: number;
+    nextCursor?: string;
+    hasNext?: boolean;
+  };
 };
 
 export interface TGETMissionsPostsByIdReq {
@@ -130,6 +144,8 @@ export type TGETMissionsPostsByIdRes = {
 
 export interface TGETMissionsPostsCommentsByIdReq {
   postId: string;
+  pageSize?: number;
+  startCursor?: string;
 }
 
 export type TGETMissionsPostsCommentsByIdRes = {
@@ -165,6 +181,11 @@ export type TGETMissionsPostsCommentsByIdRes = {
     createdAt?: string;
     updatedAt?: string;
   }[];
+  pageInfo?: {
+    pageSize?: number;
+    nextCursor?: string;
+    hasNext?: boolean;
+  };
 };
 
 export interface TPOSTMissionsPostsCommentsByIdReq {

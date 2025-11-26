@@ -169,6 +169,8 @@ export const missionsKeys = {
         sortBy: request.sortBy,
         category: request.category,
         excludeParticipated: request.excludeParticipated,
+        pageSize: request.pageSize,
+        startCursor: request.startCursor,
       },
     }),
   getMissionsById: (request: missionsTypes.TGETMissionsByIdReq) =>
@@ -189,6 +191,8 @@ export const missionsKeys = {
         sort: request.sort,
         categories: request.categories,
         userId: request.userId,
+        pageSize: request.pageSize,
+        startCursor: request.startCursor,
       },
     }),
   getMissionsPostsById: (request: missionsTypes.TGETMissionsPostsByIdReq) =>
@@ -201,7 +205,7 @@ export const missionsKeys = {
   ) =>
     __buildKey("missions", "getMissionsPostsCommentsById", {
       path: { postId: request.postId },
-      query: {},
+      query: { pageSize: request.pageSize, startCursor: request.startCursor },
     }),
   getMissionsStats: __buildKey("missions", "getMissionsStats"),
 } as const;
