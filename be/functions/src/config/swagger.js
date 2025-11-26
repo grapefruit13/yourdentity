@@ -82,7 +82,7 @@ const options = {
         User: {
           type: "object",
           properties: {
-            uid: {
+            id: {
               type: "string",
               description: "사용자 고유 ID",
               example: "abc123def456",

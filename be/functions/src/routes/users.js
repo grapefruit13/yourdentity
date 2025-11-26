@@ -25,7 +25,7 @@ const router = express.Router();
  *     User:
  *       type: object
  *       properties:
- *         uid:
+ *         id:
  *           type: string
  *           example: abc123def456
  *         email:
