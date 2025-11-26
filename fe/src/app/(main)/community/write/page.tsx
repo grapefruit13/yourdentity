@@ -500,13 +500,6 @@ const WritePageContent = () => {
                   {selectedCommunityName}
                 </Typography>
               </div>
-              <Typography
-                font="noto"
-                variant="label2M"
-                className="text-gray-400"
-              >
-                {getCurrentDateTime(" 작성 중")}
-              </Typography>
             </div>
             {/* 공개 범위 */}
             <div className="flex w-full items-center justify-between border-t border-t-gray-300 p-4">
