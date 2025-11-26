@@ -1463,6 +1463,12 @@ const options = {
               description: "게시글 타입",
               example: "ROUTINE_CERT",
             },
+            programType: {
+              type: "string",
+              enum: ["ROUTINE", "GATHERING", "TMI"],
+              description: "프로그램 유형",
+              example: "TMI",
+            },
             author: {
               type: "string",
               description: "작성자",
