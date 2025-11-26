@@ -9,6 +9,7 @@ const {
 
 const DEFAULT_MISSION_PAGE_SIZE = 20;
 const MAX_MISSION_PAGE_SIZE = 50;
+const NOTION_MAX_PAGE_SIZE = 100;
 const DEFAULT_POST_PAGE_SIZE = 20;
 const MAX_POST_PAGE_SIZE = 50;
 const DEFAULT_COMMENT_PAGE_SIZE = 10;
@@ -207,9 +208,14 @@ class MissionController {
 
       const userId = req.user?.uid; // optionalAuth에서 가져옴
 
+      const needsExclude = Boolean(userId && excludeParticipated === "true");
+      const notionPageSize = needsExclude
+        ? Math.min(pageSize * 3, NOTION_MAX_PAGE_SIZE)
+        : pageSize;
+
       const filters = {
         sortBy,
-        pageSize,
+        pageSize: notionPageSize,
         startCursor,
       };
 
@@ -219,22 +225,32 @@ class MissionController {
 
       let result = await notionMissionService.getMissions(filters);
       let missions = Array.isArray(result.missions) ? result.missions : [];
+      let hasNext = Boolean(result.hasMore && result.nextCursor);
+      let nextCursor = result.nextCursor || null;
 
-      if (userId && excludeParticipated === "true") {
+      if (needsExclude) {
         const participatedIds = await this.getParticipatedMissionIds(userId);
-        missions = missions.filter(
+        const filteredMissions = missions.filter(
           (mission) => !participatedIds.includes(mission.id),
         );
+        const hasExtra = filteredMissions.length > pageSize;
+        missions = filteredMissions.slice(0, pageSize);
+        hasNext = hasExtra || hasNext;
+        if (!hasNext) {
+          nextCursor = null;
+        }
       }
+
+      const pageInfo = {
+        pageSize,
+        nextCursor,
+        hasNext,
+      };
 
       res.success({
         missions,
         totalCount: missions.length,
-        pageInfo: {
-          pageSize,
-          nextCursor: result.nextCursor || null,
-          hasNext: Boolean(result.hasMore && result.nextCursor),
-        },
+        pageInfo,
       });
     } catch (error) {
       console.error("[MissionController] 미션 목록 조회 오류:", error.message);
