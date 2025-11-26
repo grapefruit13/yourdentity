@@ -248,17 +248,20 @@ class NotionMissionService {
    * @throws {Error} MISSION_NOT_FOUND - 미션을 찾을 수 없음
    * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
    */
-  async getMissionById(missionId) {
+  async getMissionById(missionId, options = {}) {
     try {
+      const { includePageContent = true } = options;
       // Notion 페이지 조회
       const page = await this.notion.pages.retrieve({
         page_id: missionId
       });
-      const missionData = this.formatMissionData(page, true);
+      const missionData = this.formatMissionData(page, includePageContent);
 
-      // 미션 페이지 블록 내용 조회
-      const pageBlocks = await this.getMissionPageBlocks(missionId);
-      missionData.pageContent = pageBlocks;
+      if (includePageContent) {
+        // 미션 페이지 블록 내용 조회
+        const pageBlocks = await this.getMissionPageBlocks(missionId);
+        missionData.pageContent = pageBlocks;
+      }
 
       return missionData;
 
