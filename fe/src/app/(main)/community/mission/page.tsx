@@ -295,7 +295,7 @@ const MissionCommunityPageContent = () => {
   return (
     <div className="relative min-h-full bg-white">
       {/* 필터 헤더 영역 */}
-      <div className="sticky top-0 z-40 border-gray-100 bg-white px-5">
+      <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5">
         <div className="relative">
           <CommunityTabs activeTab="mission" />
           <CommunitySearchBar
