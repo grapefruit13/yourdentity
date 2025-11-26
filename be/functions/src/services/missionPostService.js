@@ -797,11 +797,18 @@ class MissionPostService {
         return Number.isNaN(date.getTime()) ? null : date.toISOString();
       };
 
-      const sortByCreatedAt = (list) =>
+      const sortByCreatedAtAsc = (list) =>
         list.sort((a, b) => {
           const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return aTime - bTime;
+        });
+
+      const sortByCreatedAtDesc = (list) =>
+        list.sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bTime - aTime;
         });
 
       const baseQuery = db
@@ -917,7 +924,7 @@ class MissionPostService {
       }
 
       const enrichedRoots = rootComments.map((comment) => {
-        const replies = sortByCreatedAt(repliesByParent.get(comment.id) || []);
+        const replies = sortByCreatedAtAsc(repliesByParent.get(comment.id) || []);
         return {
           ...comment,
           replies,
@@ -926,7 +933,8 @@ class MissionPostService {
       });
 
       return {
-        comments: sortByCreatedAt(enrichedRoots),
+        // 루트 댓글은 최신순(내림차순), 대댓글은 오래된 순(오름차순)
+        comments: sortByCreatedAtDesc(enrichedRoots),
         pageInfo: {
           pageSize,
           nextCursor,
@@ -934,7 +942,15 @@ class MissionPostService {
         },
       };
     } catch (error) {
-      console.error("[MISSION_POST] 댓글 목록 조회 실패:", error.message);
+      console.error("[MISSION_POST] 댓글 목록 조회 실패:", {
+        postId,
+        viewerId,
+        options,
+        message: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+        stack: error.stack,
+      });
       if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
         throw error;
       }
