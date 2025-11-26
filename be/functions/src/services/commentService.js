@@ -130,15 +130,37 @@ class CommentService {
             author = memberData.nickname || "익명";
           }
         } else {
-          const nicknames = await this.firestoreService.getCollectionWhere(
-            "nicknames",
-            "uid",
+          const members = await this.firestoreService.getCollectionWhere(
+            `communities/${communityId}/members`,
+            "userId",
             "==",
             userId
           );
-          const nicknameDoc = nicknames && nicknames[0];
-          if (nicknameDoc) {
-            author = nicknameDoc.id || nicknameDoc.nickname || "익명";
+          const memberData = members && members[0];
+
+          if (memberData) {
+            // 멤버가 있으면 members에서 가져오기
+            if (programType === CommentService.PROGRAM_TYPES.TMI) {
+              const userProfile = await this.firestoreService.getDocument("users", userId);
+              author =
+                userProfile?.name ||
+                memberData?.nickname ||
+                "익명";
+            } else {
+              author = memberData.nickname || "익명";
+            }
+          } else {
+            // 멤버가 없으면 기존 nicknames 로직 사용
+            const nicknames = await this.firestoreService.getCollectionWhere(
+              "nicknames",
+              "uid",
+              "==",
+              userId
+            );
+            const nicknameDoc = nicknames && nicknames[0];
+            if (nicknameDoc) {
+              author = nicknameDoc.id || nicknameDoc.nickname || "익명";
+            }
           }
         }
       } catch (memberError) {
