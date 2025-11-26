@@ -519,7 +519,7 @@ class MissionController {
         method: req.method,
         originalUrl: req.originalUrl,
         postId,
-        viewerId,
+        hasViewer: Boolean(viewerId),
         pageSizeParam,
         startCursorParam,
       });
