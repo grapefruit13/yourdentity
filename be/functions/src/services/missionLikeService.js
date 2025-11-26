@@ -28,9 +28,10 @@ class MissionLikeService {
 
     await db.runTransaction(async (transaction) => {
       const likeDoc = await transaction.get(likeRef);
-      // 통계 문서 존재 여부는 한 번만 확인
-      await transaction.get(statsRef);
+      const statsDoc = await transaction.get(statsRef);
 
+      const baseCount = statsDoc.exists ? statsDoc.data().likesCount || 0 : 0;
+      let delta = 0;
       let liked = false;
 
       if (likeDoc.exists) {
@@ -48,6 +49,7 @@ class MissionLikeService {
         );
 
         liked = false;
+        delta = -1;
       } else {
         // LIKE: 좋아요 추가
         transaction.set(likeRef, {
@@ -67,17 +69,14 @@ class MissionLikeService {
         );
 
         liked = true;
+        delta = 1;
       }
 
-      // 증가/감소 적용 후 최신 통계값 재조회
-      const updatedStatsDoc = await transaction.get(statsRef);
-      const finalLikesCount = updatedStatsDoc.exists
-        ? updatedStatsDoc.data().likesCount || 0
-        : 0;
+      const finalLikesCount = Math.max(0, baseCount + delta);
 
       result = {
         liked,
-        likesCount: Math.max(0, finalLikesCount),
+        likesCount: finalLikesCount,
       };
     });
 
@@ -139,7 +138,7 @@ class MissionLikeService {
   async getUserLikedEntries(userId, pageSize, cursor = null) {
     if (!userId) {
       const err = new Error("userId가 필요합니다.");
-      err.code = "MISSING_USER_ID";
+      err.code = "BAD_REQUEST";
       throw err;
     }
 
