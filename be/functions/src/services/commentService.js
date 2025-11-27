@@ -302,7 +302,7 @@ class CommentService {
         page: pageNumber,
         size: pageSize,
         orderBy: "createdAt",
-        orderDirection: "desc",
+        orderDirection: "asc",
         where: [
           { field: "postId", operator: "==", value: postId },
           { field: "parentId", operator: "==", value: null }
