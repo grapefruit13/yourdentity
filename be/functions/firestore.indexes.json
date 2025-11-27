@@ -306,6 +306,16 @@
       ]
     },
     {
+      "collectionGroup": "missionPosts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "categories", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "missionLikes",
       "queryScope": "COLLECTION",
       "fields": [
