@@ -3,14 +3,12 @@
 import { useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Heart, MessageCircleMore } from "lucide-react";
 import CommentsSection from "@/components/community/CommentsSection";
+import { PostActionBar } from "@/components/community/PostActionBar";
+import { PostMainContent } from "@/components/community/PostMainContent";
 import KebabMenu from "@/components/shared/kebab-menu";
-import { PostContent } from "@/components/shared/post-content";
 import { PostDetailError } from "@/components/shared/post-detail-error";
 import { PostDetailSkeleton } from "@/components/shared/post-detail-skeleton";
-import { PostProfileSection } from "@/components/shared/post-profile-section";
-import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { POST_EDIT_CONSTANTS } from "@/constants/community/_write-constants";
 import { communitiesKeys } from "@/constants/generated/query-keys";
@@ -28,7 +26,6 @@ import {
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
-import { cn } from "@/utils/shared/cn";
 import { debug } from "@/utils/shared/debugger";
 import { sharePost } from "@/utils/shared/post-share";
 
@@ -294,10 +291,21 @@ const PostDetailPage = () => {
         return { previousPost };
       },
       onSuccess: (response) => {
-        // API 응답으로 정확한 값으로 업데이트
+        // API 응답으로 정확한 값으로 업데이트 (실제 변경사항이 있을 때만)
         const result = response.data;
-        if (result) {
-          queryClient.setQueryData<Schema.CommunityPost | undefined>(
+        if (!result) return;
+
+        const currentPost =
+          queryClient.getQueryData<Schema.CommunityPost>(postQueryKey);
+
+        // 현재 상태와 API 응답이 다를 때만 업데이트 (불필요한 리렌더링 방지)
+        const needsUpdate =
+          currentPost &&
+          (currentPost.likesCount !== result.likesCount ||
+            currentPost.isLiked !== result.isLiked);
+
+        if (needsUpdate) {
+          queryClient.setQueryData<Schema.CommunityPost>(
             postQueryKey,
             (prev) => {
               if (!prev) return prev;
@@ -315,8 +323,9 @@ const PostDetailPage = () => {
             }
           );
         }
+
         // 게시글 목록 쿼리들도 업데이트 (목록에서도 카운트 반영)
-        // invalidateQueries 대신 setQueryData를 사용하여 불필요한 refetch 방지
+        // setQueriesData를 사용하되, 실제 변경이 필요한 경우에만 새 객체 반환
         queryClient.setQueriesData<{
           pages?: Array<{
             posts?: Array<{
@@ -338,35 +347,45 @@ const PostDetailPage = () => {
             },
           },
           (oldData) => {
-            if (!oldData || !result) return oldData;
+            if (!oldData) return oldData;
 
             // InfiniteQuery 데이터 구조 업데이트
             if (oldData.pages) {
-              return {
-                ...oldData,
-                pages: oldData.pages.map((page) => {
-                  if (!page.posts) return page;
-                  return {
-                    ...page,
-                    posts: page.posts.map((post) => {
-                      if (post.id === postId) {
-                        return {
-                          ...post,
-                          likesCount:
-                            typeof result.likesCount === "number"
-                              ? result.likesCount
-                              : post.likesCount,
-                          isLiked:
-                            typeof result.isLiked === "boolean"
-                              ? result.isLiked
-                              : post.isLiked,
-                        };
-                      }
-                      return post;
-                    }),
-                  };
-                }),
-              };
+              let hasChanges = false;
+              const newPages = oldData.pages.map((page) => {
+                if (!page.posts) return page;
+
+                const newPosts = page.posts.map((post) => {
+                  if (post.id === postId) {
+                    const postNeedsUpdate =
+                      (typeof result.likesCount === "number" &&
+                        post.likesCount !== result.likesCount) ||
+                      (typeof result.isLiked === "boolean" &&
+                        post.isLiked !== result.isLiked);
+
+                    if (postNeedsUpdate) {
+                      hasChanges = true;
+                      return {
+                        ...post,
+                        likesCount:
+                          typeof result.likesCount === "number"
+                            ? result.likesCount
+                            : post.likesCount,
+                        isLiked:
+                          typeof result.isLiked === "boolean"
+                            ? result.isLiked
+                            : post.isLiked,
+                      };
+                    }
+                  }
+                  return post;
+                });
+
+                return hasChanges ? { ...page, posts: newPosts } : page;
+              });
+
+              // 실제 변경사항이 있을 때만 새 객체 반환
+              return hasChanges ? { ...oldData, pages: newPages } : oldData;
             }
             return oldData;
           }
@@ -435,76 +454,23 @@ const PostDetailPage = () => {
   return (
     <div className="bg-white pt-12">
       {/* 메인 콘텐츠 */}
-      <div className="px-5 py-5">
-        <Typography
-          as="h1"
-          font="noto"
-          variant="body2R"
-          className="mb-1 text-gray-500"
-        >
-          {post?.category || "활동 후기"}
-        </Typography>
-        {/* 제목 */}
-        <Typography
-          as="h2"
-          font="noto"
-          variant="heading1M"
-          className="mb-4 text-gray-950"
-        >
-          {post?.title}
-        </Typography>
-
-        {/* 프로필 섹션 */}
-        <PostProfileSection
-          profileImageUrl={post?.profileImageUrl}
-          author={post?.author}
-          createdAt={post?.createdAt}
-          viewCount={post?.viewCount}
-        />
-
-        {/* 내용 */}
-        <div className="py-8">
-          {post?.content && <PostContent content={post.content} />}
-        </div>
-
-        {/* 태그 섹션 */}
-        {/* TODO: tags는 generated CommunityPost에 없으므로 추후 확장 타입으로 처리 필요 */}
-      </div>
+      <PostMainContent
+        category={post?.category}
+        title={post?.title}
+        profileImageUrl={post?.profileImageUrl}
+        author={post?.author}
+        createdAt={post?.createdAt}
+        viewCount={post?.viewCount}
+        content={post?.content}
+      />
       {/* 좋아요/댓글 액션 바 */}
-      <div className="flex items-center gap-6 border-t border-gray-200 p-4">
-        <button
-          onClick={handleLike}
-          className={cn(
-            "flex items-center gap-2 transition-opacity hover:opacity-80"
-          )}
-        >
-          <Heart
-            className={cn(
-              "h-5 w-5 transition-colors",
-              isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
-            )}
-          />
-          <Typography
-            font="noto"
-            variant="body2R"
-            className={cn(
-              "transition-colors",
-              isLiked ? "text-main-500" : "text-gray-600"
-            )}
-          >
-            {post?.likesCount || 0}
-          </Typography>
-        </button>
-        <button
-          onClick={handleCommentClick}
-          className="flex items-center gap-2 transition-opacity hover:opacity-80"
-        >
-          <MessageCircleMore className="h-5 w-5 text-gray-600" />
-          <Typography font="noto" variant="body2R" className="text-gray-600">
-            {post?.commentsCount || 0}
-          </Typography>
-        </button>
-      </div>
+      <PostActionBar
+        isLiked={isLiked}
+        likesCount={post?.likesCount || 0}
+        commentsCount={post?.commentsCount || 0}
+        onLikeClick={handleLike}
+        onCommentClick={handleCommentClick}
+      />
       {/* 댓글 섹션 */}
       {postId && communityId && (
         <CommentsSection
