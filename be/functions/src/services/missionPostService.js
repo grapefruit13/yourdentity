@@ -20,6 +20,7 @@ const POST_LIST_DEFAULT_PAGE_SIZE = 20;
 const POST_LIST_MAX_PAGE_SIZE = 50;
 const COMMENT_LIST_DEFAULT_PAGE_SIZE = 10;
 const COMMENT_LIST_MAX_PAGE_SIZE = 20;
+const COMMENT_REPLIES_PREVIEW_LIMIT = 50; // 커뮤니티 댓글과 동일한 더보기 프리뷰 제한
 
 function buildError(message, code, statusCode) {
   const error = new Error(message);
@@ -643,10 +644,6 @@ class MissionPostService {
           throw buildError("커뮤니티 댓글에는 답글을 남길 수 없습니다.", "BAD_REQUEST", 400);
         }
 
-        // 깊이 제한 (원댓글 + 2단계 = 최대 3단계)
-        if ((parentComment.depth || 0) >= 2) {
-          throw buildError("댓글은 최대 3단계까지만 허용됩니다.", "BAD_REQUEST", 400);
-        }
       }
 
       // 작성자 닉네임 조회 (사용자 기본 닉네임 사용)
@@ -1026,10 +1023,11 @@ class MissionPostService {
 
       const enrichedRoots = sortByCreatedAtAsc(rootComments).map((comment) => {
         const replies = sortByCreatedAtAsc(repliesByRoot.get(comment.id) || []);
+        const limitedReplies = replies.slice(0, COMMENT_REPLIES_PREVIEW_LIMIT);
         return {
           ...comment,
           profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
-          replies: replies.map(reply => ({
+          replies: limitedReplies.map(reply => ({
             ...reply,
             profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
           })),
