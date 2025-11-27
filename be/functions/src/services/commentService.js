@@ -67,7 +67,7 @@ class CommentService {
       //   throw error;
       // }
 
-      // const sanitizedContent = sanitizeContent(content);
+      const sanitizedContent = sanitizeContent(content);
 
       // const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
       // if (sanitizedText.length === 0) {
@@ -175,7 +175,7 @@ class CommentService {
         postId,
         userId,
         author,
-        content: content,
+        content: sanitizedContent,
         parentId,
         likesCount: 0,
         isDeleted: false,
@@ -565,7 +565,7 @@ class CommentService {
       //   throw error;
       // }
 
-      // const sanitizedContent = sanitizeContent(content);
+      const sanitizedContent = sanitizeContent(content);
 
       // const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
       // if (sanitizedText.length === 0) {
@@ -575,7 +575,7 @@ class CommentService {
       // }
 
       const updatedData = {
-        content: content,
+        content: sanitizedContent,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
