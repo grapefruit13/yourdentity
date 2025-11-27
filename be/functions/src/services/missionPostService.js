@@ -15,6 +15,9 @@ const {
   MISSION_POSTS_COLLECTION,
   MISSION_STATUS,
 } = require("../constants/missionConstants");
+const {
+  FIRESTORE_IN_QUERY_LIMIT,
+} = require("../constants/firestoreConstants");
 
 const POST_LIST_DEFAULT_PAGE_SIZE = 20;
 const POST_LIST_MAX_PAGE_SIZE = 50;
@@ -911,8 +914,8 @@ class MissionPostService {
         const visitedChildIds = new Set();
 
         while (parentQueue.length > 0) {
-          const chunk = parentQueue.slice(0, 10);
-          parentQueue = parentQueue.slice(10);
+          const chunk = parentQueue.slice(0, FIRESTORE_IN_QUERY_LIMIT);
+          parentQueue = parentQueue.slice(FIRESTORE_IN_QUERY_LIMIT);
 
           if (chunk.length === 0) {
             continue;
@@ -954,6 +957,11 @@ class MissionPostService {
           allCommentsMap.set(reply.id, reply);
         });
 
+        /**
+         * 모든 댓글 맵(allCommentsMap) 정보를 활용해 주어진 댓글의 루트 댓글 ID를 찾습니다.
+         * @param {{ id?: string, parentId?: string|null }} comment 댓글 문서 데이터
+         * @returns {string|null} 루트 댓글 ID. 순환 참조나 부모 누락 시 null 반환.
+         */
         const findRootCommentId = (comment) => {
           if (!comment.parentId) {
             return comment.id;
@@ -1001,8 +1009,8 @@ class MissionPostService {
           // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
           const firestoreService = new FirestoreService("users");
           const chunks = [];
-          for (let i = 0; i < uniqueUserIds.length; i += 10) {
-            chunks.push(uniqueUserIds.slice(i, i + 10));
+          for (let i = 0; i < uniqueUserIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
+            chunks.push(uniqueUserIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
           }
 
           const userResults = await Promise.all(
