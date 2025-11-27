@@ -75,6 +75,7 @@ const Page = () => {
     sortBy: sortValue,
     ...(filters.rightSelect && { category: filters.rightSelect }),
     ...(excludeParticipated && { excludeParticipated: true }),
+    ...(filters.leftSelect === LIKED_FILTER_ID && { likedOnly: true }),
   };
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
 
