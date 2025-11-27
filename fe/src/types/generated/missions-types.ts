@@ -163,6 +163,7 @@ export type TGETMissionsPostsCommentsByIdRes = {
     postId?: string;
     userId?: string;
     author?: string;
+    profileImageUrl?: string;
     content?: string;
     parentId?: string;
     depth?: number;
@@ -176,6 +177,7 @@ export type TGETMissionsPostsCommentsByIdRes = {
       id?: string;
       userId?: string;
       author?: string;
+      profileImageUrl?: string;
       content?: string;
       parentId?: string;
       depth?: number;
