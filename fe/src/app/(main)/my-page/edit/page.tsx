@@ -528,7 +528,11 @@ const ProfileEditPage = () => {
           <Typography
             font="noto"
             variant="body1M"
-            className={isCompleteEnabled ? "text-pink-600" : "text-gray-300"}
+            className={
+              isCompleteEnabled && !isSubmitting
+                ? "text-main-600"
+                : "text-gray-300"
+            }
           >
             {PROFILE_EDIT_LABELS.COMPLETE_BUTTON}
           </Typography>
