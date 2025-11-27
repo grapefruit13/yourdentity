@@ -118,3 +118,27 @@
     bottom: calc(80px + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* GIPHY Grid 스타일 */
+.giphy-grid {
+  width: 100% !important;
+}
+
+.giphy-grid > div {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important;
+}
+
+.giphy-grid img {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: transform 0.2s ease !important;
+}
+
+.giphy-grid img:hover {
+  transform: scale(1.02) !important;
+}

@@ -31,7 +31,9 @@ interface CommentsSectionProps {
   communityId: string;
   postType?: string;
   authorName?: string;
-  commentInputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  commentInputRef?: React.RefObject<
+    HTMLDivElement | HTMLTextAreaElement | null
+  >;
   onFocusRequestRef?: React.RefObject<(() => void) | null>;
 }
 
@@ -60,12 +62,13 @@ const CommentsSection = ({
     new Set()
   );
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const bottomTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomInputRef = useRef<HTMLDivElement>(null);
 
   // commentInputRef가 전달되면 그것을 사용, 없으면 내부 ref 사용
   const inputRef =
-    (commentInputRef as React.RefObject<HTMLTextAreaElement>) ||
-    bottomTextareaRef;
+    (commentInputRef as React.RefObject<
+      HTMLDivElement | HTMLTextAreaElement
+    >) || bottomInputRef;
 
   // 외부에서 포커스 요청 시 답글 상태 초기화 및 포커스
   useCommentFocus({

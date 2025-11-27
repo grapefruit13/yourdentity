@@ -7,7 +7,7 @@ interface UseCommentFocusOptions {
   replyingTo: ReplyingToState;
   setReplyingTo: (value: ReplyingToState) => void;
   setCommentInput: (value: string) => void;
-  inputRef: RefObject<HTMLTextAreaElement>;
+  inputRef: RefObject<HTMLDivElement | HTMLTextAreaElement>;
 }
 
 /**

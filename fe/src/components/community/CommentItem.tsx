@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import type { FormEvent } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Image as ImageIcon } from "lucide-react";
+import { GiphySelector } from "@/components/shared/giphy-selector";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
+import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-sheet";
 import { COMMENT_ANONYMOUS_NAME } from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
 import type * as Types from "@/types/generated/comments-types";
@@ -79,6 +82,9 @@ const CommentItem = ({
     Record<string, { isLiked: boolean; likesCount: number }>
   >({});
   const [localReplyToReplyInput, setLocalReplyToReplyInput] = useState("");
+  const [isGiphyOpen, setIsGiphyOpen] = useState(false);
+  const replyToReplyInputRef = useRef<HTMLDivElement>(null);
+  const isInternalChangeRef = useRef(false);
   const queryClient = useQueryClient();
 
   const commentId = comment.id || "";
@@ -107,7 +113,7 @@ const CommentItem = ({
 
   // 답글에 대한 답글 입력창의 실제 입력값
   const actualReplyToReplyInput = replyToReplyInput ?? localReplyToReplyInput;
-  const handleReplyToReplyInputChange =
+  const setReplyToReplyInputValue =
     onReplyToReplyInputChange ?? setLocalReplyToReplyInput;
 
   // 답글에 대한 답글 입력창이 닫힐 때 로컬 state 초기화
@@ -210,15 +216,12 @@ const CommentItem = ({
   const handleReplyToReplySubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (!actualReplyToReplyInput.trim() || isCommentSubmitting) return;
+      const inputValue = actualReplyToReplyInput.replace(/<[^>]*>/g, "").trim();
+      if (!inputValue || isCommentSubmitting) return;
 
       try {
         await onCommentSubmit(e, actualReplyToReplyInput);
-        if (onReplyToReplyInputChange) {
-          handleReplyToReplyInputChange("");
-        } else {
-          setLocalReplyToReplyInput("");
-        }
+        setReplyToReplyInputValue("");
       } catch (error) {
         // 에러는 상위에서 처리됨
       }
@@ -226,11 +229,153 @@ const CommentItem = ({
     [
       actualReplyToReplyInput,
       onCommentSubmit,
-      onReplyToReplyInputChange,
-      handleReplyToReplyInputChange,
+      setReplyToReplyInputValue,
       isCommentSubmitting,
     ]
   );
+
+  // GIF 선택 핸들러
+  const handleGifSelect = useCallback(
+    (gifUrl: string) => {
+      const inputElement = replyToReplyInputRef.current;
+      if (!inputElement) return;
+
+      // 입력창에 포커스 주기
+      inputElement.focus();
+
+      // 현재 HTML 가져오기
+      const currentHtml = actualReplyToReplyInput || "";
+
+      // img 태그 생성
+      const imgTag = `<img src="${gifUrl}" alt="GIF" style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 4px 0;" />`;
+
+      // 현재 내용이 있으면 줄바꿈 추가, 없으면 그냥 추가
+      const newHtml = currentHtml
+        ? `${currentHtml}<br>${imgTag}<br>`
+        : `${imgTag}<br>`;
+
+      // HTML 업데이트
+      setReplyToReplyInputValue(newHtml);
+
+      // DOM에 직접 삽입하여 즉시 반영
+      setTimeout(() => {
+        inputElement.innerHTML = newHtml;
+
+        // 커서를 끝으로 이동
+        const range = document.createRange();
+        const selection = window.getSelection();
+        if (selection && inputElement.lastChild) {
+          range.selectNodeContents(inputElement);
+          range.collapse(false);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        inputElement.focus();
+      }, 0);
+    },
+    [actualReplyToReplyInput, setReplyToReplyInputValue]
+  );
+
+  // 대댓글 입력창 변경 핸들러
+  const handleReplyToReplyInputChangeEvent = useCallback(
+    (e: React.FormEvent<HTMLDivElement>) => {
+      isInternalChangeRef.current = true;
+      const target = e.currentTarget;
+      const html = target.innerHTML;
+      setReplyToReplyInputValue(html);
+    },
+    [setReplyToReplyInputValue]
+  );
+
+  // 대댓글 입력창 키다운 핸들러 (img 태그 삭제)
+  const handleReplyToReplyKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      // Backspace 또는 Delete 키로 img 태그 전체 삭제
+      if (e.key === "Backspace" || e.key === "Delete") {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        const container = replyToReplyInputRef.current;
+        if (!container) return;
+
+        // 선택된 노드 확인
+        let node = range.startContainer;
+        if (node.nodeType === Node.TEXT_NODE) {
+          node = node.parentNode as Node;
+        }
+
+        // img 태그 찾기
+        let imgElement: HTMLImageElement | null = null;
+        if (node instanceof HTMLImageElement) {
+          imgElement = node;
+        } else {
+          // 부모 노드에서 img 찾기
+          let current: Node | null = node;
+          while (current && current !== container) {
+            if (current instanceof HTMLImageElement) {
+              imgElement = current;
+              break;
+            }
+            current = current.parentNode;
+          }
+        }
+
+        if (imgElement) {
+          e.preventDefault();
+          // img 태그와 앞뒤 br 태그 제거
+          const parent = imgElement.parentNode;
+          if (parent) {
+            // 앞의 br 제거
+            const prevSibling = imgElement.previousSibling;
+            if (prevSibling && prevSibling instanceof HTMLBRElement) {
+              parent.removeChild(prevSibling);
+            }
+            // img 제거
+            parent.removeChild(imgElement);
+            // 뒤의 br 제거
+            const nextSibling = imgElement.nextSibling;
+            if (nextSibling && nextSibling instanceof HTMLBRElement) {
+              parent.removeChild(nextSibling);
+            }
+
+            // 커서 위치 조정
+            const newRange = document.createRange();
+            if (parent.childNodes.length > 0) {
+              newRange.setStart(parent, 0);
+            } else {
+              newRange.setStart(parent, 0);
+            }
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+
+            // HTML 업데이트
+            const newHtml = container.innerHTML;
+            setReplyToReplyInputValue(newHtml);
+          }
+        }
+      }
+    },
+    [setReplyToReplyInputValue]
+  );
+
+  // contentEditable div의 내용 동기화
+  useEffect(() => {
+    if (isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+      return;
+    }
+
+    const inputElement = replyToReplyInputRef.current;
+    if (!inputElement) return;
+
+    // 현재 innerHTML과 actualReplyToReplyInput이 다를 때만 업데이트
+    if (inputElement.innerHTML !== actualReplyToReplyInput) {
+      inputElement.innerHTML = actualReplyToReplyInput || "";
+    }
+  }, [actualReplyToReplyInput]);
 
   // 답글에 대한 답글 취소 핸들러
   const handleCancelReplyToReply = useCallback(() => {
@@ -256,12 +401,13 @@ const CommentItem = ({
     <div className="space-y-3">
       {/* 메인 댓글 */}
       <div className="flex gap-3">
+        {/* 작성자 프로필 썸네일 */}
         <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
 
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {/* 댓글 헤더 */}
-          <div className="mb-1 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Typography
                 font="noto"
                 variant="body2M"
@@ -273,7 +419,7 @@ const CommentItem = ({
                 <Typography
                   font="noto"
                   variant="caption1R"
-                  className="text-gray-500"
+                  className="flex-shrink-0 text-gray-500"
                 >
                   {getTimeAgo(comment.createdAt)}
                 </Typography>
@@ -361,7 +507,7 @@ const CommentItem = ({
             <>
               {comment.content && (
                 <div
-                  className="prose prose-sm mb-2 max-w-none text-sm text-gray-700 [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
+                  className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm break-words text-gray-700 [&_*]:break-words [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
                   dangerouslySetInnerHTML={{ __html: comment.content }}
                 />
               )}
@@ -437,9 +583,9 @@ const CommentItem = ({
               return (
                 <div key={replyId} className="flex gap-3">
                   <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
-                  <div className="flex-1">
-                    <div className="mb-1 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <Typography
                           font="noto"
                           variant="body2R"
@@ -454,7 +600,7 @@ const CommentItem = ({
                           <Typography
                             font="noto"
                             variant="caption1R"
-                            className="text-gray-500"
+                            className="flex-shrink-0 text-gray-500"
                           >
                             {getTimeAgo(reply.createdAt)}
                           </Typography>
@@ -564,7 +710,7 @@ const CommentItem = ({
                       <>
                         {reply.content && (
                           <div
-                            className="prose prose-sm mb-2 max-w-none text-sm text-gray-700 [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
+                            className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm break-words text-gray-700 [&_*]:break-words [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
                             dangerouslySetInnerHTML={{ __html: reply.content }}
                           />
                         )}
@@ -652,34 +798,42 @@ const CommentItem = ({
                           onSubmit={handleReplyToReplySubmit}
                           className="relative"
                         >
-                          <textarea
-                            value={actualReplyToReplyInput}
-                            onChange={(e) =>
-                              handleReplyToReplyInputChange(e.target.value)
-                            }
-                            placeholder="서로 배려하는 댓글을 남겨요:)"
-                            className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:ring-2 focus:outline-none"
-                            rows={
-                              actualReplyToReplyInput.trim()
-                                ? Math.min(
-                                    actualReplyToReplyInput.split("\n").length +
-                                      1,
-                                    5
-                                  )
-                                : 1
-                            }
+                          <div
+                            ref={replyToReplyInputRef}
+                            contentEditable
+                            suppressContentEditableWarning
+                            onInput={handleReplyToReplyInputChangeEvent}
+                            onKeyDown={handleReplyToReplyKeyDown}
+                            data-placeholder="서로 배려하는 댓글을 남겨요:)"
+                            className={cn(
+                              "max-h-[200px] min-h-[40px] w-full resize-none overflow-y-auto rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:outline-none",
+                              "[&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
+                              "focus:ring-main-400 focus:ring-2",
+                              "[&_img]:my-1 [&_img]:block [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
+                            )}
+                            style={{
+                              wordBreak: "break-word",
+                              whiteSpace: "pre-wrap",
+                            }}
                           />
                           <div className="absolute right-2 bottom-3 flex items-center gap-2">
                             <button
+                              type="button"
+                              onClick={() => setIsGiphyOpen((prev) => !prev)}
+                              className={cn(
+                                "flex h-[40px] w-[40px] items-center justify-center rounded-lg transition-all",
+                                "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+                              )}
+                              aria-label="GIF 선택"
+                            >
+                              <ImageIcon size={20} />
+                            </button>
+                            <button
                               type="submit"
-                              disabled={
-                                !actualReplyToReplyInput.trim() ||
-                                isCommentSubmitting
-                              }
+                              disabled={isCommentSubmitting}
                               className={cn(
                                 "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                                actualReplyToReplyInput.trim() &&
-                                  !isCommentSubmitting
+                                !isCommentSubmitting
                                   ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
@@ -688,7 +842,6 @@ const CommentItem = ({
                                 font="noto"
                                 variant="body2M"
                                 className={
-                                  actualReplyToReplyInput.trim() &&
                                   !isCommentSubmitting
                                     ? "text-white"
                                     : "text-gray-400"
@@ -699,6 +852,16 @@ const CommentItem = ({
                             </button>
                           </div>
                         </form>
+                        {/* GIPHY 선택 UI - 바텀시트로 표시 */}
+                        <ExpandableBottomSheet
+                          isOpen={isGiphyOpen}
+                          onClose={() => setIsGiphyOpen(false)}
+                        >
+                          <GiphySelector
+                            onGifSelect={handleGifSelect}
+                            onClose={() => setIsGiphyOpen(false)}
+                          />
+                        </ExpandableBottomSheet>
                       </div>
                     )}
                   </div>
