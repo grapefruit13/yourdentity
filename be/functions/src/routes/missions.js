@@ -804,6 +804,11 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                           author:
  *                             type: string
  *                             description: 작성자 닉네임
+ *                           profileImageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 작성자 프로필 이미지 URL
+ *                             example: "https://example.com/profile.jpg"
  *                           content:
  *                             type: string
  *                             description: 댓글 HTML 내용
@@ -841,6 +846,11 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                                   nullable: true
  *                                 author:
  *                                   type: string
+ *                                 profileImageUrl:
+ *                                   type: string
+ *                                   nullable: true
+ *                                   description: 작성자 프로필 이미지 URL
+ *                                   example: "https://example.com/profile.jpg"
  *                                 content:
  *                                   type: string
  *                                 parentId:

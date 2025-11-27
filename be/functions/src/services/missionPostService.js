@@ -923,18 +923,53 @@ class MissionPostService {
         }
       }
 
+      const commentUserIds = [
+        ...rootComments.map(comment => comment.userId),
+        ...Array.from(repliesByParent.values()).flat().map(reply => reply.userId)
+      ].filter(Boolean);
+      const uniqueUserIds = Array.from(new Set(commentUserIds));
+      
+      const profileImageMap = {};
+      if (uniqueUserIds.length > 0) {
+        try {
+          // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
+          const firestoreService = new FirestoreService("users");
+          const chunks = [];
+          for (let i = 0; i < uniqueUserIds.length; i += 10) {
+            chunks.push(uniqueUserIds.slice(i, i + 10));
+          }
+
+          const userResults = await Promise.all(
+            chunks.map((chunk) =>
+              firestoreService.getCollectionWhereIn("users", "__name__", chunk),
+            ),
+          );
+          userResults
+            .flat()
+            .filter((user) => user?.id)
+            .forEach((user) => {
+              profileImageMap[user.id] = user.profileImageUrl || null;
+            });
+        } catch (error) {
+          console.warn("[MISSION_POST] 작성자 프로필 이미지 배치 조회 실패:", error.message);
+        }
+      }
+
       const enrichedRoots = rootComments.map((comment) => {
         const replies = sortByCreatedAtAsc(repliesByParent.get(comment.id) || []);
         return {
           ...comment,
-          replies,
+          profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
+          replies: replies.map(reply => ({
+            ...reply,
+            profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
+          })),
           repliesCount: replies.length,
         };
       });
 
       return {
-        // 루트 댓글은 최신순(내림차순), 대댓글은 오래된 순(오름차순)
-        comments: sortByCreatedAtDesc(enrichedRoots),
+        comments: sortByCreatedAtAsc(enrichedRoots),
         pageInfo: {
           pageSize,
           nextCursor,
