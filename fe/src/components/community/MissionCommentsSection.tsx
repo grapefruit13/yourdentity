@@ -74,9 +74,11 @@ const MissionCommentsSection = ({
   });
 
   // 현재 사용자 정보
-  const { data: currentUserNickname = "" } = useGetUsersMe({
-    select: (data) => data?.user?.nickname || "",
+  const { data: userData } = useGetUsersMe({
+    select: (data) => data?.user,
   });
+  const currentUserNickname = userData?.nickname || "";
+  const currentUserProfileImageUrl = userData?.profileImageUrl;
 
   // 댓글 목록 조회 API (무한 스크롤)
   const {
@@ -172,7 +174,7 @@ const MissionCommentsSection = ({
         setDeleteTargetId(null);
       },
       onError: () => {
-        showToast("댓글 작성에 실패했습니다. 다시 시도해주세요.");
+        showToast("댓글 삭제에 실패했습니다. 다시 시도해주세요.");
       },
     });
 
@@ -404,6 +406,7 @@ const MissionCommentsSection = ({
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
             userName={currentUserNickname}
+            profileImageUrl={currentUserProfileImageUrl}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />
