@@ -60,21 +60,21 @@ class CommentService {
         throw error;
       }
 
-      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
-      if (textWithoutTags.length === 0) {
-        const error = new Error("댓글에 텍스트 내용이 필요합니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+      // const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      // if (textWithoutTags.length === 0) {
+      //   const error = new Error("댓글에 텍스트 내용이 필요합니다.");
+      //   error.code = "BAD_REQUEST";
+      //   throw error;
+      // }
 
-      const sanitizedContent = sanitizeContent(content);
+      // const sanitizedContent = sanitizeContent(content);
 
-      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
-      if (sanitizedText.length === 0) {
-        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+      // const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      // if (sanitizedText.length === 0) {
+      //   const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+      //   error.code = "BAD_REQUEST";
+      //   throw error;
+      // }
 
       const community = await this.firestoreService.getDocument(
         "communities",
@@ -382,6 +382,38 @@ class CommentService {
           }
         }
 
+        // 댓글 작성자 프로필 이미지 배치 조회
+        const commentUserIds = [
+          ...paginatedParentComments.map(comment => comment.userId),
+          ...allReplies.map(reply => reply.userId)
+        ].filter(Boolean);
+        const uniqueUserIds = Array.from(new Set(commentUserIds));
+        
+        const profileImageMap = {};
+        if (uniqueUserIds.length > 0) {
+          try {
+            // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
+            const chunks = [];
+            for (let i = 0; i < uniqueUserIds.length; i += 10) {
+              chunks.push(uniqueUserIds.slice(i, i + 10));
+            }
+
+            const userResults = await Promise.all(
+              chunks.map((chunk) =>
+                this.firestoreService.getCollectionWhereIn("users", "__name__", chunk),
+              ),
+            );
+            userResults
+              .flat()
+              .filter((user) => user?.id)
+              .forEach((user) => {
+                profileImageMap[user.id] = user.profileImageUrl || null;
+              });
+          } catch (error) {
+            console.warn("[COMMENT] 작성자 프로필 이미지 배치 조회 실패:", error.message);
+          }
+        }
+
         for (const comment of paginatedParentComments) {
           const replies = repliesByRootId[comment.id] || [];
          
@@ -401,6 +433,7 @@ class CommentService {
                 isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
                 reportsCount: reply.reportsCount || 0,
                 parentAuthor: reply.parentAuthor || null,
+                profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
               };
               return replyResult;
             });
@@ -415,6 +448,7 @@ class CommentService {
             isLiked: viewerId ? likedCommentIds.has(comment.id) : false,
             reportsCount: comment.reportsCount || 0,
             parentAuthor: comment.parentAuthor || null,
+            profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
           };
 
           commentsWithReplies.push(processedComment);
@@ -524,21 +558,21 @@ class CommentService {
         throw error;
       }
 
-      const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
-      if (textWithoutTags.length === 0) {
-        const error = new Error("댓글에 텍스트 내용이 필요합니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+      // const textWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+      // if (textWithoutTags.length === 0) {
+      //   const error = new Error("댓글에 텍스트 내용이 필요합니다.");
+      //   error.code = "BAD_REQUEST";
+      //   throw error;
+      // }
 
-      const sanitizedContent = sanitizeContent(content);
+      // const sanitizedContent = sanitizeContent(content);
 
-      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
-      if (sanitizedText.length === 0) {
-        const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
-        error.code = "BAD_REQUEST";
-        throw error;
-      }
+      // const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, '').trim();
+      // if (sanitizedText.length === 0) {
+      //   const error = new Error("sanitize 후 유효한 텍스트 내용이 없습니다.");
+      //   error.code = "BAD_REQUEST";
+      //   throw error;
+      // }
 
       const updatedData = {
         content: sanitizedContent,

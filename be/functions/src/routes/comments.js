@@ -135,6 +135,11 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             type: string
  *                             description: 작성자 닉네임
  *                             example: "사용자닉네임"
+ *                           profileImageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 작성자 프로필 이미지 URL
+ *                             example: "https://example.com/profile.jpg"
  *                           content:
  *                             type: string
  *                             description: 댓글 HTML 내용
@@ -209,6 +214,11 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                                   type: string
  *                                   description: 작성자 닉네임
  *                                   example: "사용자닉네임2"
+ *                                 profileImageUrl:
+ *                                   type: string
+ *                                   nullable: true
+ *                                   description: 작성자 프로필 이미지 URL
+ *                                   example: "https://example.com/profile.jpg"
  *                                 content:
  *                                   type: string
  *                                   description: 댓글 HTML 내용
