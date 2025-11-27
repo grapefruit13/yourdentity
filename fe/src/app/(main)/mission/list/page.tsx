@@ -182,7 +182,7 @@ const Page = () => {
         />
       </div>
       {/* 미션 목록 */}
-      <div className="flex flex-col">
+      <div className="flex flex-col pb-20">
         {isLoading && !missions.length && (
           <div className="flex items-center justify-center py-12">
             <Typography font="noto" variant="body2R" className="text-gray-400">
@@ -223,7 +223,7 @@ const Page = () => {
           ))}
 
         {/* 무한 스크롤 로딩 트리거 & 상태 표시 */}
-        <div ref={loadMoreTriggerRef} className="flex justify-center py-4">
+        <div ref={loadMoreTriggerRef} className="flex justify-center py-2">
           {hasNextPage && !error && (
             <Typography font="noto" variant="body2R" className="text-gray-400">
               {isFetchingNextPage
