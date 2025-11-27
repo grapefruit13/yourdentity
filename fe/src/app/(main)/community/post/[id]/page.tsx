@@ -80,16 +80,6 @@ const PostDetailPage = () => {
       }),
     [communityId, postId]
   );
-  const postsListQueryKey = useMemo(
-    () =>
-      communitiesKeys.getCommunitiesPosts({
-        page: undefined,
-        size: undefined,
-        programType: undefined,
-        programState: undefined,
-      }),
-    []
-  );
   const isLiked = post?.isLiked ?? false;
   const isAuthor = post?.isAuthor ?? false;
 
@@ -325,10 +315,62 @@ const PostDetailPage = () => {
             }
           );
         }
-        // 게시글 목록도 업데이트 (목록에서도 카운트 반영)
-        queryClient.invalidateQueries({
-          queryKey: postsListQueryKey,
-        });
+        // 게시글 목록 쿼리들도 업데이트 (목록에서도 카운트 반영)
+        // invalidateQueries 대신 setQueryData를 사용하여 불필요한 refetch 방지
+        queryClient.setQueriesData<{
+          pages?: Array<{
+            posts?: Array<{
+              id?: string;
+              likesCount?: number;
+              isLiked?: boolean;
+            }>;
+          }>;
+        }>(
+          {
+            predicate: (query) => {
+              const queryKey = query.queryKey;
+              return (
+                Array.isArray(queryKey) &&
+                queryKey.length > 0 &&
+                queryKey[0] === "communities" &&
+                queryKey[1] === "getCommunitiesPosts"
+              );
+            },
+          },
+          (oldData) => {
+            if (!oldData || !result) return oldData;
+
+            // InfiniteQuery 데이터 구조 업데이트
+            if (oldData.pages) {
+              return {
+                ...oldData,
+                pages: oldData.pages.map((page) => {
+                  if (!page.posts) return page;
+                  return {
+                    ...page,
+                    posts: page.posts.map((post) => {
+                      if (post.id === postId) {
+                        return {
+                          ...post,
+                          likesCount:
+                            typeof result.likesCount === "number"
+                              ? result.likesCount
+                              : post.likesCount,
+                          isLiked:
+                            typeof result.isLiked === "boolean"
+                              ? result.isLiked
+                              : post.isLiked,
+                        };
+                      }
+                      return post;
+                    }),
+                  };
+                }),
+              };
+            }
+            return oldData;
+          }
+        );
       },
       onError: (err, variables, context) => {
         // 에러 발생 시 이전 상태로 롤백
