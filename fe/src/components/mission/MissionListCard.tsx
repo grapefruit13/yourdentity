@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { MouseEvent, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
+import { missionsKeys } from "@/constants/generated/query-keys";
+import { usePostMissionsLikeById } from "@/hooks/generated/missions-hooks";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
+import { debug } from "@/utils/shared/debugger";
 
 interface MissionListCardProps {
   id: string;
@@ -33,19 +37,62 @@ const MissionListCard = ({
   className,
 }: MissionListCardProps) => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
+
+  // 좋아요 mutation
+  const { mutateAsync: likeMissionAsync, isPending: isLikePending } =
+    usePostMissionsLikeById({
+      onMutate: () => {
+        // Optimistic update: 즉시 UI 업데이트
+        const previousIsLiked = isLiked;
+        const previousLikeCount = likeCount;
+
+        const newIsLiked = !previousIsLiked;
+        setIsLiked(newIsLiked);
+        setLikeCount((prev) => (newIsLiked ? prev + 1 : Math.max(0, prev - 1)));
+
+        return { previousIsLiked, previousLikeCount };
+      },
+      onError: (error, _variables, context) => {
+        // 에러 발생 시 롤백
+        if (context) {
+          setIsLiked(context.previousIsLiked);
+          setLikeCount(context.previousLikeCount);
+        }
+        debug.error("미션 좋아요 실패:", error);
+      },
+      onSuccess: (response) => {
+        // 성공 시 서버 응답으로 상태 업데이트
+        if (response.data?.liked !== undefined) {
+          setIsLiked(response.data.liked);
+        }
+        if (response.data?.likesCount !== undefined) {
+          setLikeCount(response.data.likesCount);
+        }
+
+        // 미션 목록 캐시 무효화하여 최신 데이터 반영
+        queryClient.invalidateQueries({
+          queryKey: missionsKeys.getMissions({}),
+        });
+      },
+    });
 
   const handleClick = () => {
     router.push(`/mission/${id}`);
   };
 
-  const handleHeartClick = (e: React.MouseEvent) => {
+  const handleHeartClick = async (e: MouseEvent) => {
     e.stopPropagation();
-    const newIsLiked = !isLiked;
-    setIsLiked(newIsLiked);
-    setLikeCount((prev) => (newIsLiked ? prev + 1 : prev - 1));
-    // TODO: API 호출로 찜 상태 업데이트
+    if (isLikePending) return;
+
+    try {
+      await likeMissionAsync({ missionId: id });
+    } catch (error) {
+      // 에러는 onError에서 처리됨
+      debug.error("미션 좋아요 처리 중 오류:", error);
+    }
   };
 
   const timeAgo = getTimeAgo(createdAt);
@@ -59,7 +106,7 @@ const MissionListCard = ({
       )}
     >
       {/* 썸네일 이미지 */}
-      <div className="relative flex-shrink-0">
+      <div className="relative shrink-0">
         <Image
           src={thumbnailUrl}
           alt={title}
@@ -89,7 +136,7 @@ const MissionListCard = ({
           <button
             type="button"
             onClick={handleHeartClick}
-            className="flex flex-shrink-0 items-center gap-0.5"
+            className="flex shrink-0 items-center gap-0.5"
             aria-label={isLiked ? "찜 해제" : "찜하기"}
           >
             <Heart

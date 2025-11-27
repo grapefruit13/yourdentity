@@ -211,13 +211,13 @@ const Page = () => {
               title={mission.title || ""}
               categories={mission.categories || []}
               thumbnailUrl={mission.coverImage || "/imgs/mockup.jpg"}
-              likeCount={mission.reactionCount || 0}
+              likeCount={mission.likesCount || 0}
               createdAt={
                 mission.createdAt ||
                 mission.updatedAt ||
                 new Date().toISOString()
               }
-              isLiked={false} // TODO: 찜한 미션 필터링 구현 시 수정
+              isLiked={mission.isLiked || false}
             />
           ))}
 
