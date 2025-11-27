@@ -1,6 +1,7 @@
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {admin} = require("../config/database");
+const {admin, db} = require("../config/database");
 const FirestoreService = require("../services/firestoreService");
+const {MISSION_POSTS_COLLECTION} = require("../constants/missionConstants");
 
 /**
  * postId로 게시글 조회 (병렬 처리로 최적화)
@@ -16,19 +17,33 @@ async function findPostById(postId, communities = null) {
       communities = await communitiesService.getAll();
     }
     
-    const postPromises = communities.map(async (community) => {
+    // 커뮤니티 게시글 조회 (병렬 처리)
+    const communityPostPromises = communities.map(async (community) => {
       const postRef = communitiesService.db
           .collection(`communities/${community.id}/posts`)
           .doc(postId);
       return await postRef.get();
     });
     
-    const postDocs = await Promise.all(postPromises);
+    // 미션 게시글 조회 (병렬 처리)
+    const missionPostRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
+    const missionPostPromise = missionPostRef.get();
     
-    for (const postDoc of postDocs) {
-      if (postDoc.exists) {
-        return postDoc;
+    // 모든 조회를 병렬로 실행
+    const allPromises = [...communityPostPromises, missionPostPromise];
+    const results = await Promise.all(allPromises);
+    
+    // 커뮤니티 게시글 확인
+    for (let i = 0; i < communityPostPromises.length; i++) {
+      if (results[i].exists) {
+        return results[i];
       }
+    }
+    
+    // 미션 게시글 확인
+    const missionPostDoc = results[results.length - 1];
+    if (missionPostDoc.exists) {
+      return missionPostDoc;
     }
     
     return null;
@@ -337,4 +352,6 @@ const storageCleanupWeeklyScheduler = onSchedule(
 module.exports = {
   storageCleanupScheduler,
   storageCleanupWeeklyScheduler,
+  cleanupStorage,
+  cleanupOrphanedStorage,
 };
