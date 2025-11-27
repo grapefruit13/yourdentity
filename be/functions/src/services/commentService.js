@@ -175,7 +175,7 @@ class CommentService {
         postId,
         userId,
         author,
-        content: sanitizedContent,
+        content: content,
         parentId,
         likesCount: 0,
         isDeleted: false,
@@ -575,7 +575,7 @@ class CommentService {
       // }
 
       const updatedData = {
-        content: sanitizedContent,
+        content: content,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
