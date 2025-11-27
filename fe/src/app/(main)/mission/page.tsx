@@ -324,6 +324,7 @@ const MissionPageContent = () => {
           <HorizontalScrollContainer
             className="mt-4"
             containerClassName="flex w-[calc(100%)] gap-3"
+            gradientColor="white"
           >
             {activeMissions.map((mission) => {
               const missionNotionPageId = mission.missionNotionPageId || "";
@@ -512,6 +513,7 @@ const MissionPageContent = () => {
             <HorizontalScrollContainer
               className="-mx-5"
               containerClassName="flex gap-3 px-5"
+              gradientColor="white"
             >
               {isMissionPostsLoading && missionPosts.length === 0 && (
                 <div className="flex items-center justify-center py-6">
