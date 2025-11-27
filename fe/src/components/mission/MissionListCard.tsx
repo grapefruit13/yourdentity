@@ -12,6 +12,12 @@ import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
 
+// 미션 목록 쿼리 키 prefix (모든 필터 파라미터를 가진 쿼리 무효화용)
+const MISSIONS_QUERY_KEY_PREFIX = missionsKeys.getMissions({}).slice(0, 2) as [
+  string,
+  string,
+];
+
 interface MissionListCardProps {
   id: string;
   title: string;
@@ -73,8 +79,17 @@ const MissionListCard = ({
         }
 
         // 미션 목록 캐시 무효화하여 최신 데이터 반영
+        // 모든 필터 파라미터(sortBy, category, likedOnly 등)를 가진 쿼리 무효화
         queryClient.invalidateQueries({
-          queryKey: missionsKeys.getMissions({}),
+          predicate: (query) => {
+            const queryKey = query.queryKey;
+            return (
+              Array.isArray(queryKey) &&
+              queryKey.length >= 2 &&
+              queryKey[0] === MISSIONS_QUERY_KEY_PREFIX[0] &&
+              queryKey[1] === MISSIONS_QUERY_KEY_PREFIX[1]
+            );
+          },
         });
       },
     });
