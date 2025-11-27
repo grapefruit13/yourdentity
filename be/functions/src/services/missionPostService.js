@@ -622,14 +622,19 @@ class MissionPostService {
 
         parentComment = parentCommentDoc.data();
 
-        // 대댓글은 2레벨까지만 허용
-        if (parentComment.parentId) {
-          throw buildError("대댓글은 2레벨까지만 허용됩니다.", "BAD_REQUEST", 400);
-        }
-
         // 같은 게시글의 댓글인지 확인
         if (parentComment.postId !== postId) {
           throw buildError("부모 댓글이 해당 인증글의 댓글이 아닙니다.", "BAD_REQUEST", 400);
+        }
+
+        // 커뮤니티 댓글에는 답글 불가
+        if (parentComment.communityId) {
+          throw buildError("커뮤니티 댓글에는 답글을 남길 수 없습니다.", "BAD_REQUEST", 400);
+        }
+
+        // 깊이 제한 (원댓글 + 2단계까지만 허용)
+        if ((parentComment.depth || 0) >= 2) {
+          throw buildError("대댓글은 2레벨까지만 허용됩니다.", "BAD_REQUEST", 400);
         }
       }
 
@@ -665,6 +670,7 @@ class MissionPostService {
       const commentRef = db.collection("comments").doc();
       const commentId = commentRef.id;
 
+      const calculatedDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
       const newComment = {
         // communityId 없음 = 미션 인증글 댓글 (커뮤니티 댓글은 communityId 있음)
         postId: postId,
@@ -672,10 +678,11 @@ class MissionPostService {
         author,
         content: sanitizedContent,
         parentId,
+        parentAuthor: parentComment?.author || null,
         likesCount: 0,
         isDeleted: false,
         isLocked: false,
-        depth: parentId ? 1 : 0,
+        depth: calculatedDepth,
         createdAt: now,
         updatedAt: now,
       };
@@ -734,7 +741,8 @@ class MissionPostService {
         author,
         content: sanitizedContent,
         parentId: parentId || null,
-        depth: parentId ? 1 : 0,
+        parentAuthor: parentComment?.author || null,
+        depth: calculatedDepth,
         likesCount: 0,
         isLocked: false,
         createdAt: nowIsoString,
@@ -802,13 +810,6 @@ class MissionPostService {
           const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return aTime - bTime;
-        });
-
-      const sortByCreatedAtDesc = (list) =>
-        list.sort((a, b) => {
-          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return bTime - aTime;
         });
 
       const baseQuery = db
@@ -881,6 +882,7 @@ class MissionPostService {
           author: data.author || null,
           content: data.content || "",
           parentId: data.parentId || null,
+          parentAuthor: data.parentAuthor || null,
           depth: data.depth || 0,
           likesCount: data.likesCount || 0,
           isDeleted: Boolean(data.isDeleted),
@@ -892,40 +894,99 @@ class MissionPostService {
         };
       };
 
-      const rootComments = docsToProcess
-        .map((doc) => formatComment(doc))
-        .map((comment) => ({
-          ...comment,
-          replies: [],
-        }));
+      const rootComments = docsToProcess.map((doc) => formatComment(doc));
+      const rootIdSet = new Set(rootComments.map((comment) => comment.id));
+      const repliesByRoot = new Map();
+      const collectedReplies = [];
 
-      const rootIds = rootComments.map((comment) => comment.id);
-      const repliesByParent = new Map();
+      if (rootComments.length > 0) {
+        let parentQueue = rootComments
+          .map((comment) => comment.id)
+          .filter((id) => Boolean(id));
+        const visitedChildIds = new Set();
 
-      if (rootIds.length > 0) {
-        for (let i = 0; i < rootIds.length; i += 10) {
-          const chunk = rootIds.slice(i, i + 10);
+        while (parentQueue.length > 0) {
+          const chunk = parentQueue.slice(0, 10);
+          parentQueue = parentQueue.slice(10);
+
+          if (chunk.length === 0) {
+            continue;
+          }
+
           const repliesSnapshot = await db
             .collection("comments")
             .where("parentId", "in", chunk)
             .get();
 
+          if (repliesSnapshot.empty) {
+            continue;
+          }
+
+          const nextParentIds = [];
           repliesSnapshot.forEach((doc) => {
             const data = doc.data();
             if (data.communityId || data.postId !== postId) {
               return;
             }
             const formattedReply = formatComment(doc);
-            const existingReplies = repliesByParent.get(formattedReply.parentId) || [];
-            existingReplies.push(formattedReply);
-            repliesByParent.set(formattedReply.parentId, existingReplies);
+            collectedReplies.push(formattedReply);
+            if (!visitedChildIds.has(formattedReply.id)) {
+              visitedChildIds.add(formattedReply.id);
+              nextParentIds.push(formattedReply.id);
+            }
           });
+
+          if (nextParentIds.length > 0) {
+            parentQueue = parentQueue.concat(nextParentIds);
+          }
         }
+
+        const allCommentsMap = new Map();
+        rootComments.forEach((comment) => {
+          allCommentsMap.set(comment.id, comment);
+        });
+        collectedReplies.forEach((reply) => {
+          allCommentsMap.set(reply.id, reply);
+        });
+
+        const findRootCommentId = (comment) => {
+          if (!comment.parentId) {
+            return comment.id;
+          }
+          const visitedParents = new Set();
+          let currentParentId = comment.parentId;
+
+          while (currentParentId) {
+            if (visitedParents.has(currentParentId)) {
+              return null;
+            }
+            visitedParents.add(currentParentId);
+            const parentComment = allCommentsMap.get(currentParentId);
+            if (!parentComment) {
+              return null;
+            }
+            if (!parentComment.parentId) {
+              return parentComment.id;
+            }
+            currentParentId = parentComment.parentId;
+          }
+          return null;
+        };
+
+        collectedReplies.forEach((reply) => {
+          const rootId = findRootCommentId(reply);
+          if (!rootId || !rootIdSet.has(rootId)) {
+            return;
+          }
+          const repliesForRoot = repliesByRoot.get(rootId) || [];
+          repliesForRoot.push(reply);
+          repliesByRoot.set(rootId, repliesForRoot);
+        });
       }
 
       const commentUserIds = [
-        ...rootComments.map(comment => comment.userId),
-        ...Array.from(repliesByParent.values()).flat().map(reply => reply.userId)
+        ...rootComments.map((comment) => comment.userId),
+        ...collectedReplies.map((reply) => reply.userId),
       ].filter(Boolean);
       const uniqueUserIds = Array.from(new Set(commentUserIds));
       
@@ -955,8 +1016,8 @@ class MissionPostService {
         }
       }
 
-      const enrichedRoots = rootComments.map((comment) => {
-        const replies = sortByCreatedAtAsc(repliesByParent.get(comment.id) || []);
+      const enrichedRoots = sortByCreatedAtAsc(rootComments).map((comment) => {
+        const replies = sortByCreatedAtAsc(repliesByRoot.get(comment.id) || []);
         return {
           ...comment,
           profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
@@ -969,7 +1030,7 @@ class MissionPostService {
       });
 
       return {
-        comments: sortByCreatedAtAsc(enrichedRoots),
+        comments: enrichedRoots,
         pageInfo: {
           pageSize,
           nextCursor,
