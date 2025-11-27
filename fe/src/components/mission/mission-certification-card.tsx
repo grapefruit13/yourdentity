@@ -32,11 +32,11 @@ export const MissionCertificationCard = ({
       className="flex w-full shrink-0 gap-3 rounded-2xl bg-white"
       onClick={onClick}
     >
-      <div className="flex flex-1 flex-col justify-between py-1">
+      <div className="flex flex-1 flex-col justify-between">
         <Typography
           font="noto"
-          variant="title4"
-          className="mb-1 line-clamp-1 text-gray-950"
+          variant="body2B"
+          className="line-clamp-1 text-gray-950"
         >
           {title}
         </Typography>
@@ -47,9 +47,7 @@ export const MissionCertificationCard = ({
         >
           {thumbnailText}
         </Typography>
-        <div className="mt-2 flex items-center text-xs text-gray-400">
-          <span className="text-main-500 mr-1 font-medium">미션</span>
-          <span className="mx-1 text-gray-300">|</span>
+        <div className="flex items-center text-xs text-gray-400">
           <MissionTag tagName={tagName} />
         </div>
       </div>
