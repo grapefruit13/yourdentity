@@ -32,13 +32,13 @@ const PostFeed = ({
 
     return (
       <div className="flex-shrink-0">
-        <div className="relative h-20 w-20 overflow-hidden rounded-lg bg-gray-100">
+        <div className="relative h-22 w-22 overflow-hidden rounded-lg bg-gray-100">
           <Image
             src={src}
             alt={alt}
             fill
             className="object-cover"
-            sizes="80px"
+            sizes="88px"
             onError={() => setHasError(true)}
           />
         </div>
@@ -133,33 +133,39 @@ const PostFeed = ({
           )}
           onClick={() => handlePostClick(post)}
         >
-          <div className="flex gap-3">
+          <div className="flex min-h-25 gap-3">
             {/* 텍스트 컨텐츠 */}
             <div className="min-w-0 flex-1">
               {/* 카테고리 태그 */}
               {post.category && (
-                <div className="mb-2">
-                  <span
-                    className={cn(
-                      "inline-block rounded px-2 py-1 text-xs font-medium",
-                      getCategoryColor(post.category)
-                    )}
-                  >
-                    {post.category}
-                  </span>
-                </div>
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  // text가 배경 기준으로 세로 중앙에 오도록 정렬하기 위해서 line-height를 19px로 설정했음에도 여전히 텍스트가 세로 하단 정렬됨
+                  className="text-main-500 bg-main-50 mb-2 flex h-[19px] w-fit items-center rounded-xs p-1 leading-[19px]"
+                >
+                  {post.category}
+                </Typography>
               )}
 
               {/* 제목 */}
-              <h3 className="mb-2 line-clamp-1 text-lg font-semibold text-gray-900">
+              <Typography
+                font="noto"
+                variant="body2B"
+                className="mb-1 line-clamp-1 text-gray-950"
+              >
                 {post.title || ""}
-              </h3>
+              </Typography>
 
               {/* 설명 (2줄 미리보기) */}
               {post.preview?.description && (
-                <p className="mb-3 line-clamp-2 text-sm text-gray-600">
+                <Typography
+                  font="noto"
+                  variant="caption1R"
+                  className="line-clamp-2 text-gray-700"
+                >
                   {post.preview.description}
-                </p>
+                </Typography>
               )}
             </div>
 
