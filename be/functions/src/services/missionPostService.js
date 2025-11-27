@@ -602,6 +602,13 @@ class MissionPostService {
         throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
       }
 
+      if (commentData?.communityId !== undefined && commentData.communityId !== null) {
+        throw buildError("미션 댓글에는 communityId를 설정할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      const commentRef = db.collection("comments").doc();
+      const commentId = commentRef.id;
+
       // 미션 인증글 조회
       const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
       const postDoc = await postRef.get();
@@ -615,6 +622,10 @@ class MissionPostService {
       // 부모 댓글 검증 (대댓글인 경우)
       let parentComment = null;
       if (parentId) {
+        if (parentId === commentId) {
+          throw buildError("자기 자신을 부모 댓글로 지정할 수 없습니다.", "BAD_REQUEST", 400);
+        }
+
         const parentCommentDoc = await db.collection("comments").doc(parentId).get();
         if (!parentCommentDoc.exists) {
           throw buildError("부모 댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
@@ -632,9 +643,9 @@ class MissionPostService {
           throw buildError("커뮤니티 댓글에는 답글을 남길 수 없습니다.", "BAD_REQUEST", 400);
         }
 
-        // 깊이 제한 (원댓글 + 2단계까지만 허용)
+        // 깊이 제한 (원댓글 + 2단계 = 최대 3단계)
         if ((parentComment.depth || 0) >= 2) {
-          throw buildError("대댓글은 2레벨까지만 허용됩니다.", "BAD_REQUEST", 400);
+          throw buildError("댓글은 최대 3단계까지만 허용됩니다.", "BAD_REQUEST", 400);
         }
       }
 
@@ -666,9 +677,6 @@ class MissionPostService {
       // 댓글 생성
       const now = Timestamp.now();
       const nowIsoString = now.toDate().toISOString();
-
-      const commentRef = db.collection("comments").doc();
-      const commentId = commentRef.id;
 
       const calculatedDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
       const newComment = {
@@ -1135,6 +1143,7 @@ class MissionPostService {
         author: updatedComment.author,
         content: updatedComment.content,
         parentId: updatedComment.parentId || null,
+        parentAuthor: updatedComment.parentAuthor || null,
         depth: updatedComment.depth || 0,
         likesCount: updatedComment.likesCount || 0,
         isLocked: updatedComment.isLocked || false,
