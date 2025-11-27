@@ -308,7 +308,7 @@ const MissionPageContent = () => {
 
   return (
     <div className="h-full min-h-screen bg-white">
-      <div className="p-5">
+      <div className="bg-gray-200 p-5">
         <Typography
           as="span"
           font="noto"
@@ -395,7 +395,7 @@ const MissionPageContent = () => {
           </HorizontalScrollContainer>
         ) : (
           <>
-            <MissionRecommendationCard message="진행 중인 미션이 없어요. 미션을 시작해 보세요!" />
+            <MissionRecommendationCard />
             <Button
               variant="default"
               size="default"
@@ -412,7 +412,7 @@ const MissionPageContent = () => {
       </div>
 
       {/* 흰화면 */}
-      <div className="pb-safe rounded-t-2xl bg-white px-5 py-6">
+      <div className="pb-safe rounded-t-2xl rounded-tl-xl rounded-tr-xl bg-white px-5 py-6">
         {/* 미션 진척 현황 */}
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-gray-400" />
