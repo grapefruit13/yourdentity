@@ -361,50 +361,78 @@ const ProfileEditPage = () => {
           debug.error("카카오 프로필 동기화 실패:", error);
           // 에러 발생 시 토큰 정리
           removeKakaoAccessToken();
-          alert("카카오 프로필 동기화에 실패했습니다.");
+          alert("❌ 카카오 프로필 동기화에 실패했습니다.\n다시 시도해주세요.");
           return;
         }
       }
 
       // 2. 닉네임 중복 체크
-      const isNicknameChanged = trimmedNickname !== initialNickname;
-      if (isNicknameChanged) {
-        const isAvailable = await checkNicknameAvailability(trimmedNickname);
-        if (!isAvailable) {
-          // 에러 메시지는 checkNicknameAvailability에서 이미 설정됨
-          return;
+      try {
+        const isNicknameChanged = trimmedNickname !== initialNickname;
+        if (isNicknameChanged) {
+          const isAvailable = await checkNicknameAvailability(trimmedNickname);
+          if (!isAvailable) {
+            // 에러 메시지는 checkNicknameAvailability에서 이미 설정됨
+            return;
+          }
         }
+      } catch {
+        alert(
+          "❌ 닉네임 중복 확인 중 오류가 발생했습니다.\n다시 시도해주세요."
+        );
+        return;
       }
 
       // 3. 이미지 업로드 처리
-      const { fileUrl: finalImageUrl, filePath } =
-        await handleImageUploadIfNeeded(data.profileImageUrl);
-      uploadedImagePath = filePath;
+      try {
+        const { fileUrl: finalImageUrl, filePath } =
+          await handleImageUploadIfNeeded(data.profileImageUrl);
+        uploadedImagePath = filePath;
 
-      // 4. 프로필 업데이트 (updateOnboarding API 호출)
-      await patchOnboardingAsync(
-        {
-          data: {
-            nickname: trimmedNickname,
-            profileImageUrl: finalImageUrl || undefined,
-            bio: data.bio.trim() || undefined,
+        // 4. 프로필 업데이트 (updateOnboarding API 호출)
+        await patchOnboardingAsync(
+          {
+            data: {
+              nickname: trimmedNickname,
+              profileImageUrl: finalImageUrl || undefined,
+              bio: data.bio.trim() || undefined,
+            },
           },
-        },
-        {
-          onSuccess: () => {
-            invalidateUserQueries();
-            // 온보딩 완료 시 홈으로, 일반 편집 시 마이페이지로 이동
-            router.push(isOnboarding ? LINK_URL.HOME : LINK_URL.MY_PAGE);
-          },
+          {
+            onSuccess: () => {
+              invalidateUserQueries();
+              // 온보딩 완료 시 홈으로, 일반 편집 시 마이페이지로 이동
+              router.push(isOnboarding ? LINK_URL.HOME : LINK_URL.MY_PAGE);
+            },
+          }
+        );
+      } catch (error) {
+        debug.error("이미지 업로드 또는 프로필 업데이트 실패:", error);
+
+        // 에러 메시지에서 이미지 업로드 실패인지 확인
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        if (errorMessage.includes(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED)) {
+          alert("❌ 프로필 이미지 업로드에 실패했습니다.\n다시 시도해주세요.");
+        } else {
+          alert("❌ 프로필 업데이트에 실패했습니다.\n다시 시도해주세요.");
         }
-      );
+
+        // 에러 발생 시 토큰 정리 (아직 사용하지 않은 경우)
+        if (kakaoAccessToken) {
+          removeKakaoAccessToken();
+        }
+        await rollbackUploadedImage(uploadedImagePath);
+      }
     } catch (error) {
-      debug.error("프로필 업데이트 실패:", error);
+      debug.error("프로필 업데이트 전체 프로세스 실패:", error);
+      // 예상치 못한 에러 발생 시
+      alert("❌ 프로필 업데이트 중 오류가 발생했습니다.\n다시 시도해주세요.");
       // 에러 발생 시 토큰 정리 (아직 사용하지 않은 경우)
       if (kakaoAccessToken) {
         removeKakaoAccessToken();
       }
-      alert(PROFILE_EDIT_MESSAGES.PROFILE_UPDATE_FAILED);
       await rollbackUploadedImage(uploadedImagePath);
     }
   };
