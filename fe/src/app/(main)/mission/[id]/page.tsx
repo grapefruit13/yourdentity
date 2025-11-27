@@ -27,6 +27,7 @@ import {
   useGetMissionsById,
   useGetMissionsPosts,
   usePostMissionsApplyById,
+  usePostMissionsLikeById,
 } from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -71,7 +72,7 @@ const Page = () => {
   // 현재 미션의 인증글만 필터링 (임시로 해제)
   const missionPosts = postsResponse?.posts || [];
 
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(missionData?.isLiked || false);
   const [modalContent, setModalContent] = useState(DEFAULT_MODAL_CONTENT);
   const [isMaxMissionError, setIsMaxMissionError] = useState(false);
   const {
@@ -109,6 +110,48 @@ const Page = () => {
           closeConfirmModal();
           showToast("미션 신청 중 오류가 발생했습니다. 다시 시도해주세요.");
         }
+      },
+    });
+
+  // 미션 데이터의 isLiked 값으로 상태 초기화
+  useEffect(() => {
+    if (missionData?.isLiked !== undefined) {
+      setIsLiked(missionData.isLiked);
+    }
+  }, [missionData?.isLiked]);
+
+  // 미션 찜하기 mutation
+  const { mutateAsync: likeMissionAsync, isPending: isLikePending } =
+    usePostMissionsLikeById({
+      onMutate: () => {
+        // Optimistic update: 즉시 UI 업데이트
+        const previousIsLiked = isLiked;
+        const newIsLiked = !previousIsLiked;
+        setIsLiked(newIsLiked);
+
+        return { previousIsLiked };
+      },
+      onError: (error, _variables, context) => {
+        // 에러 발생 시 롤백
+        if (context) {
+          setIsLiked(context.previousIsLiked);
+        }
+        showToast("찜하기 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+      },
+      onSuccess: (response) => {
+        // 성공 시 서버 응답으로 상태 업데이트
+        if (response.data?.liked !== undefined) {
+          setIsLiked(response.data.liked);
+        }
+
+        // 미션 상세 정보 쿼리 무효화하여 최신 데이터 반영
+        queryClient.invalidateQueries({
+          queryKey: missionsKeys.getMissionsById({ missionId }),
+        });
+        // 미션 목록 캐시 무효화하여 최신 데이터 반영
+        queryClient.invalidateQueries({
+          queryKey: missionsKeys.getMissions({}),
+        });
       },
     });
 
@@ -314,9 +357,14 @@ const Page = () => {
       <MissionDetailActionBar
         deadline={getTomorrow4AM59()}
         isLiked={isLiked}
-        onLikeClick={() => {
-          setIsLiked((prev) => !prev);
-          // TODO: 실제 찜하기 API 호출
+        onLikeClick={async () => {
+          if (isLikePending) return;
+
+          try {
+            await likeMissionAsync({ missionId });
+          } catch {
+            // 에러는 onError에서 처리됨
+          }
         }}
         onStartClick={() => {
           setModalContent({
