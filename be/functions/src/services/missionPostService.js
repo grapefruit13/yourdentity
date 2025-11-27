@@ -15,11 +15,15 @@ const {
   MISSION_POSTS_COLLECTION,
   MISSION_STATUS,
 } = require("../constants/missionConstants");
+const {
+  FIRESTORE_IN_QUERY_LIMIT,
+} = require("../constants/firestoreConstants");
 
 const POST_LIST_DEFAULT_PAGE_SIZE = 20;
 const POST_LIST_MAX_PAGE_SIZE = 50;
 const COMMENT_LIST_DEFAULT_PAGE_SIZE = 10;
 const COMMENT_LIST_MAX_PAGE_SIZE = 20;
+const COMMENT_REPLIES_PREVIEW_LIMIT = 50; // 커뮤니티 댓글과 동일한 더보기 프리뷰 제한
 
 function buildError(message, code, statusCode) {
   const error = new Error(message);
@@ -602,6 +606,13 @@ class MissionPostService {
         throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
       }
 
+      if (commentData?.communityId !== undefined && commentData.communityId !== null) {
+        throw buildError("미션 댓글에는 communityId를 설정할 수 없습니다.", "BAD_REQUEST", 400);
+      }
+
+      const commentRef = db.collection("comments").doc();
+      const commentId = commentRef.id;
+
       // 미션 인증글 조회
       const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
       const postDoc = await postRef.get();
@@ -615,6 +626,10 @@ class MissionPostService {
       // 부모 댓글 검증 (대댓글인 경우)
       let parentComment = null;
       if (parentId) {
+        if (parentId === commentId) {
+          throw buildError("자기 자신을 부모 댓글로 지정할 수 없습니다.", "BAD_REQUEST", 400);
+        }
+
         const parentCommentDoc = await db.collection("comments").doc(parentId).get();
         if (!parentCommentDoc.exists) {
           throw buildError("부모 댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
@@ -622,15 +637,16 @@ class MissionPostService {
 
         parentComment = parentCommentDoc.data();
 
-        // 대댓글은 2레벨까지만 허용
-        if (parentComment.parentId) {
-          throw buildError("대댓글은 2레벨까지만 허용됩니다.", "BAD_REQUEST", 400);
-        }
-
         // 같은 게시글의 댓글인지 확인
         if (parentComment.postId !== postId) {
           throw buildError("부모 댓글이 해당 인증글의 댓글이 아닙니다.", "BAD_REQUEST", 400);
         }
+
+        // 커뮤니티 댓글에는 답글 불가
+        if (parentComment.communityId) {
+          throw buildError("커뮤니티 댓글에는 답글을 남길 수 없습니다.", "BAD_REQUEST", 400);
+        }
+
       }
 
       // 작성자 닉네임 조회 (사용자 기본 닉네임 사용)
@@ -662,9 +678,7 @@ class MissionPostService {
       const now = Timestamp.now();
       const nowIsoString = now.toDate().toISOString();
 
-      const commentRef = db.collection("comments").doc();
-      const commentId = commentRef.id;
-
+      const calculatedDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
       const newComment = {
         // communityId 없음 = 미션 인증글 댓글 (커뮤니티 댓글은 communityId 있음)
         postId: postId,
@@ -672,10 +686,11 @@ class MissionPostService {
         author,
         content: sanitizedContent,
         parentId,
+        parentAuthor: parentComment?.author || null,
         likesCount: 0,
         isDeleted: false,
         isLocked: false,
-        depth: parentId ? 1 : 0,
+        depth: calculatedDepth,
         createdAt: now,
         updatedAt: now,
       };
@@ -734,7 +749,8 @@ class MissionPostService {
         author,
         content: sanitizedContent,
         parentId: parentId || null,
-        depth: parentId ? 1 : 0,
+        parentAuthor: parentComment?.author || null,
+        depth: calculatedDepth,
         likesCount: 0,
         isLocked: false,
         createdAt: nowIsoString,
@@ -802,13 +818,6 @@ class MissionPostService {
           const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return aTime - bTime;
-        });
-
-      const sortByCreatedAtDesc = (list) =>
-        list.sort((a, b) => {
-          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return bTime - aTime;
         });
 
       const baseQuery = db
@@ -881,6 +890,7 @@ class MissionPostService {
           author: data.author || null,
           content: data.content || "",
           parentId: data.parentId || null,
+          parentAuthor: data.parentAuthor || null,
           depth: data.depth || 0,
           likesCount: data.likesCount || 0,
           isDeleted: Boolean(data.isDeleted),
@@ -892,40 +902,104 @@ class MissionPostService {
         };
       };
 
-      const rootComments = docsToProcess
-        .map((doc) => formatComment(doc))
-        .map((comment) => ({
-          ...comment,
-          replies: [],
-        }));
+      const rootComments = docsToProcess.map((doc) => formatComment(doc));
+      const rootIdSet = new Set(rootComments.map((comment) => comment.id));
+      const repliesByRoot = new Map();
+      const collectedReplies = [];
 
-      const rootIds = rootComments.map((comment) => comment.id);
-      const repliesByParent = new Map();
+      if (rootComments.length > 0) {
+        let parentQueue = rootComments
+          .map((comment) => comment.id)
+          .filter((id) => Boolean(id));
+        const visitedChildIds = new Set();
 
-      if (rootIds.length > 0) {
-        for (let i = 0; i < rootIds.length; i += 10) {
-          const chunk = rootIds.slice(i, i + 10);
+        while (parentQueue.length > 0) {
+          const chunk = parentQueue.slice(0, FIRESTORE_IN_QUERY_LIMIT);
+          parentQueue = parentQueue.slice(FIRESTORE_IN_QUERY_LIMIT);
+
+          if (chunk.length === 0) {
+            continue;
+          }
+
           const repliesSnapshot = await db
             .collection("comments")
             .where("parentId", "in", chunk)
             .get();
 
+          if (repliesSnapshot.empty) {
+            continue;
+          }
+
+          const nextParentIds = [];
           repliesSnapshot.forEach((doc) => {
             const data = doc.data();
             if (data.communityId || data.postId !== postId) {
               return;
             }
             const formattedReply = formatComment(doc);
-            const existingReplies = repliesByParent.get(formattedReply.parentId) || [];
-            existingReplies.push(formattedReply);
-            repliesByParent.set(formattedReply.parentId, existingReplies);
+            collectedReplies.push(formattedReply);
+            if (!visitedChildIds.has(formattedReply.id)) {
+              visitedChildIds.add(formattedReply.id);
+              nextParentIds.push(formattedReply.id);
+            }
           });
+
+          if (nextParentIds.length > 0) {
+            parentQueue = parentQueue.concat(nextParentIds);
+          }
         }
+
+        const allCommentsMap = new Map();
+        rootComments.forEach((comment) => {
+          allCommentsMap.set(comment.id, comment);
+        });
+        collectedReplies.forEach((reply) => {
+          allCommentsMap.set(reply.id, reply);
+        });
+
+        /**
+         * 모든 댓글 맵(allCommentsMap) 정보를 활용해 주어진 댓글의 루트 댓글 ID를 찾습니다.
+         * @param {{ id?: string, parentId?: string|null }} comment 댓글 문서 데이터
+         * @returns {string|null} 루트 댓글 ID. 순환 참조나 부모 누락 시 null 반환.
+         */
+        const findRootCommentId = (comment) => {
+          if (!comment.parentId) {
+            return comment.id;
+          }
+          const visitedParents = new Set();
+          let currentParentId = comment.parentId;
+
+          while (currentParentId) {
+            if (visitedParents.has(currentParentId)) {
+              return null;
+            }
+            visitedParents.add(currentParentId);
+            const parentComment = allCommentsMap.get(currentParentId);
+            if (!parentComment) {
+              return null;
+            }
+            if (!parentComment.parentId) {
+              return parentComment.id;
+            }
+            currentParentId = parentComment.parentId;
+          }
+          return null;
+        };
+
+        collectedReplies.forEach((reply) => {
+          const rootId = findRootCommentId(reply);
+          if (!rootId || !rootIdSet.has(rootId)) {
+            return;
+          }
+          const repliesForRoot = repliesByRoot.get(rootId) || [];
+          repliesForRoot.push(reply);
+          repliesByRoot.set(rootId, repliesForRoot);
+        });
       }
 
       const commentUserIds = [
-        ...rootComments.map(comment => comment.userId),
-        ...Array.from(repliesByParent.values()).flat().map(reply => reply.userId)
+        ...rootComments.map((comment) => comment.userId),
+        ...collectedReplies.map((reply) => reply.userId),
       ].filter(Boolean);
       const uniqueUserIds = Array.from(new Set(commentUserIds));
       
@@ -935,8 +1009,8 @@ class MissionPostService {
           // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
           const firestoreService = new FirestoreService("users");
           const chunks = [];
-          for (let i = 0; i < uniqueUserIds.length; i += 10) {
-            chunks.push(uniqueUserIds.slice(i, i + 10));
+          for (let i = 0; i < uniqueUserIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
+            chunks.push(uniqueUserIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
           }
 
           const userResults = await Promise.all(
@@ -955,12 +1029,13 @@ class MissionPostService {
         }
       }
 
-      const enrichedRoots = rootComments.map((comment) => {
-        const replies = sortByCreatedAtAsc(repliesByParent.get(comment.id) || []);
+      const enrichedRoots = sortByCreatedAtAsc(rootComments).map((comment) => {
+        const replies = sortByCreatedAtAsc(repliesByRoot.get(comment.id) || []);
+        const limitedReplies = replies.slice(0, COMMENT_REPLIES_PREVIEW_LIMIT);
         return {
           ...comment,
           profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
-          replies: replies.map(reply => ({
+          replies: limitedReplies.map(reply => ({
             ...reply,
             profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
           })),
@@ -969,7 +1044,7 @@ class MissionPostService {
       });
 
       return {
-        comments: sortByCreatedAtAsc(enrichedRoots),
+        comments: enrichedRoots,
         pageInfo: {
           pageSize,
           nextCursor,
@@ -1074,6 +1149,7 @@ class MissionPostService {
         author: updatedComment.author,
         content: updatedComment.content,
         parentId: updatedComment.parentId || null,
+        parentAuthor: updatedComment.parentAuthor || null,
         depth: updatedComment.depth || 0,
         likesCount: updatedComment.likesCount || 0,
         isLocked: updatedComment.isLocked || false,

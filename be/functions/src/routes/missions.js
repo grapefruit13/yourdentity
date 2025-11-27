@@ -815,6 +815,10 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                           parentId:
  *                             type: string
  *                             nullable: true
+ *                           parentAuthor:
+ *                             type: string
+ *                             nullable: true
+ *                             description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
  *                           depth:
  *                             type: number
  *                             description: "댓글 깊이 (0: 원댓글, 1: 대댓글)"
@@ -855,6 +859,11 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                                   type: string
  *                                 parentId:
  *                                   type: string
+ *                                   description: 부모 댓글 ID
+ *                                 parentAuthor:
+ *                                   type: string
+ *                                   nullable: true
+ *                                   description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
  *                                 depth:
  *                                   type: number
  *                                 likesCount:
@@ -984,6 +993,11 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                       nullable: true
  *                       description: 부모 댓글 ID
  *                       example: "comment_456"
+ *                     parentAuthor:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
+ *                       example: "사용자닉네임"
  *                     depth:
  *                       type: number
  *                       description: 댓글 깊이
