@@ -56,6 +56,7 @@ const BottomNavigation = () => {
     LINK_URL.MISSION,
     LINK_URL.COMMUNITY,
     LINK_URL.MY_PAGE,
+    LINK_URL.COMMUNITY_MISSION,
     ...(isDev ? [LINK_URL.MISSION] : []),
   ] as const;
 
