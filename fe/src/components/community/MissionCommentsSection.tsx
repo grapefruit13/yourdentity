@@ -26,6 +26,7 @@ import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
 import type { TGETMissionsPostsCommentsByIdRes } from "@/types/generated/missions-types";
 import type { ReplyingToState } from "@/types/shared/comment";
 import { debug } from "@/utils/shared/debugger";
+import { showToast } from "@/utils/shared/toast";
 
 interface MissionCommentsSectionProps {
   postId: string;
@@ -145,6 +146,9 @@ const MissionCommentsSection = ({
         setCommentInput("");
         setReplyingTo(null);
       },
+      onError: () => {
+        showToast("댓글 작성에 실패했습니다. 다시 시도해주세요.");
+      },
     });
 
   // 댓글 수정 mutation
@@ -153,6 +157,9 @@ const MissionCommentsSection = ({
       invalidateCommentQueries();
       setEditingCommentId(null);
       setEditingContent("");
+    },
+    onError: () => {
+      showToast("댓글 수정에 실패했습니다. 다시 시도해주세요.");
     },
   });
 
@@ -164,6 +171,9 @@ const MissionCommentsSection = ({
         setIsDeleteModalOpen(false);
         setDeleteTargetId(null);
       },
+      onError: () => {
+        showToast("댓글 작성에 실패했습니다. 다시 시도해주세요.");
+      },
     });
 
   // 댓글 제출 핸들러
@@ -171,6 +181,7 @@ const MissionCommentsSection = ({
     async (e: FormEvent, customContent?: string) => {
       e.preventDefault();
       if (isPostCommentPending) return;
+
       const contentToSubmit = customContent ?? commentInput;
       if (!contentToSubmit.trim() || !postId) return;
 
@@ -179,10 +190,11 @@ const MissionCommentsSection = ({
           postId,
           data: {
             content: contentToSubmit.trim(),
-            parentId: replyingTo?.commentId,
+            ...(replyingTo?.commentId && { parentId: replyingTo.commentId }),
           },
         });
       } catch (error) {
+        // 에러는 mutation의 onError에서 처리됨
         debug.error("댓글 작성 실패:", error);
       }
     },
