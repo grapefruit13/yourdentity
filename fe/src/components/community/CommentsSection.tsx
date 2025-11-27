@@ -22,8 +22,8 @@ import {
   useDeleteCommentsById,
 } from "@/hooks/generated/comments-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
+import type * as CommentTypes from "@/types/generated/comments-types";
 import type { ReplyingToState } from "@/types/shared/comment";
-import { getCommentInputForItem } from "@/utils/shared/comment";
 import { debug } from "@/utils/shared/debugger";
 
 interface CommentsSectionProps {
@@ -96,7 +96,10 @@ const CommentsSection = ({
     });
 
   const comments = useMemo(
-    () => commentsData?.comments || [],
+    () =>
+      (commentsData?.comments || []) as NonNullable<
+        CommentTypes.TGETCommentsCommunitiesPostsByTwoIdsRes["comments"]
+      >,
     [commentsData?.comments]
   );
 
@@ -300,12 +303,11 @@ const CommentsSection = ({
     setOpenMenuId((prev) => (prev === menuId ? null : menuId));
   }, []);
 
-  // 댓글 입력값 계산 (메모이제이션)
-  const getCommentInputForItemMemoized = useCallback(
-    (commentId: string) =>
-      getCommentInputForItem(commentId, replyingTo, commentInput, comments),
-    [replyingTo, commentInput, comments]
-  );
+  // 신고 핸들러
+  const handleReport = useCallback((commentId: string) => {
+    debug.log("신고:", commentId);
+    alert("구현 예정 기능입니다");
+  }, []);
 
   // 로딩 중
   if (isCommentsLoading) {
@@ -322,6 +324,8 @@ const CommentsSection = ({
               <CommentItem
                 key={comment.id}
                 comment={comment}
+                postId={postId}
+                communityId={communityId}
                 userName={authorName}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
@@ -329,10 +333,7 @@ const CommentsSection = ({
                 onStartReplyToReply={handleStartReplyToReply}
                 onStartEdit={handleStartEdit}
                 onDelete={handleDeleteClick}
-                onReport={(commentId) => {
-                  debug.log("신고:", commentId);
-                  alert("구현 예정 기능입니다");
-                }}
+                onReport={handleReport}
                 editingCommentId={editingCommentId}
                 editingContent={editingContent}
                 onEditContentChange={setEditingContent}
@@ -341,8 +342,6 @@ const CommentsSection = ({
                 replyingTo={replyingTo}
                 onCancelReply={handleCancelReply}
                 onCommentSubmit={handleCommentSubmit}
-                commentInput={getCommentInputForItemMemoized(comment.id || "")}
-                onCommentInputChange={setCommentInput}
                 openMenuId={openMenuId}
                 onMenuToggle={handleMenuToggle}
                 isCommentSubmitting={isPostCommentPending}

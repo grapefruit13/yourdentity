@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,6 +9,10 @@ import { GiphySelector } from "@/components/shared/giphy-selector";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
 import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-sheet";
+import {
+  commentsKeys,
+  communitiesKeys,
+} from "@/constants/generated/query-keys";
 import {
   COMMENT_ANONYMOUS_NAME,
   COMMENT_PLACEHOLDER,
@@ -24,6 +28,8 @@ interface CommentItemProps {
   comment: NonNullable<
     Types.TGETCommentsCommunitiesPostsByTwoIdsRes["comments"]
   >[number];
+  postId?: string;
+  communityId?: string;
   userName: string;
   isExpanded?: boolean;
   onToggleReplies: () => void;
@@ -43,8 +49,6 @@ interface CommentItemProps {
     e: FormEvent,
     customContent?: string
   ) => void | Promise<void>;
-  commentInput: string;
-  onCommentInputChange: (value: string) => void;
   openMenuId?: string | null;
   onMenuToggle?: (menuId: string | null) => void;
   replyToReplyInput?: string;
@@ -59,8 +63,10 @@ interface CommentItemProps {
  * - 댓글 수정/삭제 메뉴
  * - 좋아요 기능
  */
-const CommentItem = ({
+const CommentItemComponent = ({
   comment,
+  postId,
+  communityId,
   userName,
   isExpanded = false,
   onToggleReplies,
@@ -160,16 +166,21 @@ const CommentItem = ({
   // 좋아요 mutation (optimistic update 적용)
   const { mutateAsync: likeCommentAsync, isPending: isLikePending } =
     usePostCommentsLikeById({
-      onMutate: (variables) => {
+      onMutate: (variables: { commentId?: string }) => {
         // Optimistic update: 즉시 UI 업데이트
-        const targetCommentId = variables.commentId;
+        const targetCommentId = variables.commentId ?? "";
+        if (!targetCommentId) {
+          return { targetCommentId: "", isReply: false };
+        }
         const reply = replies.find((r) => r.id === targetCommentId);
         const isReply = !!reply;
 
-        let previousState: {
-          isLiked: boolean;
-          likesCount: number;
-        } | null = null;
+        let previousState:
+          | {
+              isLiked: boolean;
+              likesCount: number;
+            }
+          | undefined;
 
         if (isReply && reply) {
           // 답글 좋아요 - 실제 reply 데이터에서 초기 상태 가져오기
@@ -216,10 +227,13 @@ const CommentItem = ({
 
         return { targetCommentId, isReply, previousState };
       },
-      onSuccess: (response, variables) => {
+      onSuccess: (
+        response: { data?: { isLiked?: boolean; likesCount?: number } },
+        variables: { commentId?: string }
+      ) => {
         // API 응답으로 정확한 값으로 업데이트
         const result = response.data;
-        const targetCommentId = variables.commentId;
+        const targetCommentId = variables.commentId ?? "";
 
         if (result && targetCommentId) {
           const isReply = replies.some((reply) => reply.id === targetCommentId);
@@ -237,16 +251,42 @@ const CommentItem = ({
             setLikesCount(result.likesCount || 0);
           }
         }
-        // invalidateQueries 제거 - 로컬 state 업데이트만으로 충분
+
+        // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
+        if (communityId && postId) {
+          queryClient.invalidateQueries({
+            queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
+              communityId,
+              postId,
+            }),
+          });
+          queryClient.invalidateQueries({
+            queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
+              communityId,
+              postId,
+            }),
+          });
+        }
       },
-      onError: (err, variables, context) => {
+      onError: (
+        err: unknown,
+        variables: { commentId?: string },
+        context?: {
+          targetCommentId?: string;
+          isReply?: boolean;
+          previousState?: { isLiked: boolean; likesCount: number };
+        }
+      ) => {
         // 에러 발생 시 이전 상태로 롤백
         if (context?.previousState) {
           if (context.isReply) {
-            setReplyLikes((prev) => ({
-              ...prev,
-              [context.targetCommentId]: context.previousState!,
-            }));
+            const targetId = context.targetCommentId;
+            if (targetId) {
+              setReplyLikes((prev) => ({
+                ...prev,
+                [targetId]: context.previousState!,
+              }));
+            }
           } else if (context.targetCommentId === comment.id) {
             setIsLiked(context.previousState.isLiked);
             setLikesCount(context.previousState.likesCount);
@@ -499,7 +539,7 @@ const CommentItem = ({
       {/* 메인 댓글 */}
       <div className="flex gap-3">
         {/* 작성자 프로필 썸네일 */}
-        <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
+        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
           {comment.profileImageUrl && (
             <Image
               src={comment.profileImageUrl}
@@ -525,7 +565,7 @@ const CommentItem = ({
                 <Typography
                   font="noto"
                   variant="label2R"
-                  className="flex-shrink-0 text-gray-400"
+                  className="shrink-0 text-gray-400"
                 >
                   {getTimeAgo(comment.createdAt)}
                 </Typography>
@@ -536,7 +576,7 @@ const CommentItem = ({
                 onEdit={isOwnComment ? handleEdit : undefined}
                 onDelete={isOwnComment ? handleDelete : undefined}
                 onReport={!isOwnComment ? handleReport : undefined}
-                className="flex-shrink-0"
+                className="shrink-0"
                 isOpen={isCommentMenuOpen}
                 onToggle={handleCommentMenuToggle}
               />
@@ -613,7 +653,7 @@ const CommentItem = ({
             <>
               {comment.content && (
                 <div
-                  className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm break-words text-gray-700 [&_*]:break-words [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
+                  className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm wrap-break-word text-gray-700 [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
                   dangerouslySetInnerHTML={{ __html: comment.content }}
                 />
               )}
@@ -688,7 +728,7 @@ const CommentItem = ({
               return (
                 <div key={replyId} className="flex gap-3">
                   {/* 작성자 프로필 썸네일 */}
-                  <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
+                  <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
                     {reply.profileImageUrl && (
                       <Image
                         src={reply.profileImageUrl}
@@ -715,7 +755,7 @@ const CommentItem = ({
                           <Typography
                             font="noto"
                             variant="label2R"
-                            className="flex-shrink-0 text-gray-400"
+                            className="shrink-0 text-gray-400"
                           >
                             {getTimeAgo(reply.createdAt)}
                           </Typography>
@@ -742,7 +782,7 @@ const CommentItem = ({
                               ? () => onReport(replyId)
                               : undefined
                           }
-                          className="flex-shrink-0"
+                          className="shrink-0"
                           isOpen={isReplyMenuOpen}
                           onToggle={handleReplyMenuToggle}
                         />
@@ -825,7 +865,7 @@ const CommentItem = ({
                       <>
                         {reply.content && (
                           <div
-                            className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm break-words text-gray-700 [&_*]:break-words [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
+                            className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm wrap-break-word text-gray-700 [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
                             dangerouslySetInnerHTML={{ __html: reply.content }}
                           />
                         )}
@@ -922,7 +962,7 @@ const CommentItem = ({
                             data-placeholder={COMMENT_PLACEHOLDER}
                             className={cn(
                               "max-h-[200px] min-h-[40px] w-full resize-none overflow-y-auto rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:outline-none",
-                              "[&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
+                              "empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)]",
                               "focus:ring-main-400 focus:ring-2",
                               "[&_img]:my-1 [&_img]:block [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
                             )}
@@ -1026,5 +1066,9 @@ const CommentItem = ({
     </div>
   );
 };
+
+const CommentItem = memo(CommentItemComponent);
+
+CommentItem.displayName = "CommentItem";
 
 export default CommentItem;

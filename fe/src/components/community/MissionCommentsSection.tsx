@@ -25,7 +25,6 @@ import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
 import type { TGETMissionsPostsCommentsByIdRes } from "@/types/generated/missions-types";
 import type { ReplyingToState } from "@/types/shared/comment";
-import { getCommentInputForItem } from "@/utils/shared/comment";
 import { debug } from "@/utils/shared/debugger";
 
 interface MissionCommentsSectionProps {
@@ -296,13 +295,6 @@ const MissionCommentsSection = ({
     setOpenMenuId((prev) => (prev === menuId ? null : menuId));
   }, []);
 
-  // 댓글 입력값 계산 (메모이제이션)
-  const getCommentInputForItemMemoized = useCallback(
-    (commentId: string) =>
-      getCommentInputForItem(commentId, replyingTo, commentInput, comments),
-    [replyingTo, commentInput, comments]
-  );
-
   // 무한 스크롤 트리거 핸들러
   const handleFetchNextPage = useCallback(() => {
     if (!hasNextPage || isFetchingNextPage) {
@@ -371,8 +363,6 @@ const MissionCommentsSection = ({
                 replyingTo={replyingTo}
                 onCancelReply={handleCancelReply}
                 onCommentSubmit={handleCommentSubmit}
-                commentInput={getCommentInputForItemMemoized(comment.id || "")}
-                onCommentInputChange={setCommentInput}
                 openMenuId={openMenuId}
                 onMenuToggle={handleMenuToggle}
                 isCommentSubmitting={isPostCommentPending}
