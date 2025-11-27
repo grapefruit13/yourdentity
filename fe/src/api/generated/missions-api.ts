@@ -23,6 +23,14 @@ export const postMissionsApplyById = (
   );
 };
 
+export const postMissionsLikeById = (
+  request: Types.TPOSTMissionsLikeByIdReq
+) => {
+  return post<Types.TPOSTMissionsLikeByIdRes>(
+    `/missions/${request.missionId}/like`
+  );
+};
+
 export const postMissionsPostsById = (
   request: Types.TPOSTMissionsPostsByIdReq
 ) => {

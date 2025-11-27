@@ -77,6 +77,32 @@ export const usePostMissionsApplyById = <
   });
 };
 
+export const usePostMissionsLikeById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsLikeByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsLikeById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsLikeById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsLikeById(variables as Types.TPOSTMissionsLikeByIdReq),
+    ...options,
+  });
+};
+
 export const usePostMissionsPostsById = <
   TContext = unknown,
   TVariables = Types.TPOSTMissionsPostsByIdReq,

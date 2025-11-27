@@ -17,6 +17,7 @@ import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
+import type * as notionmissionsTypes from "@/types/generated/notionmissions-types";
 import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
@@ -171,6 +172,7 @@ export const missionsKeys = {
         excludeParticipated: request.excludeParticipated,
         pageSize: request.pageSize,
         startCursor: request.startCursor,
+        likedOnly: request.likedOnly,
       },
     }),
   getMissionsById: (request: missionsTypes.TGETMissionsByIdReq) =>
@@ -220,6 +222,14 @@ export const notificationsKeys = {
   getNotificationsSendAllPending: __buildKey(
     "notifications",
     "getNotificationsSendAllPending"
+  ),
+} as const;
+
+// NotionMissions Query Keys
+export const notionmissionsKeys = {
+  getNotionmissionsReactionsSync: __buildKey(
+    "notionmissions",
+    "getNotionmissionsReactionsSync"
   ),
 } as const;
 

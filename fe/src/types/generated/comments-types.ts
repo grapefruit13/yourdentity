@@ -55,6 +55,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     communityId?: string;
     postId?: string;
     author?: string;
+    profileImageUrl?: string;
     content?: string;
     parentId?: string;
     parentAuthor?: string;
@@ -72,6 +73,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
       communityId?: string;
       postId?: string;
       author?: string;
+      profileImageUrl?: string;
       content?: string;
       parentId?: string;
       parentAuthor?: string;

@@ -75,6 +75,8 @@ export interface Mission {
   notes?: string;
   certificationMethod?: string[];
   reactionCount?: number;
+  likesCount?: number;
+  isLiked?: boolean;
   faqRelation?: {
     relations?: {
       id?: string;

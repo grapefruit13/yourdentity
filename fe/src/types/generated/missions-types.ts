@@ -11,11 +11,11 @@ export interface TGETMissionsReq {
   excludeParticipated?: boolean;
   pageSize?: number;
   startCursor?: string;
+  likedOnly?: boolean;
 }
 
 export type TGETMissionsRes = {
   missions?: Schema.Mission[];
-  totalCount?: number;
   pageInfo?: {
     pageSize?: number;
     nextCursor?: string;
@@ -38,6 +38,15 @@ export interface TPOSTMissionsApplyByIdReq {
 export type TPOSTMissionsApplyByIdRes = {
   missionId?: string;
   status?: string;
+};
+
+export interface TPOSTMissionsLikeByIdReq {
+  missionId: string;
+}
+
+export type TPOSTMissionsLikeByIdRes = {
+  liked?: boolean;
+  likesCount?: number;
 };
 
 export interface TPOSTMissionsPostsByIdReq {
