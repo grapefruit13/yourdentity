@@ -53,6 +53,7 @@ const BottomNavigation = () => {
   // 최상단 뎁스 경로 목록 (개발 환경에서만 미션 경로 포함)
   const topLevelPaths = [
     LINK_URL.HOME,
+    LINK_URL.MISSION,
     LINK_URL.COMMUNITY,
     LINK_URL.MY_PAGE,
     ...(isDev ? [LINK_URL.MISSION] : []),
