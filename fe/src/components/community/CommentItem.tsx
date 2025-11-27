@@ -2,13 +2,19 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
+import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image as ImageIcon } from "lucide-react";
 import { GiphySelector } from "@/components/shared/giphy-selector";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
 import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-sheet";
-import { COMMENT_ANONYMOUS_NAME } from "@/constants/shared/_comment-constants";
+import {
+  COMMENT_ANONYMOUS_NAME,
+  COMMENT_PLACEHOLDER,
+  COMMENT_CANCEL_BUTTON,
+  COMMENT_SUBMIT_BUTTON,
+} from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
 import type * as Types from "@/types/generated/comments-types";
 import { cn } from "@/utils/shared/cn";
@@ -78,6 +84,7 @@ const CommentItem = ({
   isCommentSubmitting = false,
 }: CommentItemProps) => {
   const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
   const [replyLikes, setReplyLikes] = useState<
     Record<string, { isLiked: boolean; likesCount: number }>
   >({});
@@ -116,6 +123,12 @@ const CommentItem = ({
   const setReplyToReplyInputValue =
     onReplyToReplyInputChange ?? setLocalReplyToReplyInput;
 
+  // comment의 좋아요 상태와 카운트를 로컬 state에 동기화
+  useEffect(() => {
+    setIsLiked(comment.isLiked ?? false);
+    setLikesCount(comment.likesCount || 0);
+  }, [comment.isLiked, comment.likesCount]);
+
   // 답글에 대한 답글 입력창이 닫힐 때 로컬 state 초기화
   useEffect(() => {
     if (!replyingTo?.isReply) {
@@ -130,8 +143,9 @@ const CommentItem = ({
   const replyThumbnails = useMemo(() => {
     if (replies.length === 0) return [];
     if (replies.length === 1) return [replies[0]];
-    // 2개 이상이면 처음 2개 선택 (랜덤 제거로 일관성 유지)
-    return replies.slice(0, 2);
+    // 2개 이상이면 랜덤하게 2개 선택
+    const shuffled = [...replies].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 2);
   }, [replies]);
 
   // 메뉴 제어
@@ -143,10 +157,67 @@ const CommentItem = ({
     }
   }, [onMenuToggle, isCommentMenuOpen, commentMenuId]);
 
-  // 좋아요 mutation
+  // 좋아요 mutation (optimistic update 적용)
   const { mutateAsync: likeCommentAsync, isPending: isLikePending } =
     usePostCommentsLikeById({
+      onMutate: (variables) => {
+        // Optimistic update: 즉시 UI 업데이트
+        const targetCommentId = variables.commentId;
+        const reply = replies.find((r) => r.id === targetCommentId);
+        const isReply = !!reply;
+
+        let previousState: {
+          isLiked: boolean;
+          likesCount: number;
+        } | null = null;
+
+        if (isReply && reply) {
+          // 답글 좋아요 - 실제 reply 데이터에서 초기 상태 가져오기
+          const currentState = replyLikes[targetCommentId];
+          const currentIsLiked =
+            currentState?.isLiked ?? reply.isLiked ?? false;
+          const currentLikesCount =
+            currentState?.likesCount ?? reply.likesCount ?? 0;
+
+          previousState = {
+            isLiked: currentIsLiked,
+            likesCount: currentLikesCount,
+          };
+
+          // Optimistic update
+          setReplyLikes((prev) => ({
+            ...prev,
+            [targetCommentId]: {
+              isLiked: !currentIsLiked,
+              likesCount: currentIsLiked
+                ? Math.max(0, currentLikesCount - 1)
+                : currentLikesCount + 1,
+            },
+          }));
+        } else if (targetCommentId === comment.id) {
+          // 댓글 좋아요 - 실제 comment 데이터에서 초기 상태 가져오기
+          const currentIsLiked = isLiked;
+          const currentLikesCount = likesCount;
+
+          previousState = {
+            isLiked: currentIsLiked,
+            likesCount: currentLikesCount,
+          };
+
+          // Optimistic update
+          const newIsLiked = !currentIsLiked;
+          setIsLiked(newIsLiked);
+          setLikesCount(
+            newIsLiked
+              ? currentLikesCount + 1
+              : Math.max(0, currentLikesCount - 1)
+          );
+        }
+
+        return { targetCommentId, isReply, previousState };
+      },
       onSuccess: (response, variables) => {
+        // API 응답으로 정확한 값으로 업데이트
         const result = response.data;
         const targetCommentId = variables.commentId;
 
@@ -163,12 +234,24 @@ const CommentItem = ({
             }));
           } else if (targetCommentId === comment.id) {
             setIsLiked(result.isLiked || false);
+            setLikesCount(result.likesCount || 0);
           }
         }
-
-        queryClient.invalidateQueries({
-          queryKey: ["comments", "getCommentsCommunitiesPostsByTwoIds"],
-        });
+        // invalidateQueries 제거 - 로컬 state 업데이트만으로 충분
+      },
+      onError: (err, variables, context) => {
+        // 에러 발생 시 이전 상태로 롤백
+        if (context?.previousState) {
+          if (context.isReply) {
+            setReplyLikes((prev) => ({
+              ...prev,
+              [context.targetCommentId]: context.previousState!,
+            }));
+          } else if (context.targetCommentId === comment.id) {
+            setIsLiked(context.previousState.isLiked);
+            setLikesCount(context.previousState.likesCount);
+          }
+        }
       },
     });
 
@@ -216,15 +299,20 @@ const CommentItem = ({
   const handleReplyToReplySubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      const inputValue = actualReplyToReplyInput.replace(/<[^>]*>/g, "").trim();
-      if (!inputValue || isCommentSubmitting) return;
+      if (isCommentSubmitting) return;
 
-      try {
-        await onCommentSubmit(e, actualReplyToReplyInput);
-        setReplyToReplyInputValue("");
-      } catch (error) {
-        // 에러는 상위에서 처리됨
-      }
+      // 텍스트 내용 확인 (HTML 태그 제거)
+      const textContent = actualReplyToReplyInput
+        .replace(/<[^>]*>/g, "")
+        .trim();
+      // 이미지 태그 확인 (GIF 포함)
+      const hasImage = /<img[^>]*>/i.test(actualReplyToReplyInput);
+
+      // 텍스트나 이미지가 있어야 제출 가능
+      if (!textContent && !hasImage) return;
+
+      await onCommentSubmit(e, actualReplyToReplyInput);
+      setReplyToReplyInputValue("");
     },
     [
       actualReplyToReplyInput,
@@ -388,21 +476,39 @@ const CommentItem = ({
   // 답글 좋아요 상태 계산 (메모이제이션)
   const getReplyLikeState = useCallback(
     (replyId: string) => {
+      const reply = replies.find((r) => r.id === replyId);
       const replyLikeState = replyLikes[replyId];
+      // replyLikes state가 있으면 우선 사용, 없으면 실제 reply 데이터 사용
       return {
-        isLiked: replyLikeState?.isLiked ?? false,
-        likesCount: replyLikeState?.likesCount ?? 0,
+        isLiked: replyLikeState?.isLiked ?? reply?.isLiked ?? false,
+        likesCount: replyLikeState?.likesCount ?? reply?.likesCount ?? 0,
       };
     },
-    [replyLikes]
+    [replyLikes, replies]
   );
+
+  // 답글에 대한 답글 입력창에 내용이 있는지 확인 (텍스트 또는 이미지)
+  const hasReplyToReplyContent = useMemo(() => {
+    const textContent = actualReplyToReplyInput.replace(/<[^>]*>/g, "").trim();
+    const hasImage = /<img[^>]*>/i.test(actualReplyToReplyInput);
+    return textContent.length > 0 || hasImage;
+  }, [actualReplyToReplyInput]);
 
   return (
     <div className="space-y-3">
       {/* 메인 댓글 */}
       <div className="flex gap-3">
         {/* 작성자 프로필 썸네일 */}
-        <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
+        <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
+          {comment.profileImageUrl && (
+            <Image
+              src={comment.profileImageUrl}
+              alt={comment.author || COMMENT_ANONYMOUS_NAME}
+              width={32}
+              height={32}
+            />
+          )}
+        </div>
 
         <div className="min-w-0 flex-1">
           {/* 댓글 헤더 */}
@@ -418,8 +524,8 @@ const CommentItem = ({
               {comment.createdAt && (
                 <Typography
                   font="noto"
-                  variant="caption1R"
-                  className="flex-shrink-0 text-gray-500"
+                  variant="label2R"
+                  className="flex-shrink-0 text-gray-400"
                 >
                   {getTimeAgo(comment.createdAt)}
                 </Typography>
@@ -513,19 +619,19 @@ const CommentItem = ({
               )}
 
               {/* 댓글 액션 버튼 */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-[6px]">
                 <button
                   onClick={() => onStartReply(commentId, comment.author || "")}
-                  className="text-sm text-gray-600 hover:text-gray-800"
+                  className="flex items-center rounded-sm border border-gray-200 px-2 py-1 text-gray-600 hover:text-gray-800"
                   type="button"
                 >
-                  <Typography font="noto" variant="body2R">
+                  <Typography font="noto" variant="label1R">
                     답글 쓰기
                   </Typography>
                 </button>
                 <button
                   onClick={handleLike}
-                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800"
+                  className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 hover:text-gray-800"
                   type="button"
                 >
                   <svg
@@ -544,8 +650,8 @@ const CommentItem = ({
                       d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                     />
                   </svg>
-                  <Typography font="noto" variant="body2R">
-                    {comment.likesCount || 0}
+                  <Typography font="noto" variant="label1R">
+                    {likesCount}
                   </Typography>
                 </button>
               </div>
@@ -577,12 +683,21 @@ const CommentItem = ({
 
               const replyLikeState = getReplyLikeState(replyId);
               const replyIsLiked = replyLikeState.isLiked;
-              const replyLikesCount =
-                replyLikeState.likesCount || reply.likesCount || 0;
+              const replyLikesCount = replyLikeState.likesCount;
 
               return (
                 <div key={replyId} className="flex gap-3">
-                  <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-300"></div>
+                  {/* 작성자 프로필 썸네일 */}
+                  <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
+                    {reply.profileImageUrl && (
+                      <Image
+                        src={reply.profileImageUrl}
+                        alt={reply.author || COMMENT_ANONYMOUS_NAME}
+                        width={32}
+                        height={32}
+                      />
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
@@ -599,8 +714,8 @@ const CommentItem = ({
                         {reply.createdAt && (
                           <Typography
                             font="noto"
-                            variant="caption1R"
-                            className="flex-shrink-0 text-gray-500"
+                            variant="label2R"
+                            className="flex-shrink-0 text-gray-400"
                           >
                             {getTimeAgo(reply.createdAt)}
                           </Typography>
@@ -714,16 +829,16 @@ const CommentItem = ({
                             dangerouslySetInnerHTML={{ __html: reply.content }}
                           />
                         )}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-[6px]">
                           {onStartReplyToReply && (
                             <button
                               onClick={() => {
                                 onStartReplyToReply(replyId, replyAuthor);
                               }}
-                              className="text-sm text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
+                              className="flex items-center rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
                               type="button"
                             >
-                              <Typography font="noto" variant="body2R">
+                              <Typography font="noto" variant="label1R">
                                 답글 쓰기
                               </Typography>
                             </button>
@@ -732,7 +847,7 @@ const CommentItem = ({
                             onClick={() => {
                               handleReplyLike(replyId);
                             }}
-                            className="flex items-center gap-1 text-sm transition-opacity hover:opacity-80"
+                            className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
                             type="button"
                           >
                             <svg
@@ -755,7 +870,7 @@ const CommentItem = ({
                             </svg>
                             <Typography
                               font="noto"
-                              variant="body2R"
+                              variant="label1R"
                               className={cn(
                                 "transition-colors",
                                 replyIsLiked ? "text-red-500" : "text-gray-600"
@@ -787,10 +902,10 @@ const CommentItem = ({
                           <button
                             type="button"
                             onClick={handleCancelReplyToReply}
-                            className="text-sm text-gray-600 hover:text-gray-800"
+                            className="mr-1 text-sm text-gray-400 hover:text-gray-800"
                           >
-                            <Typography font="noto" variant="body2R">
-                              취소
+                            <Typography font="noto" variant="label1M">
+                              {COMMENT_CANCEL_BUTTON}
                             </Typography>
                           </button>
                         </div>
@@ -804,7 +919,7 @@ const CommentItem = ({
                             suppressContentEditableWarning
                             onInput={handleReplyToReplyInputChangeEvent}
                             onKeyDown={handleReplyToReplyKeyDown}
-                            data-placeholder="서로 배려하는 댓글을 남겨요:)"
+                            data-placeholder={COMMENT_PLACEHOLDER}
                             className={cn(
                               "max-h-[200px] min-h-[40px] w-full resize-none overflow-y-auto rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:outline-none",
                               "[&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
@@ -816,7 +931,7 @@ const CommentItem = ({
                               whiteSpace: "pre-wrap",
                             }}
                           />
-                          <div className="absolute right-2 bottom-3 flex items-center gap-2">
+                          <div className="absolute right-2 bottom-3 flex items-center gap-0">
                             <button
                               type="button"
                               onClick={() => setIsGiphyOpen((prev) => !prev)}
@@ -826,28 +941,30 @@ const CommentItem = ({
                               )}
                               aria-label="GIF 선택"
                             >
-                              <ImageIcon size={20} />
+                              <ImageIcon size={16} />
                             </button>
                             <button
                               type="submit"
-                              disabled={isCommentSubmitting}
+                              disabled={
+                                isCommentSubmitting || !hasReplyToReplyContent
+                              }
                               className={cn(
-                                "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                                !isCommentSubmitting
+                                "flex h-8 items-center rounded-lg px-3 py-2 transition-all",
+                                !isCommentSubmitting && hasReplyToReplyContent
                                   ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
                             >
                               <Typography
                                 font="noto"
-                                variant="body2M"
+                                variant="body3M"
                                 className={
-                                  !isCommentSubmitting
+                                  !isCommentSubmitting && hasReplyToReplyContent
                                     ? "text-white"
                                     : "text-gray-400"
                                 }
                               >
-                                등록
+                                {COMMENT_SUBMIT_BUTTON}
                               </Typography>
                             </button>
                           </div>
@@ -886,8 +1003,17 @@ const CommentItem = ({
                 {replyThumbnails.map((reply, index) => (
                   <div
                     key={reply.id || index}
-                    className="h-6 w-6 rounded-full border-2 border-white bg-gray-300"
-                  />
+                    className="h-6 w-6 overflow-hidden rounded-full border-2 border-white bg-gray-300"
+                  >
+                    {reply.profileImageUrl && (
+                      <Image
+                        src={reply.profileImageUrl}
+                        alt={reply.author || COMMENT_ANONYMOUS_NAME}
+                        width={24}
+                        height={24}
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
               <Typography font="noto" variant="body2R">

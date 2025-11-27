@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import type { FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentItem from "@/components/community/CommentItem";
@@ -79,17 +79,26 @@ const CommentsSection = ({
     inputRef,
   });
 
+  // 댓글 요청 파라미터 메모이제이션
+  const commentsRequest = useMemo(
+    () => ({
+      communityId: communityId || "",
+      postId,
+    }),
+    [communityId, postId]
+  );
+
   // 댓글 데이터 가져오기
   const { data: commentsData, isLoading: isCommentsLoading } =
     useGetCommentsCommunitiesPostsByTwoIds({
-      request: {
-        communityId: communityId || "",
-        postId,
-      },
+      request: commentsRequest,
       enabled: !!postId && !!communityId,
     });
 
-  const comments = commentsData?.comments || [];
+  const comments = useMemo(
+    () => commentsData?.comments || [],
+    [commentsData?.comments]
+  );
 
   // 댓글 작성 mutation
   const { mutateAsync: postCommentAsync, isPending: isPostCommentPending } =
@@ -137,8 +146,16 @@ const CommentsSection = ({
   // 댓글 삭제 mutation
   const { mutateAsync: deleteCommentAsync } = useDeleteCommentsById({
     onSuccess: () => {
+      // 댓글 목록 조회 인밸리데이션
       queryClient.invalidateQueries({
         queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
+          communityId: communityId || "",
+          postId,
+        }),
+      });
+      // 게시글의 댓글 카운트 즉시 업데이트
+      queryClient.invalidateQueries({
+        queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
           communityId: communityId || "",
           postId,
         }),

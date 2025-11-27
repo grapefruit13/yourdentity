@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect, useMemo } from "react";
 import type { FormEvent, RefObject, KeyboardEvent } from "react";
 import { Image as ImageIcon } from "lucide-react";
 import { GiphySelector } from "@/components/shared/giphy-selector";
@@ -43,11 +43,20 @@ export const CommentInputForm = ({
 }: CommentInputFormProps) => {
   const [isGiphyOpen, setIsGiphyOpen] = useState(false);
 
+  // 입력 내용 확인 (텍스트 또는 이미지)
+  const hasContent = useMemo(() => {
+    const textContent = commentInput.replace(/<[^>]*>/g, "").trim();
+    const hasImage = /<img[^>]*>/i.test(commentInput);
+    return textContent.length > 0 || hasImage;
+  }, [commentInput]);
+
   const handleSubmit = useCallback(
     (e: FormEvent) => {
+      e.preventDefault();
+      if (replyingTo?.isReply === true || isSubmitting || !hasContent) return;
       onCommentSubmit(e);
     },
-    [onCommentSubmit]
+    [onCommentSubmit, replyingTo?.isReply, isSubmitting, hasContent]
   );
 
   const placeholder =
@@ -298,10 +307,12 @@ export const CommentInputForm = ({
           )}
           <button
             type="submit"
-            disabled={replyingTo?.isReply === true || isSubmitting}
+            disabled={
+              replyingTo?.isReply === true || isSubmitting || !hasContent
+            }
             className={cn(
               "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
-              !replyingTo?.isReply && !isSubmitting
+              !replyingTo?.isReply && !isSubmitting && hasContent
                 ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
                 : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
             )}
@@ -310,7 +321,7 @@ export const CommentInputForm = ({
               font="noto"
               variant="body2M"
               className={
-                !replyingTo?.isReply && !isSubmitting
+                !replyingTo?.isReply && !isSubmitting && hasContent
                   ? "text-white"
                   : "text-gray-400"
               }

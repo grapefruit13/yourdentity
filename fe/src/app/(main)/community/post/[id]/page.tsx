@@ -285,8 +285,26 @@ const PostDetailPage = () => {
   // 좋아요 mutation
   const { mutateAsync: toggleLikeAsync, isPending: isToggleLikePending } =
     usePostCommunitiesPostsLikeByTwoIds({
+      onMutate: async () => {
+        // Optimistic update: 즉시 UI 업데이트
+        await queryClient.cancelQueries({ queryKey: postQueryKey });
+        const previousPost =
+          queryClient.getQueryData<Schema.CommunityPost>(postQueryKey);
+
+        if (previousPost) {
+          queryClient.setQueryData<Schema.CommunityPost>(postQueryKey, {
+            ...previousPost,
+            isLiked: !previousPost.isLiked,
+            likesCount: previousPost.isLiked
+              ? (previousPost.likesCount || 1) - 1
+              : (previousPost.likesCount || 0) + 1,
+          });
+        }
+
+        return { previousPost };
+      },
       onSuccess: (response) => {
-        // API 응답 구조: { data: { isLiked, likesCount, ... } }
+        // API 응답으로 정확한 값으로 업데이트
         const result = response.data;
         if (result) {
           queryClient.setQueryData<Schema.CommunityPost | undefined>(
@@ -307,14 +325,16 @@ const PostDetailPage = () => {
             }
           );
         }
-        // 게시글 상세 정보 refetch
-        queryClient.invalidateQueries({
-          queryKey: postQueryKey,
-        });
-        // 게시글 목록도 refetch (목록에서도 카운트 반영)
+        // 게시글 목록도 업데이트 (목록에서도 카운트 반영)
         queryClient.invalidateQueries({
           queryKey: postsListQueryKey,
         });
+      },
+      onError: (err, variables, context) => {
+        // 에러 발생 시 이전 상태로 롤백
+        if (context?.previousPost) {
+          queryClient.setQueryData(postQueryKey, context.previousPost);
+        }
       },
     });
 
