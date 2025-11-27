@@ -109,7 +109,6 @@ const PostDetailPage = () => {
 
   // 내가 참여중인 프로그램인지 확인
   const isParticipating = useMemo(() => {
-    console.log("zizizi");
     if (!participatingCommunitiesData || !communityId) return false;
 
     const allItems = [
@@ -140,11 +139,10 @@ const PostDetailPage = () => {
 
   // 댓글 작성용 이름 계산
   const authorName = useMemo(() => {
-    if (!userData) return "";
+    if (!userData || !post) return "";
 
     const programType = post?.programType;
     const isTMIPost = programType === "TMI";
-
     // TMI 타입이면 실명 사용
     if (isTMIPost) {
       return userData.name || "";
@@ -161,7 +159,12 @@ const PostDetailPage = () => {
 
     // 내가 참여중이지 않거나 member nickname이 없으면 user nickname 사용
     return userData.nickname || "";
-  }, [userData, post?.programType, isParticipating, memberData?.nickname]);
+  }, [
+    userData?.nickname,
+    post?.programType,
+    isParticipating,
+    memberData?.nickname,
+  ]);
 
   // 공유하기 기능
   const handleShare = useCallback(async () => {

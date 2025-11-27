@@ -64,7 +64,7 @@ export const CommentInputForm = ({
               replyingTo?.isReply && "text-gray-400"
             )}
           >
-            {userName || COMMENT_ANONYMOUS_NAME}
+            {userName}
           </Typography>
           {replyingTo && !replyingTo.isReply && (
             <Typography font="noto" variant="body2R" className="text-gray-500">

@@ -446,7 +446,7 @@ const CommentItem = ({
                           className="text-gray-800"
                         >
                           <span className="text-main-500">
-                            {`${reply.depth && reply.depth! > 1 ? `@${reply.author || COMMENT_ANONYMOUS_NAME} ` : ""}`}
+                            {`${reply.depth && reply.depth! > 1 ? `@${reply.parentAuthor || COMMENT_ANONYMOUS_NAME} ` : ""}`}
                           </span>
                           {replyAuthor}
                         </Typography>
