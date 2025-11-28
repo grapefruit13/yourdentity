@@ -16,6 +16,7 @@ import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetCommunitiesNicknameAvailabilityById } from "@/hooks/generated/communities-hooks";
 import {
   useGetProgramsById,
@@ -258,8 +259,9 @@ const ProgramApplyPage = () => {
       }
       // 참여 중인 커뮤니티 목록 refetch (신청 상태 업데이트 반영)
       refetchParticipatingCommunities();
-      updateStep("complete");
       setShowTermsSheet(false);
+      // 성공 모달 표시
+      setShowSuccessModal(true);
     },
     onError: (error: unknown) => {
       // eslint-disable-next-line no-console
@@ -387,6 +389,9 @@ const ProgramApplyPage = () => {
     selectedRegionCode,
     setSelectedRegionCode,
   } = formHook;
+
+  // 신청 성공 모달 상태
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // 통합 바텀시트 타입 결정
   const activePickerType = useMemo<PickerType | null>(() => {
@@ -723,9 +728,16 @@ const ProgramApplyPage = () => {
 
   // 신청 완료 후 확인
   const handleComplete = useCallback(() => {
-    // 상세 페이지로 이동하고 히스토리 정리 (뒤로가기 방지)
-    router.replace(`/programs/${programId}`);
-  }, [router, programId]);
+    // 홈화면으로 이동하고 히스토리 정리 (뒤로가기 방지)
+    router.replace(LINK_URL.HOME);
+  }, [router]);
+
+  // 신청 성공 모달 확인 핸들러
+  const handleSuccessModalConfirm = useCallback(() => {
+    setShowSuccessModal(false);
+    // 홈화면으로 이동
+    router.replace(LINK_URL.HOME);
+  }, [router]);
 
   // 스텝 순서 정의
   const stepOrder: ApplicationStep[] = useMemo(
@@ -1362,6 +1374,19 @@ const ProgramApplyPage = () => {
         onConfirm={handleNicknameConfirm}
         onClose={() => setShowNicknameConfirm(false)}
       />
+
+      {/* 신청 성공 모달 */}
+      {programDetailData && (
+        <Modal
+          isOpen={showSuccessModal}
+          title="프로그램 신청에 성공했습니다"
+          description={`${programName} 신청이 완료되었어요. 홈화면으로 이동합니다.`}
+          confirmText="확인"
+          onConfirm={handleSuccessModalConfirm}
+          onClose={handleSuccessModalConfirm}
+          variant="primary"
+        />
+      )}
 
       {/* 통합 바텀시트 */}
       <ActivityPickerBottomSheet

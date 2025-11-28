@@ -539,13 +539,13 @@ const CommentItemComponent = ({
       {/* 메인 댓글 */}
       <div className="flex gap-3">
         {/* 작성자 프로필 썸네일 */}
-        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
+        <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
           {comment.profileImageUrl && (
             <Image
               src={comment.profileImageUrl}
               alt={comment.author || COMMENT_ANONYMOUS_NAME}
-              width={32}
-              height={32}
+              fill
+              className="object-cover"
             />
           )}
         </div>
@@ -728,13 +728,13 @@ const CommentItemComponent = ({
               return (
                 <div key={replyId} className="flex gap-3">
                   {/* 작성자 프로필 썸네일 */}
-                  <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
+                  <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-300">
                     {reply.profileImageUrl && (
                       <Image
                         src={reply.profileImageUrl}
                         alt={reply.author || COMMENT_ANONYMOUS_NAME}
-                        width={32}
-                        height={32}
+                        fill
+                        className="object-cover"
                       />
                     )}
                   </div>
@@ -1043,14 +1043,14 @@ const CommentItemComponent = ({
                 {replyThumbnails.map((reply, index) => (
                   <div
                     key={reply.id || index}
-                    className="h-6 w-6 overflow-hidden rounded-full border-2 border-white bg-gray-300"
+                    className="relative h-6 w-6 overflow-hidden rounded-full border-2 border-white bg-gray-300"
                   >
                     {reply.profileImageUrl && (
                       <Image
                         src={reply.profileImageUrl}
                         alt={reply.author || COMMENT_ANONYMOUS_NAME}
-                        width={24}
-                        height={24}
+                        fill
+                        className="object-cover"
                       />
                     )}
                   </div>

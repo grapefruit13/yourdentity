@@ -478,6 +478,7 @@ const PostDetailPage = () => {
           communityId={communityId}
           postType={post?.type}
           authorName={authorName}
+          profileImageUrl={userData?.profileImageUrl}
           commentInputRef={commentInputRef}
           onFocusRequestRef={focusCommentInputRef}
         />

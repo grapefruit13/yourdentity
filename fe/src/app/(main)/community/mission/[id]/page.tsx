@@ -84,8 +84,7 @@ const Page = () => {
         onDelete={undefined}
       />
     );
-    setTitle(post?.missionTitle || "");
-  }, [setRightSlot, handleShare, setTitle, post?.missionTitle]);
+  }, [setRightSlot, handleShare]);
 
   // 로딩 중 - 스켈레톤 표시
   if (isLoading) {

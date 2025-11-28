@@ -6,6 +6,7 @@ import { Image as ImageIcon } from "lucide-react";
 import { GiphySelector } from "@/components/shared/giphy-selector";
 import { Typography } from "@/components/shared/typography";
 import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-sheet";
+import ProfileImage from "@/components/shared/ui/profile-image";
 import {
   COMMENT_PLACEHOLDER,
   COMMENT_SUBMIT_BUTTON,
@@ -24,6 +25,7 @@ interface CommentInputFormProps {
   replyingTo: ReplyingToState;
   onCancelReply: () => void;
   userName: string;
+  profileImageUrl?: string;
   inputRef: RefObject<HTMLDivElement | HTMLTextAreaElement>;
   isSubmitting?: boolean;
 }
@@ -38,6 +40,7 @@ export const CommentInputForm = ({
   replyingTo,
   onCancelReply,
   userName,
+  profileImageUrl,
   inputRef,
   isSubmitting = false,
 }: CommentInputFormProps) => {
@@ -237,7 +240,7 @@ export const CommentInputForm = ({
     <div className="mt-6 border-t border-gray-200 p-4">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-gray-300"></div>
+          <ProfileImage src={profileImageUrl} size="h-6 w-6" alt={userName} />
           <Typography
             font="noto"
             variant="body2M"

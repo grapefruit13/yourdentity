@@ -31,6 +31,7 @@ interface CommentsSectionProps {
   communityId: string;
   postType?: string;
   authorName?: string;
+  profileImageUrl?: string;
   commentInputRef?: React.RefObject<
     HTMLDivElement | HTMLTextAreaElement | null
   >;
@@ -47,6 +48,7 @@ const CommentsSection = ({
   postId,
   communityId,
   authorName = "",
+  profileImageUrl,
   commentInputRef,
   onFocusRequestRef,
 }: CommentsSectionProps) => {
@@ -361,6 +363,7 @@ const CommentsSection = ({
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
             userName={authorName}
+            profileImageUrl={profileImageUrl}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />

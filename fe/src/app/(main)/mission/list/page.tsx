@@ -75,6 +75,7 @@ const Page = () => {
     sortBy: sortValue,
     ...(filters.rightSelect && { category: filters.rightSelect }),
     ...(excludeParticipated && { excludeParticipated: true }),
+    ...(filters.leftSelect === LIKED_FILTER_ID && { likedOnly: true }),
   };
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
 
@@ -181,7 +182,7 @@ const Page = () => {
         />
       </div>
       {/* 미션 목록 */}
-      <div className="flex flex-col">
+      <div className="flex flex-col pb-20">
         {isLoading && !missions.length && (
           <div className="flex items-center justify-center py-12">
             <Typography font="noto" variant="body2R" className="text-gray-400">
@@ -211,18 +212,18 @@ const Page = () => {
               title={mission.title || ""}
               categories={mission.categories || []}
               thumbnailUrl={mission.coverImage || "/imgs/mockup.jpg"}
-              likeCount={mission.reactionCount || 0}
+              likeCount={mission.likesCount || 0}
               createdAt={
                 mission.createdAt ||
                 mission.updatedAt ||
                 new Date().toISOString()
               }
-              isLiked={false} // TODO: 찜한 미션 필터링 구현 시 수정
+              isLiked={mission.isLiked || false}
             />
           ))}
 
         {/* 무한 스크롤 로딩 트리거 & 상태 표시 */}
-        <div ref={loadMoreTriggerRef} className="flex justify-center py-4">
+        <div ref={loadMoreTriggerRef} className="flex justify-center py-2">
           {hasNextPage && !error && (
             <Typography font="noto" variant="body2R" className="text-gray-400">
               {isFetchingNextPage
