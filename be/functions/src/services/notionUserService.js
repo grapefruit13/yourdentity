@@ -129,7 +129,7 @@ class NotionUserService {
                   {
                     name: "profile-image",
                     type: "external",
-                    external: { url: user.profileImageUrl || "" },
+                    external: { url: user.profileImageUrl || "https://yourdentity.vercel.app/icons/avatar.svg" },
                   },
                 ],
               },
@@ -514,7 +514,7 @@ async syncAllUserAccounts() {
                 {
                   name: "profile-image",
                   type: "external",
-                  external: { url: updatedUserData.profileImageUrl || "" },
+                  external: { url: updatedUserData.profileImageUrl || "https://yourdentity.vercel.app/icons/avatar.svg" },
                 },
               ],
             },
@@ -1287,7 +1287,7 @@ async syncSelectedUsers() {
             {
               name: "profile-image",
               type: "external",
-              external: { url: updatedUserData.profileImageUrl || "" },
+              external: { url: updatedUserData.profileImageUrl || "https://yourdentity.vercel.app/icons/avatar.svg" },
             },
           ],
         },
@@ -2036,7 +2036,7 @@ async syncSingleUserToNotion(userId) {
           {
             name: "profile-image",
             type: "external",
-            external: { url: updatedUserData.profileImageUrl || "" },
+            external: { url: updatedUserData.profileImageUrl || "https://yourdentity.vercel.app/icons/avatar.svg" },
           },
         ],
       },
