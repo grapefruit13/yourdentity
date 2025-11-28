@@ -13,11 +13,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
 import { getCommunitiesPosts } from "@/api/generated/communities-api";
-import CommunityTabs from "@/components/community/community-tabs";
-import { CommunitySearchBar } from "@/components/community/CommunitySearchBar";
-import FilterChipsSection from "@/components/community/FilterChipsSection";
+import CommunityEmptyState from "@/components/community/CommunityEmptyState";
+import CommunityErrorState from "@/components/community/CommunityErrorState";
+import CommunityInfiniteScrollTrigger from "@/components/community/CommunityInfiniteScrollTrigger";
+import CommunityLoadingStates from "@/components/community/CommunityLoadingStates";
+import CommunityPageHeader from "@/components/community/CommunityPageHeader";
 import FloatingWriteButton from "@/components/community/FloatingWriteButton";
-import { MyCertificationToggle } from "@/components/community/MyCertificationToggle";
 import PostFeed from "@/components/community/PostFeed";
 import ProgramFilterBottomSheet, {
   type ProgramCategoryFilter,
@@ -105,7 +106,6 @@ const CommunityPageContent = () => {
   const [hasFilterChanges, setHasFilterChanges] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isSearchingRef = useRef(false);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Firebase Auth 상태 추적
@@ -606,102 +606,52 @@ const CommunityPageContent = () => {
     fetchNextPage();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-    if (!target) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          handleFetchNextPage();
-        }
-      },
-      {
-        rootMargin: "120px",
-      }
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [handleFetchNextPage]);
-
   // 에러 상태 처리
   if (error) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="p-4">
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-            <div className="text-red-600">
-              {error instanceof Error
-                ? error.message
-                : "포스트를 불러오는데 실패했습니다"}
-            </div>
-            <button
-              onClick={() => refetch()}
-              className="mt-2 text-sm text-red-600 underline hover:text-red-800"
-            >
-              다시 시도
-            </button>
-          </div>
-        </div>
-      </div>
+      <CommunityErrorState
+        error={error}
+        onRetry={() => refetch()}
+        defaultMessage="포스트를 불러오는데 실패했습니다"
+      />
     );
   }
 
   return (
     <div className="relative min-h-full bg-white">
-      {/* 검색 & 필터 섹션 */}
-      <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5">
-        <div className="relative">
-          <CommunityTabs activeTab="program" />
-
-          {/* 검색 입력 */}
-          <CommunitySearchBar
-            inputRef={searchInputRef}
-            value={searchQuery}
-            onChange={handleSearchInputChange}
-            onKeyDown={handleSearchKeyDown}
-            onBlur={handleSearchBlur}
-            onSearchClick={handleSearch}
-            hasFilterChanges={hasFilterChanges}
-            onFilterClick={() => setIsFilterSheetOpen(true)}
-          />
-
-          {/* 선택된 필터 칩 */}
-          <FilterChipsSection chips={filterChips} />
-
-          {/* 참여중인 프로그램만 보기 - 로그인 사용자에게만 표시 */}
-          {currentUser && (
-            <MyCertificationToggle
-              id="only-my-programs"
-              checked={onlyMyPrograms}
-              label="내가 참여중인 프로그램만 보기"
-              ariaLabel="내가 참여중인 프로그램 게시글만 보기"
-              onChange={setOnlyMyPrograms}
-            />
-          )}
-        </div>
-      </div>
+      <CommunityPageHeader
+        activeTab="program"
+        searchQuery={searchQuery}
+        onSearchInputChange={handleSearchInputChange}
+        onSearchKeyDown={handleSearchKeyDown}
+        onSearchBlur={handleSearchBlur}
+        onSearchClick={handleSearch}
+        searchInputRef={searchInputRef}
+        hasFilterChanges={hasFilterChanges}
+        onFilterClick={() => setIsFilterSheetOpen(true)}
+        filterChips={filterChips}
+        toggleSection={
+          currentUser
+            ? {
+                show: true,
+                id: "only-my-programs",
+                checked: onlyMyPrograms,
+                label: "내가 참여중인 프로그램만 보기",
+                ariaLabel: "내가 참여중인 프로그램 게시글만 보기",
+                onChange: setOnlyMyPrograms,
+              }
+            : undefined
+        }
+      />
 
       <div className="px-5 pb-32">
         {/* 전체 포스트가 없을 때 - 로딩 완료 후에만 표시 */}
         {!isInitialLoading &&
           segmentedPosts.top.length + segmentedPosts.rest.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 text-4xl">📭</div>
-              <p className="mb-2 text-base font-medium text-gray-900">
-                아직 게시글이 없어요
-              </p>
-              <p className="text-sm text-gray-500">
-                첫 번째 이야기를 공유해보세요!
-              </p>
-            </div>
+            <CommunityEmptyState
+              title="아직 게시글이 없어요"
+              description="첫 번째 이야기를 공유해보세요!"
+            />
           )}
 
         {/* 상위 4개 포스트 */}
@@ -769,12 +719,12 @@ const CommunityPageContent = () => {
                         router.push(`${LINK_URL.PROGRAMS}/${program.id}`);
                       }
                     }}
-                    className="flex w-[335px] flex-shrink-0 cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
+                    className="flex w-[335px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
                   >
                     <div className="flex h-[100px]">
                       {/* 이미지/일러스트 영역 */}
                       <div
-                        className={`flex w-[100px] flex-shrink-0 items-center justify-center ${getProgramBgColor(program.programType)}`}
+                        className={`flex w-[100px] shrink-0 items-center justify-center ${getProgramBgColor(program.programType)}`}
                       >
                         <div className="text-4xl">
                           {getProgramIcon(program.programType)}
@@ -816,23 +766,19 @@ const CommunityPageContent = () => {
           />
         </div>
 
-        <div ref={loadMoreRef} aria-hidden="true" className="h-6 w-full" />
+        <CommunityInfiniteScrollTrigger
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadMore={handleFetchNextPage}
+        />
 
-        {isFetchingNextPage && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-center justify-center pb-6 text-sm text-gray-500"
-          >
-            게시글을 더 불러오는 중이에요...
-          </div>
-        )}
-
-        {!hasNextPage && filteredPosts.length > 0 && (
-          <div className="pb-6 text-center text-xs text-gray-400">
-            모든 게시글을 확인했어요
-          </div>
-        )}
+        <CommunityLoadingStates
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+          hasData={filteredPosts.length > 0}
+          loadingMessage="게시글을 더 불러오는 중이에요..."
+          completedMessage="모든 게시글을 확인했어요"
+        />
 
         {/* 플로팅 작성 버튼 */}
         <FloatingWriteButton

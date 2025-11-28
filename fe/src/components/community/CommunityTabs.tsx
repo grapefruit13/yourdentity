@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import AlarmButton from "@/components/shared/AlarmButton";
 import { Typography } from "@/components/shared/typography";
+import {
+  COMMUNITY_TAB_LABELS,
+  COMMUNITY_TAB_VALUES,
+} from "@/constants/community/_community-tabs-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
-
-type CommunityTab = "program" | "mission";
+import type { CommunityTab } from "@/types/community/_community-tabs-types";
 
 interface CommunityTabsProps {
   /** 현재 활성화된 탭 */
@@ -28,8 +31,8 @@ export const CommunityTabs = ({ activeTab }: CommunityTabsProps) => {
     router.push(LINK_URL.COMMUNITY_MISSION);
   };
 
-  const isProgramActive = activeTab === "program";
-  const isMissionActive = activeTab === "mission";
+  const isProgramActive = activeTab === COMMUNITY_TAB_VALUES.PROGRAM;
+  const isMissionActive = activeTab === COMMUNITY_TAB_VALUES.MISSION;
 
   return (
     <div className="flex h-12 items-center justify-between bg-white">
@@ -40,7 +43,7 @@ export const CommunityTabs = ({ activeTab }: CommunityTabsProps) => {
           onClick={handleProgramClick}
         >
           <Typography font="noto" variant="title4">
-            프로그램
+            {COMMUNITY_TAB_LABELS[COMMUNITY_TAB_VALUES.PROGRAM]}
           </Typography>
         </button>
         <button
@@ -49,7 +52,7 @@ export const CommunityTabs = ({ activeTab }: CommunityTabsProps) => {
           onClick={handleMissionClick}
         >
           <Typography font="noto" variant="title4">
-            미션
+            {COMMUNITY_TAB_LABELS[COMMUNITY_TAB_VALUES.MISSION]}
           </Typography>
         </button>
       </div>
