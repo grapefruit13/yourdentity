@@ -9,10 +9,11 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import CommunityTabs from "@/components/community/community-tabs";
-import { CommunitySearchBar } from "@/components/community/CommunitySearchBar";
-import FilterChipsSection from "@/components/community/FilterChipsSection";
-import { MyCertificationToggle } from "@/components/community/MyCertificationToggle";
+import CommunityEmptyState from "@/components/community/CommunityEmptyState";
+import CommunityErrorState from "@/components/community/CommunityErrorState";
+import CommunityInfiniteScrollTrigger from "@/components/community/CommunityInfiniteScrollTrigger";
+import CommunityLoadingStates from "@/components/community/CommunityLoadingStates";
+import CommunityPageHeader from "@/components/community/CommunityPageHeader";
 import MissionFeed from "@/components/mission/MissionFeed";
 import MissionPostsFilterBottomSheet, {
   type MissionPostsSortOption,
@@ -51,6 +52,9 @@ const MissionCommunityPageContent = () => {
     if (!categories) return [];
     return categories.split(",").filter((category) => category.trim().length);
   };
+  const getInitialOnlyMyMissions = () => {
+    return searchParams.get("userId") !== null;
+  };
 
   const [searchQuery, setSearchQuery] = useState(getInitialSearchQuery);
   const [appliedSearchQuery, setAppliedSearchQuery] = useState(
@@ -60,15 +64,27 @@ const MissionCommunityPageContent = () => {
     useState<MissionPostsSortOption>(getInitialSort);
   const [selectedCategories, setSelectedCategories] =
     useState<string[]>(getInitialCategories);
-  const [onlyMyMissions, setOnlyMyMissions] = useState(false);
+  const [onlyMyMissions, setOnlyMyMissions] = useState(
+    getInitialOnlyMyMissions
+  );
   const [hasFilterChanges, setHasFilterChanges] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const isSearchingRef = useRef(false);
 
   const appliedSortParam =
     selectedSort === "popular" ? ("popular" as const) : undefined;
+
+  const appliedUserId = useMemo(() => {
+    const userIdFromUrl = searchParams.get("userId");
+    if (userIdFromUrl) {
+      return userIdFromUrl;
+    }
+    if (onlyMyMissions && userMe?.user?.id) {
+      return userMe.user.id;
+    }
+    return undefined;
+  }, [searchParams, onlyMyMissions, userMe?.user?.id]);
 
   const {
     data: missionPostsPages,
@@ -84,7 +100,7 @@ const MissionCommunityPageContent = () => {
     ...(selectedCategories.length > 0
       ? { categories: selectedCategories.join(",") }
       : {}),
-    ...(onlyMyMissions && userMe?.user?.id ? { userId: userMe.user.id } : {}),
+    ...(appliedUserId ? { userId: appliedUserId } : {}),
   });
 
   const missionPosts = useMemo(() => {
@@ -99,6 +115,7 @@ const MissionCommunityPageContent = () => {
       search?: string;
       sort?: MissionPostsSortOption;
       categories?: string[];
+      userId?: string;
     }) => {
       const params = new URLSearchParams();
 
@@ -112,6 +129,10 @@ const MissionCommunityPageContent = () => {
 
       if (next.categories && next.categories.length > 0) {
         params.set("categories", next.categories.join(","));
+      }
+
+      if (next.userId) {
+        params.set("userId", next.userId);
       }
 
       const newQueryString = params.toString();
@@ -129,11 +150,9 @@ const MissionCommunityPageContent = () => {
 
   useEffect(() => {
     const hasChanges =
-      selectedSort !== "latest" ||
-      selectedCategories.length > 0 ||
-      onlyMyMissions;
+      selectedSort !== "latest" || selectedCategories.length > 0;
     setHasFilterChanges(hasChanges);
-  }, [selectedSort, selectedCategories.length, onlyMyMissions]);
+  }, [selectedSort, selectedCategories.length]);
 
   const normalizedSearchKeyword = appliedSearchQuery.trim().toLowerCase();
 
@@ -183,6 +202,7 @@ const MissionCommunityPageContent = () => {
       search: appliedSearchQuery,
       sort,
       categories,
+      userId: onlyMyMissions && userMe?.user?.id ? userMe.user.id : undefined,
     });
   };
 
@@ -198,8 +218,16 @@ const MissionCommunityPageContent = () => {
       search: searchQuery,
       sort: appliedSortParam ?? "latest",
       categories: selectedCategories,
+      userId: onlyMyMissions && userMe?.user?.id ? userMe.user.id : undefined,
     });
-  }, [searchQuery, appliedSortParam, selectedCategories, updateQueryParams]);
+  }, [
+    searchQuery,
+    appliedSortParam,
+    selectedCategories,
+    onlyMyMissions,
+    userMe?.user?.id,
+    updateQueryParams,
+  ]);
 
   const handleSearchKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -247,93 +275,57 @@ const MissionCommunityPageContent = () => {
     });
   }, [missionPosts, normalizedSearchKeyword]);
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      {
-        rootMargin: "120px",
-      }
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
   if (error) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="p-4">
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-            <div className="text-red-600">
-              {error instanceof Error
-                ? error.message
-                : "미션 인증글을 불러오는데 실패했습니다"}
-            </div>
-            <button
-              onClick={() => refetch()}
-              className="mt-2 text-sm text-red-600 underline hover:text-red-800"
-            >
-              다시 시도
-            </button>
-          </div>
-        </div>
-      </div>
+      <CommunityErrorState
+        error={error}
+        onRetry={() => refetch()}
+        defaultMessage="미션 인증글을 불러오는데 실패했습니다"
+      />
     );
   }
 
   return (
     <div className="relative min-h-full bg-white">
-      {/* 필터 헤더 영역 */}
-      <div className="sticky top-0 z-40 border-b border-gray-100 bg-white px-5">
-        <div className="relative">
-          <CommunityTabs activeTab="mission" />
-          <CommunitySearchBar
-            inputRef={searchInputRef}
-            value={searchQuery}
-            onChange={handleSearchInputChange}
-            onKeyDown={handleSearchKeyDown}
-            onBlur={handleSearchBlur}
-            onSearchClick={handleSearch}
-            hasFilterChanges={hasFilterChanges}
-            onFilterClick={() => setIsFilterSheetOpen(true)}
-          />
-          {/* 내가 인증한 미션만 보기 토글 (로그인 사용자에게만 표시) */}
-          {userMe?.user?.id && (
-            <MyCertificationToggle
-              id="only-my-missions"
-              checked={onlyMyMissions}
-              label="내가 인증한 미션만 보기"
-              onChange={(checked) => setOnlyMyMissions(checked)}
-            />
-          )}
-          {/* 선택된 필터 칩 */}
-          <FilterChipsSection chips={filterChips} />
-        </div>
-      </div>
+      <CommunityPageHeader
+        activeTab="mission"
+        searchQuery={searchQuery}
+        onSearchInputChange={handleSearchInputChange}
+        onSearchKeyDown={handleSearchKeyDown}
+        onSearchBlur={handleSearchBlur}
+        onSearchClick={handleSearch}
+        searchInputRef={searchInputRef}
+        hasFilterChanges={hasFilterChanges}
+        onFilterClick={() => setIsFilterSheetOpen(true)}
+        filterChips={filterChips}
+        toggleSection={
+          userMe?.user?.id
+            ? {
+                show: true,
+                id: "only-my-missions",
+                checked: onlyMyMissions,
+                label: "내가 인증한 미션만 보기",
+                onChange: (checked) => {
+                  setOnlyMyMissions(checked);
+                  updateQueryParams({
+                    search: appliedSearchQuery,
+                    sort: appliedSortParam ?? "latest",
+                    categories: selectedCategories,
+                    userId:
+                      checked && userMe?.user?.id ? userMe.user.id : undefined,
+                  });
+                },
+              }
+            : undefined
+        }
+      />
 
-      {/* 리스트 영역 */}
       <div className="px-5 pb-32">
         {!isInitialLoading && filteredMissionPosts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-4xl">📭</div>
-            <p className="mb-2 text-base font-medium text-gray-900">
-              아직 미션 인증글이 없어요
-            </p>
-            <p className="text-sm text-gray-500">
-              첫 번째 인증글을 남겨보세요!
-            </p>
-          </div>
+          <CommunityEmptyState
+            title="아직 미션 인증글이 없어요"
+            description="첫 번째 인증글을 남겨보세요!"
+          />
         )}
 
         <MissionFeed
@@ -346,23 +338,19 @@ const MissionCommunityPageContent = () => {
           skeletonCount={4}
         />
 
-        <div ref={loadMoreRef} aria-hidden="true" className="h-6 w-full" />
+        <CommunityInfiniteScrollTrigger
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadMore={fetchNextPage}
+        />
 
-        {isFetchingNextPage && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-center justify-center pb-6 text-sm text-gray-500"
-          >
-            인증글을 더 불러오는 중이에요...
-          </div>
-        )}
-
-        {!hasNextPage && missionPosts.length > 0 && (
-          <div className="pb-6 text-center text-xs text-gray-400">
-            모든 인증글을 확인했어요
-          </div>
-        )}
+        <CommunityLoadingStates
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+          hasData={missionPosts.length > 0}
+          loadingMessage="인증글을 더 불러오는 중이에요..."
+          completedMessage="모든 인증글을 확인했어요"
+        />
 
         <MissionPostsFilterBottomSheet
           isOpen={isFilterSheetOpen}
