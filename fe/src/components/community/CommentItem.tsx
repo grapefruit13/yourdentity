@@ -21,8 +21,26 @@ import {
 } from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
 import type * as Types from "@/types/generated/comments-types";
+import { parseCommentContent } from "@/utils/community/parse-comment-content";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
+
+/**
+ * 댓글/답글 콘텐츠 렌더링 컴포넌트
+ * - parseCommentContent는 순수 함수이므로 content가 동일하면 같은 결과 반환
+ * - CommentItem이 이미 memo로 감싸져 있어 추가 메모이제이션 불필요
+ */
+const CommentContent = ({ content }: { content: string }) => {
+  // content는 댓글 생성 후 거의 변경되지 않으므로,
+  // CommentItem 리렌더링 시에도 동일한 content면 파싱 결과 재사용
+  const parsedContent = useMemo(() => parseCommentContent(content), [content]);
+
+  return (
+    <div className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm wrap-break-word text-gray-700">
+      {parsedContent}
+    </div>
+  );
+};
 
 interface CommentItemProps {
   comment: NonNullable<
@@ -651,12 +669,7 @@ const CommentItemComponent = ({
             </div>
           ) : (
             <>
-              {comment.content && (
-                <div
-                  className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm wrap-break-word text-gray-700 [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
-                  dangerouslySetInnerHTML={{ __html: comment.content }}
-                />
-              )}
+              {comment.content && <CommentContent content={comment.content} />}
 
               {/* 댓글 액션 버튼 */}
               <div className="flex items-center gap-[6px]">
@@ -864,10 +877,7 @@ const CommentItemComponent = ({
                     ) : (
                       <>
                         {reply.content && (
-                          <div
-                            className="prose prose-sm [&_*]:overflow-wrap-anywhere mb-2 max-w-full text-sm wrap-break-word text-gray-700 [&_img]:block [&_img]:h-auto [&_img]:max-h-[300px] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain"
-                            dangerouslySetInnerHTML={{ __html: reply.content }}
-                          />
+                          <CommentContent content={reply.content} />
                         )}
                         <div className="flex items-center gap-[6px]">
                           {onStartReplyToReply && (

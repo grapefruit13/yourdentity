@@ -142,3 +142,34 @@
 .giphy-grid img:hover {
   transform: scale(1.02) !important;
 }
+
+/* iOS PWA 댓글 GIF 최적화 */
+/* 댓글 내 이미지의 깜빡임 방지 및 레이아웃 시프트 방지 */
+.prose img,
+[class*="prose"] img {
+  /* 하드웨어 가속 활성화 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* 레이아웃 재계산 최소화 */
+  will-change: auto;
+  /* 이미지 로드 시 레이아웃 시프트 방지 */
+  contain: layout style paint;
+  /* iOS Safari에서 이미지 리플로우 방지 */
+  -webkit-transform: translateZ(0);
+  /* 이미지 크기 고정으로 레이아웃 시프트 방지 */
+  min-height: 0;
+  max-height: 300px;
+  object-fit: contain;
+}
+
+/* iOS PWA에서 댓글 컨테이너 최적화 */
+/* 화면 변화 시 리플로우 최소화 */
+.prose,
+[class*="prose"] {
+  /* 레이아웃 격리 */
+  contain: layout style;
+  /* 하드웨어 가속 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
