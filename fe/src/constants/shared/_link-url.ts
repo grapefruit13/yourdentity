@@ -17,6 +17,7 @@ export const LINK_URL = {
   COMMUNITY_POST: "/community/post",
   COMMUNITY_MISSION: "/community/mission",
   COMMUNITY_WRITE: "/community/write",
+  COMMUNITY_REPORT: "/community/report",
   DOWNLOAD: "/download",
   PROGRAMS: "/programs",
   PROGRAMS_APPLY: "/programs/[id]/apply",

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo } from "react";
 import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentItem from "@/components/community/CommentItem";
 import { CommentEmptyMessage } from "@/components/shared/comment-empty-message";
@@ -15,6 +16,7 @@ import {
   COMMENT_DELETE_MODAL_CONFIRM,
   COMMENT_DELETE_MODAL_CANCEL,
 } from "@/constants/shared/_comment-constants";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   useGetCommentsCommunitiesPostsByTwoIds,
   usePostCommentsCommunitiesPostsByTwoIds,
@@ -52,6 +54,7 @@ const CommentsSection = ({
   commentInputRef,
   onFocusRequestRef,
 }: CommentsSectionProps) => {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [commentInput, setCommentInput] = useState("");
@@ -306,10 +309,32 @@ const CommentsSection = ({
   }, []);
 
   // 신고 핸들러
-  const handleReport = useCallback((commentId: string) => {
-    debug.log("신고:", commentId);
-    alert("구현 예정 기능입니다");
-  }, []);
+  const handleReport = useCallback(
+    (commentId: string) => {
+      if (!commentId || !communityId || !postId) return;
+
+      // 댓글 정보 찾기 (댓글과 답글 모두 확인)
+      let targetComment = comments.find((c) => c.id === commentId);
+
+      // 답글인 경우 replies에서 찾기
+      if (!targetComment) {
+        for (const comment of comments) {
+          const reply = comment.replies?.find((r) => r.id === commentId);
+          if (reply) {
+            targetComment = reply as typeof comment;
+            break;
+          }
+        }
+      }
+
+      if (!targetComment) return;
+
+      // 신고 페이지로 이동
+      const reportUrl = `${LINK_URL.COMMUNITY_REPORT}?targetType=comment&targetId=${commentId}&targetUserId=${targetComment.author || ""}&communityId=${communityId}&postId=${postId}`;
+      router.push(reportUrl);
+    },
+    [comments, communityId, postId, router]
+  );
 
   // 로딩 중
   if (isCommentsLoading) {

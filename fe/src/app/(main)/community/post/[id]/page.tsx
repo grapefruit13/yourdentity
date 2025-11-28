@@ -181,6 +181,14 @@ const PostDetailPage = () => {
     openDeleteModal();
   }, [openDeleteModal]);
 
+  // 신고 클릭 핸들러
+  const handleReportClick = useCallback(() => {
+    if (!postId || !post) return;
+    router.push(
+      `${LINK_URL.COMMUNITY_REPORT}?targetType=post&targetId=${postId}&targetUserId=${post.author || ""}&communityId=${communityId}`
+    );
+  }, [postId, post, communityId, router]);
+
   // 탑바 커스텀
   useEffect(() => {
     setRightSlot(
@@ -188,9 +196,17 @@ const PostDetailPage = () => {
         onShare={handleShare}
         onEdit={isAuthor ? handleEditClick : undefined}
         onDelete={isAuthor ? handleDeleteClick : undefined}
+        onReport={!isAuthor ? handleReportClick : undefined}
       />
     );
-  }, [setRightSlot, isAuthor, handleShare, handleEditClick, handleDeleteClick]);
+  }, [
+    setRightSlot,
+    isAuthor,
+    handleShare,
+    handleEditClick,
+    handleDeleteClick,
+    handleReportClick,
+  ]);
 
   // 삭제 mutation
   const { mutateAsync: deletePostAsync, isPending: isDeleting } =
