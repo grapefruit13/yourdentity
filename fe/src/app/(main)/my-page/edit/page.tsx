@@ -20,8 +20,11 @@ import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
   MAX_NICKNAME_LENGTH,
   MAX_BIO_LENGTH,
+  NICKNAME_ALLOWED_PATTERN,
   PROFILE_EDIT_MESSAGES,
+  PROFILE_EDIT_ERRORS,
   PROFILE_EDIT_PLACEHOLDERS,
+  PROFILE_EDIT_HELPERS,
   PROFILE_EDIT_LABELS,
 } from "@/constants/my-page/_profile-edit-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
@@ -244,7 +247,7 @@ const ProfileEditPage = () => {
         return true;
       } else {
         // 200 응답이지만 available이 false인 경우 (중복)
-        setNicknameError("중복된 이름입니다. 다른 이름을 선택해주세요.");
+        setNicknameError(PROFILE_EDIT_ERRORS.NICKNAME_DUPLICATED);
         return false;
       }
     } catch (error: unknown) {
@@ -258,7 +261,7 @@ const ProfileEditPage = () => {
         "status" in error.response &&
         error.response.status === 400
       ) {
-        setNicknameError("닉네임은 한글, 영어, 숫자만 사용 가능합니다.");
+        setNicknameError(PROFILE_EDIT_ERRORS.NICKNAME_INVALID_CHARACTERS);
         return false;
       }
 
@@ -376,7 +379,8 @@ const ProfileEditPage = () => {
             return;
           }
         }
-      } catch {
+      } catch (error) {
+        debug.error("닉네임 중복 체크 실패:", error);
         alert(
           "❌ 닉네임 중복 확인 중 오류가 발생했습니다.\n다시 시도해주세요."
         );
@@ -435,6 +439,42 @@ const ProfileEditPage = () => {
       }
       await rollbackUploadedImage(uploadedImagePath);
     }
+  };
+
+  /**
+   * 닉네임 입력 핸들러
+   * 한글, 영어, 숫자만 허용하며 8자까지 입력 가능
+   * 특수문자 입력 시 에러 메시지 표시
+   */
+  const handleNicknameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const inputValue = event.target.value;
+
+    // 8자 초과 시 제한
+    if (inputValue.length > MAX_NICKNAME_LENGTH) {
+      setNicknameError(PROFILE_EDIT_ERRORS.NICKNAME_MAX_LENGTH);
+      setValue("nickname", inputValue.slice(0, MAX_NICKNAME_LENGTH), {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      return;
+    }
+
+    // 특수문자 제거하여 필터링된 값 계산
+    const filteredNickname = inputValue.replace(NICKNAME_ALLOWED_PATTERN, "");
+
+    // 원본과 필터링된 값이 다르면 특수문자 포함
+    const hasInvalidCharacters = inputValue !== filteredNickname;
+    setNicknameError(
+      hasInvalidCharacters
+        ? PROFILE_EDIT_ERRORS.NICKNAME_INVALID_CHARACTERS
+        : null
+    );
+
+    // 필터링된 값으로 업데이트
+    setValue("nickname", filteredNickname, {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
   };
 
   /**
@@ -607,17 +647,23 @@ const ProfileEditPage = () => {
             <Input
               {...register("nickname", {
                 maxLength: MAX_NICKNAME_LENGTH,
-                onChange: () => {
-                  // 닉네임 변경 시 에러 메시지 초기화
-                  setNicknameError(null);
-                },
               })}
               type="text"
               placeholder={PROFILE_EDIT_PLACEHOLDERS.NICKNAME}
               disabled={!isDataLoaded}
+              onChange={handleNicknameChange}
             />
+            {!nicknameError && (
+              <Typography
+                font="noto"
+                variant="caption1R"
+                className="mt-1 text-gray-400"
+              >
+                {PROFILE_EDIT_HELPERS.NICKNAME}
+              </Typography>
+            )}
             {nicknameError && (
-              <div className="absolute top-full left-0 mt-1 flex w-full items-center gap-1">
+              <div className="mt-1 flex w-full items-center gap-1">
                 <X className="h-4 w-4 text-red-500" />
                 <Typography
                   font="noto"

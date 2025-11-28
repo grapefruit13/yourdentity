@@ -5,8 +5,11 @@
 /** 파일 크기 제한 (5MB) */
 export const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
-/** 닉네임 최대 길이 */
-export const MAX_NICKNAME_LENGTH = 20;
+/** 닉네임 최대 길이 (백엔드와 일치) */
+export const MAX_NICKNAME_LENGTH = 8;
+
+/** 닉네임 허용 문자 패턴 (한글, 영어, 숫자만 허용) */
+export const NICKNAME_ALLOWED_PATTERN = /[^가-힣a-zA-Z0-9]/g;
 
 /** 자기소개 최대 길이 */
 export const MAX_BIO_LENGTH = 150;
@@ -23,10 +26,23 @@ export const PROFILE_EDIT_MESSAGES = {
   PROFILE_UPDATE_FAILED: "프로필 편집 실패",
 } as const;
 
+/** Validation 에러 메시지 */
+export const PROFILE_EDIT_ERRORS = {
+  NICKNAME_MAX_LENGTH: "닉네임은 최대 8자까지 입력 가능합니다.",
+  NICKNAME_INVALID_CHARACTERS:
+    "닉네임은 한글, 영어, 숫자만 사용 가능하며 최대 8자까지 입력 가능합니다.",
+  NICKNAME_DUPLICATED: "중복된 이름입니다. 다른 이름을 선택해주세요.",
+} as const;
+
 /** Placeholder 텍스트 */
 export const PROFILE_EDIT_PLACEHOLDERS = {
-  NICKNAME: "닉네임을 입력해주세요.",
+  NICKNAME: "닉네임을 입력해주세요 (최대 8자)",
   BIO: "자기소개를 입력하세요",
+} as const;
+
+/** Helper 텍스트 */
+export const PROFILE_EDIT_HELPERS = {
+  NICKNAME: "한글, 영어, 숫자만 사용 가능 (최대 8자)",
 } as const;
 
 /** UI 라벨 텍스트 */
