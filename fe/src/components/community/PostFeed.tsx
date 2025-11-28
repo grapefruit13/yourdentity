@@ -124,129 +124,153 @@ const PostFeed = ({
 
   return (
     <div>
-      {posts.map((post) => (
-        <div
-          key={post.id}
-          className={cn(
-            "relative cursor-pointer border-b border-gray-200 bg-white py-5 transition-colors hover:bg-gray-50",
-            post === posts[posts.length - 1] && "border-b-0"
-          )}
-          onClick={() => handlePostClick(post)}
-        >
-          <div className="flex min-h-25 gap-3">
-            {/* 텍스트 컨텐츠 */}
-            <div className="min-w-0 flex-1">
-              {/* 카테고리 태그 */}
-              {post.category && (
-                <Typography
-                  font="noto"
-                  variant="label1M"
-                  // text가 배경 기준으로 세로 중앙에 오도록 정렬하기 위해서 line-height를 19px로 설정했음에도 여전히 텍스트가 세로 하단 정렬됨
-                  className="text-main-500 bg-main-50 mb-2 flex h-[19px] w-fit items-center rounded-xs p-1 leading-[19px]"
-                >
-                  {post.category}
-                </Typography>
+      {posts.map((post) => {
+        // 신고 처리된 게시글 표시
+        if (post.reportsCount && post.reportsCount >= 5) {
+          return (
+            <div
+              key={post.id}
+              className={cn(
+                "relative cursor-pointer border-b border-gray-200 bg-white py-5 transition-colors hover:bg-gray-50",
+                post === posts[posts.length - 1] && "border-b-0"
               )}
-
-              {/* 제목 */}
+            >
               <Typography
                 font="noto"
-                variant="body2B"
-                className="mb-1 line-clamp-1 text-gray-950"
+                variant="label1M"
+                className="h-9 text-gray-700"
               >
-                {post.title || ""}
+                신고 처리된 게시글 입니다.
               </Typography>
-
-              {/* 설명 (2줄 미리보기) */}
-              {post.preview?.description && (
-                <Typography
-                  font="noto"
-                  variant="caption1R"
-                  className="line-clamp-2 text-gray-700"
-                >
-                  {post.preview.description}
-                </Typography>
-              )}
             </div>
-
-            {/* 우측 영역 - 썸네일 */}
-            <div className="mb-3">
-              {post.preview?.thumbnail?.url &&
-                isValidImageUrl(post.preview.thumbnail.url) && (
-                  <PostThumbnail
-                    src={post.preview.thumbnail.url}
-                    alt={post.title || ""}
-                  />
+          );
+        }
+        return (
+          <div
+            key={post.id}
+            className={cn(
+              "relative cursor-pointer border-b border-gray-200 bg-white py-5 transition-colors hover:bg-gray-50",
+              post === posts[posts.length - 1] && "border-b-0"
+            )}
+            onClick={() => handlePostClick(post)}
+          >
+            <div className="flex min-h-25 gap-3">
+              {/* 텍스트 컨텐츠 */}
+              <div className="min-w-0 flex-1">
+                {/* 카테고리 태그 */}
+                {post.category && (
+                  <Typography
+                    font="noto"
+                    variant="label1M"
+                    // text가 배경 기준으로 세로 중앙에 오도록 정렬하기 위해서 line-height를 19px로 설정했음에도 여전히 텍스트가 세로 하단 정렬됨
+                    className="text-main-500 bg-main-50 mb-2 flex h-[19px] w-fit items-center rounded-xs p-1 leading-[19px]"
+                  >
+                    {post.category}
+                  </Typography>
                 )}
+
+                {/* 제목 */}
+                <Typography
+                  font="noto"
+                  variant="body2B"
+                  className="mb-1 line-clamp-1 text-gray-950"
+                >
+                  {post.title || ""}
+                </Typography>
+
+                {/* 설명 (2줄 미리보기) */}
+                {post.preview?.description && (
+                  <Typography
+                    font="noto"
+                    variant="caption1R"
+                    className="line-clamp-2 text-gray-700"
+                  >
+                    {post.preview.description}
+                  </Typography>
+                )}
+              </div>
+
+              {/* 우측 영역 - 썸네일 */}
+              <div className="mb-3">
+                {post.preview?.thumbnail?.url &&
+                  isValidImageUrl(post.preview.thumbnail.url) && (
+                    <PostThumbnail
+                      src={post.preview.thumbnail.url}
+                      alt={post.title || ""}
+                    />
+                  )}
+              </div>
             </div>
-          </div>
-          {/* 하단 섹션 - 작성자/시간/게시물카운트 데이터 표시부 */}
-          <div className="flex justify-between">
-            <div className="flex items-center gap-1">
-              {/* 유저 프로필사진 */}
-              <ProfileImage
-                src={post.profileImageUrl}
-                alt={post.author || ""}
-                size="h-4 w-4"
-              />
-              <Typography
-                font="noto"
-                variant="label2R"
-                className="text-gray-400"
-              >
-                {post.author || POST_ANONYMOUS_NAME}
-              </Typography>
-              <span className="h-[6px] w-px bg-gray-200" />
-              {post.createdAt && (
+            {/* 하단 섹션 - 작성자/시간/게시물카운트 데이터 표시부 */}
+            <div className="flex justify-between">
+              <div className="flex items-center gap-1">
+                {/* 유저 프로필사진 */}
+                <ProfileImage
+                  src={post.profileImageUrl}
+                  alt={post.author || ""}
+                  size="h-4 w-4"
+                />
                 <Typography
                   font="noto"
                   variant="label2R"
                   className="text-gray-400"
                 >
-                  {getTimeAgo(post.createdAt)}
+                  {post.author || POST_ANONYMOUS_NAME}
                 </Typography>
-              )}
-            </div>
-            {/* 카운트 표시부 - 좋아요/댓글 */}
-            <div className="flex gap-4">
-              <div className="flex items-center gap-1">
-                <svg
-                  className="h-4 w-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                  />
-                </svg>
-                <span className="text-xs text-gray-400">{post.likesCount}</span>
+                <span className="h-[6px] w-px bg-gray-200" />
+                {post.createdAt && (
+                  <Typography
+                    font="noto"
+                    variant="label2R"
+                    className="text-gray-400"
+                  >
+                    {getTimeAgo(post.createdAt)}
+                  </Typography>
+                )}
               </div>
-              <div className="flex items-center gap-1">
-                <svg
-                  className="h-4 w-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-                <span className="text-xs text-gray-400">
-                  {post.commentsCount}
-                </span>
+              {/* 카운트 표시부 - 좋아요/댓글 */}
+              <div className="flex gap-4">
+                <div className="flex items-center gap-1">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                  <span className="text-xs text-gray-400">
+                    {post.likesCount}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <span className="text-xs text-gray-400">
+                    {post.commentsCount}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

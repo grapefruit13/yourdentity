@@ -330,6 +330,7 @@ export interface CommunityPostListItem {
   likesCount?: number;
   isLiked?: boolean;
   commentsCount?: number;
+  reportsCount?: number;
   createdAt?: string;
   timeAgo?: string;
 }
