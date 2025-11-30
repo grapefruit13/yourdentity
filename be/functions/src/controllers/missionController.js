@@ -76,6 +76,8 @@ class MissionController {
     this.updateMissionPostComment = this.updateMissionPostComment.bind(this);
     this.deleteMissionPostComment = this.deleteMissionPostComment.bind(this);
     this.toggleMissionLike = this.toggleMissionLike.bind(this);
+    this.toggleMissionPostLike = this.toggleMissionPostLike.bind(this);
+    this.toggleMissionPostCommentLike = this.toggleMissionPostCommentLike.bind(this);
   }
 
   /**
@@ -650,6 +652,52 @@ class MissionController {
       return res.noContent();
     } catch (error) {
       console.error("[MissionController] 미션 인증글 댓글 삭제 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 좋아요 토글
+   */
+  async toggleMissionPostLike(req, res, next) {
+    try {
+      const { postId } = req.params;
+      const userId = req.user?.uid;
+
+      if (!postId) {
+        const error = new Error("인증글 ID가 필요합니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await missionPostService.togglePostLike(postId, userId);
+      return res.success(result);
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 좋아요 토글 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 좋아요 토글
+   */
+  async toggleMissionPostCommentLike(req, res, next) {
+    try {
+      const { commentId } = req.params;
+      const userId = req.user?.uid;
+
+      if (!commentId) {
+        const error = new Error("댓글 ID가 필요합니다.");
+        error.code = "BAD_REQUEST";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await missionPostService.toggleCommentLike(commentId, userId);
+      return res.success(result);
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 댓글 좋아요 토글 오류:", error.message);
       return next(error);
     }
   }
