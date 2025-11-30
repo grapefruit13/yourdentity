@@ -1339,6 +1339,116 @@ router.put("/posts/:postId/comments/:commentId", authGuard, missionController.up
  */
 router.delete("/posts/:postId/comments/:commentId", authGuard, missionController.deleteMissionPostComment);
 
+// 미션 인증글 좋아요 토글
+/**
+ * @swagger
+ * /missions/posts/{postId}/like:
+ *   post:
+ *     tags: [Missions]
+ *     summary: 미션 인증글 좋아요 토글
+ *     description: 특정 미션 인증글의 좋아요 토글
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 인증글 ID
+ *     responses:
+ *       200:
+ *         description: 좋아요 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     postId:
+ *                       type: string
+ *                       description: 인증글 ID
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                     isLiked:
+ *                       type: boolean
+ *                       description: 좋아요 상태 (true: 좋아요, false: 좋아요 취소)
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 인증글을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
+router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPostLike);
+
+// 미션 인증글 댓글 좋아요 토글
+/**
+ * @swagger
+ * /missions/posts/{postId}/comments/{commentId}/like:
+ *   post:
+ *     tags: [Missions]
+ *     summary: 미션 인증글 댓글 좋아요 토글
+ *     description: 특정 미션 인증글 댓글의 좋아요 토글
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 인증글 ID
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 댓글 ID
+ *     responses:
+ *       200:
+ *         description: 좋아요 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     commentId:
+ *                       type: string
+ *                       description: 댓글 ID
+ *                     userId:
+ *                       type: string
+ *                       description: 사용자 ID
+ *                     isLiked:
+ *                       type: boolean
+ *                       description: 좋아요 상태 (true: 좋아요, false: 좋아요 취소)
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 댓글을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
+router.post("/posts/:postId/comments/:commentId/like", authGuard, missionController.toggleMissionPostCommentLike);
+
 /**
  * @swagger
  * /missions/{missionId}:
