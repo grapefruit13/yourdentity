@@ -1408,11 +1408,12 @@ class MissionPostService {
 
   /**
    * 미션 인증글 댓글 좋아요 토글
+   * @param {string} postId - 인증글 ID
    * @param {string} commentId - 댓글 ID
    * @param {string} userId - 사용자 ID
    * @return {Promise<Object>} 좋아요 결과
    */
-  async toggleCommentLike(commentId, userId) {
+  async toggleCommentLike(postId, commentId, userId) {
     try {
       const result = await db.runTransaction(async (transaction) => {
         const commentRef = db.collection("comments").doc(commentId);
@@ -1423,6 +1424,11 @@ class MissionPostService {
         }
 
         const comment = commentDoc.data();
+
+        // 댓글이 해당 인증글에 속하는지 확인
+        if (comment.postId !== postId) {
+          throw buildError("댓글이 해당 인증글에 속하지 않습니다.", "BAD_REQUEST", 400);
+        }
 
         // 미션 인증글 댓글인지 확인 (communityId가 없어야 함)
         if (comment.communityId) {

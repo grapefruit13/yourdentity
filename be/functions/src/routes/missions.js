@@ -1346,7 +1346,11 @@ router.delete("/posts/:postId/comments/:commentId", authGuard, missionController
  *   post:
  *     tags: [Missions]
  *     summary: 미션 인증글 좋아요 토글
- *     description: 특정 미션 인증글의 좋아요 토글
+ *     description: |
+ *       특정 미션 인증글의 좋아요를 추가하거나 취소합니다.
+ *       - 이미 좋아요한 경우: 좋아요 취소 (isLiked: false)
+ *       - 좋아요하지 않은 경우: 좋아요 추가 (isLiked: true)
+ *       - 본인 게시글에도 좋아요 가능 (리워드 없음)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1356,6 +1360,7 @@ router.delete("/posts/:postId/comments/:commentId", authGuard, missionController
  *         schema:
  *           type: string
  *         description: 인증글 ID
+ *         example: "8nB99m2VfVyGAhdmsiFn"
  *     responses:
  *       200:
  *         description: 좋아요 토글 성공
@@ -1373,21 +1378,86 @@ router.delete("/posts/:postId/comments/:commentId", authGuard, missionController
  *                     postId:
  *                       type: string
  *                       description: 인증글 ID
+ *                       example: "8nB99m2VfVyGAhdmsiFn"
  *                     userId:
  *                       type: string
- *                       description: 사용자 ID
+ *                       description: 좋아요를 누른 사용자 ID
+ *                       example: "user-123"
  *                     isLiked:
  *                       type: boolean
- *                       description: 좋아요 상태 (true: 좋아요, false: 좋아요 취소)
+ *                       description: 좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)
+ *                       example: true
  *                     likesCount:
  *                       type: integer
- *                       description: 좋아요 수
+ *                       description: 현재 좋아요 수
+ *                       example: 5
+ *             examples:
+ *               LikeAdded:
+ *                 summary: 좋아요 추가
+ *                 value:
+ *                   status: 200
+ *                   data:
+ *                     postId: "8nB99m2VfVyGAhdmsiFn"
+ *                     userId: "user-123"
+ *                     isLiked: true
+ *                     likesCount: 5
+ *               LikeRemoved:
+ *                 summary: 좋아요 취소
+ *                 value:
+ *                   status: 200
+ *                   data:
+ *                     postId: "8nB99m2VfVyGAhdmsiFn"
+ *                     userId: "user-123"
+ *                     isLiked: false
+ *                     likesCount: 4
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingPostId:
+ *                 summary: 인증글 ID 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글 ID가 필요합니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingBearer:
+ *                 summary: Bearer 토큰 누락
+ *                 value:
+ *                   status: 401
+ *                   message: "Bearer 토큰이 필요합니다"
  *       404:
  *         description: 인증글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               PostNotFound:
+ *                 summary: 인증글 없음
+ *                 value:
+ *                   status: 404
+ *                   message: "인증글을 찾을 수 없습니다."
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 summary: 서버 내부 오류
+ *                 value:
+ *                   status: 500
+ *                   message: "게시글 좋아요 처리에 실패했습니다."
  */
 router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPostLike);
 
@@ -1398,7 +1468,13 @@ router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPos
  *   post:
  *     tags: [Missions]
  *     summary: 미션 인증글 댓글 좋아요 토글
- *     description: 특정 미션 인증글 댓글의 좋아요 토글
+ *     description: |
+ *       특정 미션 인증글 댓글의 좋아요를 추가하거나 취소합니다.
+ *       - 이미 좋아요한 경우: 좋아요 취소 (isLiked: false)
+ *       - 좋아요하지 않은 경우: 좋아요 추가 (isLiked: true)
+ *       - 본인 댓글에도 좋아요 가능 (리워드 없음)
+ *       - 삭제된 댓글에는 좋아요 불가
+ *       - 커뮤니티 댓글은 이 API로 좋아요 불가
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1408,12 +1484,14 @@ router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPos
  *         schema:
  *           type: string
  *         description: 인증글 ID
+ *         example: "8nB99m2VfVyGAhdmsiFn"
  *       - in: path
  *         name: commentId
  *         required: true
  *         schema:
  *           type: string
  *         description: 댓글 ID
+ *         example: "mtj4zO8tw0EIfCNQv7Ws"
  *     responses:
  *       200:
  *         description: 좋아요 토글 성공
@@ -1431,21 +1509,96 @@ router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPos
  *                     commentId:
  *                       type: string
  *                       description: 댓글 ID
+ *                       example: "mtj4zO8tw0EIfCNQv7Ws"
  *                     userId:
  *                       type: string
- *                       description: 사용자 ID
+ *                       description: 좋아요를 누른 사용자 ID
+ *                       example: "user-123"
  *                     isLiked:
  *                       type: boolean
- *                       description: 좋아요 상태 (true: 좋아요, false: 좋아요 취소)
+ *                       description: 좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)
+ *                       example: true
  *                     likesCount:
  *                       type: integer
- *                       description: 좋아요 수
+ *                       description: 현재 좋아요 수
+ *                       example: 3
+ *             examples:
+ *               LikeAdded:
+ *                 summary: 좋아요 추가
+ *                 value:
+ *                   status: 200
+ *                   data:
+ *                     commentId: "mtj4zO8tw0EIfCNQv7Ws"
+ *                     userId: "user-123"
+ *                     isLiked: true
+ *                     likesCount: 3
+ *               LikeRemoved:
+ *                 summary: 좋아요 취소
+ *                 value:
+ *                   status: 200
+ *                   data:
+ *                     commentId: "mtj4zO8tw0EIfCNQv7Ws"
+ *                     userId: "user-123"
+ *                     isLiked: false
+ *                     likesCount: 2
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingCommentId:
+ *                 summary: 댓글 ID 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글 ID와 댓글 ID가 필요합니다."
+ *               CommunityComment:
+ *                 summary: 커뮤니티 댓글
+ *                 value:
+ *                   status: 400
+ *                   message: "커뮤니티 댓글은 이 API로 좋아요할 수 없습니다."
+ *               DeletedComment:
+ *                 summary: 삭제된 댓글
+ *                 value:
+ *                   status: 400
+ *                   message: "삭제된 댓글에는 좋아요를 할 수 없습니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingBearer:
+ *                 summary: Bearer 토큰 누락
+ *                 value:
+ *                   status: 401
+ *                   message: "Bearer 토큰이 필요합니다"
  *       404:
  *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               CommentNotFound:
+ *                 summary: 댓글 없음
+ *                 value:
+ *                   status: 404
+ *                   message: "댓글을 찾을 수 없습니다."
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               ServerError:
+ *                 summary: 서버 내부 오류
+ *                 value:
+ *                   status: 500
+ *                   message: "댓글 좋아요 처리에 실패했습니다."
  */
 router.post("/posts/:postId/comments/:commentId/like", authGuard, missionController.toggleMissionPostCommentLike);
 
