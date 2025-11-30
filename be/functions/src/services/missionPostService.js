@@ -549,6 +549,23 @@ class MissionPostService {
 
       const isAuthor = Boolean(viewerId && viewerId === post.userId);
 
+      // 좋아요 상태 조회 (viewerId가 있는 경우)
+      let isLiked = false;
+      if (viewerId) {
+        try {
+          const likeSnapshot = await db
+            .collection("likes")
+            .where("type", "==", "MISSION_POST")
+            .where("targetId", "==", postId)
+            .where("userId", "==", viewerId)
+            .limit(1)
+            .get();
+          isLiked = !likeSnapshot.empty;
+        } catch (error) {
+          console.warn("[MISSION_POST] 게시글 좋아요 상태 조회 실패:", error.message);
+        }
+      }
+
       const response = {
         id: post.id,
         title: post.title || "",
@@ -560,11 +577,13 @@ class MissionPostService {
         author: userProfile.nickname || "",
         profileImageUrl: userProfile.profileImageUrl || null,
         commentsCount: post.commentsCount || 0,
+        likesCount: post.likesCount || 0,
         viewCount: newViewCount,
         createdAt: createdAtDate.toISOString(),
         updatedAt: updatedAtDate.toISOString(),
         timeAgo: this.getTimeAgo(createdAtDate),
         isAuthor,
+        isLiked: viewerId ? isLiked : false,
       };
 
       return response;
@@ -1029,15 +1048,57 @@ class MissionPostService {
         }
       }
 
+      // 좋아요 상태 조회 (viewerId가 있는 경우)
+      let likedCommentIds = new Set();
+      if (viewerId) {
+        const allCommentIds = [
+          ...rootComments.map((comment) => comment.id),
+          ...collectedReplies.map((reply) => reply.id),
+        ].filter(Boolean);
+
+        if (allCommentIds.length > 0) {
+          try {
+            const chunks = [];
+            for (let i = 0; i < allCommentIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
+              chunks.push(allCommentIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
+            }
+
+            const likeSnapshots = await Promise.all(
+              chunks.map((chunk) =>
+                db
+                  .collection("likes")
+                  .where("userId", "==", viewerId)
+                  .where("type", "==", "MISSION_COMMENT")
+                  .where("targetId", "in", chunk)
+                  .get(),
+              ),
+            );
+
+            likeSnapshots.forEach((snapshot) => {
+              snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data?.targetId) {
+                  likedCommentIds.add(data.targetId);
+                }
+              });
+            });
+          } catch (error) {
+            console.warn("[MISSION_POST] 댓글 좋아요 상태 조회 실패:", error.message);
+          }
+        }
+      }
+
       const enrichedRoots = sortByCreatedAtAsc(rootComments).map((comment) => {
         const replies = sortByCreatedAtAsc(repliesByRoot.get(comment.id) || []);
         const limitedReplies = replies.slice(0, COMMENT_REPLIES_PREVIEW_LIMIT);
         return {
           ...comment,
           profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
+          isLiked: viewerId ? likedCommentIds.has(comment.id) : false,
           replies: limitedReplies.map(reply => ({
             ...reply,
             profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
+            isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
           })),
           repliesCount: replies.length,
         };
@@ -1239,6 +1300,238 @@ class MissionPostService {
         throw error;
       }
       throw buildError("댓글을 삭제할 수 없습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 좋아요 토글
+   * @param {string} postId - 인증글 ID
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>} 좋아요 결과
+   */
+  async togglePostLike(postId, userId) {
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(postId);
+        const postDoc = await transaction.get(postRef);
+
+        if (!postDoc.exists) {
+          throw buildError("인증글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+        }
+
+        const post = postDoc.data();
+
+        const likesCollection = db.collection("likes");
+        const likeQuery = likesCollection
+          .where("type", "==", "MISSION_POST")
+          .where("targetId", "==", postId)
+          .where("userId", "==", userId)
+          .limit(1);
+        const likeSnapshot = await transaction.get(likeQuery);
+        const existingLikeDoc = likeSnapshot.empty ? null : likeSnapshot.docs[0];
+        let isLiked = false;
+
+        if (existingLikeDoc) {
+          transaction.delete(existingLikeDoc.ref);
+          isLiked = false;
+
+          transaction.update(postRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          const newLikeRef = likesCollection.doc();
+          transaction.set(newLikeRef, {
+            type: "MISSION_POST",
+            targetId: postId,
+            userId,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          isLiked = true;
+
+          transaction.update(postRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        const currentLikesCount = post.likesCount || 0;
+        return {
+          postId,
+          userId,
+          isLiked,
+          likesCount: isLiked
+            ? currentLikesCount + 1
+            : Math.max(0, currentLikesCount - 1),
+        };
+      });
+
+      // 알림 전송 (본인 게시글이 아닌 경우)
+      if (result.isLiked) {
+        const postDoc = await db.collection(MISSION_POSTS_COLLECTION).doc(postId).get();
+        const post = postDoc.data();
+
+        if (post && post.userId !== userId) {
+          try {
+            const userService = new UserService();
+            const likerProfile = await userService.getUserById(userId);
+            const likerName = likerProfile?.nickname || "사용자";
+
+            fcmHelper
+              .sendNotification(
+                post.userId,
+                "인증글에 좋아요가 달렸습니다",
+                `${likerName}님이 "${post.title || "인증글"}"에 좋아요를 눌렀습니다`,
+                "POST_LIKE",
+                postId,
+                undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
+                "", // link 없음
+              )
+              .catch((error) => {
+                console.error("[MISSION_POST] 게시글 좋아요 알림 전송 실패:", error);
+              });
+          } catch (error) {
+            console.error("[MISSION_POST] 게시글 좋아요 알림 처리 실패:", error);
+          }
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error("[MISSION_POST] 게시글 좋아요 토글 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
+        throw error;
+      }
+      throw buildError("게시글 좋아요 처리에 실패했습니다.", "INTERNAL_ERROR", 500);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 좋아요 토글
+   * @param {string} postId - 인증글 ID
+   * @param {string} commentId - 댓글 ID
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<Object>} 좋아요 결과
+   */
+  async toggleCommentLike(postId, commentId, userId) {
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const commentRef = db.collection("comments").doc(commentId);
+        const commentDoc = await transaction.get(commentRef);
+
+        if (!commentDoc.exists) {
+          throw buildError("댓글을 찾을 수 없습니다.", "NOT_FOUND", 404);
+        }
+
+        const comment = commentDoc.data();
+
+        // 댓글이 해당 인증글에 속하는지 확인
+        if (comment.postId !== postId) {
+          throw buildError("댓글이 해당 인증글에 속하지 않습니다.", "BAD_REQUEST", 400);
+        }
+
+        // 미션 인증글 댓글인지 확인 (communityId가 없어야 함)
+        if (comment.communityId) {
+          throw buildError("커뮤니티 댓글은 이 API로 좋아요할 수 없습니다.", "BAD_REQUEST", 400);
+        }
+
+        if (comment.isDeleted) {
+          throw buildError("삭제된 댓글에는 좋아요를 할 수 없습니다.", "BAD_REQUEST", 400);
+        }
+
+        const likesCollection = db.collection("likes");
+        const likeQuery = likesCollection
+          .where("type", "==", "MISSION_COMMENT")
+          .where("targetId", "==", commentId)
+          .where("userId", "==", userId)
+          .limit(1);
+        const likeSnapshot = await transaction.get(likeQuery);
+        const existingLikeDoc = likeSnapshot.empty ? null : likeSnapshot.docs[0];
+        let isLiked = false;
+
+        if (existingLikeDoc) {
+          transaction.delete(existingLikeDoc.ref);
+          isLiked = false;
+
+          transaction.update(commentRef, {
+            likesCount: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          const newLikeRef = likesCollection.doc();
+          transaction.set(newLikeRef, {
+            type: "MISSION_COMMENT",
+            targetId: commentId,
+            userId,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          isLiked = true;
+
+          transaction.update(commentRef, {
+            likesCount: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        const currentLikesCount = comment.likesCount || 0;
+        return {
+          commentId,
+          userId,
+          isLiked,
+          likesCount: isLiked
+            ? currentLikesCount + 1
+            : Math.max(0, currentLikesCount - 1),
+        };
+      });
+
+      // 알림 전송 (본인 댓글이 아닌 경우)
+      if (result.isLiked) {
+        const commentDoc = await db.collection("comments").doc(commentId).get();
+        const comment = commentDoc.data();
+
+        if (comment && comment.userId !== userId) {
+          try {
+            const userService = new UserService();
+            const likerProfile = await userService.getUserById(userId);
+            const likerName = likerProfile?.nickname || "사용자";
+
+            const textOnly =
+              typeof comment.content === "string"
+                ? comment.content.replace(/<[^>]*>/g, "")
+                : comment.content;
+            const commentPreview = textOnly || "댓글";
+            const preview =
+              commentPreview.length > MissionPostService.MAX_PREVIEW_TEXT_LENGTH
+                ? commentPreview.substring(0, MissionPostService.MAX_PREVIEW_TEXT_LENGTH) + "..."
+                : commentPreview;
+
+            fcmHelper
+              .sendNotification(
+                comment.userId,
+                "댓글에 좋아요가 달렸습니다",
+                `${likerName}님이 "${preview}" 댓글에 좋아요를 눌렀습니다`,
+                "COMMENT_LIKE",
+                comment.postId,
+                undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
+                "", // link 없음
+                commentId,
+              )
+              .catch((error) => {
+                console.error("[MISSION_POST] 댓글 좋아요 알림 전송 실패:", error);
+              });
+          } catch (error) {
+            console.error("[MISSION_POST] 댓글 좋아요 알림 처리 실패:", error);
+          }
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error("[MISSION_POST] 댓글 좋아요 토글 실패:", error.message);
+      if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
+        throw error;
+      }
+      throw buildError("댓글 좋아요 처리에 실패했습니다.", "INTERNAL_ERROR", 500);
     }
   }
 }

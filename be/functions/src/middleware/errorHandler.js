@@ -62,6 +62,7 @@ const errorHandler = (err, req, res, next) => {
     case "CONFLICT":
     case "DUPLICATE_APPLICATION":
     case "MISSION_ALREADY_APPLIED":
+    case "MISSION_ALREADY_COMPLETED":
     case "MISSION_NOT_IN_PROGRESS":
     case "MAX_ACTIVE_MISSIONS_EXCEEDED":
       httpStatus = 409;
