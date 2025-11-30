@@ -18,9 +18,7 @@ import ProfileImage from "@/components/shared/ui/profile-image";
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
-  MAX_NICKNAME_LENGTH,
   MAX_BIO_LENGTH,
-  NICKNAME_ALLOWED_PATTERN,
   PROFILE_EDIT_MESSAGES,
   PROFILE_EDIT_ERRORS,
   PROFILE_EDIT_PLACEHOLDERS,
@@ -28,6 +26,10 @@ import {
   PROFILE_EDIT_LABELS,
 } from "@/constants/my-page/_profile-edit-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import {
+  MAX_NICKNAME_LENGTH,
+  NICKNAME_ALLOWED_PATTERN,
+} from "@/constants/shared/_nickname-constants";
 import { useDeleteAuthDeleteAccount } from "@/hooks/generated/auth-hooks";
 import {
   useGetUsersMe,
@@ -449,29 +451,36 @@ const ProfileEditPage = () => {
   const handleNicknameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const inputValue = event.target.value;
 
-    // 8자 초과 시 제한
-    if (inputValue.length > MAX_NICKNAME_LENGTH) {
-      setNicknameError(PROFILE_EDIT_ERRORS.NICKNAME_MAX_LENGTH);
-      setValue("nickname", inputValue.slice(0, MAX_NICKNAME_LENGTH), {
-        shouldDirty: true,
-        shouldValidate: false,
-      });
-      return;
-    }
-
-    // 특수문자 제거하여 필터링된 값 계산
+    // 1. 특수문자 제거하여 필터링된 값 계산
     const filteredNickname = inputValue.replace(NICKNAME_ALLOWED_PATTERN, "");
 
-    // 원본과 필터링된 값이 다르면 특수문자 포함
-    const hasInvalidCharacters = inputValue !== filteredNickname;
-    setNicknameError(
-      hasInvalidCharacters
-        ? PROFILE_EDIT_ERRORS.NICKNAME_INVALID_CHARACTERS
-        : null
-    );
+    // 2. 필터링된 값에 대해 길이 제한 적용
+    const trimmedNickname =
+      filteredNickname.length > MAX_NICKNAME_LENGTH
+        ? filteredNickname.slice(0, MAX_NICKNAME_LENGTH)
+        : filteredNickname;
 
-    // 필터링된 값으로 업데이트
-    setValue("nickname", filteredNickname, {
+    // 3. 에러 메시지 설정
+    const hasInvalidCharacters = inputValue !== filteredNickname;
+    const isLengthExceeded = filteredNickname.length > MAX_NICKNAME_LENGTH;
+
+    const errorMessage = (() => {
+      if (hasInvalidCharacters && isLengthExceeded) {
+        return PROFILE_EDIT_ERRORS.NICKNAME_INVALID_CHARACTERS;
+      }
+      if (hasInvalidCharacters) {
+        return PROFILE_EDIT_ERRORS.NICKNAME_INVALID_CHARACTERS;
+      }
+      if (isLengthExceeded) {
+        return PROFILE_EDIT_ERRORS.NICKNAME_MAX_LENGTH;
+      }
+      return null;
+    })();
+
+    setNicknameError(errorMessage);
+
+    // 4. 필터링 및 길이 제한된 값으로 업데이트
+    setValue("nickname", trimmedNickname, {
       shouldDirty: true,
       shouldValidate: false,
     });

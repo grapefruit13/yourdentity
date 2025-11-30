@@ -5,12 +5,6 @@
 /** 파일 크기 제한 (5MB) */
 export const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
-/** 닉네임 최대 길이 (백엔드와 일치) */
-export const MAX_NICKNAME_LENGTH = 8;
-
-/** 닉네임 허용 문자 패턴 (한글, 영어, 숫자만 허용) */
-export const NICKNAME_ALLOWED_PATTERN = /[^가-힣a-zA-Z0-9]/g;
-
 /** 자기소개 최대 길이 */
 export const MAX_BIO_LENGTH = 150;
 

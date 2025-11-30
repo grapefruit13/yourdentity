@@ -5,9 +5,7 @@
  * - 최대 8글자 제한
  */
 
-// 한글(완성형 + 자음/모음), 영어(대소문자), 숫자만 허용하는 정규식
-// 가-힣: 완성형 한글, ㄱ-ㅎ: 자음, ㅏ-ㅣ: 모음
-const NICKNAME_PATTERN = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]+$/;
+import { NICKNAME_VALIDATION_PATTERN } from "@/constants/shared/_nickname-constants";
 
 /**
  * 닉네임 검증 결과 타입
@@ -48,7 +46,7 @@ export const validateNickname = (
     };
   }
 
-  if (!NICKNAME_PATTERN.test(trimmedNickname)) {
+  if (!NICKNAME_VALIDATION_PATTERN.test(trimmedNickname)) {
     let errorMessage = "닉네임은 다음 규칙을 따라야 합니다:\n";
     errorMessage += "• 한글, 영어(대소문자), 숫자만 사용 가능\n";
     errorMessage += "• 최대 8글자까지 입력 가능\n";
